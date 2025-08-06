@@ -1,7 +1,7 @@
 {
-  "name": "electron-vue-template",
+  "name": "todo-list",
   "version": "0.1.0",
-  "description": "A minimal Electron + Vue application",
+  "description": "todo-list",
   "main": "main/main.js",
   "scripts": {
     "dev": "node scripts/dev-server.js",
@@ -10,21 +10,26 @@
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux"
   },
-  "repository": "https://github.com/deluze/electron-vue-template",
+  "repository": "https://github.com/Daarunia/todo-list",
   "author": {
-    "name": "Deluze",
-    "url": "https://github.com/Deluze"
+    "name": "Maxime Van Eygen",
+    "url": "https://github.com/Daarunia"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.4.1",
-    "chalk": "^4.1.2",
-    "chokidar": "^3.5.3",
-    "electron": "^32.1.2",
-    "electron-builder": "^25.1.6",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
+    "@types/node": "^24.2.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "autoprefixer": "^10.4.21",
+    "chokidar": "^4.0.3",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6"
   },
   "dependencies": {
-    "vue": "^3.3.8"
+    "@tailwindcss/postcss": "^4.1.11",
+    "@tailwindcss/vite": "^4.1.11",
+    "chalk": "^4.1.2",
+    "vue": "^3.5.18"
   }
 }

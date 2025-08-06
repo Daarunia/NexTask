@@ -17,7 +17,7 @@ let rendererPort = 0;
 
 async function startRenderer() {
     viteServer = await Vite.createServer({
-        configFile: Path.join(__dirname, '..', 'vite.config.js'),
+        configFile: Path.join(__dirname, '..', 'vite.config.mjs'),
         mode: 'development',
     });
 
@@ -32,7 +32,7 @@ async function startElectron() {
     try {
         await compileTs(Path.join(__dirname, '..', 'src', 'main'));
     } catch {
-        console.log(Chalk.redBright('Could not start Electron because of the above typescript error(s).'));
+        console.log(Chalk.redBright`Could not start Electron because of the above typescript error(s).`);
         electronProcessLocker = false;
         return;
     }
@@ -49,11 +49,11 @@ async function startElectron() {
             return;
         }
 
-        process.stdout.write(Chalk.blueBright(`[electron] `) + Chalk.white(data.toString()))
+        process.stdout.write(Chalk.blueBright`[electron] ` + Chalk.white(data.toString()));
     });
 
-    electronProcess.stderr.on('data', data => 
-        process.stderr.write(Chalk.blueBright(`[electron] `) + Chalk.white(data.toString()))
+    electronProcess.stderr.on('data', data =>
+        process.stderr.write(Chalk.blueBright`[electron] ` + Chalk.white(data.toString()))
     );
 
     electronProcess.on('exit', () => stop());
@@ -94,9 +94,9 @@ function stop() {
 }
 
 async function start() {
-    console.log(`${Chalk.greenBright('=======================================')}`);
-    console.log(`${Chalk.greenBright('Starting Electron + Vite Dev Server...')}`);
-    console.log(`${Chalk.greenBright('=======================================')}`);
+    console.log(Chalk.greenBright('======================================='));
+    console.log(Chalk.greenBright('  Starting Electron + Vite Dev Server  '));
+    console.log(Chalk.greenBright('======================================='));
 
     const devServer = await startRenderer();
     rendererPort = devServer.config.server.port;
@@ -108,7 +108,7 @@ async function start() {
     Chokidar.watch(path, {
         cwd: path,
     }).on('change', (path) => {
-        console.log(Chalk.blueBright(`[electron] `) + `Change in ${path}. reloading... 🚀`);
+        console.log(Chalk.blueBright`[electron] ` + `Change in ${path}. reloading... 🚀`);
 
         if (path.startsWith(Path.join('static', '/'))) {
             copy(path);
