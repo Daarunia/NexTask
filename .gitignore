@@ -4,4 +4,4 @@ build
 .env
 .vscode
 .idea
-/src/generated/prisma
+generated

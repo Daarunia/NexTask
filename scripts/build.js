@@ -37,7 +37,7 @@ Promise.allSettled([
     console.log(pc.green('Renderer & main successfully transpiled!'));
 
     // Copier le Prisma Client généré dans le build
-    const source = path.join(__dirname, '..', 'src', 'generated', 'prisma', '**/*');
+    const source = path.join(__dirname, '..', 'generated', 'prisma', '**/*');
     const dest = path.join(__dirname, '..', 'build', 'generated', 'prisma');
 
     cpx.copy(source, dest, (err) => {

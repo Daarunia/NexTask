@@ -1,39 +1,41 @@
 {
-    "appId": "com.electron.app",
-    "directories": {
-        "output": "dist"
-    },
+  "appId": "com.electron.app",
+  "directories": {
+    "output": "dist"
+  },
 
-    "nsis": {
-        "oneClick": false,
-        "perMachine": false,
-        "allowToChangeInstallationDirectory": true,
-        "shortcutName": "Electron App"
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "shortcutName": "Electron App"
+  },
+  "win": {
+    "forceCodeSigning": false,
+    "icon": "path/to/icon.ico",
+    "target": ["nsis", "zip"]
+  },
+  "linux": {
+    "target": ["snap"]
+  },
+  "files": [
+    {
+      "from": "build/main",
+      "to": "main",
+      "filter": ["**/*"]
     },
-    "win": {
-        "target": "nsis"
+    {
+      "from": "build/renderer",
+      "to": "renderer",
+      "filter": ["**/*"]
     },
-    "linux":  {
-        "target": ["snap"]
+    {
+      "from": "src/main/static",
+      "to": "static",
+      "filter": ["**/*"]
     },
-    "files": [
-        {
-            "from": "build/main",
-            "to": "main",
-            "filter": ["**/*"]
-        },
-        {
-            "from": "build/renderer",
-            "to": "renderer",
-            "filter": ["**/*"]
-        },
-        {
-            "from": "src/main/static",
-            "to": "static",
-            "filter": ["**/*"]
-        },
-	"!build",
-	"!dist",
-	"!scripts"
-    ]
+    "!build",
+    "!dist",
+    "!scripts"
+  ]
 }
