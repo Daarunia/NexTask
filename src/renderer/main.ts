@@ -12,7 +12,7 @@ const pinia = createPinia()
 // Logger
 const logger = createLogger({
   enabled: true,
-  level: 'debug'
+  level: import.meta.env.VITE_LOG_LEVEL
 })
 
 app.use(pinia);

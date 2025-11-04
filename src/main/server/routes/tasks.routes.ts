@@ -1,4 +1,5 @@
 import { prisma } from "../prismaClient.js";
+import type { Task as PrismaTask } from "@prisma/client";
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -221,6 +222,91 @@ export default async function taskRoutes(fastify) {
       } catch {
         reply.code(404);
         return { error: "Tâche non trouvée" };
+      }
+    }
+  );
+
+  /**
+   * PATCH /tasks/batch
+   *
+   * Met à jour plusieurs tâches en une seule requête.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Array<Object>} req.body - Tableau des tâches à mettre à jour
+   * @param {number} req.body[].id - ID de la tâche (requis)
+   * @param {string} [req.body[].stage] - Nouvelle colonne de la tâche
+   * @param {string} [req.body[].version] - Version
+   * @param {string} [req.body[].description] - Description
+   * @param {string} [req.body[].title] - Titre
+   * @param {number} [req.body[].position] - Position dans la colonne
+   * @param {string} [req.body[].status] - Statut
+   * @param {number|null} [req.body[].redmine] - ID Redmine optionnel
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Array<Object>|{error: string}>} Tableau des tâches mises à jour ou message d'erreur
+   */
+  fastify.patch(
+    "/tasks/batch",
+    {
+      schema: {
+        description: "Met à jour plusieurs tâches en une seule requête",
+        tags: ["Task"],
+        body: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              stage: { type: "string" },
+              version: { type: "string" },
+              description: { type: "string" },
+              position: { type: "integer" },
+              status: { type: "string" },
+              redmine: { type: "integer", nullable: true },
+            },
+            required: ["id"],
+          },
+        },
+        response: {
+          200: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                stage: { type: "string" },
+                version: { type: "string" },
+                description: { type: "string" },
+                position: { type: "integer" },
+                status: { type: "string" },
+                redmine: { type: "integer", nullable: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const tasks = req.body as Array<Partial<PrismaTask> & { id: number }>;
+
+      if (!tasks.length) {
+        return reply.status(400).send({ error: "Le tableau de tâches est vide" });
+      }
+
+      try {
+        // On fait un update pour chaque tâche, dans une transaction
+        const updatedTasks = await prisma.$transaction(
+          tasks.map(t =>
+            prisma.task.update({
+              where: { id: t.id },
+              data: t,
+            })
+          )
+        );
+
+        return updatedTasks;
+      } catch (error) {
+        console.error(error);
+        return reply.status(500).send({ error: "Impossible de mettre à jour les tâches" });
       }
     }
   );

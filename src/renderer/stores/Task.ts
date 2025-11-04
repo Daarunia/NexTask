@@ -36,9 +36,9 @@ export const useTaskStore = defineStore("task", {
   state: (): TaskState => ({
     tasks: {},
     allTasks: null,
-    ttl: 5 * MINUTE,
+    ttl: 5 * MINUTE, // 5 minutes avant de rafraichir
     lastFetch: null,
-    baseUrl: "http://localhost:3000",
+    baseUrl: import.meta.env.VITE_BASE_URL,
   }),
   getters: {
     getTaskById: (state) => {
@@ -56,6 +56,7 @@ export const useTaskStore = defineStore("task", {
       };
     },
     getAllTasks(state): Task[] | null {
+      console.log((window as any).env.BASE_URL)
       if (!state.allTasks) return null;
       const isValid = this.isCacheValid(state.allTasks);
       return isValid ? state.allTasks.data : null;
@@ -72,8 +73,36 @@ export const useTaskStore = defineStore("task", {
     },
 
     /**
+     * * Supprime une tâche par ID
+     * @param id ID de la tâche
+     */
+    async deleteTask(id: number): Promise<void> {
+      try {
+        // Appel API pour supprimer la tâche
+        await axios.delete(`${this.baseUrl}/tasks/${id}`);
+
+        // Supprime la tâche du cache individuel si elle existe
+        if (this.tasks[id]) {
+          delete this.tasks[id];
+        }
+
+        // Supprime la tâche du cache allTasks si elle existe
+        if (this.allTasks) {
+          const index = this.allTasks.data.findIndex(t => t.id === id);
+          if (index !== -1) {
+            this.allTasks.data.splice(index, 1);
+            this.allTasks.timestamp = Date.now();
+          }
+        }
+
+      } catch (error) {
+        console.error(`Erreur lors de la suppression de la tâche ${id}:`, error);
+        throw error;
+      }
+    },
+
+    /**
      * Récupération d'une tâche par id
-     * @returns une tâche
      */
     async fetchTask(id: number): Promise<Task> {
       const cached = this.getTaskById(id);
@@ -87,7 +116,6 @@ export const useTaskStore = defineStore("task", {
 
     /**
      * Récupération de toutes les tâches
-     * @returns Toutes les tâches
      */
     async fetchAllTasks(): Promise<Task[]> {
       if (this.isCacheValid(this.allTasks)) {
@@ -101,26 +129,24 @@ export const useTaskStore = defineStore("task", {
     },
 
     /**
-     * Mise à jour de la colonne d'une tâche
-     * @param id
-     * @param stage
+     * Mise à jour complète d'une tâche à partir d'un objet Task
+     * @param task Objet Task avec un id existant
      */
-    async updateTaskStage(id: number, stage: string): Promise<void> {
+    async updateTask(task: Task): Promise<void> {
       try {
-        await axios.patch(`${this.baseUrl}/tasks/${id}`, { stage });
+        await axios.patch(`${this.baseUrl}/tasks/${task.id}`, task);
 
-        // Met à jour le cache local si la tâche existe
-        const task = this.getTaskById(id);
-        if (task) {
-          task.stage = stage;
-          this.setTaskCache(id, task);
+        // Met à jour le cache local
+        const existingTask = this.getTaskById(task.id);
+        if (existingTask) {
+          this.setTaskCache(task.id, { ...task });
         }
 
-        // Met à jour aussi le cache allTasks si nécessaire
-        if (this.allTasks) {
-          const index = this.allTasks.data.findIndex((t) => t.id === id);
+        // Met à jour allTasks si elle existe
+        if (this.allTasks?.data) {
+          const index = this.allTasks.data.findIndex(t => t.id === task.id);
           if (index !== -1) {
-            this.allTasks.data[index].stage = stage;
+            this.allTasks.data[index] = { ...task };
             this.allTasks.timestamp = Date.now();
           }
         }
@@ -129,5 +155,42 @@ export const useTaskStore = defineStore("task", {
         throw error;
       }
     },
+
+    /**
+     * Mise à jour complète d'un ensemble de tâches
+     * @param tasks Tableau de Task avec des id existants
+     */
+    async updateTaskBatch(tasks: Task[]): Promise<void> {
+      if (!tasks.length) return;
+
+      try {
+        // Envoi des tâches au serveur pour mise à jour
+        const response = await axios.patch(`${this.baseUrl}/tasks/batch`, tasks);
+        const updatedTasks: Task[] = response.data;
+
+        // Mise à jour du cache local pour chaque tâche
+        updatedTasks.forEach((task: Task) => {
+          const existingTask = this.getTaskById(task.id);
+          if (existingTask) {
+            this.setTaskCache(task.id, { ...task });
+          }
+
+          if (this.allTasks?.data) {
+            const index = this.allTasks.data.findIndex(t => t.id === task.id);
+            if (index !== -1) {
+              this.allTasks.data[index] = { ...task };
+            }
+          }
+        });
+
+        // Met à jour le timestamp global
+        if (this.allTasks) {
+          this.allTasks.timestamp = Date.now();
+        }
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour du batch de tâches:", error);
+        throw error;
+      }
+    }
   },
 });

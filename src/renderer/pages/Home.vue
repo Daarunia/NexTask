@@ -28,7 +28,8 @@ onMounted(async () => {
 <template>
   <div class="h-full">
     <div class="flex justify-center mt-8 h-80">
-      <Kanban :stages="['A faire', 'En attente', 'En cours', 'Terminé']" :tasks="tasks" />
+      <Kanban v-if="tasks.length !== 0" :stages="['A faire', 'En attente', 'En cours', 'Terminé']" :tasks="tasks" />
+      <div v-else class="text-gray-400">Chargement des tâches...</div>
     </div>
   </div>
 </template>

@@ -9,7 +9,10 @@
         <template #item="{ element }">
           <div class="group draggable-item">
             <strong>{{ element.title }}</strong>
-            <i class=" pi pi-trash draggable-trash" style="font-size: 1rem"></i>
+            <button class="draggable-trash" style="font-size: 1rem" @click="deleteTask(element)"
+              aria-label="Supprimer la tâche">
+              <i class="pi pi-trash"></i>
+            </button>
           </div>
         </template>
       </draggable>
@@ -21,7 +24,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useLogger } from 'vue-logger-plugin'
 import { useTaskStore } from '../stores/Task'
 import type { Task } from '../stores/Task'
@@ -43,7 +46,12 @@ const logger = useLogger()
 /**
  * Mapping des tâches par stage
  */
-const taskLists = ref<Record<string, Task[]>>({})
+const taskLists = ref(Object.fromEntries(
+  props.stages.map(stage => [stage, props.tasks
+    .filter(t => t.stage === stage)
+    .map(t => ({ ...t }))
+    .sort((a, b) => a.position - b.position)
+  ])))
 
 /**
  * Store des tâches
@@ -51,30 +59,54 @@ const taskLists = ref<Record<string, Task[]>>({})
 const taskStore = useTaskStore()
 
 /**
- * Mise à jour des tâches reçues via props
- */
-watch(
-  () => props.tasks,
-  (newTasks) => {
-    props.stages.forEach(stage => {
-      // On filtre les tâches par stage et on crée la liste réactive
-      taskLists.value[stage] = newTasks.filter(t => t.stage === stage)
-    })
-  },
-  { immediate: true, deep: true }
-)
-
-/**
  * Mise à jour des positions sur les objets "Task" aprés drag and drop
  */
-function onTasksDrop() {
-  for (const stage in taskLists.value) {
-    taskLists.value[stage].forEach((task, index) => {
-      task.position = index
-      task.stage = stage
+async function onTasksDrop() {
+  const modifiedTasks: Task[] = []
+
+  for (const stage of props.stages) {
+    const originalTasks = props.tasks.filter(t => t.stage === stage)
+    const currentTasks = taskLists.value[stage]
+
+    currentTasks.forEach((task, index) => {
+      if (!originalTasks.find(t => t.id === task.id && t.position === index && t.stage === stage)) {
+        modifiedTasks.push({ ...task, position: index, stage })
+      }
     })
   }
 
-  logger.debug("Liste des tâches aprés DnD", taskLists)
+  if (modifiedTasks.length) {
+    logger.debug("Tâches modifiées après DnD", modifiedTasks)
+    await taskStore.updateTaskBatch(modifiedTasks)
+  }
+}
+
+/**
+ * Suppression d'une tâche
+ * @param task tâche à supprimer
+ */
+function deleteTask(task: Task) {
+  // Suppression de la tache du store
+  taskStore.deleteTask(task.id)
+
+  // Met à jour la liste locale pour refléter la suppression
+  for (const stage in taskLists.value) {
+    taskLists.value[stage] = taskLists.value[stage].filter(t => t.id !== task.id)
+  }
+
+  logger.debug("Suppression de la tâche", task)
 }
 </script>
+<style scoped>
+@reference "tailwindcss";
+
+/* Conteneur d’un élément draggable */
+.draggable-item {
+  @apply flex justify-between items-center rounded-md p-2 mb-2 shadow-md cursor-grab bg-gray-600;
+}
+
+/* Icône de suppression affichée au survol */
+.draggable-trash {
+  @apply text-red-700 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200;
+}
+</style>

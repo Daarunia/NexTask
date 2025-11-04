@@ -42,10 +42,10 @@ Promise.allSettled([
 
     cpx.copy(source, dest, (err) => {
         if (err) {
-            console.error(pc.red('Erreur lors de la copie de Prisma Client:'), err);
+            console.error(pc.red('Erreur lors de la copie de Prisma Client : '), err);
             process.exit(1);
         }
         console.log(pc.green('Prisma Client copied to build/generated/prisma'));
-        console.log(pc.green('Build ready for electron-builder!'));
+        console.log(pc.green('Build ready for electron-builder !'));
     });
 });
