@@ -4,6 +4,7 @@ import Kanban from '../components/Kanban.vue'
 import { useTaskStore } from '../stores/Task';
 import type { Task } from '../stores/Task';
 import { useLogger } from 'vue-logger-plugin'
+import ProgressSpinner from 'primevue/progressspinner';
 
 /**
  * Logger
@@ -29,7 +30,7 @@ onMounted(async () => {
   <div class="h-full">
     <div class="flex justify-center mt-8 h-80">
       <Kanban v-if="tasks.length !== 0" :stages="['A faire', 'En attente', 'En cours', 'Terminé']" :tasks="tasks" />
-      <div v-else class="text-gray-400">Chargement des tâches...</div>
+      <ProgressSpinner v-else/>
     </div>
   </div>
 </template>

@@ -25,6 +25,11 @@
       "filter": ["**/*"]
     },
     {
+      "from": "src/main/static",
+      "to": "static",
+      "filter": ["**/*"]
+    },
+    {
       "from": "build/renderer",
       "to": "renderer",
       "filter": ["**/*"]

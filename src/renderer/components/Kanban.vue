@@ -1,7 +1,7 @@
 <template>
-  <div class="flex overflow-x-auto gap-4">
+  <div class="flex gap-4">
     <!-- Boucle sur les stages / colonnes -->
-    <div v-for="stage in stages" :key="stage" class="flex-1 min-w-[250px] rounded-lg p-4 bg-gray-700">
+    <div v-for="stage in stages" :key="stage" class="flex-1 min-w-[250px] overflow-x-auto rounded-lg p-4 bg-gray-700">
       <h2 class="mx-[3%] mb-[3%]">{{ stage }}</h2>
 
       <!-- Draggable pour les tâches de cette colonne -->
@@ -9,10 +9,9 @@
         <template #item="{ element }">
           <div class="group draggable-item">
             <strong>{{ element.title }}</strong>
-            <button class="draggable-trash" style="font-size: 1rem" @click="deleteTask(element)"
-              aria-label="Supprimer la tâche">
-              <i class="pi pi-trash"></i>
-            </button>
+            <Button severity="danger" class="draggable-trash" style="font-size: 1rem" @click="deleteTask(element)" aria-label="Supprimer la tâche">
+              <i class="pi pi-trash text-white"></i>
+            </Button>
           </div>
         </template>
       </draggable>
@@ -107,6 +106,7 @@ function deleteTask(task: Task) {
 
 /* Icône de suppression affichée au survol */
 .draggable-trash {
-  @apply text-red-700 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200;
+  /* TODO Upgrade red color */
+  @apply bg-red-500 cursor-pointer opacity-100 group-hover:opacity-100 transition-opacity duration-200;
 }
 </style>
