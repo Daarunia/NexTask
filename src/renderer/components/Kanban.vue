@@ -172,6 +172,6 @@ async function onTaskSaved(task: Task) {
 
 /* Conteneur des listes */
 .stages-container {
-  @apply flex flex-col min-w-[250px] max-w-[320px] overflow-x-auto rounded-lg p-4 bg-gray-700
+  @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4 bg-gray-700
 }
 </style>

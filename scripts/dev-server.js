@@ -8,7 +8,7 @@ import chokidar from "chokidar";
 import electron from "electron";
 import compile from "./private/tsc.js";
 import fs from "node:fs";
-import { EOL } from "os";
+import { EOL } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,7 +105,7 @@ const devServer = await startRenderer();
 rendererPort = devServer.config.server.port;
 
 copyStaticFiles();
-startElectron();
+await startElectron();
 
 const mainPath = path.join(__dirname, "..", "src", "main");
 chokidar.watch(mainPath, { cwd: mainPath }).on("change", (changedPath) => {

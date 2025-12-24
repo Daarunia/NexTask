@@ -149,28 +149,25 @@ async function saveTask() {
             savedTask = await taskStore.saveTask(newTask);
             emit('task-saved', savedTask)
             logger.info('Tâche sauvegardée avec succès', savedTask);
-        } else {
-            // Mise à jour de la tâche existante avec l'ID
-            if (props.editTask) {
-                const updatedTask: Task = {
-                    id: props.editTask.id,
-                    stage: stage.value,
-                    title: title.value,
-                    version: selectedVersion.value,
-                    position: position.value,
-                    description: description.value || '',
-                    isHistorized: props.editTask.isHistorized,
-                    historizationDate: props.editTask.historizationDate
-                };
+        } else if (props.editTask) {    // Mise à jour de la tâche existante avec l'ID
+            const updatedTask: Task = {
+                id: props.editTask.id,
+                stage: stage.value,
+                title: title.value,
+                version: selectedVersion.value,
+                position: position.value,
+                description: description.value || '',
+                isHistorized: props.editTask.isHistorized,
+                historizationDate: props.editTask.historizationDate
+            };
 
-                // Mise à jour de la tâche existante
-                console.log(updatedTask)
-                savedTask = await taskStore.updateTask(updatedTask);
-                emit('task-saved', savedTask)
-                logger.info('Tâche mise à jour avec succès', savedTask);
-            } else {
-                logger.error('Tâche à mettre à jour introuvable');
-            }
+            // Mise à jour de la tâche existante
+            console.log(updatedTask)
+            savedTask = await taskStore.updateTask(updatedTask);
+            emit('task-saved', savedTask)
+            logger.info('Tâche mise à jour avec succès', savedTask);
+        } else {
+            logger.error('Tâche à mettre à jour introuvable');
         }
 
         // Fermeture de la boite de dialogue

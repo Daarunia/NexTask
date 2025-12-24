@@ -8,10 +8,8 @@ import pc from "picocolors";
  */
 export default function compile(directory) {
   return new Promise((resolve, reject) => {
-
-    const tscProcess = exec("npx tsc", {
-      cwd: directory,
-    });
+    const tscPath = path.join("C:", "nvm4w", "nodejs", "tsc");
+    const tscProcess = exec(tscPath, { cwd: directory });
 
     tscProcess.stdout.on("data", (data) => {
       process.stdout.write(pc.yellow("[tsc] ") + pc.white(data.toString()));
