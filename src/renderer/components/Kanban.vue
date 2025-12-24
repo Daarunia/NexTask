@@ -107,7 +107,7 @@ async function onTasksDrop() {
     const currentTasks = taskLists.value[stage]
 
     currentTasks.forEach((task, index) => {
-      if (!originalTasks.find(t => t.id === task.id && t.position === index && t.stage === stage)) {
+      if (!originalTasks.some(t => t.id === task.id && t.position === index && t.stage === stage)) {
         modifiedTasks.push({ ...task, position: index, stage })
       }
     })

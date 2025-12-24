@@ -1,8 +1,8 @@
-import path from 'path';
+import path from 'node:path';
 import vuePlugin from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 import Components from 'unplugin-vue-components/vite';
 import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 

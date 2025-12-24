@@ -1,7 +1,7 @@
-import path from 'path';
+import path from 'node:path';
 import pc from 'picocolors';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import compile from './private/tsc.js';
 import cpx from 'cpx';

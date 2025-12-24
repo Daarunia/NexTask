@@ -100,15 +100,12 @@ watch(
             stage.value = props.stage
             position.value = props.position
 
-            if (props.creationMode) { // Si true => Mode création
-                initDefaultField()
-            } else {
-                // Si  en mode édition, on utilise les valeurs de `editTask` (si défini)
-                if (props.editTask) {
-                    title.value = props.editTask.title
-                    selectedVersion.value = props.editTask.version
-                    description.value = props.editTask.description
-                }
+            if (props.creationMode) {
+                initDefaultField();
+            } else if (props.editTask) {
+                title.value = props.editTask.title;
+                selectedVersion.value = props.editTask.version;
+                description.value = props.editTask.description;
             }
         }
     }

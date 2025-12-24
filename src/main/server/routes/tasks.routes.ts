@@ -297,8 +297,9 @@ export default async function taskRoutes(fastify) {
 
         return { message: `Tâche ${updatedTask.id} marquée comme historisée` };
       } catch (error) {
-        reply.code(404);
-        return { error: "Tâche non trouvée" };
+        console.error("Erreur lors de l'historisation de la tâche:", error);
+        reply.code(500);
+        return {error: "Une erreur est survenue lors de l'historisation de la tâche",};
       }
     }
   );

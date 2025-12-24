@@ -122,7 +122,10 @@ export const useTaskStore = defineStore("task", {
           }
         }
       } catch (error) {
-        console.error(`Erreur lors de la mise à jour de la tâche ${id}:`, error);
+        console.error(
+          `Erreur lors de la mise à jour de la tâche ${id}:`,
+          error
+        );
         throw error;
       }
     },
@@ -219,10 +222,7 @@ export const useTaskStore = defineStore("task", {
     async updateTask(task: Task): Promise<Task> {
       try {
         // Envoi de la requête PATCH pour mettre à jour la tâche sur le serveur
-        const response = await axios.patch(
-          `${this.baseUrl}/tasks/${task.id}`,
-          task
-        );
+        await axios.patch(`${this.baseUrl}/tasks/${task.id}`, task);
 
         // Met à jour le cache local
         const existingTask = this.getTaskById(task.id);
@@ -235,12 +235,12 @@ export const useTaskStore = defineStore("task", {
         // Met à jour allTasks si elle existe
         if (this.allTasks?.data) {
           const index = this.allTasks.data.findIndex((t) => t.id === task.id);
-          if (index !== -1) {
+          if (index === -1) {
+            console.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
+          } else {
             // Remplace l'ancienne tâche par la mise à jour
             this.allTasks.data[index] = { ...task };
             this.allTasks.timestamp = Date.now();
-          } else {
-            console.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
           }
         }
 
