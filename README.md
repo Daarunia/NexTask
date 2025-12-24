@@ -1,78 +1,78 @@
-<div align="center">
+# Todo List
 
-# Electron Vue Template
+## Description
 
-<img width="794" alt="image" src="https://user-images.githubusercontent.com/32544586/222748627-ee10c9a6-70d2-4e21-b23f-001dd8ec7238.png">
+Ce projet est ma vision d'une *Todo List* moderne, réalisée dans le but de développer mes compétences et d'explorer des technologies que je n'avais pas encore eu l'occasion de découvrir. C'est un projet en constante évolution, où chaque fonctionnalité ajoutée est une occasion d'expérimenter avec de nouvelles approches et d'améliorer ma compréhension du développement logiciel.
 
-A simple starter template for a **Vue3** + **Electron** TypeScript based application, including **ViteJS** and **Electron Builder**.
+Ce projet me permet également de me familiariser avec l'usage de **Vue 3**, **Electron**, **Prisma**, **TailwindCSS**, **Vite**, et bien d'autres outils modernes dans le monde du développement. Le but est d'assembler une *Todo List* fonctionnelle et agréable à utiliser, tout en faisant l'expérience de la gestion d'un projet complet, de la conception à la production.
 
-</div>
+## Fonctionnalités principales
 
-## About
+- **Ajout, suppression et modification de tâches**.
+- **Drag-and-drop** pour réorganiser les tâches avec `sortablejs`.
+- Interface utilisateur épurée et réactive grâce à **Vue 3** et **TailwindCSS**.
+- **Sauvegarde des données** en utilisant **Prisma** pour la gestion d'une base de données (SQL).
+- **Authentification et gestion des utilisateurs** (en développement).
+- Application de bureau multiplateforme grâce à **Electron**.
+  
+## Technologies utilisées
 
-This template utilizes [ViteJS](https://vitejs.dev) for building and serving your (Vue powered) front-end process, it provides Hot Reloads (HMR) to make development fast and easy ⚡
+### Frontend
+- **Vue 3** : Framework JavaScript moderne pour la construction de l'interface utilisateur. Utilisé avec des composants dynamiques et un état réactif grâce à **Pinia**.
+- **TailwindCSS** : Utilisé pour styliser l'application de manière rapide et flexible, sans se soucier des classes CSS complexes.
+- **PrimeVue** : Une collection de composants UI pour Vue, qui offre une interface soignée et cohérente.
+- **Vite** : Outil de build moderne, rapide et optimisé pour Vue, permettant un développement rapide et une meilleure performance.
 
-Building the Electron (main) process is done with [Electron Builder](https://www.electron.build/), which makes your application easily distributable and supports cross-platform compilation 😎
+### Backend et API
+- **Fastify** : Framework Node.js rapide et léger pour la création d'une API backend qui gère les requêtes liées aux tâches.
+- **Prisma** : ORM (Object Relational Mapping) pour interagir avec la base de données (SQL).
+- **Axios** : Pour effectuer des requêtes HTTP, principalement utilisé pour interagir avec l'API backend.
 
-## Getting started
+### Electron et Déploiement
+- **Electron** : Framework permettant de créer des applications de bureau multiplateformes en utilisant les technologies web.
+- **Electron Builder** : Utilisé pour empaqueter et construire l'application pour différentes plateformes (Windows, Mac, Linux).
 
-Click the green **Use this template** button on top of the repository, and clone your own newly created repository.
+## Installation
 
-**Or..**
+### Prérequis
 
-Clone this repository: `git clone git@github.com:Deluze/electron-vue-template.git`
+Avant de commencer, assure-toi d'avoir les outils suivants installés :
+- **Node.js** (version 16 ou supérieure)
+- **npm** (version 7 ou supérieure)
 
-### Install dependencies ⏬
+### Installation
 
-```bash
-npm install
+1. Clone le projet :
+   ```bash
+   git clone https://github.com/Daarunia/todo-list
+   cd todo-list
+    ```
+2. Installe les dépendances :
+  ```bash
+  npm install
+  ```
+3. Lance le serveur de développement :
+ ```bash
+  npm run dev
+```
+4. Pour lancer l'application en mode Electron (si tu veux tester en tant qu'application de bureau) :
+ ```bash
+  npm run electron:dev
 ```
 
-### Start developing ⚒️
+### Build
 
-```bash
-npm run dev
+Pour créer une version prête pour la production, utilise l'un des scripts de build suivants :
+
+Pour la version Windows :
+ ```bash
+npm run build:win
 ```
-
-## Additional Commands
-
-```bash
-npm run dev # starts application with hot reload
-npm run build # builds application, distributable files can be found in "dist" folder
-
-# OR
-
-npm run build:win # uses windows as build target
-npm run build:mac # uses mac as build target
-npm run build:linux # uses linux as build target
+Pour la version Mac :
+ ```bash
+npm run build:mac
 ```
-
-Optional configuration options can be found in the [Electron Builder CLI docs](https://www.electron.build/cli.html).
-
-## Project Structure
-
-```bash
-- scripts/ # all the scripts used to build or serve your application, change as you like.
-- src/
-  - main/ # Main thread (Electron application source)
-  - renderer/ # Renderer thread (VueJS application source)
-```
-
-## Using static files
-
-If you have any files that you want to copy over to the app directory after installation, you will need to add those files in your `src/main/static` directory.
-
-Files in said directory are only accessible to the `main` process, similar to `src/renderer/assets` only being accessible to the `renderer` process. Besides that, the concept is the same as to what you're used to in your other front-end projects.
-
-#### Referencing static files from your main process
-
-```ts
-/* Assumes src/main/static/myFile.txt exists */
-
-import { app } from "electron";
-import { join } from "path";
-import { readFileSync } from "fs";
-
-const path = join(app.getAppPath(), "static", "myFile.txt");
-const buffer = readFileSync(path);
+Pour la version Linux :
+ ```bash
+npm run build:linux
 ```
