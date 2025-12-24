@@ -37,8 +37,8 @@ async function startElectron() {
   } catch {
     console.log(
       pc.red(
-        "Could not start Electron because of the above TypeScript error(s)."
-      )
+        "Could not start Electron because of the above TypeScript error(s).",
+      ),
     );
     electronProcessLocker = false;
     return;
@@ -57,7 +57,7 @@ async function startElectron() {
   });
 
   electronProcess.stderr.on("data", (data) =>
-    process.stderr.write(pc.blue("[electron] ") + pc.white(data.toString()))
+    process.stderr.write(pc.blue("[electron] ") + pc.white(data.toString())),
   );
 
   electronProcess.on("exit", () => stop());
@@ -88,7 +88,7 @@ function copy(relativePath) {
   fs.cpSync(
     path.join(__dirname, "..", "src", "main", relativePath),
     path.join(__dirname, "..", "build", "main", relativePath),
-    { recursive: true }
+    { recursive: true },
   );
 }
 
@@ -110,7 +110,7 @@ await startElectron();
 const mainPath = path.join(__dirname, "..", "src", "main");
 chokidar.watch(mainPath, { cwd: mainPath }).on("change", (changedPath) => {
   console.log(
-    pc.blue("[electron] ") + `Change in ${changedPath}. reloading... 🚀`
+    pc.blue("[electron] ") + `Change in ${changedPath}. reloading... 🚀`,
   );
 
   if (changedPath.startsWith(path.join("static", "/"))) {

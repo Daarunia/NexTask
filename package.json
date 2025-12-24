@@ -50,6 +50,7 @@
     "npm": "^11.7.0",
     "picocolors": "^1.1.1",
     "pinia": "^3.0.4",
+    "prettier": "^3.7.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
     "sortablejs": "^1.15.6",

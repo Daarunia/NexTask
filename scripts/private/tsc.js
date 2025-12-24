@@ -1,5 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { exec } from "node:child_process";
 import pc from "picocolors";
+import { join } from "node:path";
 
 /**
  * Compile TypeScript in the given directory using tsc.
@@ -8,8 +9,8 @@ import pc from "picocolors";
  */
 export default function compile(directory) {
   return new Promise((resolve, reject) => {
-    const tscPath = path.join("C:", "nvm4w", "nodejs", "tsc");
-    const tscProcess = spawnSync(tscPath, { shell: false });
+    const tscPath = join("C:", "nvm4w", "nodejs", "tsc");
+    const tscProcess = exec(tscPath, { cwd: directory, shell: false });
 
     tscProcess.stdout.on("data", (data) => {
       process.stdout.write(pc.yellow("[tsc] ") + pc.white(data.toString()));

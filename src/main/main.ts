@@ -2,13 +2,13 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { startServer } from "./server/index.js";
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename)
+const __dirname = dirname(__filename);
 
 // Configuration du env
-dotenv.config({ path: join(__dirname, '../../.env') })
+dotenv.config({ path: join(__dirname, "../../.env") });
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -23,7 +23,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.maximize();  // Plein écran fenêtré
+  mainWindow.maximize(); // Plein écran fenêtré
 
   if (process.env.NODE_ENV === "development") {
     const rendererPort = process.argv[2];

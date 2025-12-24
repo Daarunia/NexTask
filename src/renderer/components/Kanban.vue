@@ -6,17 +6,37 @@
 
       <!-- Draggable pour les tâches de cette colonne -->
       <div class="flex flex-col justify-between flex-1">
-        <draggable :list="taskLists[stage]" group="tasks" itemKey="id" class="flex flex-col w-full" @end="onTasksDrop">
+        <draggable
+          :list="taskLists[stage]"
+          group="tasks"
+          itemKey="id"
+          class="flex flex-col w-full"
+          @end="onTasksDrop"
+        >
           <template #item="{ element }">
             <div class="group draggable-item">
               <strong>{{ element.title }}</strong>
 
               <!-- Boutons de gestion de tâche -->
               <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
-                <Button severity="primary" class="draggable-button" style="font-size: 1rem" @click="openEditTaskDialog(stage, taskLists[stage].length, element)" aria-label="Modifier la tâche">
+                <Button
+                  severity="primary"
+                  class="draggable-button"
+                  style="font-size: 1rem"
+                  @click="
+                    openEditTaskDialog(stage, taskLists[stage].length, element)
+                  "
+                  aria-label="Modifier la tâche"
+                >
                   <i class="pi pi-pencil text-white"></i>
                 </Button>
-                <Button severity="danger" class="draggable-button" style="font-size: 1rem" @click="archiveTask(element)" aria-label="Supprimer la tâche">
+                <Button
+                  severity="danger"
+                  class="draggable-button"
+                  style="font-size: 1rem"
+                  @click="archiveTask(element)"
+                  aria-label="Supprimer la tâche"
+                >
                   <i class="pi pi-trash text-white"></i>
                 </Button>
               </div>
@@ -25,7 +45,10 @@
         </draggable>
 
         <div>
-          <Button class="btn-edit-task" @click="openCreateTaskDialog(stage, taskLists[stage].length)">
+          <Button
+            class="btn-edit-task"
+            @click="openCreateTaskDialog(stage, taskLists[stage].length)"
+          >
             <i class="pi pi-plus absolute left-3 text-white"></i>
             <span>Ajouter une tâche</span>
           </Button>
@@ -33,89 +56,112 @@
       </div>
     </div>
 
-    <TaskDialog v-model="showDialog" :stage="stageDialog" :editTask="editTask" :position="positionDialog" :creationMode="creationMode" @task-saved="onTaskSaved" />
+    <TaskDialog
+      v-model="showDialog"
+      :stage="stageDialog"
+      :editTask="editTask"
+      :position="positionDialog"
+      :creationMode="creationMode"
+      @task-saved="onTaskSaved"
+    />
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useLogger } from 'vue-logger-plugin'
-import { useTaskStore } from '../stores/Task'
-import type { Task } from '../stores/Task'
-import draggable from 'vuedraggable'
-import TaskDialog from './TaskDialog.vue'
+import { ref } from "vue";
+import { useLogger } from "vue-logger-plugin";
+import { useTaskStore } from "../stores/Task";
+import type { Task } from "../stores/Task";
+import draggable from "vuedraggable";
+import TaskDialog from "./TaskDialog.vue";
 
 // Props typées
 const props = defineProps<{
-  stages: string[]
-  tasks: Task[]
-}>()
+  stages: string[];
+  tasks: Task[];
+}>();
 
 // Logger
-const logger = useLogger()
+const logger = useLogger();
 
 // Paramètres de boite de dialogue
-const showDialog = ref(false)
-const stageDialog = ref("")
-const positionDialog = ref(0)
-const editTask = ref<Task | null>(null)
-const creationMode = ref(true) // True => Création - False => Edition
+const showDialog = ref(false);
+const stageDialog = ref("");
+const positionDialog = ref(0);
+const editTask = ref<Task | null>(null);
+const creationMode = ref(true); // True => Création - False => Edition
 
 /**
  * Mapping des tâches par stage
  */
-const taskLists = ref(Object.fromEntries(
-  props.stages.map(stage => [stage, props.tasks
-    .filter(t => t.stage === stage)
-    .map(t => ({ ...t }))
-    .sort((a, b) => a.position - b.position)
-  ])))
-console.log(taskLists)
+const taskLists = ref(
+  Object.fromEntries(
+    props.stages.map((stage) => [
+      stage,
+      props.tasks
+        .filter((t) => t.stage === stage)
+        .map((t) => ({ ...t }))
+        .sort((a, b) => a.position - b.position),
+    ]),
+  ),
+);
+console.log(taskLists);
 // Store des tâches
-const taskStore = useTaskStore()
+const taskStore = useTaskStore();
 
 /**
  * Ouverture de la boite de dialogue en mode création
  */
 const openCreateTaskDialog = (stage: string, position: number) => {
-  logger.debug('Ouverture de la boite de dialogue en mode création : ', { stage: stage, position: position })
-  stageDialog.value = stage
-  positionDialog.value = position
-  creationMode.value = true
-  showDialog.value = true
-}
+  logger.debug("Ouverture de la boite de dialogue en mode création : ", {
+    stage: stage,
+    position: position,
+  });
+  stageDialog.value = stage;
+  positionDialog.value = position;
+  creationMode.value = true;
+  showDialog.value = true;
+};
 
 /**
  * Ouverture de la boite de dialogue en mode création
  */
 const openEditTaskDialog = (stage: string, position: number, task: Task) => {
-  logger.debug('Ouverture de la boite de dialogue en mode édition : ', { stage: stage, position: position, editTask: editTask })
-  stageDialog.value = stage
-  positionDialog.value = position
-  editTask.value = task
-  creationMode.value = false
-  showDialog.value = true
-}
+  logger.debug("Ouverture de la boite de dialogue en mode édition : ", {
+    stage: stage,
+    position: position,
+    editTask: editTask,
+  });
+  stageDialog.value = stage;
+  positionDialog.value = position;
+  editTask.value = task;
+  creationMode.value = false;
+  showDialog.value = true;
+};
 
 /**
  * Mise à jour des positions sur les objets "Task" aprés drag and drop
  */
 async function onTasksDrop() {
-  const modifiedTasks: Task[] = []
+  const modifiedTasks: Task[] = [];
 
   for (const stage of props.stages) {
-    const originalTasks = props.tasks.filter(t => t.stage === stage)
-    const currentTasks = taskLists.value[stage]
+    const originalTasks = props.tasks.filter((t) => t.stage === stage);
+    const currentTasks = taskLists.value[stage];
 
     currentTasks.forEach((task, index) => {
-      if (!originalTasks.some(t => t.id === task.id && t.position === index && t.stage === stage)) {
-        modifiedTasks.push({ ...task, position: index, stage })
+      if (
+        !originalTasks.some(
+          (t) => t.id === task.id && t.position === index && t.stage === stage,
+        )
+      ) {
+        modifiedTasks.push({ ...task, position: index, stage });
       }
-    })
+    });
   }
 
   if (modifiedTasks.length) {
-    logger.debug("Tâches modifiées après DnD", modifiedTasks)
-    await taskStore.updateTaskBatch(modifiedTasks)
+    logger.debug("Tâches modifiées après DnD", modifiedTasks);
+    await taskStore.updateTaskBatch(modifiedTasks);
   }
 }
 
@@ -125,14 +171,16 @@ async function onTasksDrop() {
  */
 function archiveTask(task: Task) {
   // Archivage de la tache du store
-  taskStore.archiveTask(task.id)
+  taskStore.archiveTask(task.id);
 
   // Met à jour la liste locale pour refléter l'archivage
   for (const stage in taskLists.value) {
-    taskLists.value[stage] = taskLists.value[stage].filter(t => t.id !== task.id)
+    taskLists.value[stage] = taskLists.value[stage].filter(
+      (t) => t.id !== task.id,
+    );
   }
 
-  logger.debug("Archivage de la tâche", task)
+  logger.debug("Archivage de la tâche", task);
 }
 
 /**
@@ -147,17 +195,16 @@ async function onTaskSaved(task: Task) {
     taskStageList.push(task);
     taskStageList.sort((a, b) => a.position - b.position);
   } else {
-    taskStageList[taskStageList.findIndex(t => t.id === task.id)] = task;
+    taskStageList[taskStageList.findIndex((t) => t.id === task.id)] = task;
   }
 }
-
 </script>
 <style scoped>
 @reference "tailwindcss";
 
 /* Bouton d'ouverture de la boite de dialogue d'édition  */
 .btn-edit-task {
-  @apply !bg-gray-700 !border-none hover:border-none !text-white hover:!bg-gray-600 w-full flex items-center justify-center relative pl-8
+  @apply !bg-gray-700 !border-none hover:border-none !text-white hover:!bg-gray-600 w-full flex items-center justify-center relative pl-8;
 }
 
 /* Conteneur d’un élément draggable */
@@ -172,6 +219,6 @@ async function onTaskSaved(task: Task) {
 
 /* Conteneur des listes */
 .stages-container {
-  @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4 bg-gray-700
+  @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4 bg-gray-700;
 }
 </style>

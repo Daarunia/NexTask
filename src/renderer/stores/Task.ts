@@ -113,7 +113,7 @@ export const useTaskStore = defineStore("task", {
         // Met à jour la tâche dans le cache allTasks si elle existe
         if (this.allTasks) {
           const taskIndex = this.allTasks.data.findIndex(
-            (task) => task.id === id
+            (task) => task.id === id,
           );
           if (taskIndex !== -1) {
             this.allTasks.data[taskIndex].isHistorized = true;
@@ -124,7 +124,7 @@ export const useTaskStore = defineStore("task", {
       } catch (error) {
         console.error(
           `Erreur lors de la mise à jour de la tâche ${id}:`,
-          error
+          error,
         );
         throw error;
       }
@@ -155,7 +155,7 @@ export const useTaskStore = defineStore("task", {
       } catch (error) {
         console.error(
           `Erreur lors de la suppression de la tâche ${id}:`,
-          error
+          error,
         );
         throw error;
       }
@@ -249,7 +249,7 @@ export const useTaskStore = defineStore("task", {
       } catch (error) {
         console.error("Erreur lors de la mise à jour de la tâche:", error);
         throw new Error(
-          `Erreur de mise à jour pour la tâche ID ${task.id}: ${error}`
+          `Erreur de mise à jour pour la tâche ID ${task.id}: ${error}`,
         );
       }
     },
@@ -264,7 +264,7 @@ export const useTaskStore = defineStore("task", {
         // Envoi des tâches au serveur pour mise à jour
         const response = await axios.patch(
           `${this.baseUrl}/tasks/batch`,
-          tasks
+          tasks,
         );
         const updatedTasks: Task[] = response.data;
 
@@ -290,7 +290,7 @@ export const useTaskStore = defineStore("task", {
       } catch (error) {
         console.error(
           "Erreur lors de la mise à jour du batch de tâches:",
-          error
+          error,
         );
         throw error;
       }

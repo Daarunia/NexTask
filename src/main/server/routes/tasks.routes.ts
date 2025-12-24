@@ -53,7 +53,7 @@ export default async function taskRoutes(fastify) {
       return prisma.task.findMany({
         orderBy: [{ stage: "asc" }, { position: "asc" }],
       });
-    }
+    },
   );
 
   /**
@@ -79,7 +79,7 @@ export default async function taskRoutes(fastify) {
         },
         orderBy: [{ stage: "asc" }, { position: "asc" }],
       });
-    }
+    },
   );
 
   /**
@@ -118,7 +118,7 @@ export default async function taskRoutes(fastify) {
         return { error: "Tâche non trouvée" };
       }
       return task;
-    }
+    },
   );
 
   /**
@@ -158,7 +158,7 @@ export default async function taskRoutes(fastify) {
     },
     async (req) => {
       return prisma.task.create({ data: req.body });
-    }
+    },
   );
 
   /**
@@ -212,7 +212,7 @@ export default async function taskRoutes(fastify) {
         reply.code(404);
         return { error: "Tâche non trouvée" };
       }
-    }
+    },
   );
 
   /**
@@ -252,7 +252,7 @@ export default async function taskRoutes(fastify) {
         reply.code(404);
         return { error: "Tâche non trouvée" };
       }
-    }
+    },
   );
 
   /**
@@ -299,9 +299,11 @@ export default async function taskRoutes(fastify) {
       } catch (error) {
         console.error("Erreur lors de l'historisation de la tâche:", error);
         reply.code(500);
-        return {error: "Une erreur est survenue lors de l'historisation de la tâche",};
+        return {
+          error: "Une erreur est survenue lors de l'historisation de la tâche",
+        };
       }
-    }
+    },
   );
 
   /**
@@ -379,8 +381,8 @@ export default async function taskRoutes(fastify) {
             prisma.task.update({
               where: { id: t.id },
               data: t,
-            })
-          )
+            }),
+          ),
         );
 
         return updatedTasks;
@@ -390,6 +392,6 @@ export default async function taskRoutes(fastify) {
           .status(500)
           .send({ error: "Impossible de mettre à jour les tâches" });
       }
-    }
+    },
   );
 }
