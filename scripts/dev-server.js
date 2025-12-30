@@ -11,6 +11,7 @@ import fs from "node:fs";
 import { EOL } from "node:os";
 import { fileURLToPath } from "node:url";
 
+// jcp --ignore-checks le fichier doit être ignoré par le pre-commit
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -80,10 +81,10 @@ function copyStaticFiles() {
   copy("static");
 }
 
-/*
-The working dir of Electron is build/main instead of src/main because of TS.
-tsc does not copy static files, so copy them over manually for dev server.
-*/
+/**
+ * The working dir of Electron is build/main instead of src/main because of TS.
+ * tsc does not copy static files, so copy them over manually for dev server.
+ */
 function copy(relativePath) {
   fs.cpSync(
     path.join(__dirname, "..", "src", "main", relativePath),

@@ -17,7 +17,7 @@ export async function startServer() {
   await fastify.register(swagger, {
     openapi: {
       info: {
-        title: "Todo List API",
+        title: "nexTask API",
         description: "API pour gérer les tâches",
         version: "1.0.0",
       },
@@ -40,8 +40,8 @@ export async function startServer() {
 
   try {
     await fastify.listen({ port: 3000 });
-    console.log("Fastify API -> http://localhost:3000");
-    console.log("Swagger UI -> http://localhost:3000/docs");
+    globalThis.mainLogger.info("Fastify API -> http://localhost:3000");
+    globalThis.mainLogger.info("Swagger UI -> http://localhost:3000/docs");
   } catch (err) {
     fastify.log.error(err);
     throw err;

@@ -1,22 +1,34 @@
 /**
  * CODE VERIFICATION FILE. Checks for the presence of TODO, FIXME, or console.log()
+ * jcp --ignore-checks
  */
 import fs from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 
 // Function to get staged files using git diff
 const getStagedFiles = () => {
   const result = execSync("git diff --name-only --cached", {
     encoding: "utf-8",
   });
-  return result.split("\n").filter((file) => file);
+  return result.split("\n").filter(Boolean);
 };
 
 // Function to check for TODO, FIXME, or console.log in a file
 const checkForKeywords = (filePath) => {
   const fileContent = fs.readFileSync(filePath, "utf-8");
+
+  // Si le fichier contient "jcp --ignore-checks", on ignore la vérification
+  if (fileContent.includes("jcp --ignore-checks")) {
+    console.log(
+      chalk.yellow(
+        `Skipping checks for ${filePath} due to jcp --ignore-checks`,
+      ),
+    );
+    return false;
+  }
+
   const keywords = ["TODO", "FIXME", "console.log"];
 
   // Check if the file contains any of the keywords

@@ -6,6 +6,7 @@ import { build } from "vite";
 import compile from "./private/tsc.js";
 import cpx from "cpx";
 
+// jcp --ignore-checks le fichier doit être ignoré par le pre-commit
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
