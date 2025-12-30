@@ -62,27 +62,27 @@ export const useTaskStore = defineStore("task", {
     /**
      * Getter pour récupérer toutes les tâches non historisées
      */
-    getAllTasks(state): Task[] | null {
-      if (!state.allTasks) return null;
+    getAllTasks(state): Task[] {
+      if (!state.allTasks) return [];
 
       if (this.isCacheValid(state.allTasks)) {
         return state.allTasks.data.filter((task) => !task.isHistorized);
       }
 
-      return null;
+      return [];
     },
 
     /**
      * Getter pour récupérer toutes les tâches historisées
      */
-    getHistorizedTasks(state): Task[] | null {
-      if (!state.allTasks) return null;
+    getHistorizedTasks(state): Task[] {
+      if (!state.allTasks) return [];
 
       if (this.isCacheValid(state.allTasks)) {
         return state.allTasks.data.filter((task) => task.isHistorized);
       }
 
-      return null;
+      return [];
     },
   },
   actions: {
@@ -96,36 +96,66 @@ export const useTaskStore = defineStore("task", {
     },
 
     /**
+     * Lancement du chargement initial des tâches
+     */
+    async loadAllTasks(): Promise<void> {
+      if (this.isCacheValid(this.allTasks)) return;
+
+      const res = await axios.get<Task[]>(`${this.baseUrl}/tasks`);
+      this.setAllTasksCache(res.data);
+    },
+
+    /**
      * Marque une tâche comme historisée par ID
-     * @param id ID de la tâche à marquer comme historisée
+     * - Supprime la tâche du cache classique
+     * - Ajoute la tâche dans le cache des tâches historisées
      */
     async archiveTask(id: number): Promise<void> {
       try {
         await axios.put(`${this.baseUrl}/tasks/${id}`);
 
-        // Met à jour la tâche dans le cache local pour refléter l'état "historisé"
+        let archivedTask: Task | null = null;
+
+        // Récupération + suppression du cache individuel
         if (this.tasks[id]) {
-          this.tasks[id].data.isHistorized = true;
-          this.tasks[id].data.historizationDate = new Date();
-          this.tasks[id].timestamp = Date.now();
+          archivedTask = {
+            ...this.tasks[id].data,
+            isHistorized: true,
+            historizationDate: new Date(),
+          };
+          delete this.tasks[id];
         }
 
-        // Met à jour la tâche dans le cache allTasks si elle existe
+        // Mise à jour du cache global allTasks
         if (this.allTasks) {
-          const taskIndex = this.allTasks.data.findIndex(
-            (task) => task.id === id,
-          );
-          if (taskIndex !== -1) {
-            this.allTasks.data[taskIndex].isHistorized = true;
-            this.allTasks.data[taskIndex].historizationDate = new Date();
-            this.allTasks.timestamp = Date.now(); // Mettre à jour le timestamp du cache global
+          const index = this.allTasks.data.findIndex((task) => task.id === id);
+
+          if (index !== -1) {
+            this.allTasks.data[index] = {
+              ...this.allTasks.data[index],
+              isHistorized: true,
+              historizationDate: new Date(),
+            };
+
+            archivedTask = this.allTasks.data[index];
+            this.allTasks.timestamp = Date.now();
+          }
+        }
+
+        // Ajout dans le cache des tâches historisées
+        if (archivedTask) {
+          if (this.historizedTasks && this.isCacheValid(this.historizedTasks)) {
+            this.historizedTasks.data.push(archivedTask);
+            this.historizedTasks.timestamp = Date.now();
+          } else {
+            this.historizedTasks = {
+              data: [archivedTask],
+              timestamp: Date.now(),
+            };
           }
         }
       } catch (error) {
-        console.error(
-          `Erreur lors de la mise à jour de la tâche ${id}:`,
-          error,
-        );
+        console.error(`Erreur lors de l’archivage de la tâche ${id}:`, error);
         throw error;
       }
     },

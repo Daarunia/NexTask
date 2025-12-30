@@ -18,8 +18,13 @@ const loading = ref(true);
 
 // Récupération des tâches
 onMounted(async () => {
-  tasks.value = await taskStore.fetchAllTasks();
+  loading.value = true;
+
+  await taskStore.loadAllTasks(); // Chargement
+
+  tasks.value = taskStore.getAllTasks;
   logger.debug("Tâches récupérées : ", tasks.value);
+
   loading.value = false;
 });
 </script>

@@ -36,7 +36,7 @@ export default async function taskRoutes(fastify) {
   /**
    * GET /tasks
    *
-   * Récupère la liste complète des tâches (non).
+   * Récupère la liste complète des tâches.
    *
    * @returns {Promise<Array<Object>>} Tableau d'objets Task
    */
@@ -59,7 +59,7 @@ export default async function taskRoutes(fastify) {
   /**
    * GET /tasks
    *
-   * Récupère la liste complète des tâches.
+   * Récupère la liste des tâches historisés.
    *
    * @returns {Promise<Array<Object>>} Tableau d'objets Task
    */
