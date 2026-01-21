@@ -9,8 +9,7 @@ import { join } from "node:path";
  */
 export default function compile(directory) {
   return new Promise((resolve, reject) => {
-    const tscPath = join("C:", "nvm4w", "nodejs", "tsc");
-    const tscProcess = exec(tscPath, { cwd: directory, shell: false });
+    const tscProcess = exec("npx tsc", { cwd: directory, shell: false });
 
     tscProcess.stdout.on("data", (data) => {
       process.stdout.write(pc.yellow("[tsc] ") + pc.white(data.toString()));
