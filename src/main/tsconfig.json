@@ -8,9 +8,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "../../build/main",
-    "allowJs": true,
     "noImplicitAny": false,
+    "allowJs": true,
     "types": ["node", "electron"]
   },
-  "exclude": ["static"]
+  "include": ["**/*.ts"],
+  "exclude": ["../../build/main"]
 }

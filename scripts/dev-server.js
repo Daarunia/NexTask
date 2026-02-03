@@ -47,7 +47,7 @@ async function startElectron() {
   }
 
   const args = [
-    path.join(__dirname, "..", "build", "main", "src", "main", "main.js"),
+    path.join(__dirname, "..", "build", "main", "main.js"),
     rendererPort,
   ];
 

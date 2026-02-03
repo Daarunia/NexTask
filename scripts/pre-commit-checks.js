@@ -4,7 +4,6 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import chalk from "chalk";
 import { execSync } from "node:child_process";
 
 // Function to get staged files using git diff
@@ -21,11 +20,7 @@ const checkForKeywords = (filePath) => {
 
   // Si le fichier contient "jcp --ignore-checks", on ignore la vérification
   if (fileContent.includes("jcp --ignore-checks")) {
-    console.log(
-      chalk.yellow(
-        `Skipping checks for ${filePath} due to jcp --ignore-checks`,
-      ),
-    );
+    console.log(`Skipping checks for ${filePath} due to jcp --ignore-checks`);
     return false;
   }
 
@@ -34,7 +29,7 @@ const checkForKeywords = (filePath) => {
   // Check if the file contains any of the keywords
   for (const keyword of keywords) {
     if (fileContent.includes(keyword)) {
-      console.log(chalk.red(`Found "${keyword}" in ${filePath}`));
+      console.log(`Found "${keyword}" in ${filePath}`);
       return true;
     }
   }
@@ -63,11 +58,9 @@ files.forEach((file) => {
 
 // If any errors are found, prevent commit
 if (hasError) {
-  console.log(chalk.red("Commit aborted due to TODO/FIXME/console.log found."));
+  console.log("Commit aborted due to TODO/FIXME/console.log found.");
   process.exit(1);
 } else {
-  console.log(
-    chalk.green("No TODO/FIXME/console.log found. Proceeding with commit."),
-  );
+  console.log("No TODO/FIXME/console.log found. Proceeding with commit.");
   process.exit(0);
 }

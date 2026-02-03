@@ -18,42 +18,32 @@ function buildRenderer() {
   });
 }
 
-function buildMain() {
-  const mainPath = path.join(__dirname, "..", "src", "main");
-  console.log(mainPath);
-  return compile(mainPath);
-}
-
 // Suppression du dossier build
 fs.rmSync(path.join(__dirname, "..", "build"), {
   recursive: true,
   force: true,
 });
 
-console.log(pc.blue("Transpiling renderer & main..."));
+console.log(pc.blue("Transpiling Prisma, renderer & main..."));
 
-Promise.allSettled([buildRenderer(), buildMain()]).then(async () => {
-  console.log(pc.green("Renderer & main successfully transpiled!"));
+/**
+ * Build
+ */
+async function buildAll() {
+  try {
+    // Compiler le main
+    const mainPath = path.join(__dirname, "..", "src", "main");
+    await compile(mainPath);
 
-  // Copier le Prisma Client généré dans le build
-  const source = path.join(
-    __dirname,
-    "..",
-    "prisma",
-    "generated",
-    "prisma",
-    "**/*",
-  );
-  const dest = path.join(__dirname, "..", "build", "generated", "prisma");
-  console.log(source);
-  console.log(dest);
+    // Compiler le renderer
+    await buildRenderer();
 
-  cpx.copy(source, dest, (err) => {
-    if (err) {
-      console.error(pc.red("Erreur lors de la copie de Prisma Client : "), err);
-      process.exit(1);
-    }
-    console.log(pc.green("Prisma Client copied to build/generated/prisma"));
+    console.log(pc.green("Prisma, main & renderer successfully transpiled!"));
     console.log(pc.green("Build ready for electron-builder !"));
-  });
-});
+  } catch (err) {
+    console.error(pc.red("Erreur lors du build complet : "), err);
+    process.exit(1);
+  }
+}
+
+buildAll();

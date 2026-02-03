@@ -1,5 +1,5 @@
 import { prisma } from "../prismaClient.js";
-import type { Task as PrismaTask } from "../../../../prisma/generated/prisma/client.js";
+import type { Task as PrismaTask } from "../../prisma/generated/prisma/client.js";
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)

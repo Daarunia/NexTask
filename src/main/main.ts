@@ -1,6 +1,5 @@
 import { app, BrowserWindow, ipcMain, session } from "electron";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { startServer } from "./server/index.js";
 import log, { LevelOption } from "electron-log";
 

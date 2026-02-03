@@ -1,7 +1,5 @@
 import { exec } from "node:child_process";
 import pc from "picocolors";
-import { readdirSync } from "node:fs";
-import { join, resolve as pathResolve } from "node:path";
 
 /**
  * Compile TypeScript in the given directory using tsc.
@@ -11,7 +9,6 @@ import { join, resolve as pathResolve } from "node:path";
 export default function compile(directory) {
   return new Promise((resolve, reject) => {
     const tscProcess = exec("npx tsc", { cwd: directory, shell: false });
-
     tscProcess.stdout.on("data", (data) => {
       process.stdout.write(pc.yellow("[tsc] ") + pc.white(data.toString()));
     });

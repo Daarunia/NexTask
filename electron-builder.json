@@ -3,7 +3,6 @@
   "directories": {
     "output": "dist"
   },
-
   "nsis": {
     "oneClick": false,
     "perMachine": false,
@@ -20,7 +19,7 @@
   },
   "files": [
     {
-      "from": "build/main",
+      "from": "build/main/",
       "to": "main",
       "filter": ["**/*"]
     },
@@ -37,5 +36,11 @@
     "!build",
     "!dist",
     "!scripts"
+  ],
+  "extraResources": [
+    {
+      "from": "build/main/prisma",
+      "to": "prisma/generated/prisma"
+    }
   ]
 }

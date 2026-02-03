@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "rootDir": "./generated/prisma",
+    "outDir": "../build/generated/prisma",
+    "declaration": false
+  },
+  "include": ["./generated/prisma"]
+}
