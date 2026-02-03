@@ -20,6 +20,7 @@ function buildRenderer() {
 
 function buildMain() {
   const mainPath = path.join(__dirname, "..", "src", "main");
+  console.log(mainPath);
   return compile(mainPath);
 }
 
@@ -35,8 +36,17 @@ Promise.allSettled([buildRenderer(), buildMain()]).then(async () => {
   console.log(pc.green("Renderer & main successfully transpiled!"));
 
   // Copier le Prisma Client généré dans le build
-  const source = path.join(__dirname, "..", "generated", "prisma", "**/*");
+  const source = path.join(
+    __dirname,
+    "..",
+    "prisma",
+    "generated",
+    "prisma",
+    "**/*",
+  );
   const dest = path.join(__dirname, "..", "build", "generated", "prisma");
+  console.log(source);
+  console.log(dest);
 
   cpx.copy(source, dest, (err) => {
     if (err) {

@@ -1,5 +1,6 @@
 process.env.NODE_ENV = "development";
 
+import dotenv from "dotenv";
 import { createServer } from "vite";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -46,9 +47,10 @@ async function startElectron() {
   }
 
   const args = [
-    path.join(__dirname, "..", "build", "main", "main.js"),
+    path.join(__dirname, "..", "build", "main", "src", "main", "main.js"),
     rendererPort,
   ];
+
   electronProcess = spawn(electron, args);
   electronProcessLocker = false;
 
@@ -101,6 +103,9 @@ function stop() {
 console.log(pc.green("======================================="));
 console.log(pc.green("  Starting Electron + Vite Dev Server  "));
 console.log(pc.green("======================================="));
+
+// Variable d'environnement
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const devServer = await startRenderer();
 rendererPort = devServer.config.server.port;

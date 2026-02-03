@@ -1,6 +1,7 @@
 import { exec } from "node:child_process";
 import pc from "picocolors";
-import { join } from "node:path";
+import { readdirSync } from "node:fs";
+import { join, resolve as pathResolve } from "node:path";
 
 /**
  * Compile TypeScript in the given directory using tsc.

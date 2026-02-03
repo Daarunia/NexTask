@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { startServer } from "./server/index.js";
-import dotenv from "dotenv";
 import log, { LevelOption } from "electron-log";
 
 // Initialisation du logger
@@ -10,12 +9,6 @@ let logOption = (process.env.VITE_LOG_LEVEL as LevelOption) || "error";
 log.transports.console.level = logOption;
 log.transports.file.level = logOption;
 globalThis.mainLogger = log;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Configuration du env
-dotenv.config({ path: join(__dirname, "../../.env") });
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
