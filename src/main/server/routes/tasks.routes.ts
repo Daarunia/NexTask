@@ -51,7 +51,7 @@ export default async function taskRoutes(fastify) {
     },
     async () => {
       return prisma.task.findMany({
-        orderBy: [{ stage: "asc" }, { position: "asc" }],
+        orderBy: [{ id: "asc" }, { position: "asc" }],
       });
     },
   );
@@ -77,7 +77,7 @@ export default async function taskRoutes(fastify) {
         where: {
           isHistorized: true,
         },
-        orderBy: [{ stage: "asc" }, { position: "asc" }],
+        orderBy: [{ id: "asc" }, { position: "asc" }],
       });
     },
   );
