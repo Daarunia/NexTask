@@ -8,10 +8,19 @@ import { execSync } from "node:child_process";
 
 // Function to get staged files using git diff
 const getStagedFiles = () => {
-  const result = execSync("git diff --name-only --cached", {
+  const result = execSync("git diff --cached --name-status", {
     encoding: "utf-8",
   });
-  return result.split("\n").filter(Boolean);
+
+  return result
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [status, file] = line.split("\t");
+      if (status === "D") return null; // ignore deleted files
+      return file;
+    })
+    .filter(Boolean);
 };
 
 // Function to check for TODO, FIXME, or console.log in a file
