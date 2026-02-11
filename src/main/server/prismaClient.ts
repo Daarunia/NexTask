@@ -14,6 +14,6 @@ const adapter = new PrismaMariaDb({
 });
 
 /**
- * Instance Prisma globale
+ * Instance Prisma globale. { log: ['query'], adapter } for queries logs
  */
 export const prisma = new PrismaClient({ adapter });

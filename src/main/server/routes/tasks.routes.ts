@@ -1,5 +1,6 @@
 import { prisma } from "../prismaClient.js";
 import type { Task as PrismaTask } from "../../prisma/generated/prisma/client.js";
+import { taskSchema } from "../schemas/taskSchema.js";
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -14,25 +15,6 @@ import type { Task as PrismaTask } from "../../prisma/generated/prisma/client.js
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
 export default async function taskRoutes(fastify) {
-  const taskSchema = {
-    type: "object",
-    properties: {
-      id: { type: "integer" },
-      stage: { type: "string" },
-      version: { type: "string" },
-      description: { type: "string" },
-      title: { type: "string" },
-      position: { type: "integer" },
-      redmine: { type: "integer", nullable: true },
-      isHistorized: { type: "boolean" },
-      historizationDate: {
-        type: "string",
-        format: "date-time",
-        nullable: true,
-      },
-    },
-  };
-
   /**
    * GET /tasks
    *
@@ -46,37 +28,25 @@ export default async function taskRoutes(fastify) {
       schema: {
         description: "Récupère toutes les tâches",
         tags: ["Task"],
-        response: { 200: { type: "array", items: taskSchema } },
-      },
-    },
-    async () => {
-      return prisma.task.findMany({
-        orderBy: [{ id: "asc" }, { position: "asc" }],
-      });
-    },
-  );
-
-  /**
-   * GET /tasks
-   *
-   * Récupère la liste des tâches historisés.
-   *
-   * @returns {Promise<Array<Object>>} Tableau d'objets Task
-   */
-  fastify.get(
-    "/tasks/historized",
-    {
-      schema: {
-        description: "Récupère toutes les tâches non historisées",
-        tags: ["Task"],
-        response: { 200: { type: "array", items: taskSchema } },
-      },
-    },
-    async () => {
-      return prisma.task.findMany({
-        where: {
-          isHistorized: true,
+        querystring: {
+          type: "object",
+          properties: {
+            historized: { type: "boolean" },
+          },
         },
+        response: {
+          200: {
+            type: "array",
+            items: taskSchema,
+          },
+        },
+      },
+    },
+    async (request) => {
+      const { isHistorized } = request.query as { isHistorized?: boolean };
+
+      return prisma.task.findMany({
+        where: isHistorized !== undefined ? { isHistorized } : undefined,
         orderBy: [{ id: "asc" }, { position: "asc" }],
       });
     },

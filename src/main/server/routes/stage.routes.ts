@@ -1,5 +1,6 @@
 import { prisma } from "../prismaClient.js";
 import type { Stage as Prismastage } from "../../prisma/generated/prisma/client.js";
+import { stageSchema } from "../schemas/stageShema.js";
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -14,19 +15,10 @@ import type { Stage as Prismastage } from "../../prisma/generated/prisma/client.
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
 export default async function stagesRoutes(fastify) {
-  const stageSchema = {
-    type: "object",
-    properties: {
-      id: { type: "integer" },
-      name: { type: "string" },
-      position: { type: "integer" },
-    },
-  };
-
   /**
    * GET /stages
    *
-   * Récupère la liste complète des stages.
+   * Récupère la liste complète des stages et des tâches liées.
    *
    * @returns {Promise<Array<Object>>} Tableau d'objets Stage
    */
@@ -34,13 +26,16 @@ export default async function stagesRoutes(fastify) {
     "/stages",
     {
       schema: {
-        description: "Récupère toutes les colonnes",
+        description: "Récupère toutes les colonnes avec leurs tâches",
         tags: ["Stage"],
         response: { 200: { type: "array", items: stageSchema } },
       },
     },
     async () => {
       return prisma.stage.findMany({
+        include: {
+          tasks: true,
+        },
         orderBy: [{ id: "asc" }, { position: "asc" }],
       });
     },

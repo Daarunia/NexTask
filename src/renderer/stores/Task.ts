@@ -1,10 +1,6 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-
-/**
- * Milliseconde en minute
- */
-const MINUTE = 60 * 1000;
+import { MINUTE } from "../constants";
 
 /**
  * Entité 'Tâches'
@@ -19,6 +15,7 @@ export interface Task {
   redmine?: number;
   isHistorized: boolean;
   historizationDate?: Date;
+  stageId: number;
 }
 
 interface CacheEntry<T> {
