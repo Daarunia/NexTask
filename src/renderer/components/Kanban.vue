@@ -70,7 +70,7 @@
 import { ref } from "vue";
 import { useLogger } from "vue-logger-plugin";
 import { useTaskStore } from "../stores/Task";
-import type { Task } from "../stores/Task";
+import { Task } from "../types/task.types";
 import draggable from "vuedraggable";
 import TaskDialog from "./TaskDialog.vue";
 

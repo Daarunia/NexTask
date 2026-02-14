@@ -1,27 +1,9 @@
 import { defineStore } from "pinia";
 import axios from "axios";
-import { MINUTE } from "../constants";
-
-/**
- * Entité 'Tâches'
- */
-export interface Task {
-  id: number;
-  stage: string;
-  version: string;
-  description: string;
-  position: number;
-  title: string;
-  redmine?: number;
-  isHistorized: boolean;
-  historizationDate?: Date;
-  stageId: number;
-}
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
+import { MINUTE } from "../constants/time.constants";
+import { CacheEntry } from "../types/cache.types";
+import { useLogger } from "vue-logger-plugin";
+import { Task } from "../types/task.types";
 
 interface TaskState {
   tasks: Record<number, CacheEntry<Task>>;
@@ -31,6 +13,9 @@ interface TaskState {
   lastFetch: number | null;
   baseUrl: string;
 }
+
+// Logger
+const logger = useLogger();
 
 export const useTaskStore = defineStore("task", {
   state: (): TaskState => ({
@@ -152,7 +137,7 @@ export const useTaskStore = defineStore("task", {
           }
         }
       } catch (error) {
-        console.error(`Erreur lors de l’archivage de la tâche ${id}:`, error);
+        logger.error(`Erreur lors de l’archivage de la tâche ${id}:`, error);
         throw error;
       }
     },
@@ -180,7 +165,7 @@ export const useTaskStore = defineStore("task", {
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           `Erreur lors de la suppression de la tâche ${id}:`,
           error,
         );
@@ -236,7 +221,7 @@ export const useTaskStore = defineStore("task", {
 
         return newTask;
       } catch (error) {
-        console.error("Erreur lors de la sauvegarde de la tâche : ", error);
+        logger.error("Erreur lors de la sauvegarde de la tâche : ", error);
         throw error;
       }
     },
@@ -256,14 +241,14 @@ export const useTaskStore = defineStore("task", {
         if (existingTask) {
           this.setTaskCache(task.id, { ...task });
         } else {
-          console.warn("Aucune tâche trouvée dans le cache pour l'ID", task.id);
+          logger.warn("Aucune tâche trouvée dans le cache pour l'ID", task.id);
         }
 
         // Met à jour allTasks si elle existe
         if (this.allTasks?.data) {
           const index = this.allTasks.data.findIndex((t) => t.id === task.id);
           if (index === -1) {
-            console.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
+            logger.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
           } else {
             // Remplace l'ancienne tâche par la mise à jour
             this.allTasks.data[index] = { ...task };
@@ -274,7 +259,7 @@ export const useTaskStore = defineStore("task", {
         // Retourne la tâche mise à jour pour confirmation
         return { ...task };
       } catch (error) {
-        console.error("Erreur lors de la mise à jour de la tâche:", error);
+        logger.error("Erreur lors de la mise à jour de la tâche:", error);
         throw new Error(
           `Erreur de mise à jour pour la tâche ID ${task.id}: ${error}`,
         );
@@ -315,7 +300,7 @@ export const useTaskStore = defineStore("task", {
           this.allTasks.timestamp = Date.now();
         }
       } catch (error) {
-        console.error(
+        logger.error(
           "Erreur lors de la mise à jour du batch de tâches:",
           error,
         );

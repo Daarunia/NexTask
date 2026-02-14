@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { ref, watch, PropType } from "vue";
 import Dialog from "primevue/dialog";
-import type { Task } from "../stores/Task";
+import { Task } from "../types/task.types";
 import InputText from "primevue/inputtext";
 import { useLogger } from "vue-logger-plugin";
 import { useTaskStore } from "../stores/Task";

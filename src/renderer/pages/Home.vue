@@ -2,7 +2,7 @@
 import { ref, onMounted } from "vue";
 import Kanban from "../components/Kanban.vue";
 import { useTaskStore } from "../stores/Task";
-import type { Task } from "../stores/Task";
+import type { Task } from "../types/task.types";
 import { useLogger } from "vue-logger-plugin";
 import ProgressSpinner from "primevue/progressspinner";
 
@@ -32,11 +32,7 @@ onMounted(async () => {
 <template>
   <div class="h-screen pt-8">
     <div class="flex justify-center h-4/5">
-      <Kanban
-        v-if="!loading"
-        :stages="['A faire', 'En attente', 'En cours', 'Terminé']"
-        :tasks="tasks"
-      />
+      <Kanban v-if="!loading" :stages="['A faire', 'En attente', 'En cours', 'Terminé']" :tasks="tasks" />
       <ProgressSpinner v-else />
     </div>
   </div>
