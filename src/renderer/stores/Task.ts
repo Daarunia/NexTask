@@ -11,9 +11,6 @@ interface TaskState extends BaseEntityState<Task> {
   historizedTasks: CacheEntry<Task[]> | null;
 }
 
-// Logger
-const logger = getLogger();
-
 export const useTaskStore = defineStore("task", {
   state: (): TaskState => ({
     entities: {},
@@ -76,6 +73,7 @@ export const useTaskStore = defineStore("task", {
       if (isCacheValid(this.allEntities, this.ttl)) return;
 
       const res = await api.get<Task[]>(`/tasks`);
+      getLogger().debug("test", res);
       this.setAllTasksCache(res);
     },
 
@@ -86,7 +84,7 @@ export const useTaskStore = defineStore("task", {
      */
     async archiveTask(id: number): Promise<void> {
       try {
-        await api.put(`/tasks/${id}`);
+        await api.put(`/tasks/${id}`, {});
 
         let archivedTask: Task | null = null;
 
@@ -102,7 +100,9 @@ export const useTaskStore = defineStore("task", {
 
         // Mise à jour du cache global allTasks
         if (this.allEntities) {
-          const index = this.allEntities.data.findIndex((task) => task.id === id);
+          const index = this.allEntities.data.findIndex(
+            (task) => task.id === id,
+          );
 
           if (index !== -1) {
             this.allEntities.data[index] = {
@@ -118,7 +118,10 @@ export const useTaskStore = defineStore("task", {
 
         // Ajout dans le cache des tâches historisées
         if (archivedTask) {
-          if (this.historizedTasks && isCacheValid(this.historizedTasks, this.ttl)) {
+          if (
+            this.historizedTasks &&
+            isCacheValid(this.historizedTasks, this.ttl)
+          ) {
             this.historizedTasks.data.push(archivedTask);
             this.historizedTasks.timestamp = Date.now();
           } else {
@@ -129,7 +132,10 @@ export const useTaskStore = defineStore("task", {
           }
         }
       } catch (error) {
-        logger.error(`Erreur lors de l’archivage de la tâche ${id}:`, error);
+        getLogger().error(
+          `Erreur lors de l’archivage de la tâche ${id}:`,
+          error,
+        );
         throw error;
       }
     },
@@ -157,7 +163,7 @@ export const useTaskStore = defineStore("task", {
           }
         }
       } catch (error) {
-        logger.error(
+        getLogger().error(
           `Erreur lors de la suppression de la tâche ${id}:`,
           error,
         );
@@ -210,7 +216,7 @@ export const useTaskStore = defineStore("task", {
 
         return newTask;
       } catch (error) {
-        logger.error("Erreur lors de la sauvegarde de la tâche : ", error);
+        getLogger().error("Erreur lors de la sauvegarde de la tâche : ", error);
         throw error;
       }
     },
@@ -230,14 +236,22 @@ export const useTaskStore = defineStore("task", {
         if (existingTask) {
           this.setTaskCache(task.id, { ...task });
         } else {
-          logger.warn("Aucune tâche trouvée dans le cache pour l'ID", task.id);
+          getLogger().warn(
+            "Aucune tâche trouvée dans le cache pour l'ID",
+            task.id,
+          );
         }
 
         // Met à jour allTasks si elle existe
         if (this.allEntities?.data) {
-          const index = this.allEntities.data.findIndex((t) => t.id === task.id);
+          const index = this.allEntities.data.findIndex(
+            (t) => t.id === task.id,
+          );
           if (index === -1) {
-            logger.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
+            getLogger().warn(
+              "Tâche non trouvée dans allTasks pour l'ID",
+              task.id,
+            );
           } else {
             // Remplace l'ancienne tâche par la mise à jour
             this.allEntities.data[index] = { ...task };
@@ -248,7 +262,7 @@ export const useTaskStore = defineStore("task", {
         // Retourne la tâche mise à jour pour confirmation
         return { ...task };
       } catch (error) {
-        logger.error("Erreur lors de la mise à jour de la tâche:", error);
+        getLogger().error("Erreur lors de la mise à jour de la tâche:", error);
         throw new Error(
           `Erreur de mise à jour pour la tâche ID ${task.id}: ${error}`,
         );
@@ -265,7 +279,7 @@ export const useTaskStore = defineStore("task", {
         // Envoi des tâches au serveur pour mise à jour
         const data = await api.patch<Task[]>(`/tasks/batch`, tasks);
 
-        if (!Array.isArray(data) || !data.every(item => 'id' in item && 'title' in item)) {
+        if (!Array.isArray(data) || !data.every((item) => "id" in item)) {
           throw new Error("API returned invalid format for updated tasks");
         }
 
@@ -279,7 +293,9 @@ export const useTaskStore = defineStore("task", {
           }
 
           if (this.allEntities?.data) {
-            const index = this.allEntities.data.findIndex((t) => t.id === task.id);
+            const index = this.allEntities.data.findIndex(
+              (t) => t.id === task.id,
+            );
             if (index !== -1) {
               this.allEntities.data[index] = { ...task };
             }
@@ -291,7 +307,7 @@ export const useTaskStore = defineStore("task", {
           this.allEntities.timestamp = Date.now();
         }
       } catch (error) {
-        logger.error(
+        getLogger().error(
           "Erreur lors de la mise à jour du batch de tâches :",
           error,
         );

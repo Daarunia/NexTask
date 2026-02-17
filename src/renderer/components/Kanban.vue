@@ -1,13 +1,13 @@
 <template>
   <div class="flex gap-4">
     <!-- Boucle sur les stages / colonnes -->
-    <div v-for="stage in stages" :key="stage" class="stages-container">
-      <h2 class="mx-[3%] mb-[3%]">{{ stage }}</h2>
+    <div v-for="stage in stages" :key="stage.id" class="stages-container">
+      <h2 class="mx-[3%] mb-[3%]">{{ stage.name }}</h2>
 
       <!-- Draggable pour les tâches de cette colonne -->
       <div class="flex flex-col justify-between flex-1">
         <draggable
-          :list="taskLists[stage]"
+          :list="taskLists.get(stage.id)"
           group="tasks"
           itemKey="id"
           class="flex flex-col w-full"
@@ -23,11 +23,8 @@
                   severity="primary"
                   class="draggable-button"
                   style="font-size: 1rem"
-                  @click="
-                    openEditTaskDialog(stage, taskLists[stage].length, element)
-                  "
                   aria-label="Modifier la tâche"
-                >
+                  ><!--@click="openEditTaskDialog(stage, taskLists[stage].length, element)"-->
                   <i class="pi pi-pencil text-white"></i>
                 </Button>
                 <Button
@@ -45,10 +42,8 @@
         </draggable>
 
         <div>
-          <Button
-            class="btn-edit-task"
-            @click="openCreateTaskDialog(stage, taskLists[stage].length)"
-          >
+          <Button class="btn-edit-task">
+            <!--@click="openCreateTaskDialog(stage, taskLists[stage].length)"-->
             <i class="pi pi-plus absolute left-3 text-white"></i>
             <span>Ajouter une tâche</span>
           </Button>
@@ -73,10 +68,11 @@ import { Task } from "../types/task.types";
 import draggable from "vuedraggable";
 import TaskDialog from "./TaskDialog.vue";
 import { getLogger } from "../utils/logger";
+import { Stage } from "../types/stage.types";
 
 // Props typées
 const props = defineProps<{
-  stages: string[];
+  stages: Stage[];
   tasks: Task[];
 }>();
 
@@ -90,15 +86,12 @@ const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true); // True => Création - False => Edition
 
-/**
- * Mapping des tâches par stage
- */
-const taskLists = ref(
-  Object.fromEntries(
-    props.stages.map((stage) => [
-      stage,
+const taskLists = ref<Map<number, Task[]>>(
+  new Map(
+    props.stages.map((stage: Stage) => [
+      stage.id,
       props.tasks
-        .filter((t) => t.stage === stage)
+        .filter((t) => t.stageId === stage.id)
         .map((t) => ({ ...t }))
         .sort((a, b) => a.position - b.position),
     ]),
@@ -145,16 +138,17 @@ async function onTasksDrop() {
   const modifiedTasks: Task[] = [];
 
   for (const stage of props.stages) {
-    const originalTasks = props.tasks.filter((t) => t.stage === stage);
-    const currentTasks = taskLists.value[stage];
+    const originalTasks = props.tasks.filter((t) => t.stageId === stage.id);
+    const currentTasks = taskLists.value.get(stage.id) ?? [];
 
     currentTasks.forEach((task, index) => {
       if (
         !originalTasks.some(
-          (t) => t.id === task.id && t.position === index && t.stage === stage,
+          (t) =>
+            t.id === task.id && t.position === index && t.stageId === stage.id,
         )
       ) {
-        modifiedTasks.push({ ...task, position: index, stage });
+        modifiedTasks.push({ ...task, position: index, stageId: stage.id });
       }
     });
   }
@@ -174,10 +168,9 @@ function archiveTask(task: Task) {
   taskStore.archiveTask(task.id);
 
   // Met à jour la liste locale pour refléter l'archivage
-  for (const stage in taskLists.value) {
-    taskLists.value[stage] = taskLists.value[stage].filter(
-      (t) => t.id !== task.id,
-    );
+  for (const [stageId, tasks] of taskLists.value.entries()) {
+    const filteredTasks = tasks.filter((t) => t.id !== task.id);
+    taskLists.value.set(stageId, filteredTasks);
   }
 
   logger.debug("Archivage de la tâche", task);
@@ -188,7 +181,7 @@ function archiveTask(task: Task) {
  * @param task Tâche sauvegardée ou mise à jour
  */
 async function onTaskSaved(task: Task) {
-  const taskStageList = taskLists.value[task.stage];
+  const taskStageList = taskLists.value.get(task.stageId) ?? [];
 
   // Si la tâche existe déjà, on remplace la tâche dans la liste. Sinon on l'ajoute à la liste lié.
   if (creationMode.value) {
