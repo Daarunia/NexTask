@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import { createPinia } from "pinia";
-import "./public/style.css";
+import "./style.css";
 import { createLogger } from "vue-logger-plugin";
 import PrimeVue from "primevue/config";
 import Aura from "@primeuix/themes/aura";

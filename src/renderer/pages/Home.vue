@@ -3,11 +3,11 @@ import { ref, onMounted } from "vue";
 import Kanban from "../components/Kanban.vue";
 import { useTaskStore } from "../stores/Task";
 import type { Task } from "../types/task.types";
-import { useLogger } from "vue-logger-plugin";
 import ProgressSpinner from "primevue/progressspinner";
+import { getLogger } from "../utils/logger";
 
 // Logger
-const logger = useLogger();
+const logger = getLogger();
 
 // Liste des tâches
 const taskStore = useTaskStore();

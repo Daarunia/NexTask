@@ -74,8 +74,8 @@ import { ref, watch, PropType } from "vue";
 import Dialog from "primevue/dialog";
 import { Task } from "../types/task.types";
 import InputText from "primevue/inputtext";
-import { useLogger } from "vue-logger-plugin";
 import { useTaskStore } from "../stores/Task";
+import { getLogger } from "../utils/logger";
 
 // Props
 const props = defineProps({
@@ -122,7 +122,7 @@ const versions = ref([
 ]);
 
 // Logger
-const logger = useLogger();
+const logger = getLogger();
 
 // Store des tâches
 const taskStore = useTaskStore();

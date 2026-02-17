@@ -68,11 +68,11 @@
 </template>
 <script setup lang="ts">
 import { ref } from "vue";
-import { useLogger } from "vue-logger-plugin";
 import { useTaskStore } from "../stores/Task";
 import { Task } from "../types/task.types";
 import draggable from "vuedraggable";
 import TaskDialog from "./TaskDialog.vue";
+import { getLogger } from "../utils/logger";
 
 // Props typées
 const props = defineProps<{
@@ -81,7 +81,7 @@ const props = defineProps<{
 }>();
 
 // Logger
-const logger = useLogger();
+const logger = getLogger();
 
 // Paramètres de boite de dialogue
 const showDialog = ref(false);

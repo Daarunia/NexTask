@@ -1,27 +1,24 @@
 import { defineStore } from "pinia";
-import axios from "axios";
 import { MINUTE } from "../constants/time.constants";
 import { CacheEntry } from "../types/cache.types";
-import { useLogger } from "vue-logger-plugin";
 import { Task } from "../types/task.types";
+import { isCacheValid } from "../utils/cache.helper";
+import { BaseEntityState } from "../types/base-store.types";
+import { api } from "../utils/api.helper";
+import { getLogger } from "../utils/logger";
 
-interface TaskState {
-  tasks: Record<number, CacheEntry<Task>>;
+interface TaskState extends BaseEntityState<Task> {
   historizedTasks: CacheEntry<Task[]> | null;
-  allTasks: CacheEntry<Task[]> | null;
-  ttl: number;
-  lastFetch: number | null;
-  baseUrl: string;
 }
 
 // Logger
-const logger = useLogger();
+const logger = getLogger();
 
 export const useTaskStore = defineStore("task", {
   state: (): TaskState => ({
-    tasks: {},
+    entities: {},
     historizedTasks: null,
-    allTasks: null,
+    allEntities: null,
     ttl: 5 * MINUTE, // 5 minutes avant de rafraichir
     lastFetch: null,
     baseUrl: import.meta.env.VITE_BASE_URL,
@@ -29,26 +26,21 @@ export const useTaskStore = defineStore("task", {
   getters: {
     getTaskById: (state) => {
       return (id: number): Task | null => {
-        const task = state.tasks[id];
+        const task = state.entities[id];
         if (!task) return null;
         const isExpired = Date.now() - task.timestamp > state.ttl;
         return isExpired ? null : task.data;
       };
     },
-    isCacheValid(): (cache: CacheEntry<any> | null) => boolean {
-      return (cache: CacheEntry<any> | null) => {
-        if (!cache) return false;
-        return Date.now() - cache.timestamp <= this.ttl;
-      };
-    },
+
     /**
      * Getter pour récupérer toutes les tâches non historisées
      */
     getAllTasks(state): Task[] {
-      if (!state.allTasks) return [];
+      if (!state.allEntities) return [];
 
-      if (this.isCacheValid(state.allTasks)) {
-        return state.allTasks.data.filter((task) => !task.isHistorized);
+      if (isCacheValid(state.allEntities, state.ttl)) {
+        return state.allEntities.data.filter((task) => !task.isHistorized);
       }
 
       return [];
@@ -58,10 +50,10 @@ export const useTaskStore = defineStore("task", {
      * Getter pour récupérer toutes les tâches historisées
      */
     getHistorizedTasks(state): Task[] {
-      if (!state.allTasks) return [];
+      if (!state.allEntities) return [];
 
-      if (this.isCacheValid(state.allTasks)) {
-        return state.allTasks.data.filter((task) => task.isHistorized);
+      if (isCacheValid(state.allEntities, state.ttl)) {
+        return state.allEntities.data.filter((task) => task.isHistorized);
       }
 
       return [];
@@ -69,11 +61,11 @@ export const useTaskStore = defineStore("task", {
   },
   actions: {
     setTaskCache(id: number, data: Task) {
-      this.tasks[id] = { data, timestamp: Date.now() };
+      this.entities[id] = { data, timestamp: Date.now() };
     },
 
     setAllTasksCache(data: Task[]) {
-      this.allTasks = { data, timestamp: Date.now() };
+      this.allEntities = { data, timestamp: Date.now() };
       this.lastFetch = Date.now();
     },
 
@@ -81,10 +73,10 @@ export const useTaskStore = defineStore("task", {
      * Lancement du chargement initial des tâches
      */
     async loadAllTasks(): Promise<void> {
-      if (this.isCacheValid(this.allTasks)) return;
+      if (isCacheValid(this.allEntities, this.ttl)) return;
 
-      const res = await axios.get<Task[]>(`${this.baseUrl}/tasks`);
-      this.setAllTasksCache(res.data);
+      const res = await api.get<Task[]>(`/tasks`);
+      this.setAllTasksCache(res);
     },
 
     /**
@@ -94,39 +86,39 @@ export const useTaskStore = defineStore("task", {
      */
     async archiveTask(id: number): Promise<void> {
       try {
-        await axios.put(`${this.baseUrl}/tasks/${id}`);
+        await api.put(`/tasks/${id}`);
 
         let archivedTask: Task | null = null;
 
         // Récupération + suppression du cache individuel
-        if (this.tasks[id]) {
+        if (this.entities[id]) {
           archivedTask = {
-            ...this.tasks[id].data,
+            ...this.entities[id].data,
             isHistorized: true,
             historizationDate: new Date(),
           };
-          delete this.tasks[id];
+          delete this.entities[id];
         }
 
         // Mise à jour du cache global allTasks
-        if (this.allTasks) {
-          const index = this.allTasks.data.findIndex((task) => task.id === id);
+        if (this.allEntities) {
+          const index = this.allEntities.data.findIndex((task) => task.id === id);
 
           if (index !== -1) {
-            this.allTasks.data[index] = {
-              ...this.allTasks.data[index],
+            this.allEntities.data[index] = {
+              ...this.allEntities.data[index],
               isHistorized: true,
               historizationDate: new Date(),
             };
 
-            archivedTask = this.allTasks.data[index];
-            this.allTasks.timestamp = Date.now();
+            archivedTask = this.allEntities.data[index];
+            this.allEntities.timestamp = Date.now();
           }
         }
 
         // Ajout dans le cache des tâches historisées
         if (archivedTask) {
-          if (this.historizedTasks && this.isCacheValid(this.historizedTasks)) {
+          if (this.historizedTasks && isCacheValid(this.historizedTasks, this.ttl)) {
             this.historizedTasks.data.push(archivedTask);
             this.historizedTasks.timestamp = Date.now();
           } else {
@@ -149,19 +141,19 @@ export const useTaskStore = defineStore("task", {
     async deleteTask(id: number): Promise<void> {
       try {
         // Appel API pour supprimer la tâche
-        await axios.delete(`${this.baseUrl}/tasks/${id}`);
+        await api.delete(`/tasks/${id}`);
 
         // Supprime la tâche du cache individuel si elle existe
-        if (this.tasks[id]) {
-          delete this.tasks[id];
+        if (this.entities[id]) {
+          delete this.entities[id];
         }
 
         // Supprime la tâche du cache allTasks si elle existe
-        if (this.allTasks) {
-          const index = this.allTasks.data.findIndex((t) => t.id === id);
+        if (this.allEntities) {
+          const index = this.allEntities.data.findIndex((t) => t.id === id);
           if (index !== -1) {
-            this.allTasks.data.splice(index, 1);
-            this.allTasks.timestamp = Date.now();
+            this.allEntities.data.splice(index, 1);
+            this.allEntities.timestamp = Date.now();
           }
         }
       } catch (error) {
@@ -180,8 +172,7 @@ export const useTaskStore = defineStore("task", {
       const cached = this.getTaskById(id);
       if (cached) return cached;
 
-      const res = await axios.get<Task>(`${this.baseUrl}/tasks/${id}`);
-      const data = res.data;
+      const data = await api.get<Task>(`/tasks/${id}`);
       this.setTaskCache(data.id, data);
       return data;
     },
@@ -190,12 +181,11 @@ export const useTaskStore = defineStore("task", {
      * Récupération de toutes les tâches
      */
     async fetchAllTasks(): Promise<Task[]> {
-      if (this.isCacheValid(this.allTasks)) {
-        return this.allTasks!.data;
+      if (isCacheValid(this.allEntities, this.ttl)) {
+        return this.allEntities!.data;
       }
 
-      const res = await axios.get<Task[]>(`${this.baseUrl}/tasks`);
-      const data = res.data;
+      const data = await api.get<Task[]>(`${this.baseUrl}/tasks`);
       this.setAllTasksCache(data);
       return data;
     },
@@ -206,15 +196,14 @@ export const useTaskStore = defineStore("task", {
      */
     async saveTask(task: Omit<Task, "id">): Promise<Task> {
       try {
-        const res = await axios.post<Task>(`${this.baseUrl}/tasks`, task);
-        const newTask = res.data;
+        const newTask = await api.post<Task>(`/tasks`, task);
 
         // Mise à jour du cache
         this.setTaskCache(newTask.id, newTask);
 
-        if (this.allTasks?.data) {
-          this.allTasks.data.push(newTask);
-          this.allTasks.timestamp = Date.now();
+        if (this.allEntities?.data) {
+          this.allEntities.data.push(newTask);
+          this.allEntities.timestamp = Date.now();
         } else {
           this.setAllTasksCache([newTask]);
         }
@@ -234,7 +223,7 @@ export const useTaskStore = defineStore("task", {
     async updateTask(task: Task): Promise<Task> {
       try {
         // Envoi de la requête PATCH pour mettre à jour la tâche sur le serveur
-        await axios.patch(`${this.baseUrl}/tasks/${task.id}`, task);
+        await api.patch(`/tasks/${task.id}`, task);
 
         // Met à jour le cache local
         const existingTask = this.getTaskById(task.id);
@@ -245,14 +234,14 @@ export const useTaskStore = defineStore("task", {
         }
 
         // Met à jour allTasks si elle existe
-        if (this.allTasks?.data) {
-          const index = this.allTasks.data.findIndex((t) => t.id === task.id);
+        if (this.allEntities?.data) {
+          const index = this.allEntities.data.findIndex((t) => t.id === task.id);
           if (index === -1) {
             logger.warn("Tâche non trouvée dans allTasks pour l'ID", task.id);
           } else {
             // Remplace l'ancienne tâche par la mise à jour
-            this.allTasks.data[index] = { ...task };
-            this.allTasks.timestamp = Date.now();
+            this.allEntities.data[index] = { ...task };
+            this.allEntities.timestamp = Date.now();
           }
         }
 
@@ -274,11 +263,13 @@ export const useTaskStore = defineStore("task", {
 
       try {
         // Envoi des tâches au serveur pour mise à jour
-        const response = await axios.patch(
-          `${this.baseUrl}/tasks/batch`,
-          tasks,
-        );
-        const updatedTasks: Task[] = response.data;
+        const data = await api.patch<Task[]>(`/tasks/batch`, tasks);
+
+        if (!Array.isArray(data) || !data.every(item => 'id' in item && 'title' in item)) {
+          throw new Error("API returned invalid format for updated tasks");
+        }
+
+        const updatedTasks: Task[] = data as Task[];
 
         // Mise à jour du cache local pour chaque tâche
         updatedTasks.forEach((task: Task) => {
@@ -287,21 +278,21 @@ export const useTaskStore = defineStore("task", {
             this.setTaskCache(task.id, { ...task });
           }
 
-          if (this.allTasks?.data) {
-            const index = this.allTasks.data.findIndex((t) => t.id === task.id);
+          if (this.allEntities?.data) {
+            const index = this.allEntities.data.findIndex((t) => t.id === task.id);
             if (index !== -1) {
-              this.allTasks.data[index] = { ...task };
+              this.allEntities.data[index] = { ...task };
             }
           }
         });
 
         // Met à jour le timestamp global
-        if (this.allTasks) {
-          this.allTasks.timestamp = Date.now();
+        if (this.allEntities) {
+          this.allEntities.timestamp = Date.now();
         }
       } catch (error) {
         logger.error(
-          "Erreur lors de la mise à jour du batch de tâches:",
+          "Erreur lors de la mise à jour du batch de tâches :",
           error,
         );
         throw error;
