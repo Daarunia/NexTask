@@ -1,5 +1,4 @@
 import { prisma } from "../prismaClient.js";
-import type { Stage as Prismastage } from "../../prisma/generated/prisma/client.js";
 import { stageSchema } from "../schemas/stageShema.js";
 
 /**

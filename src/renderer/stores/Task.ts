@@ -283,7 +283,7 @@ export const useTaskStore = defineStore("task", {
           throw new Error("API returned invalid format for updated tasks");
         }
 
-        const updatedTasks: Task[] = data as Task[];
+        const updatedTasks: Task[] = data;
 
         // Mise à jour du cache local pour chaque tâche
         updatedTasks.forEach((task: Task) => {

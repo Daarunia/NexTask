@@ -46,7 +46,7 @@ export default async function taskRoutes(fastify) {
       const { isHistorized } = request.query as { isHistorized?: boolean };
 
       return prisma.task.findMany({
-        where: isHistorized !== undefined ? { isHistorized } : undefined,
+        where: isHistorized === undefined ? undefined : { isHistorized },
         orderBy: [{ id: "asc" }, { position: "asc" }],
       });
     },
