@@ -4,9 +4,9 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 generator client {
-  provider = "prisma-client"
-  output   = "./generated/prisma"
-  importFileExtension  = "js"
+  provider            = "prisma-client"
+  output              = "./generated/prisma"
+  importFileExtension = "js"
 }
 
 // connection
@@ -17,7 +17,6 @@ datasource db {
 // entity "Tâches"
 model Task {
   id                Int       @id @default(autoincrement())
-  stage             String
   version           String
   description       String
   position          Int
@@ -25,4 +24,14 @@ model Task {
   title             String
   isHistorized      Boolean   @default(false)
   historizationDate DateTime?
+  stageId           Int
+  stage             Stage     @relation(fields: [stageId], references: [id])
+}
+
+//  entity "Colonne"
+model Stage {
+  id       Int    @id @default(autoincrement())
+  name     String
+  position Int
+  tasks    Task[]
 }

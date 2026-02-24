@@ -28,21 +28,17 @@ console.log(pc.blue("Transpiling Prisma, renderer & main..."));
 /**
  * Build
  */
-async function buildAll() {
-  try {
-    // Compiler le main
-    const mainPath = path.join(__dirname, "..", "src", "main");
-    await compile(mainPath);
+try {
+  // Compiler le main
+  const mainPath = path.join(__dirname, "..", "src", "main");
+  await compile(mainPath);
 
-    // Compiler le renderer
-    await buildRenderer();
+  // Compiler le renderer
+  await buildRenderer();
 
-    console.log(pc.green("Prisma, main & renderer successfully transpiled!"));
-    console.log(pc.green("Build ready for electron-builder !"));
-  } catch (err) {
-    console.error(pc.red("Erreur lors du build complet : "), err);
-    process.exit(1);
-  }
+  console.log(pc.green("Prisma, main & renderer successfully transpiled!"));
+  console.log(pc.green("Build ready for electron-builder !"));
+} catch (err) {
+  console.error(pc.red("Erreur lors du build complet : "), err);
+  process.exit(1);
 }
-
-buildAll();

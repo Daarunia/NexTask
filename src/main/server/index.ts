@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import taskRoutes from "./routes/tasks.routes.js";
+import stageRoutes from "./routes/stage.routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 import fastifyCors from "@fastify/cors";
@@ -35,8 +36,9 @@ export async function startServer() {
     transformStaticCSP: (header) => header,
   });
 
-  // Routes des tâches
+  // Routes
   await fastify.register(taskRoutes);
+  await fastify.register(stageRoutes);
 
   try {
     await fastify.listen({ port: 3000 });

@@ -20,9 +20,9 @@
 
       <!-- Description -->
       <div class="flex flex-col gap-2 w-full">
-        <label for="description" class="text-white font-medium"
-          >Description</label
-        >
+        <label for="description" class="text-white font-medium">
+          Description
+        </label>
         <Textarea
           id="description"
           v-model="description"
@@ -62,7 +62,7 @@
           label="Save"
           severity="success"
           class="flex-1"
-          @click="saveTask()"
+          @click="saveTask"
         />
       </div>
     </div>
@@ -72,10 +72,14 @@
 <script setup lang="ts">
 import { ref, watch, PropType } from "vue";
 import Dialog from "primevue/dialog";
-import type { Task } from "../stores/Task";
 import InputText from "primevue/inputtext";
-import { useLogger } from "vue-logger-plugin";
+import Textarea from "primevue/textarea";
+import Select from "primevue/select";
+import Button from "primevue/button";
+
+import { Task } from "../types/task.types";
 import { useTaskStore } from "../stores/Task";
+import { getLogger } from "../utils/logger";
 
 // Props
 const props = defineProps({
@@ -83,8 +87,8 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-  stage: {
-    type: String,
+  stageId: {
+    type: Number,
     required: true,
   },
   position: {
@@ -100,42 +104,39 @@ const props = defineProps({
   },
 });
 
-// Émission d'événement pour le v-model
+// Emits
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
   (e: "task-saved", task: Task): void;
 }>();
 
-// Paramètres
+// State
 const visible = ref(props.modelValue);
-const stage = ref(props.stage);
+const stageId = ref(props.stageId);
 const position = ref(props.position);
 
-// Données saisiee
 const title = ref("");
 const description = ref("");
 const selectedVersion = ref("1.5.0");
+
 const versions = ref([
   { label: "1.4.4", value: "1.4.4" },
   { label: "1.4.5", value: "1.4.5" },
   { label: "1.5.0", value: "1.5.0" },
 ]);
 
-// Logger
-const logger = useLogger();
-
-// Store des tâches
+// Logger & Store
+const logger = getLogger();
 const taskStore = useTaskStore();
 
-// Synchroniser l’état interne <-> parent de l'état d'ouverture
+// Sync ouverture / fermeture
 watch(
   () => props.modelValue,
   (val) => {
     visible.value = val;
 
     if (val) {
-      // Initialiser les refs locales avec les props
-      stage.value = props.stage;
+      stageId.value = props.stageId;
       position.value = props.position;
 
       if (props.creationMode) {
@@ -148,90 +149,80 @@ watch(
     }
   },
 );
+
 watch(visible, (val) => emit("update:modelValue", val));
 
-/**
- * Initialisation des champs de la boite de dialogue avec les valeurs par défaut
- */
+// Init champs par défaut
 function initDefaultField() {
   title.value = "";
   selectedVersion.value = "1.5.0";
   description.value = "";
 }
 
-/**
- * Sauvegarde d'une tâche
- * @param task tâche à supprimer
- */
+// Sauvegarde
 async function saveTask() {
-  logger.debug("Début de la sauvegarde de la tâche : ", {
-    stage: stage.value,
+  logger.debug("Début sauvegarde tâche :", {
+    stageId: stageId.value,
     title: title.value,
     selectedVersion: selectedVersion.value,
     position: position.value,
   });
 
   try {
-    // Requête de sauvegarde
-    let savedTask;
+    let savedTask: Task | undefined;
 
     if (props.creationMode) {
-      // Création de la nouvelle tâche sans l'ID
       const newTask: Omit<Task, "id"> = {
-        stage: stage.value,
+        stageId: stageId.value,
         title: title.value,
         version: selectedVersion.value,
         position: position.value,
         description: description.value || "",
         isHistorized: false,
         historizationDate: undefined,
+        redmine: undefined,
       };
 
-      // Sauvegarde de la nouvelle tâche
       savedTask = await taskStore.saveTask(newTask);
-      emit("task-saved", savedTask);
-      logger.info("Tâche sauvegardée avec succès", savedTask);
+      logger.info("Tâche créée avec succès", savedTask);
     } else if (props.editTask) {
-      // Mise à jour de la tâche existante avec l'ID
       const updatedTask: Task = {
         id: props.editTask.id,
-        stage: stage.value,
+        stageId: stageId.value,
         title: title.value,
         version: selectedVersion.value,
         position: position.value,
         description: description.value || "",
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
+        redmine: props.editTask.redmine,
       };
 
-      // Mise à jour de la tâche existante
       savedTask = await taskStore.updateTask(updatedTask);
-      emit("task-saved", savedTask);
       logger.info("Tâche mise à jour avec succès", savedTask);
     } else {
-      logger.error("Tâche à mettre à jour introuvable");
+      logger.error("Aucune tâche à mettre à jour");
+      return;
     }
 
-    // Fermeture de la boite de dialogue
-    logger.info("Tâche sauvegardée avec succès", savedTask);
+    if (savedTask) {
+      emit("task-saved", savedTask);
+    }
+
     emit("update:modelValue", false);
   } catch (error) {
-    logger.error("Erreur lors de la sauvegarde de la tâche", error);
+    logger.error("Erreur lors de la sauvegarde", error);
   }
-
-  emit("update:modelValue", false);
 }
 </script>
 
 <style scoped>
 @reference "tailwindcss";
 
-/* Style des inputs  */
 .value-input {
   @apply w-full hover:!border-gray-500 focus:!border-gray-500 !bg-gray-600;
 }
 
-/* Permet de changer la couleur du focus pour le sélecteur*/
 :deep(.p-select.p-focus) {
   border-color: #6b7280 !important;
   box-shadow: none !important;

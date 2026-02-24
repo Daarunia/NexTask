@@ -9,7 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "../../build/main",
     "noImplicitAny": false,
-    "allowJs": true,
     "types": ["node", "electron"]
   },
   "include": ["**/*.ts"],
