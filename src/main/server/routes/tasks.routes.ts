@@ -114,14 +114,14 @@ export default async function taskRoutes(fastify) {
         body: {
           type: "object",
           properties: {
-            stage: { type: "string" },
+            stageId: { type: "number" },
             version: { type: "string" },
             description: { type: "string" },
             position: { type: "integer" },
             title: { type: "string" },
             redmine: { type: "integer", nullable: true },
           },
-          required: ["stage", "position", "title"],
+          required: ["stageId", "position", "title"],
         },
         response: { 200: taskSchema },
       },
