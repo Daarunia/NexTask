@@ -40,7 +40,7 @@
     "@fastify/swagger-ui": "^5.2.5",
     "@primeuix/themes": "^2.0.3",
     "@prisma/adapter-mariadb": "^7.4.2",
-    "@prisma/client": "^7.4.1",
+    "@prisma/client": "^7.4.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@tailwindcss/vite": "^4.2.1",
     "axios": "^1.13.5",
