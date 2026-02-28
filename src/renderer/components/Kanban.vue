@@ -85,12 +85,7 @@ const stageDialog = ref<number | null>(null);
 const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true);
-
 const taskLists = ref<Map<number, Task[]>>(new Map());
-
-/* ============================
-   Initialisation & Sync
-============================ */
 
 function buildTaskLists() {
   const map = new Map<number, Task[]>();
@@ -208,7 +203,7 @@ function onTaskSaved(task: Task) {
 @reference "tailwindcss";
 
 .btn-edit-task {
-  @apply !bg-gray-700 !border-none hover:border-none !text-white hover: !bg-gray-600 w-full flex items-center justify-center relative pl-8;
+  @apply !bg-gray-700 !border-none hover:border-none !text-white hover:!bg-gray-600 w-full flex items-center justify-center relative pl-8;
 }
 
 .draggable-item {
