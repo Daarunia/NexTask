@@ -1,19 +1,16 @@
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../prisma/generated/prisma/client.js";
+import { app } from "electron";
+import path from "path";
+import fs from "fs";
 
-/**
- * Adaptateur MySql
- */
-const adapter = new PrismaMariaDb({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  allowPublicKeyRetrieval: true,
-});
+// Path to app.db or dev.db
+const dbPath = fs.existsSync(path.join(process.cwd(), "dev.db"))
+  ? path.join(process.cwd(), "dev.db")
+  : path.join(app.getPath("userData"), "app.db");
+const connectionString = `file:${dbPath}`;
 
-/**
- * Instance Prisma globale. { log: ['query'], adapter } for queries logs
- */
-export const prisma = new PrismaClient({ adapter });
+const adapter = new PrismaBetterSqlite3({ url: connectionString });
+
+// Create prisma client
+export const prisma = new PrismaClient({ adapter, log: ["query"] });

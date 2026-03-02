@@ -20,15 +20,18 @@
   },
   "devDependencies": {
     "@primevue/auto-import-resolver": "^4.5.4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.3",
     "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
     "electron": "^40.6.1",
     "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9",
     "husky": "^9.1.7",
-    "lint-staged": "^16.3.0",
+    "lint-staged": "^16.3.1",
     "prettier": "^3.8.1",
+    "prisma": "^7.4.2",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "unplugin-vue-components": "^31.0.0",
@@ -39,7 +42,7 @@
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
     "@primeuix/themes": "^2.0.3",
-    "@prisma/adapter-mariadb": "^7.4.2",
+    "@prisma/adapter-better-sqlite3": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@tailwindcss/vite": "^4.2.1",
@@ -51,7 +54,6 @@
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
-    "prisma": "^7.4.2",
     "vue": "^3.5.29",
     "vue-logger-plugin": "^2.2.3",
     "vuedraggable": "4.1.0"
@@ -61,8 +63,6 @@
   },
   "overrides": {
     "lodash": ">=4.17.23",
-    "hono": ">=4.11.7",
-    "ajv": ">=8.18.0",
-    "minimatch": ">=10.2.1"
+    "hono": ">=4.11.7"
   }
 }

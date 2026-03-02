@@ -11,7 +11,7 @@ generator client {
 
 // connection
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
 }
 
 // entity "Tâches"
