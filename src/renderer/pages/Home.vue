@@ -36,10 +36,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen pt-8">
-    <div class="flex justify-center h-4/5">
-      <Kanban v-if="!loading" :stages="stages" :tasks="tasks" />
-      <ProgressSpinner v-else />
-    </div>
+  <div class="flex justify-center h-4/5 pt-8">
+    <Kanban v-if="!loading" :stages="stages" :tasks="tasks" />
+    <ProgressSpinner v-else />
   </div>
 </template>

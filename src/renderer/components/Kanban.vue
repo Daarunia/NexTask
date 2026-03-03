@@ -19,7 +19,7 @@
 
               <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
                 <Button
-                  severity="primary"
+                  severity="success"
                   class="draggable-button"
                   @click="openEditTaskDialog(stage.id, element)"
                 >
@@ -41,9 +41,10 @@
         <!-- Ajouter tâche -->
         <Button
           class="btn-edit-task mt-3"
+          text
           @click="openCreateTaskDialog(stage.id)"
         >
-          <i class="pi pi-plus absolute left-3 text-white"></i>
+          <i class="pi pi-plus absolute left-3"></i>
           <span>Ajouter une tâche</span>
         </Button>
       </div>
@@ -203,11 +204,24 @@ function onTaskSaved(task: Task) {
 @reference "tailwindcss";
 
 .btn-edit-task {
-  @apply !bg-gray-700 !border-none hover:border-none !text-white hover:!bg-gray-600 w-full flex items-center justify-center relative pl-8;
+  @apply w-full flex items-center justify-center relative pl-8;
 }
 
 .draggable-item {
-  @apply flex justify-between items-center rounded-md p-2 mb-2 shadow-md cursor-grab bg-gray-600;
+  @apply flex justify-between items-center rounded-md p-2 mb-2 shadow-md cursor-grab;
+  background-color: var(--p-surface-300);
+}
+
+.app-dark .draggable-item {
+  background-color: var(--p-surface-800);
+}
+
+.draggable-item:hover {
+  background-color: var(--p-surface-400);
+}
+
+.app-dark .draggable-item:hover {
+  background-color: var(--p-surface-700);
 }
 
 .draggable-button {
@@ -215,6 +229,11 @@ function onTaskSaved(task: Task) {
 }
 
 .stages-container {
-  @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4 bg-gray-700;
+  @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4;
+  background-color: var(--p-surface-200);
+}
+
+.app-dark .stages-container {
+  background-color: var(--p-surface-900);
 }
 </style>

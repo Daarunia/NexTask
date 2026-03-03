@@ -36,7 +36,6 @@ export const useStageStore = defineStore("stage", {
   actions: {
     async loadAllStages(): Promise<void> {
       if (isCacheValid(this.allEntities, this.ttl)) return;
-
       const stagesFromApi = await api.get<Stage[]>(`/stages`);
 
       this.allEntities = { data: stagesFromApi, timestamp: Date.now() };

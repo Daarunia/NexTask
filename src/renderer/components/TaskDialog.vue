@@ -9,33 +9,30 @@
     <div class="pt-4 flex flex-col gap-4">
       <!-- Titre -->
       <div class="flex flex-col gap-2 w-full">
-        <label for="inputValue" class="text-white font-medium">Titre</label>
+        <label for="inputValue" class="font-medium">Titre</label>
         <InputText
           id="inputValue"
           v-model="title"
-          class="value-input"
           placeholder="Décris ton titre ici..."
         />
       </div>
 
       <!-- Description -->
       <div class="flex flex-col gap-2 w-full">
-        <label for="description" class="text-white font-medium">
-          Description
-        </label>
+        <label for="description" class="font-medium"> Description </label>
         <Textarea
           id="description"
           v-model="description"
           autoResize
           rows="4"
-          class="resize-y value-input"
+          class="resize-y"
           placeholder="Décris ta tâche ici..."
         />
       </div>
 
       <!-- Version -->
       <div class="flex flex-col gap-2 w-full">
-        <label for="version" class="text-white font-medium">Version</label>
+        <label for="version" class="font-medium">Version</label>
         <Select
           id="version"
           v-model="selectedVersion"
@@ -43,8 +40,6 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Sélectionne une version"
-          overlayClass="!bg-gray-600"
-          class="value-input"
         />
       </div>
 
@@ -214,16 +209,3 @@ async function saveTask() {
   }
 }
 </script>
-
-<style scoped>
-@reference "tailwindcss";
-
-.value-input {
-  @apply w-full hover:!border-gray-500 focus:!border-gray-500 !bg-gray-600;
-}
-
-:deep(.p-select.p-focus) {
-  border-color: #6b7280 !important;
-  box-shadow: none !important;
-}
-</style>

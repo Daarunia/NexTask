@@ -17,5 +17,7 @@ const logger = createLogger({
 
 app.use(pinia);
 app.use(logger);
-app.use(PrimeVue, { theme: { preset: Aura } });
+app.use(PrimeVue, {
+  theme: { preset: Aura, options: { darkModeSelector: ".app-dark" } },
+});
 app.mount("#app");
