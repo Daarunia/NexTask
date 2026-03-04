@@ -63,7 +63,9 @@
   },
   "overrides": {
     "lodash": ">=4.17.23",
-    "hono": ">=4.11.7",
-    "tar": ">=7.5.7"
+    "hono": ">=4.12.3",
+    "@hono/node-server": ">=1.19.10",
+    "tar": ">=7.5.7",
+    "@tootallnate/once": ">=3.0.1"
   }
 }

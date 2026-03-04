@@ -1,8 +1,8 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../prisma/generated/prisma/client.js";
 import { app } from "electron";
-import path from "path";
-import fs from "fs";
+import path from "node:path";
+import fs from "node:fs";
 
 // Path to app.db or dev.db
 const dbPath = fs.existsSync(path.join(process.cwd(), "dev.db"))

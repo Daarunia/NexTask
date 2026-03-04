@@ -1,5 +1,5 @@
 import { defineConfig } from "prisma/config";
-import path from "path";
+import path from "node:path";
 
 const defaultDbPath = path.join(process.cwd(), "dev.db");
 
