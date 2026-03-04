@@ -5,5 +5,5 @@ html,
 body {
   @apply h-screen;
   background: var(--p-surface-ground);
-  color: var(--p-text-color);
+  color: var(--p-primary-color);
 }
