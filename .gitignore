@@ -7,3 +7,4 @@ build
 generated
 components.d.ts
 *.db
+.scannerwork
