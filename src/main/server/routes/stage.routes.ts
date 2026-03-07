@@ -201,4 +201,83 @@ export default async function stagesRoutes(fastify) {
       return prisma.stage.create({ data: req.body });
     },
   );
+
+  /**
+   * PATCH /stages/batch
+   *
+   * Met à jour plusieurs stages en une seule requête.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Array<Object>} req.body - Tableau des stages à mettre à jour
+   * @param {number} req.body[].id - ID du stage (requis)
+   * @param {string} [req.body[].name] - Nom du stage
+   * @param {number} [req.body[].position] - Position du stage
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Array<Object>|{error: string}>} Tableau des stages mis à jour ou message d'erreur
+   */
+  fastify.patch(
+    "/stages/batch",
+    {
+      schema: {
+        description: "Met à jour plusieurs stages en une seule requête",
+        tags: ["Stage"],
+        body: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              position: { type: "integer" },
+            },
+            required: ["id"],
+          },
+        },
+        response: {
+          200: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                name: { type: "string" },
+                position: { type: "integer" },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const stages = req.body;
+
+      if (!stages.length) {
+        return reply
+          .status(400)
+          .send({ error: "Le tableau de stages est vide" });
+      }
+
+      try {
+        // Update chaque stage dans une transaction
+        const updatedStages = await prisma.$transaction(
+          stages.map((s) =>
+            prisma.stage.update({
+              where: { id: s.id },
+              data: {
+                name: s.name,
+                position: s.position,
+              },
+            }),
+          ),
+        );
+
+        return updatedStages;
+      } catch (error) {
+        console.error(error);
+        return reply
+          .status(500)
+          .send({ error: "Impossible de mettre à jour les stages" });
+      }
+    },
+  );
 }

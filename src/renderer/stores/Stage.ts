@@ -46,5 +46,34 @@ export const useStageStore = defineStore("stage", {
 
       taskStore.setAllTasksCache(allTasks);
     },
+
+    async updateStageBatch(
+      stages: { id: number; position: number }[],
+    ): Promise<void> {
+      await api.patch(`/stages/batch`, stages);
+
+      // Mise à jour du cache local
+      if (this.allEntities) {
+        const updatedStages = [...this.allEntities.data];
+
+        stages.forEach((updated) => {
+          const index = updatedStages.findIndex((s) => s.id === updated.id);
+          if (index !== -1) {
+            updatedStages[index] = {
+              ...updatedStages[index],
+              position: updated.position,
+            };
+          }
+        });
+
+        // re-trier
+        updatedStages.sort((a, b) => a.position - b.position);
+
+        this.allEntities = {
+          data: updatedStages,
+          timestamp: Date.now(),
+        };
+      }
+    },
   },
 });

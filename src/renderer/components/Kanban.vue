@@ -1,74 +1,84 @@
 <template>
-  <div class="flex gap-4">
-    <!-- Colonnes -->
-    <div v-for="stage in stages" :key="stage.id" class="stages-container">
-      <h2 class="mx-[3%] mb-[3%]">{{ stage.name }}</h2>
+  <draggable
+    v-model="stagesLocal"
+    itemKey="id"
+    class="flex gap-4"
+    handle=".stage-handle"
+    @end="onStagesDrop"
+  >
+    <template #item="{ element: stage }">
+      <div class="stages-container">
+        <!-- Header draggable -->
+        <h2 class="stage-handle mx-[3%] mb-[3%] cursor-grab">
+          {{ stage.name }}
+        </h2>
 
-      <div class="flex flex-col justify-between flex-1">
-        <!-- Draggable pour les tâches de cette colonne -->
-        <draggable
-          :list="taskLists.get(stage.id)"
-          group="tasks"
-          itemKey="id"
-          class="flex flex-col w-full"
-          @end="onTasksDrop"
-        >
-          <template #item="{ element }">
-            <div class="group draggable-item">
-              <strong>{{ element.title }}</strong>
+        <div class="flex flex-col justify-between flex-1">
+          <!-- Draggable tasks -->
+          <draggable
+            :list="taskLists.get(stage.id)"
+            group="tasks"
+            itemKey="id"
+            class="flex flex-col w-full"
+            @end="onTasksDrop"
+          >
+            <template #item="{ element }">
+              <div class="group draggable-item">
+                <strong>{{ element.title }}</strong>
 
-              <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
-                <Button
-                  severity="success"
-                  class="draggable-button"
-                  @click="openEditTaskDialog(stage.id, element)"
-                >
-                  <i class="pi pi-pencil text-white"></i>
-                </Button>
+                <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
+                  <Button
+                    severity="success"
+                    class="draggable-button"
+                    @click="openEditTaskDialog(stage.id, element)"
+                  >
+                    <i class="pi pi-pencil text-white"></i>
+                  </Button>
 
-                <Button
-                  severity="danger"
-                  class="draggable-button"
-                  @click="archiveTask(element)"
-                >
-                  <i class="pi pi-trash text-white"></i>
-                </Button>
+                  <Button
+                    severity="danger"
+                    class="draggable-button"
+                    @click="archiveTask(element)"
+                  >
+                    <i class="pi pi-trash text-white"></i>
+                  </Button>
+                </div>
               </div>
-            </div>
-          </template>
-        </draggable>
+            </template>
+          </draggable>
 
-        <!-- Ajouter tâche -->
-        <Button
-          class="btn-edit-task mt-3"
-          text
-          @click="openCreateTaskDialog(stage.id)"
-        >
-          <i class="pi pi-plus absolute left-3"></i>
-          <span>Ajouter une tâche</span>
-        </Button>
+          <!-- Ajouter tâche -->
+          <Button
+            class="btn-edit-task mt-3"
+            text
+            @click="openCreateTaskDialog(stage.id)"
+          >
+            <i class="pi pi-plus absolute left-3"></i>
+            <span>Ajouter une tâche</span>
+          </Button>
+        </div>
       </div>
-    </div>
+    </template>
+  </draggable>
 
-    <!-- Dialog -->
-    <TaskDialog
-      v-model="showDialog"
-      :stageId="stageDialog ?? 0"
-      :editTask="editTask"
-      :position="positionDialog"
-      :creationMode="creationMode"
-      @task-saved="onTaskSaved"
-    />
-  </div>
+  <!-- Dialog -->
+  <TaskDialog
+    v-model="showDialog"
+    :stageId="stageDialog ?? 0"
+    :editTask="editTask"
+    :position="positionDialog"
+    :creationMode="creationMode"
+    @task-saved="onTaskSaved"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import draggable from "vuedraggable";
 import Button from "primevue/button";
-
 import TaskDialog from "./TaskDialog.vue";
 import { useTaskStore } from "../stores/Task";
+import { useStageStore } from "../stores/Stage";
 import { Task } from "../types/task.types";
 import { Stage } from "../types/stage.types";
 import { getLogger } from "../utils/logger";
@@ -80,6 +90,7 @@ const props = defineProps<{
 
 const logger = getLogger();
 const taskStore = useTaskStore();
+const stageStore = useStageStore();
 
 const showDialog = ref(false);
 const stageDialog = ref<number | null>(null);
@@ -87,11 +98,12 @@ const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true);
 const taskLists = ref<Map<number, Task[]>>(new Map());
+const stagesLocal = ref<Stage[]>([]);
 
 function buildTaskLists() {
   const map = new Map<number, Task[]>();
 
-  for (const stage of props.stages) {
+  for (const stage of stagesLocal.value) {
     map.set(
       stage.id,
       props.tasks
@@ -104,13 +116,27 @@ function buildTaskLists() {
   taskLists.value = map;
 }
 
-// Build initial
+function buildStages() {
+  stagesLocal.value = [...props.stages].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+}
+
+buildStages();
 buildTaskLists();
 
-// Rebuild si tasks changent
 watch(
   () => props.tasks,
   () => buildTaskLists(),
+  { deep: true },
+);
+
+watch(
+  () => props.stages,
+  () => {
+    buildStages();
+    buildTaskLists();
+  },
   { deep: true },
 );
 
@@ -148,7 +174,7 @@ function openEditTaskDialog(stageId: number, task: Task) {
 async function onTasksDrop() {
   const modifiedTasks: Task[] = [];
 
-  for (const stage of props.stages) {
+  for (const stage of stagesLocal.value) {
     const originalTasks = props.tasks.filter((t) => t.stageId === stage.id);
     const currentTasks = taskLists.value.get(stage.id) ?? [];
 
@@ -165,18 +191,37 @@ async function onTasksDrop() {
   }
 
   if (modifiedTasks.length) {
-    logger.debug("Mise à jour DnD", modifiedTasks);
+    logger.debug("Mise à jour DnD des tâches", modifiedTasks);
     await taskStore.updateTaskBatch(modifiedTasks);
   }
 }
+
 /**
- * Archivage d'une tâche
- * @param task Tâche à archiver
+ * Drag stages
+ */
+async function onStagesDrop() {
+  const modifiedStages: Stage[] = [];
+
+  stagesLocal.value.forEach((stage, index) => {
+    if (stage.position !== index) {
+      modifiedStages.push({ ...stage, position: index });
+    }
+  });
+
+  if (modifiedStages.length) {
+    logger.debug("Mise à jour DnD stages", modifiedStages);
+    await stageStore.updateStageBatch(modifiedStages);
+  }
+}
+
+/**
+ * Archivage
  */
 function archiveTask(task: Task) {
   taskStore.archiveTask(task.id);
 
   const list = taskLists.value.get(task.stageId) ?? [];
+
   taskLists.value.set(
     task.stageId,
     list.filter((t) => t.id !== task.id),
@@ -185,6 +230,9 @@ function archiveTask(task: Task) {
   logger.debug("Tâche archivée", task);
 }
 
+/**
+ * Save depuis dialog
+ */
 function onTaskSaved(task: Task) {
   const list = taskLists.value.get(task.stageId) ?? [];
 
@@ -235,5 +283,9 @@ function onTaskSaved(task: Task) {
 
 .app-dark .stages-container {
   background-color: var(--p-surface-900);
+}
+
+.stage-handle {
+  user-select: none;
 }
 </style>
