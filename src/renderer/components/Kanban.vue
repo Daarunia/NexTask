@@ -8,60 +8,21 @@
   >
     <template #item="{ element: stage }">
       <div class="stages-container">
-        <!-- Header draggable -->
         <h2 class="stage-handle mx-[3%] mb-[3%] cursor-grab">
           {{ stage.name }}
         </h2>
 
-        <div class="flex flex-col justify-between flex-1">
-          <!-- Draggable tasks -->
-          <draggable
-            :list="taskLists.get(stage.id)"
-            group="tasks"
-            itemKey="id"
-            class="flex flex-col w-full"
-            @end="onTasksDrop"
-          >
-            <template #item="{ element }">
-              <div class="group draggable-item">
-                <strong>{{ element.title }}</strong>
-
-                <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
-                  <Button
-                    severity="success"
-                    class="draggable-button"
-                    @click="openEditTaskDialog(stage.id, element)"
-                  >
-                    <i class="pi pi-pencil text-white"></i>
-                  </Button>
-
-                  <Button
-                    severity="danger"
-                    class="draggable-button"
-                    @click="archiveTask(element)"
-                  >
-                    <i class="pi pi-trash text-white"></i>
-                  </Button>
-                </div>
-              </div>
-            </template>
-          </draggable>
-
-          <!-- Ajouter tâche -->
-          <Button
-            class="btn-edit-task mt-3"
-            text
-            @click="openCreateTaskDialog(stage.id)"
-          >
-            <i class="pi pi-plus absolute left-3"></i>
-            <span>Ajouter une tâche</span>
-          </Button>
-        </div>
+        <StageTaskList
+          :tasks="taskLists.get(stage.id) ?? []"
+          @tasks-drop="onTasksDrop"
+          @edit-task="openEditTaskDialog(stage.id, $event)"
+          @archive-task="archiveTask"
+          @create-task="openCreateTaskDialog(stage.id)"
+        />
       </div>
     </template>
   </draggable>
 
-  <!-- Dialog -->
   <TaskDialog
     v-model="showDialog"
     :stageId="stageDialog ?? 0"
@@ -75,7 +36,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import draggable from "vuedraggable";
-import Button from "primevue/button";
+import StageTaskList from "./StageTaskList.vue";
 import TaskDialog from "./TaskDialog.vue";
 import { useTaskStore } from "../stores/Task";
 import { useStageStore } from "../stores/Stage";
@@ -250,31 +211,6 @@ function onTaskSaved(task: Task) {
 
 <style scoped>
 @reference "tailwindcss";
-
-.btn-edit-task {
-  @apply w-full flex items-center justify-center relative pl-8;
-}
-
-.draggable-item {
-  @apply flex justify-between items-center rounded-md p-2 mb-2 shadow-md cursor-grab;
-  background-color: var(--p-surface-300);
-}
-
-.app-dark .draggable-item {
-  background-color: var(--p-surface-800);
-}
-
-.draggable-item:hover {
-  background-color: var(--p-surface-400);
-}
-
-.app-dark .draggable-item:hover {
-  background-color: var(--p-surface-700);
-}
-
-.draggable-button {
-  @apply w-6 cursor-pointer transition-opacity duration-200;
-}
 
 .stages-container {
   @apply flex flex-col min-w-[300px] max-w-[400px] overflow-x-auto rounded-lg p-4;
