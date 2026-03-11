@@ -1,7 +1,7 @@
 {
-  "name": "nexttask",
+  "name": "nextask",
   "version": "0.1.0",
-  "description": "NextTask",
+  "description": "NexTask",
   "main": "main/main.js",
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux"
   },
-  "repository": "https://github.com/Daarunia/NextTask",
+  "repository": "https://github.com/Daarunia/NexTask",
   "author": {
     "name": "Maxime Van Eygen",
     "url": "https://github.com/Daarunia"
@@ -25,11 +25,11 @@
     "@vitejs/plugin-vue": "^6.0.4",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
-    "electron": "^40.8.0",
+    "electron": "^41.0.0",
     "electron-builder": "^26.8.1",
     "electron-rebuild": "^3.2.9",
     "husky": "^9.1.7",
-    "lint-staged": "^16.3.2",
+    "lint-staged": "^16.3.3",
     "prettier": "^3.8.1",
     "prisma": "^7.4.2",
     "tailwindcss": "^4.2.1",
@@ -63,9 +63,9 @@
   },
   "overrides": {
     "lodash": ">=4.17.23",
-    "hono": ">=4.12.3",
+    "hono": ">=4.12.7",
     "@hono/node-server": ">=1.19.10",
-    "tar": ">=7.5.7",
+    "tar": ">=7.5.11",
     "@tootallnate/once": ">=3.0.1"
   }
 }
