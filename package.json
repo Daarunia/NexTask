@@ -42,7 +42,7 @@
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
     "@primeuix/themes": "^2.0.3",
-    "@prisma/adapter-better-sqlite3": "^7.4.2",
+    "@prisma/adapter-better-sqlite3": "^7.5.0",
     "@prisma/client": "^7.4.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@tailwindcss/vite": "^4.2.1",
