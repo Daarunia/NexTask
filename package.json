@@ -22,7 +22,7 @@
     "@primevue/auto-import-resolver": "^4.5.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.4.0",
-    "@vitejs/plugin-vue": "^6.0.4",
+    "@vitejs/plugin-vue": "^6.0.5",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
     "electron": "^41.0.0",
