@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { join } from "node:path";
 import { startServer } from "./server/index.js";
 import log, { LevelOption } from "electron-log";
+import { setupDatabase } from "./setupDatabase.js";
 
 // Initialisation du logger
 let logOption = (process.env.VITE_LOG_LEVEL as LevelOption) || "error";
@@ -29,7 +30,7 @@ function createWindow() {
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
   } else {
     mainWindow.loadFile(
-      join(app.getAppPath(), "renderer", "public", "index.html"),
+      join(app.getAppPath(), "renderer", "index.html"),
     );
   }
 }
@@ -45,6 +46,12 @@ app.whenReady().then(async () => {
       },
     });
   });
+
+  try {
+    setupDatabase();
+  } catch (err) {
+    log.error("Erreur du lancement des migrations :", err);
+  }
 
   try {
     await startServer();
