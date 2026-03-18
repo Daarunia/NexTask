@@ -44,7 +44,7 @@
     "@primeuix/themes": "^2.0.3",
     "@prisma/adapter-better-sqlite3": "^7.5.0",
     "@prisma/client": "^7.5.0",
-    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.1",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
