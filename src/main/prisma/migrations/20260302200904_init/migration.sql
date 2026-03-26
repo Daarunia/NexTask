@@ -4,7 +4,6 @@ CREATE TABLE "Task" (
     "version" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "position" INTEGER NOT NULL,
-    "redmine" INTEGER,
     "title" TEXT NOT NULL,
     "isHistorized" BOOLEAN NOT NULL DEFAULT false,
     "historizationDate" DATETIME,

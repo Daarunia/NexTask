@@ -102,7 +102,6 @@ export default async function taskRoutes(fastify) {
    * @param {string} req.body.version - Version associée
    * @param {string} req.body.description - Description
    * @param {string} req.body.status - Statut
-   * @param {number} [req.body.redmine] - ID Redmine (optionnel)
    * @returns {Promise<Object>} Objet Task créé
    */
   fastify.post(
@@ -119,7 +118,6 @@ export default async function taskRoutes(fastify) {
             description: { type: "string" },
             position: { type: "integer" },
             title: { type: "string" },
-            redmine: { type: "integer", nullable: true },
           },
           required: ["stageId", "position", "title"],
         },
@@ -162,7 +160,6 @@ export default async function taskRoutes(fastify) {
             description: { type: "string" },
             position: { type: "integer" },
             status: { type: "string" },
-            redmine: { type: "integer", nullable: true },
           },
         },
         response: {
@@ -290,7 +287,6 @@ export default async function taskRoutes(fastify) {
    * @param {string} [req.body[].title] - Titre
    * @param {number} [req.body[].position] - Position dans la colonne
    * @param {string} [req.body[].status] - Statut
-   * @param {number|null} [req.body[].redmine] - ID Redmine optionnel
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Array<Object>|{error: string}>} Tableau des tâches mises à jour ou message d'erreur
    */
@@ -311,7 +307,6 @@ export default async function taskRoutes(fastify) {
               description: { type: "string" },
               position: { type: "integer" },
               status: { type: "string" },
-              redmine: { type: "integer", nullable: true },
             },
             required: ["id"],
           },
@@ -328,7 +323,6 @@ export default async function taskRoutes(fastify) {
                 description: { type: "string" },
                 position: { type: "integer" },
                 status: { type: "string" },
-                redmine: { type: "integer", nullable: true },
               },
             },
           },

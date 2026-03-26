@@ -20,7 +20,6 @@ model Task {
   version           String
   description       String
   position          Int
-  redmine           Int?
   title             String
   isHistorized      Boolean   @default(false)
   historizationDate DateTime?

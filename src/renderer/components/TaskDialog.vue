@@ -174,7 +174,6 @@ async function saveTask() {
         description: description.value || "",
         isHistorized: false,
         historizationDate: undefined,
-        redmine: undefined,
       };
 
       savedTask = await taskStore.saveTask(newTask);
@@ -189,7 +188,6 @@ async function saveTask() {
         description: description.value || "",
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
-        redmine: props.editTask.redmine,
       };
 
       savedTask = await taskStore.updateTask(updatedTask);

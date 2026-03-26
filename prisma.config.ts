@@ -4,7 +4,7 @@ import path from "node:path";
 const defaultDbPath = path.join(process.cwd(), "dev.db");
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "src/main/prisma/schema.prisma",
   datasource: {
     url: `file:${defaultDbPath}`,
   },

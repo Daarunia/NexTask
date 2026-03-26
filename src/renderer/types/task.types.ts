@@ -7,7 +7,6 @@ export interface Task {
   description: string;
   position: number;
   title: string;
-  redmine?: number;
   isHistorized: boolean;
   historizationDate?: Date;
   stageId: number;
