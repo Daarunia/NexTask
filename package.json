@@ -2,8 +2,21 @@
   "name": "nextask",
   "version": "0.1.0",
   "description": "NexTask",
-  "main": "main/main.js",
+  "main": "build/main/main.js",
   "type": "module",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "npm@11.6.2",
+  "keywords": [
+    "electron",
+    "vue",
+    "vite",
+    "desktop-app",
+    "todo",
+    "nextask",
+    "sqlite",
+    "prisma"
+  ],
   "scripts": {
     "dev": "node scripts/dev-server.js",
     "electron:dev": "electron .",
@@ -11,7 +24,8 @@
     "build:dev": "node scripts/build.js",
     "build:win": "node scripts/build.js && electron-builder --win",
     "build:mac": "node scripts/build.js && electron-builder --mac",
-    "build:linux": "node scripts/build.js && electron-builder --linux"
+    "build:linux": "node scripts/build.js && electron-builder --linux",
+    "sonar": "sonar-scanner"
   },
   "repository": "https://github.com/Daarunia/NexTask",
   "author": {
@@ -54,12 +68,15 @@
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
-    "vue": "^3.5.30",
+    "vue": "^3.5.31",
     "vue-logger-plugin": "^2.2.3",
     "vuedraggable": "4.1.0"
   },
+  "engines": {
+    "node": "24.14.1"
+  },
   "lint-staged": {
-    "*.{js,ts,vue,json,md,css,vue}": "prettier --write"
+    "*.{js,ts,vue,json,md,css}": "prettier --write"
   },
   "overrides": {
     "lodash": ">=4.17.23",
@@ -67,6 +84,8 @@
     "@hono/node-server": ">=1.19.10",
     "tar": ">=7.5.11",
     "@tootallnate/once": ">=3.0.1",
-    "effect": ">=3.20.0"
+    "effect": ">=3.20.0",
+    "yaml": ">=2.8.3",
+    "picomatch": ">=4.0.4"
   }
 }
