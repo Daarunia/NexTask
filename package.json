@@ -19,13 +19,13 @@
   ],
   "scripts": {
     "dev": "node scripts/dev-server.js",
-    "electron:dev": "electron .",
     "build": "node scripts/build.js && electron-builder",
     "build:dev": "node scripts/build.js",
     "build:win": "node scripts/build.js && electron-builder --win",
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux",
-    "sonar": "sonar-scanner"
+    "sonar": "sonar-scanner",
+    "test": "playwright test"
   },
   "repository": "https://github.com/Daarunia/NexTask",
   "author": {
@@ -33,11 +33,12 @@
     "url": "https://github.com/Daarunia"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@playwright/test": "^1.58.2",
     "@primevue/auto-import-resolver": "^4.5.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
     "@vitejs/plugin-vue": "^6.0.5",
-    "@electron/rebuild": "^4.0.3",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
     "electron": "^41.1.0",

@@ -8,3 +8,4 @@ generated
 components.d.ts
 *.db
 .scannerwork
+test-results
