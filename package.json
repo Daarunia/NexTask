@@ -6,7 +6,7 @@
   "type": "module",
   "private": true,
   "license": "MIT",
-  "packageManager": "npm@11.6.2",
+  "packageManager": "npm@11.12.1",
   "keywords": [
     "electron",
     "vue",
@@ -37,15 +37,15 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
     "@vitejs/plugin-vue": "^6.0.5",
+    "@electron/rebuild": "^4.0.3",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
     "electron": "^40.8.1",
     "electron-builder": "^26.8.1",
-    "electron-rebuild": "^3.2.9",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
-    "prisma": "^7.5.0",
+    "prisma": "^7.6.0",
     "tailwindcss": "^4.2.2",
     "typescript": "6.0.2",
     "unplugin-vue-components": "^32.0.0",
@@ -56,11 +56,11 @@
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
     "@primeuix/themes": "^2.0.3",
-    "@prisma/adapter-better-sqlite3": "^7.5.0",
-    "@prisma/client": "^7.5.0",
+    "@prisma/adapter-better-sqlite3": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "dotenv": "^17.3.1",
     "electron-log": "^5.4.3",
     "fastify": "^5.8.4",
@@ -77,15 +77,5 @@
   },
   "lint-staged": {
     "*.{js,ts,vue,json,md,css}": "prettier --write"
-  },
-  "overrides": {
-    "lodash": ">=4.17.23",
-    "hono": ">=4.12.7",
-    "@hono/node-server": ">=1.19.10",
-    "tar": ">=7.5.11",
-    "@tootallnate/once": ">=3.0.1",
-    "effect": ">=3.20.0",
-    "yaml": ">=2.8.3",
-    "picomatch": ">=4.0.4"
   }
 }
