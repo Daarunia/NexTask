@@ -41,8 +41,8 @@ Ce projet me permet également de me familiariser avec l'usage de **Vue 3**, **E
 
 Avant de commencer, assure-toi d'avoir les outils suivants installés :
 
-- **Node.js** (version 16 ou supérieure)
-- **npm** (version 7 ou supérieure)
+- **Node.js** (version 24 ou supérieure)
+- **npm** (version 11 ou supérieure)
 
 ### Installation
 

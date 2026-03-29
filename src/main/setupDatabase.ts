@@ -16,7 +16,7 @@ export function setupDatabase() {
     const isDev = process.env.NODE_ENV === "development";
 
     if (isDev) {
-        // En dev, on ne touche pas à la DB : tu utilises déjà prisma migrate dev
+        // En dev, on ne touche pas à la DB
         console.log("Mode dev : pas de migration automatique, utilisez `prisma migrate dev`");
         return;
     }

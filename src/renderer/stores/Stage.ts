@@ -6,6 +6,7 @@ import { Task } from "../types/task.types";
 import { api } from "../utils/api.helper";
 import { isCacheValid } from "../utils/cache.helper";
 import { useTaskStore } from "./Task";
+import { getLogger } from "../utils/logger";
 
 interface StageState extends BaseEntityState<Stage> {
   // No custom attribut
@@ -34,6 +35,15 @@ export const useStageStore = defineStore("stage", {
     },
   },
   actions: {
+    setStageCache(id: number, data: Stage) {
+      this.entities[id] = { data, timestamp: Date.now() };
+    },
+
+    setAllStagesCache(data: Stage[]) {
+      this.allEntities = { data, timestamp: Date.now() };
+      this.lastFetch = Date.now();
+    },
+
     async loadAllStages(): Promise<void> {
       if (isCacheValid(this.allEntities, this.ttl)) return;
       const stagesFromApi = await api.get<Stage[]>(`/stages`);
@@ -75,5 +85,36 @@ export const useStageStore = defineStore("stage", {
         };
       }
     },
+
+    /**
+     * Création d'une colonne
+     * @param name Nom de la colonne
+     * @param position Position de la colonne
+     */
+    async saveStage(name: string, position: number): Promise<Stage> {
+      try {
+        const payload = {
+          name,
+          position,
+        };
+
+        const newStage = await api.post<Stage>(`/stages`, payload);
+
+        // Mise à jour du cache
+        this.setStageCache(newStage.id, newStage);
+
+        if (this.allEntities?.data) {
+          this.allEntities.data.push(newStage);
+          this.allEntities.timestamp = Date.now();
+        } else {
+          this.setAllStagesCache([newStage]);
+        }
+
+        return newStage;
+      } catch (error) {
+        getLogger().error("Erreur lors de la sauvegarde de la colonne : ", error);
+        throw error;
+      }
+    }
   },
 });
