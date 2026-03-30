@@ -1,5 +1,5 @@
 <template>
-  <div class="flex justify-center h-4/5 pt-8 overflow-x-auto ml-4 pb-4 px-8" ref="scrollContainer">
+  <div class="flex justify-center h-4/5 pt-8 overflow-x-auto ml-4 pb-4" ref="scrollContainer">
     <draggable v-model="stagesLocal" itemKey="id" class="flex gap-4 pl-16" handle=".stage-handle" @end="onStagesDrop">
       <template #item="{ element: stage }">
         <div class="stages-container">
@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from "vue";
 import draggable from "vuedraggable";
 import StageTaskList from "./StageTaskList.vue";
 import TaskDialog from "./TaskDialog.vue";
@@ -66,7 +66,7 @@ const showDialog = ref(false);
 const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true);
-const taskLists = ref<Map<number, Task[]>>(new Map());
+const taskLists = reactive(ref<Map<number, Task[]>>(new Map()));
 const stageDialog = ref<number | null>(null);
 const selectedStage = ref<Stage | null>(null)
 const stagesLocal = ref<Stage[]>([]);
@@ -216,7 +216,8 @@ function onTaskSaved(task: Task) {
 async function createStage() {
   if (!newStageName.value.trim()) return;
 
-  await stageStore.saveStage(newStageName.value, stagesLocal.value.length);
+  const newStage = await stageStore.saveStage(newStageName.value, stagesLocal.value.length);
+  stagesLocal.value.push(newStage);
 
   newStageName.value = "";
   isAddingStage.value = false;
@@ -239,17 +240,17 @@ function showAddStageInput() {
 async function deleteStage() {
   if (!selectedStage.value) return;
   const stageId = selectedStage.value.id;
-  logger.debug("Suppression colonne demandée", { stageId, stages: [...stagesLocal.value], taskLists: [...taskLists.value.entries()] });
 
   try {
     await stageStore.deleteStage(stageId);
+
     stagesLocal.value = stagesLocal.value.filter(s => s.id !== stageId);
 
-    if (taskLists.value.has(stageId)) {
-      taskLists.value.delete(stageId);
-    }
+    const newTaskLists = new Map(taskLists.value);
+    newTaskLists.delete(stageId);
+    taskLists.value = newTaskLists;
 
-    logger.debug("Colonne supprimée avec succès", { stageId, stages: [...stagesLocal.value], taskLists: [...taskLists.value.entries()] });
+    logger.debug("Colonne supprimée : ", stageId);
   } catch (error) {
     logger.error("Erreur lors de la suppression de la colonne", { stageId, error });
   } finally {
@@ -265,7 +266,6 @@ const toggleStageMenu = (event: Event, stage: Stage) => {
 
 onMounted(() => {
   if (!scrollContainer.value) return;
-
   const el = scrollContainer.value;
 
   const onWheel = (event: WheelEvent) => {
@@ -281,20 +281,8 @@ onMounted(() => {
   });
 });
 
-watch(
-  () => props.tasks,
-  () => buildTaskLists(),
-  { deep: true },
-);
 
-watch(
-  () => props.stages,
-  () => {
-    buildStages();
-    buildTaskLists();
-  },
-  { deep: true },
-);
+
 </script>
 
 <style scoped>
