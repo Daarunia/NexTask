@@ -115,6 +115,44 @@ export const useStageStore = defineStore("stage", {
         getLogger().error("Erreur lors de la sauvegarde de la colonne : ", error);
         throw error;
       }
+    },
+
+    /**
+     * Suppression d'une colonne, historisation des tâches enfants
+     * 
+     * @param id stage id
+     */
+    async deleteStage(id: number): Promise<void> {
+      const logger = getLogger();
+      const taskStore = useTaskStore();
+
+      try {
+        const tasksToArchive = taskStore.allEntities?.data.filter((task) => task.stageId === id && !task.isHistorized) ?? [];
+
+        for (const task of tasksToArchive) {
+          await taskStore.archiveTask(task.id);
+        }
+
+        await api.delete(`/stages/${id}`);
+
+        if (this.entities[id]) {
+          delete this.entities[id];
+        }
+
+        if (this.allEntities) {
+          const index = this.allEntities.data.findIndex((s) => s.id === id);
+
+          if (index !== -1) {
+            this.allEntities.data.splice(index, 1);
+            this.allEntities.timestamp = Date.now();
+          }
+        }
+
+        logger.debug(`Stage ${id} supprimée + tâches archivées`);
+      } catch (error) {
+        logger.error(`Erreur lors de la suppression de la stage ${id}:`, error);
+        throw error;
+      }
     }
   },
 });

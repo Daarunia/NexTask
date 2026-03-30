@@ -1,11 +1,17 @@
 <template>
-  <div class="flex justify-start h-4/5 pt-8 overflow-x-auto ml-4 pb-4" ref="scrollContainer">
-    <draggable v-model="stagesLocal" itemKey="id" class="flex gap-4" handle=".stage-handle" @end="onStagesDrop">
+  <div class="flex justify-center h-4/5 pt-8 overflow-x-auto ml-4 pb-4 px-8" ref="scrollContainer">
+    <draggable v-model="stagesLocal" itemKey="id" class="flex gap-4 pl-16" handle=".stage-handle" @end="onStagesDrop">
       <template #item="{ element: stage }">
         <div class="stages-container">
-          <h2 class="stage-handle mx-[3%] mb-[3%] cursor-grab">
-            {{ stage.name }}
-          </h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="stage-handle cursor-grab">
+              {{ stage.name }}
+            </h2>
+
+            <!-- Menu -->
+            <Button icon="pi pi-ellipsis-v" @click="(event) => toggleStageMenu(event, stage)" text />
+            <Menu ref="stageMenu" :model="stageMenuItems" popup />
+          </div>
 
           <StageTaskList :tasks="taskLists.get(stage.id) ?? []" @tasks-drop="onTasksDrop"
             @edit-task="openEditTaskDialog(stage.id, $event)" @archive-task="archiveTask"
@@ -15,14 +21,14 @@
     </draggable>
 
     <div class="btn-add-container">
-      <Button v-if="!isAddingStage" class="btn-add-stage" text @click="isAddingStage = true">
+      <Button v-if="!isAddingStage" class="btn-add-stage" text @click="showAddStageInput">
         <i class="pi pi-plus absolute left-3"></i>
         <span>Ajouter une liste</span>
       </Button>
 
       <div v-else class="flex gap-2 w-full">
-        <input v-model="newStageName" class="flex-1 p-2 rounded border" placeholder="Nom de la liste"
-          @keyup.enter="createStage" autofocus />
+        <input ref="newStageInput" v-model="newStageName" class="flex-1 p-2 rounded border"
+          placeholder="Nom de la liste" @keyup.enter="createStage" autofocus />
 
         <Button icon="pi pi-check" @click="createStage" />
         <Button icon="pi pi-times" severity="secondary" @click="cancelCreateStage" />
@@ -35,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import draggable from "vuedraggable";
 import StageTaskList from "./StageTaskList.vue";
 import TaskDialog from "./TaskDialog.vue";
@@ -54,16 +60,23 @@ const logger = getLogger();
 const taskStore = useTaskStore();
 const stageStore = useStageStore();
 
+const newStageInput = ref<HTMLInputElement | null>(null);
 const scrollContainer = ref<HTMLElement | null>(null);
 const showDialog = ref(false);
-const stageDialog = ref<number | null>(null);
 const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true);
 const taskLists = ref<Map<number, Task[]>>(new Map());
+const stageDialog = ref<number | null>(null);
+const selectedStage = ref<Stage | null>(null)
 const stagesLocal = ref<Stage[]>([]);
 const isAddingStage = ref(false);
 const newStageName = ref("");
+const stageMenu = ref()
+
+const stageMenuItems = [
+  { label: 'Supprimer', icon: 'pi pi-trash', command: () => deleteStage() },
+]
 
 function buildTaskLists() {
   const map = new Map<number, Task[]>();
@@ -203,12 +216,8 @@ function onTaskSaved(task: Task) {
 async function createStage() {
   if (!newStageName.value.trim()) return;
 
-  const newStage = await stageStore.saveStage(
-    newStageName.value,
-    stagesLocal.value.length
-  );
+  await stageStore.saveStage(newStageName.value, stagesLocal.value.length);
 
-  stagesLocal.value.push(newStage);
   newStageName.value = "";
   isAddingStage.value = false;
 }
@@ -216,6 +225,42 @@ async function createStage() {
 function cancelCreateStage() {
   newStageName.value = "";
   isAddingStage.value = false;
+}
+
+function showAddStageInput() {
+  isAddingStage.value = true;
+
+  // Focus sur l'input
+  nextTick(() => {
+    newStageInput.value?.focus();
+  });
+}
+
+async function deleteStage() {
+  if (!selectedStage.value) return;
+  const stageId = selectedStage.value.id;
+  logger.debug("Suppression colonne demandée", { stageId, stages: [...stagesLocal.value], taskLists: [...taskLists.value.entries()] });
+
+  try {
+    await stageStore.deleteStage(stageId);
+    stagesLocal.value = stagesLocal.value.filter(s => s.id !== stageId);
+
+    if (taskLists.value.has(stageId)) {
+      taskLists.value.delete(stageId);
+    }
+
+    logger.debug("Colonne supprimée avec succès", { stageId, stages: [...stagesLocal.value], taskLists: [...taskLists.value.entries()] });
+  } catch (error) {
+    logger.error("Erreur lors de la suppression de la colonne", { stageId, error });
+  } finally {
+    selectedStage.value = null;
+  }
+}
+
+// Affichage du menu des stages
+const toggleStageMenu = (event: Event, stage: Stage) => {
+  selectedStage.value = stage
+  stageMenu.value.toggle(event)
 }
 
 onMounted(() => {

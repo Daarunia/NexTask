@@ -7,8 +7,8 @@ CREATE TABLE "Task" (
     "title" TEXT NOT NULL,
     "isHistorized" BOOLEAN NOT NULL DEFAULT false,
     "historizationDate" DATETIME,
-    "stageId" INTEGER NOT NULL,
-    CONSTRAINT "Task_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "Stage" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "stageId" INTEGER,
+    CONSTRAINT "Task_stageId_fkey" FOREIGN KEY ("stageId") REFERENCES "Stage" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable

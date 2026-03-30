@@ -259,6 +259,7 @@ export default async function taskRoutes(fastify) {
           data: {
             isHistorized: true,
             historizationDate: new Date(),
+            stageId: null,
           },
         });
 

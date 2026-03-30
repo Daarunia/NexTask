@@ -23,8 +23,8 @@ model Task {
   title             String
   isHistorized      Boolean   @default(false)
   historizationDate DateTime?
-  stageId           Int
-  stage             Stage     @relation(fields: [stageId], references: [id])
+  stageId           Int?
+  stage             Stage?     @relation(fields: [stageId], references: [id])
 }
 
 //  entity "Colonne"
