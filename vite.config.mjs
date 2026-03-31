@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
 import Components from "unplugin-vue-components/vite";
 import { PrimeVueResolver } from "@primevue/auto-import-resolver";
-import { visualizer } from 'rollup-plugin-visualizer';
+import { visualizer } from "rollup-plugin-visualizer";
 
 /**
  * https://vitejs.dev/config
@@ -23,7 +23,7 @@ export default defineConfig({
   build: {
     outDir: path.join(__dirname, "build", "renderer"),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
   },
   plugins: [
     tailwindcss(),
@@ -32,7 +32,7 @@ export default defineConfig({
       resolvers: [PrimeVueResolver()],
     }),
     visualizer({
-      filename: './dist/bundle-analysis.html',
+      filename: "./dist/bundle-analysis.html",
       open: true,
     }),
   ],

@@ -1,4 +1,10 @@
-import { test as baseTest, expect, Browser, Page, BrowserContext } from "@playwright/test";
+import {
+  test as baseTest,
+  expect,
+  Browser,
+  Page,
+  BrowserContext,
+} from "@playwright/test";
 
 let page: Page;
 let context: BrowserContext;

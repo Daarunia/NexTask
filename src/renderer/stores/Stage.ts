@@ -33,6 +33,15 @@ export const useStageStore = defineStore("stage", {
 
       return [];
     },
+
+    getStageById: (state) => {
+      return (id: number): Stage | null => {
+        const stage = state.entities[id];
+        if (!stage) return null;
+        const isExpired = Date.now() - stage.timestamp > state.ttl;
+        return isExpired ? null : stage.data;
+      };
+    },
   },
   actions: {
     setStageCache(id: number, data: Stage) {
@@ -112,14 +121,17 @@ export const useStageStore = defineStore("stage", {
 
         return newStage;
       } catch (error) {
-        getLogger().error("Erreur lors de la sauvegarde de la colonne : ", error);
+        getLogger().error(
+          "Erreur lors de la sauvegarde de la colonne : ",
+          error,
+        );
         throw error;
       }
     },
 
     /**
      * Suppression d'une colonne, historisation des tâches enfants
-     * 
+     *
      * @param id stage id
      */
     async deleteStage(id: number): Promise<void> {
@@ -127,7 +139,10 @@ export const useStageStore = defineStore("stage", {
       const taskStore = useTaskStore();
 
       try {
-        const tasksToArchive = taskStore.allEntities?.data.filter((task) => task.stageId === id && !task.isHistorized) ?? [];
+        const tasksToArchive =
+          taskStore.allEntities?.data.filter(
+            (task) => task.stageId === id && !task.isHistorized,
+          ) ?? [];
 
         for (const task of tasksToArchive) {
           await taskStore.archiveTask(task.id);
@@ -152,6 +167,42 @@ export const useStageStore = defineStore("stage", {
       } catch (error) {
         logger.error(`Erreur lors de la suppression de la stage ${id}:`, error);
         throw error;
+      }
+    },
+    /**
+     * Mise à jour du nom d'une colonne
+     * @param id Id de la colonne
+     * @param name Nouveau nom de la colonne
+     * @returns La colonne mise à jour
+     */
+    async updateStage(id: number, name: string): Promise<Stage> {
+      try {
+        // Envoi de la requête PATCH pour mettre à jour le nom
+        const updatedStage = await api.patch<Stage>(`/stages/${id}`, { name });
+
+        // Met à jour le cache local
+        console.log(this.allEntities)
+        const existingStage = this.getStageById(id);
+        if (existingStage) {
+          this.setStageCache(id, updatedStage);
+        } else {
+          getLogger().warn("Aucune colonne trouvée dans le cache pour l'ID", id);
+        }
+
+        if (this.allEntities?.data) {
+          const stageToUpdate = this.allEntities.data.find((s) => s.id === id);
+          if (stageToUpdate) {
+            Object.assign(stageToUpdate, updatedStage);
+            this.allEntities.timestamp = Date.now();
+          } else {
+            getLogger().warn("Colonne non trouvée dans allEntities pour l'ID", id);
+          }
+        }
+
+        return updatedStage;
+      } catch (error) {
+        getLogger().error("Erreur lors de la mise à jour du nom de la colonne :", error);
+        throw new Error(`Erreur de mise à jour pour la colonne ${id}: ${error}`);
       }
     }
   },

@@ -29,9 +29,7 @@ function createWindow() {
     const rendererPort = process.argv[2];
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
   } else {
-    mainWindow.loadFile(
-      join(app.getAppPath(), "renderer", "index.html"),
-    );
+    mainWindow.loadFile(join(app.getAppPath(), "renderer", "index.html"));
   }
 }
 

@@ -79,6 +79,6 @@
     "node": "24.x"
   },
   "lint-staged": {
-    "*.{js,ts,vue,json,md,css}": "prettier --write"
+    "*.{js,ts,vue,json,md,css}": "prettier --write ."
   }
 }

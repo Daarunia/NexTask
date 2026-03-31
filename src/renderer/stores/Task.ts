@@ -242,7 +242,6 @@ export const useTaskStore = defineStore("task", {
           );
         }
 
-        // Met à jour allTasks si elle existe
         if (this.allEntities?.data) {
           const index = this.allEntities.data.findIndex(
             (t) => t.id === task.id,
