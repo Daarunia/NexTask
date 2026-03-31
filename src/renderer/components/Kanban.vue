@@ -1,6 +1,6 @@
 <template>
-  <div class="flex justify-center h-4/5 pt-8 overflow-x-auto ml-4 pb-4" ref="scrollContainer">
-    <draggable v-model="stagesLocal" itemKey="id" class="flex gap-4 pl-16" handle=".stage-handle" @end="onStagesDrop">
+  <div class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1" ref="scrollContainer">
+    <draggable v-model="stagesLocal" itemKey="id" class="flex gap-4" handle=".stage-handle" @end="onStagesDrop">
       <template #item="{ element: stage }">
         <div class="stages-container">
           <div class="flex items-center justify-between mb-3">
