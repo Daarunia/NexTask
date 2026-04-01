@@ -1,8 +1,12 @@
 import { app, BrowserWindow, ipcMain, session } from "electron";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { startServer } from "./server/index.js";
 import log, { LevelOption } from "electron-log";
 import { setupDatabase } from "./setupDatabase.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Initialisation du logger
 let logOption = (process.env.VITE_LOG_LEVEL as LevelOption) || "error";
@@ -28,6 +32,7 @@ function createWindow() {
   if (process.env.NODE_ENV === "development") {
     const rendererPort = process.argv[2];
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(join(app.getAppPath(), "renderer", "index.html"));
   }
