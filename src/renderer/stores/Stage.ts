@@ -181,12 +181,15 @@ export const useStageStore = defineStore("stage", {
         const updatedStage = await api.patch<Stage>(`/stages/${id}`, { name });
 
         // Met à jour le cache local
-        console.log(this.allEntities)
+        console.log(this.allEntities);
         const existingStage = this.getStageById(id);
         if (existingStage) {
           this.setStageCache(id, updatedStage);
         } else {
-          getLogger().warn("Aucune colonne trouvée dans le cache pour l'ID", id);
+          getLogger().warn(
+            "Aucune colonne trouvée dans le cache pour l'ID",
+            id,
+          );
         }
 
         if (this.allEntities?.data) {
@@ -195,15 +198,23 @@ export const useStageStore = defineStore("stage", {
             Object.assign(stageToUpdate, updatedStage);
             this.allEntities.timestamp = Date.now();
           } else {
-            getLogger().warn("Colonne non trouvée dans allEntities pour l'ID", id);
+            getLogger().warn(
+              "Colonne non trouvée dans allEntities pour l'ID",
+              id,
+            );
           }
         }
 
         return updatedStage;
       } catch (error) {
-        getLogger().error("Erreur lors de la mise à jour du nom de la colonne :", error);
-        throw new Error(`Erreur de mise à jour pour la colonne ${id}: ${error}`);
+        getLogger().error(
+          "Erreur lors de la mise à jour du nom de la colonne :",
+          error,
+        );
+        throw new Error(
+          `Erreur de mise à jour pour la colonne ${id}: ${error}`,
+        );
       }
-    }
+    },
   },
 });

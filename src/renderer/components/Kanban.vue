@@ -94,7 +94,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from "vue";
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  reactive,
+  watch,
+} from "vue";
 import draggable from "vuedraggable";
 import StageTaskList from "./StageTaskList.vue";
 import TaskDialog from "./TaskDialog.vue";
@@ -103,6 +110,7 @@ import { useStageStore } from "../stores/Stage";
 import { Task } from "../types/task.types";
 import { Stage } from "../types/stage.types";
 import { getLogger } from "../utils/logger";
+import { setAll } from "../utils/map.helper";
 
 const props = defineProps<{
   stages: Stage[];
@@ -119,7 +127,7 @@ const showDialog = ref(false);
 const positionDialog = ref(0);
 const editTask = ref<Task | null>(null);
 const creationMode = ref(true);
-const taskLists = reactive(ref<Map<number, Task[]>>(new Map()));
+const taskLists = reactive(new Map<number, Task[]>());
 const stageDialog = ref<number | null>(null);
 const selectedStage = ref<Stage | null>(null);
 const stagesLocal = ref<Stage[]>([]);
@@ -146,7 +154,7 @@ function buildTaskLists() {
     );
   }
 
-  taskLists.value = map;
+  setAll(taskLists, map);
 }
 
 function buildStages() {
@@ -166,7 +174,7 @@ function openCreateTaskDialog(stageId: number) {
   logger.debug("Ouverture création", { stageId });
 
   stageDialog.value = stageId;
-  positionDialog.value = taskLists.value.get(stageId)?.length ?? 0;
+  positionDialog.value = taskLists.get(stageId)?.length ?? 0;
   editTask.value = null;
   creationMode.value = true;
   showDialog.value = true;
@@ -194,7 +202,7 @@ async function onTasksDrop() {
 
   for (const stage of stagesLocal.value) {
     const originalTasks = props.tasks.filter((t) => t.stageId === stage.id);
-    const currentTasks = taskLists.value.get(stage.id) ?? [];
+    const currentTasks = taskLists.get(stage.id) ?? [];
 
     currentTasks.forEach((task, index) => {
       if (
@@ -238,13 +246,15 @@ async function onStagesDrop() {
 function archiveTask(task: Task) {
   taskStore.archiveTask(task.id);
 
-  const list = taskLists.value.get(task.stageId) ?? [];
+  const list = taskLists.get(task.stageId);
+  if (list) {
+    taskLists.set(
+      task.stageId,
+      list.filter((t) => t.id !== task.id),
+    );
+  }
 
-  taskLists.value.set(
-    task.stageId,
-    list.filter((t) => t.id !== task.id),
-  );
-
+  buildTaskLists();
   logger.debug("Tâche archivée", task);
 }
 
@@ -252,7 +262,7 @@ function archiveTask(task: Task) {
  * Save depuis dialog
  */
 function onTaskSaved(task: Task) {
-  const list = taskLists.value.get(task.stageId) ?? [];
+  const list = taskLists.get(task.stageId) ?? [];
 
   if (creationMode.value) {
     list.push(task);
@@ -262,7 +272,7 @@ function onTaskSaved(task: Task) {
   }
 
   list.sort((a, b) => a.position - b.position);
-  taskLists.value.set(task.stageId, [...list]);
+  taskLists.set(task.stageId, [...list]);
 }
 
 /**
@@ -276,7 +286,7 @@ async function createStage() {
     stagesLocal.value.length,
   );
   stagesLocal.value.push(newStage);
-
+  taskLists.set(newStage.id, []);
   newStageName.value = "";
   isAddingStage.value = false;
 }
@@ -304,9 +314,9 @@ async function deleteStage() {
 
     stagesLocal.value = stagesLocal.value.filter((s) => s.id !== stageId);
 
-    const newTaskLists = new Map(taskLists.value);
+    const newTaskLists = new Map(taskLists);
     newTaskLists.delete(stageId);
-    taskLists.value = newTaskLists;
+    setAll(taskLists, newTaskLists);
 
     logger.debug("Colonne supprimée : ", stageId);
   } catch (error) {
