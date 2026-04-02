@@ -64,8 +64,9 @@
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.14.0",
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.0",
     "electron-log": "^5.4.3",
+    "electron-store": "^11.0.2",
     "fastify": "^5.8.4",
     "picocolors": "^1.1.1",
     "pinia": "^3.0.4",
@@ -82,6 +83,7 @@
     "*.{js,ts,vue,json,md,css}": "prettier --write ."
   },
   "overrides": {
-    "@xmldom/xmldom": ">=0.8.12"
+    "@xmldom/xmldom": ">=0.8.12",
+    "lodash": ">=4.18.0"
   }
 }

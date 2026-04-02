@@ -17,7 +17,7 @@ export function setupDatabase() {
 
   if (isDev) {
     // En dev, on ne touche pas à la DB
-    console.log(
+    globalThis.mainLogger.info(
       "Mode dev : pas de migration automatique, utilisez `prisma migrate dev`",
     );
     return;
@@ -26,7 +26,7 @@ export function setupDatabase() {
   // Vérifier si la DB existe
   if (!fs.existsSync(dbPath)) {
     fs.closeSync(fs.openSync(dbPath, "w")); // crée un fichier vide
-    console.log("Premier lancement, DB créée :", dbPath);
+    globalThis.mainLogger.info("Premier lancement, DB créée :", dbPath);
   }
 
   const db = new Database(dbPath);
@@ -60,7 +60,7 @@ export function setupDatabase() {
       db.prepare(
         "INSERT INTO _prisma_migrations(migration_name) VALUES(?)",
       ).run(folder);
-      console.log(`Migration ${folder} appliquée`);
+      globalThis.mainLogger.info(`Migration ${folder} appliquée`);
     }
   }
 

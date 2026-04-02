@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { startServer } from "./server/index.js";
 import log, { LevelOption } from "electron-log";
 import { setupDatabase } from "./setupDatabase.js";
+import { settingsStore } from "./stores/settings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,4 +81,16 @@ app.on("window-all-closed", () => {
 
 ipcMain.on("message", (event, message) => {
   log.debug(message);
+});
+
+// expose settings store
+ipcMain.handle("settings:get", (_, key) => {
+  let value = settingsStore.get(key);
+  log.debug(`Get parameter: ${key} = ${value}`);
+  return value;
+});
+
+ipcMain.handle("settings:set", (_, key, value) => {
+  log.debug(`Set parameter: ${key} = ${value}`);
+  settingsStore.set(key, value);
 });

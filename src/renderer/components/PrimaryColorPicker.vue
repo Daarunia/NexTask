@@ -5,7 +5,7 @@
         v-for="color in primaryColors"
         :key="color.name"
         type="button"
-        @click="updateColors(color)"
+        @click="applyColor(color)"
         :class="[
           'w-8 h-8 m-0.5 rounded-sm border-2 cursor-pointer',
           selectedColor === color.name ? 'border-black' : 'border-transparent',
@@ -20,24 +20,18 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { PRIMARY_COLORS } from "../constants/palette.constants";
+import { useSettingsStore } from "../stores/Settings";
+import { applyPrimaryColor } from "../utils/settings.helper";
 
-// Palette primevue
+const settings = useSettingsStore();
+const selectedColor = ref(settings.primaryColor || "emerald");
 const primaryColors = ref(PRIMARY_COLORS);
 
-// couleur sélectionnée
-const selectedColor = ref("emerald");
-
-// fonction de mise à jour de couleur
-const updateColors = (color: {
+const applyColor = (color: {
   name: string;
   palette: Record<string, string>;
 }) => {
+  applyPrimaryColor(color);
   selectedColor.value = color.name;
-  Object.keys(color.palette).forEach((key) => {
-    document.documentElement.style.setProperty(
-      `--p-primary-${key}`,
-      color.palette![key],
-    );
-  });
 };
 </script>

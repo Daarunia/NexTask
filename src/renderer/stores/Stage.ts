@@ -181,7 +181,6 @@ export const useStageStore = defineStore("stage", {
         const updatedStage = await api.patch<Stage>(`/stages/${id}`, { name });
 
         // Met à jour le cache local
-        console.log(this.allEntities);
         const existingStage = this.getStageById(id);
         if (existingStage) {
           this.setStageCache(id, updatedStage);
