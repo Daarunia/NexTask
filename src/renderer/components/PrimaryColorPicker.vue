@@ -1,18 +1,10 @@
 <template>
   <div class="border border-gray-300 inline-block rounded-md p-2">
-    <div class="flex flex-wrap">
-      <button
-        v-for="color in primaryColors"
-        :key="color.name"
-        type="button"
-        @click="applyColor(color)"
-        :class="[
-          'w-8 h-8 m-0.5 rounded-sm border-2 cursor-pointer',
-          selectedColor === color.name ? 'border-black' : 'border-transparent',
-        ]"
-        :style="{ backgroundColor: color.palette?.[500] || '#000' }"
-        :title="color.name"
-      ></button>
+    <div class="grid grid-cols-8 gap-1">
+      <button v-for="color in primaryColors" :key="color.name" type="button" @click="applyColor(color)" :class="[
+        'w-8 h-8 rounded-sm border-2 cursor-pointer',
+        selectedColor === color.name ? 'border-black' : 'border-transparent',
+      ]" :style="{ backgroundColor: color.palette?.[500] || '#000' }" :title="color.name"></button>
     </div>
   </div>
 </template>

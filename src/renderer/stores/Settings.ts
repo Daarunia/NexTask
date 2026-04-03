@@ -8,18 +8,18 @@ export const useSettingsStore = defineStore("settings", {
 
   actions: {
     async load() {
-      this.theme = await window.settings.get("theme");
-      this.primaryColor = await window.settings.get("primaryColor");
+      this.theme = await globalThis.settings.get("theme");
+      this.primaryColor = await globalThis.settings.get("primaryColor");
     },
 
     async setTheme(value: "light" | "dark") {
       this.theme = value;
-      await window.settings.set("theme", value);
+      await globalThis.settings.set("theme", value);
     },
 
     async setPrimaryColor(value: string) {
       this.primaryColor = value;
-      await window.settings.set("primaryColor", value);
+      await globalThis.settings.set("primaryColor", value);
     },
   },
 });

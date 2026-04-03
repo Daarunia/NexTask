@@ -100,7 +100,6 @@ import {
   onBeforeUnmount,
   nextTick,
   reactive,
-  watch,
 } from "vue";
 import draggable from "vuedraggable";
 import StageTaskList from "./StageTaskList.vue";
@@ -138,7 +137,7 @@ const editingStageId = ref<number | null>(null); // stage en cours d'édition
 const editedStageName = ref(""); // nom temporaire pour l'édition
 
 const stageMenuItems = [
-  { label: "Supprimer", icon: "pi pi-trash", command: () => deleteStage() },
+  { label: "Supprimer", icon: "pi pi-trash", command: () => deleteStage(), class: "text-primary" },
 ];
 
 function buildTaskLists() {
