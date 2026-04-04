@@ -45,6 +45,10 @@
     {
       "from": "src/main/prisma/migrations",
       "to": "prisma/migrations"
+    },
+    {
+      "from": "src/main/prisma/seeds",
+      "to": "prisma/seeds"
     }
   ]
 }

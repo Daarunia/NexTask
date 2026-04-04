@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { startServer } from "./server/index.js";
 import log, { LevelOption } from "electron-log";
 import { setupDatabase } from "./setupDatabase.js";
+import { applySeeds } from "./seedDatabase.js";
 import { settingsStore } from "./stores/settings.js";
+import { IS_DEV } from "./constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,7 +32,7 @@ function createWindow() {
 
   mainWindow.maximize(); // Plein écran fenêtré
 
-  if (process.env.NODE_ENV === "development") {
+  if (IS_DEV) {
     const rendererPort = process.argv[2];
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
     mainWindow.webContents.openDevTools();
@@ -52,7 +54,11 @@ app.whenReady().then(async () => {
   });
 
   try {
+    // Migrations
     setupDatabase();
+
+    // Seeds
+    applySeeds();
   } catch (err) {
     log.error("Erreur du lancement des migrations :", err);
   }

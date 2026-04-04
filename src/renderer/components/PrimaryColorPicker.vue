@@ -1,10 +1,18 @@
 <template>
-  <div class="border border-gray-300 inline-block rounded-md p-2">
+  <div class="color-picker border border-gray-300 inline-block rounded-md p-2">
     <div class="grid grid-cols-8 gap-1">
-      <button v-for="color in primaryColors" :key="color.name" type="button" @click="applyColor(color)" :class="[
-        'w-8 h-8 rounded-sm border-2 cursor-pointer',
-        selectedColor === color.name ? 'border-black' : 'border-transparent',
-      ]" :style="{ backgroundColor: color.palette?.[500] || '#000' }" :title="color.name"></button>
+      <button
+        v-for="color in primaryColors"
+        :key="color.name"
+        type="button"
+        @click="applyColor(color)"
+        :class="[
+          'w-8 h-8 rounded-sm border-2 cursor-pointer',
+          selectedColor === color.name ? 'border-black' : 'border-transparent',
+        ]"
+        :style="{ backgroundColor: color.palette?.[500] || '#000' }"
+        :title="color.name"
+      ></button>
     </div>
   </div>
 </template>
@@ -27,3 +35,15 @@ const applyColor = (color: {
   selectedColor.value = color.name;
 };
 </script>
+
+<style scoped>
+@reference "tailwindcss";
+
+.color-picker {
+  background-color: var(--p-surface-200);
+}
+
+.app-dark .color-picker {
+  background-color: var(--p-surface-900);
+}
+</style>
