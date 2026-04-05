@@ -28,8 +28,7 @@ export function applySeeds() {
 
   // Lire les fichiers SQL dans le dossier seeds
   const seedFiles = fs.existsSync(SEEDS_PATH)
-    ? fs
-        .readdirSync(SEEDS_PATH)
+    ? fs.readdirSync(SEEDS_PATH)
         .filter((f) => f.endsWith(".sql"))
         .sort()
     : [];

@@ -5,6 +5,7 @@ import "./style.css";
 import { createLogger } from "vue-logger-plugin";
 import PrimeVue from "primevue/config";
 import Aura from "@primeuix/themes/aura";
+import router from './router'
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -17,6 +18,7 @@ const logger = createLogger({
 
 app.use(pinia);
 app.use(logger);
+app.use(router)
 app.use(PrimeVue, {
   theme: { preset: Aura, options: { darkModeSelector: ".app-dark" } },
 });

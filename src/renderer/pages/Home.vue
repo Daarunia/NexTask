@@ -24,7 +24,7 @@ const loading = ref(true);
 onMounted(async () => {
   loading.value = true;
 
-  await stageStore.loadAllStages(); // Chargement
+  await stageStore.loadAllStages();
 
   stages.value = stageStore.getAllStages;
   tasks.value = taskStore.getAllTasks;
