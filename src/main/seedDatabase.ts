@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { DB_PATH, SEEDS_PATH } from "./constants.js";
+import Logger from "electron-log";
 
 /**
  * Applications des seeds
@@ -10,7 +11,7 @@ import { DB_PATH, SEEDS_PATH } from "./constants.js";
  */
 export function applySeeds() {
   const db = new Database(DB_PATH);
-  console.log(SEEDS_PATH);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS _seeds (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,20 +29,21 @@ export function applySeeds() {
 
   // Lire les fichiers SQL dans le dossier seeds
   const seedFiles = fs.existsSync(SEEDS_PATH)
-    ? fs.readdirSync(SEEDS_PATH)
+    ? fs
+        .readdirSync(SEEDS_PATH)
         .filter((f) => f.endsWith(".sql"))
         .sort()
     : [];
 
   for (const file of seedFiles) {
     if (appliedSeeds.has(file)) {
-      console.info(`Seed ${file} déjà appliquée`);
+      Logger.info(`Seed ${file} déjà appliquée`);
       continue;
     }
 
     const sqlPath = path.join(SEEDS_PATH, file);
     if (!fs.existsSync(sqlPath)) {
-      console.warn(`Fichier seed introuvable: ${file}`);
+      Logger.warn(`Fichier seed introuvable: ${file}`);
       continue;
     }
 
@@ -49,9 +51,9 @@ export function applySeeds() {
     try {
       db.exec(sql);
       db.prepare("INSERT INTO _seeds(name, executed) VALUES(?, 1)").run(file);
-      console.info(`Seed ${file} appliquée`);
+      Logger.info(`Seed ${file} appliquée`);
     } catch (err) {
-      console.error(`Erreur lors de la seed ${file}:`, err);
+      Logger.error(`Erreur lors de la seed ${file}:`, err);
       process.exit(1);
     }
   }

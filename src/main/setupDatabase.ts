@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { DB_PATH, IS_DEV, MIGRATIONS_PATH } from "./constants.js";
+import Logger from "electron-log";
 
 /**
  * Éxécution des scripts de migrations
@@ -9,7 +10,7 @@ import { DB_PATH, IS_DEV, MIGRATIONS_PATH } from "./constants.js";
 export function setupDatabase() {
   if (IS_DEV) {
     // En dev, on ne touche pas à la DB
-    globalThis.mainLogger.info(
+    Logger.info(
       "Mode dev : pas de migration automatique, utilisez `prisma migrate dev`",
     );
     return;
@@ -18,7 +19,7 @@ export function setupDatabase() {
   // Vérifier si la DB existe
   if (!fs.existsSync(DB_PATH)) {
     fs.closeSync(fs.openSync(DB_PATH, "w"));
-    globalThis.mainLogger.info("Premier lancement, DB créée :", DB_PATH);
+    Logger.info("Premier lancement, DB créée :", DB_PATH);
   }
 
   const db = new Database(DB_PATH);
@@ -49,7 +50,7 @@ export function setupDatabase() {
       db.prepare(
         "INSERT INTO _prisma_migrations(migration_name) VALUES(?)",
       ).run(folder);
-      globalThis.mainLogger.info(`Migration ${folder} appliquée`);
+      Logger.info(`Migration ${folder} appliquée`);
     }
   }
 

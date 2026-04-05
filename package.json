@@ -26,7 +26,8 @@
     "build:linux": "node scripts/build.js && electron-builder --linux",
     "rebuild": "electron-rebuild",
     "sonar": "sonar-scanner",
-    "test": "playwright test"
+    "test": "playwright test",
+    "prepare": "husky"
   },
   "repository": "https://github.com/Daarunia/NexTask",
   "author": {

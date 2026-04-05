@@ -1,6 +1,7 @@
 import { prisma } from "../prismaClient.js";
 import type { Task as PrismaTask } from "../../prisma/generated/prisma/client.js";
 import { taskSchema } from "../schemas/taskSchema.js";
+import Logger from "electron-log";
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -265,7 +266,7 @@ export default async function taskRoutes(fastify) {
 
         return { message: `Tâche ${updatedTask.id} marquée comme historisée` };
       } catch (error) {
-        console.error("Erreur lors de l'historisation de la tâche:", error);
+        Logger.error("Erreur lors de l'historisation de la tâche:", error);
         reply.code(500);
         return {
           error: "Une erreur est survenue lors de l'historisation de la tâche",
@@ -352,7 +353,7 @@ export default async function taskRoutes(fastify) {
 
         return updatedTasks;
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         return reply
           .status(500)
           .send({ error: "Impossible de mettre à jour les tâches" });

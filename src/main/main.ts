@@ -2,20 +2,14 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startServer } from "./server/index.js";
-import log, { LevelOption } from "electron-log";
 import { setupDatabase } from "./setupDatabase.js";
 import { applySeeds } from "./seedDatabase.js";
 import { settingsStore } from "./stores/settings.js";
 import { IS_DEV } from "./constants.js";
+import Logger from "electron-log";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Initialisation du logger
-let logOption = (process.env.VITE_LOG_LEVEL as LevelOption) || "error";
-log.transports.console.level = logOption;
-log.transports.file.level = logOption;
-globalThis.mainLogger = log;
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -60,13 +54,13 @@ app.whenReady().then(async () => {
     // Seeds
     applySeeds();
   } catch (err) {
-    log.error("Erreur du lancement des migrations :", err);
+    Logger.error("Erreur du lancement des migrations :", err);
   }
 
   try {
     await startServer();
   } catch (err) {
-    log.error("Erreur au démarrage du serveur Fastify :", err);
+    Logger.error("Erreur au démarrage du serveur Fastify :", err);
   }
 
   app.on("activate", async () => {
@@ -75,7 +69,7 @@ app.whenReady().then(async () => {
       try {
         await startServer();
       } catch (err) {
-        log.error("Erreur au redémarrage du serveur Fastify :", err);
+        Logger.error("Erreur au redémarrage du serveur Fastify :", err);
       }
     }
   });
@@ -86,17 +80,17 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.on("message", (event, message) => {
-  log.debug(message);
+  Logger.debug(message);
 });
 
 // expose settings store
 ipcMain.handle("settings:get", (_, key) => {
   let value = settingsStore.get(key);
-  log.debug(`Get parameter: ${key} = ${value}`);
+  Logger.debug(`Get parameter: ${key} = ${value}`);
   return value;
 });
 
 ipcMain.handle("settings:set", (_, key, value) => {
-  log.debug(`Set parameter: ${key} = ${value}`);
+  Logger.debug(`Set parameter: ${key} = ${value}`);
   settingsStore.set(key, value);
 });
