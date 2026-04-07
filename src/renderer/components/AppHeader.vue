@@ -15,7 +15,11 @@
       <Button icon="pi pi-palette" text rounded @click.stop="togglePalette" />
 
       <!-- Panneau Palette -->
-      <div v-if="showPalette" class="absolute top-12 right-4 z-50">
+      <div
+        v-if="showPalette"
+        ref="paletteWrapper"
+        class="absolute top-12 right-4 z-50"
+      >
         <PrimaryColorPicker />
       </div>
 
