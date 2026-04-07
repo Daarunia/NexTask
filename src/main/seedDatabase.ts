@@ -32,7 +32,7 @@ export function applySeeds() {
     ? fs
         .readdirSync(SEEDS_PATH)
         .filter((f) => f.endsWith(".sql"))
-        .sort()
+        .sort((a, b) => a.localeCompare(b))
     : [];
 
   for (const file of seedFiles) {

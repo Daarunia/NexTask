@@ -7,5 +7,5 @@ export default defineConfig({
   schema: "src/main/prisma/schema.prisma",
   datasource: {
     url: `file:${defaultDbPath}`,
-  }
+  },
 });

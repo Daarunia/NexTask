@@ -1,5 +1,3 @@
 <template>
-  <div class="h-full">
-        Settings view
-  </div>
+  <div class="h-full">Settings view</div>
 </template>

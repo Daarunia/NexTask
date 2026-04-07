@@ -19,8 +19,14 @@
         <PrimaryColorPicker />
       </div>
 
-      <Button icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded/>
-      <Button icon="pi pi-cog" @click="goSettings" v-if="!isSettings" text rounded/>
+      <Button icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
+      <Button
+        icon="pi pi-cog"
+        @click="goSettings"
+        v-if="!isSettings"
+        text
+        rounded
+      />
     </div>
   </header>
 </template>
@@ -40,7 +46,7 @@ const isDark = ref(false);
 const showPalette = ref(false);
 const paletteWrapper = ref<HTMLElement | null>(null);
 const router = useRouter();
-const route = useRoute()
+const route = useRoute();
 
 onMounted(async () => {
   await settings.load(); // Chargement des paramètres
@@ -91,6 +97,6 @@ function handleClickOutside(event: MouseEvent) {
 // Affichage des views
 const goHome = () => router.push({ name: "Home" });
 const goSettings = () => router.push({ name: "Settings" });
-const isHome = computed(() => route.name === 'Home')
-const isSettings = computed(() => route.name === 'Settings')
+const isHome = computed(() => route.name === "Home");
+const isSettings = computed(() => route.name === "Settings");
 </script>
