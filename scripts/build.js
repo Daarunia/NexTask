@@ -33,6 +33,10 @@ try {
   const mainPath = path.join(__dirname, "..", "src", "main");
   await compile(mainPath);
 
+  // Compiler le preload
+  const preloadPath = path.join(__dirname, "..", "src", "main", "preload");
+  await compile(preloadPath);
+
   // Compiler le renderer
   await buildRenderer();
 

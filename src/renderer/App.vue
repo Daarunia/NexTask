@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Home from "./pages/Home.vue";
 import AppHeader from "./components/AppHeader.vue";
 </script>
 
@@ -8,7 +7,7 @@ import AppHeader from "./components/AppHeader.vue";
     <AppHeader />
 
     <main class="h-full">
-      <Home />
+      <router-view />
     </main>
   </div>
 </template>

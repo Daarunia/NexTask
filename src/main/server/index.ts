@@ -4,6 +4,7 @@ import stageRoutes from "./routes/stage.routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 import fastifyCors from "@fastify/cors";
+import Logger from "electron-log";
 
 export async function startServer() {
   const fastify = Fastify({ logger: true });
@@ -42,8 +43,8 @@ export async function startServer() {
 
   try {
     await fastify.listen({ port: 3000 });
-    globalThis.mainLogger.info("Fastify API -> http://localhost:3000");
-    globalThis.mainLogger.info("Swagger UI -> http://localhost:3000/docs");
+    Logger.info("Fastify API -> http://localhost:3000");
+    Logger.info("Swagger UI -> http://localhost:3000/docs");
   } catch (err) {
     fastify.log.error(err);
     throw err;

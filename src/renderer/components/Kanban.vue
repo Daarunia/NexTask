@@ -94,14 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  onMounted,
-  onBeforeUnmount,
-  nextTick,
-  reactive,
-  watch,
-} from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from "vue";
 import draggable from "vuedraggable";
 import StageTaskList from "./StageTaskList.vue";
 import TaskDialog from "./TaskDialog.vue";
@@ -138,7 +131,12 @@ const editingStageId = ref<number | null>(null); // stage en cours d'édition
 const editedStageName = ref(""); // nom temporaire pour l'édition
 
 const stageMenuItems = [
-  { label: "Supprimer", icon: "pi pi-trash", command: () => deleteStage() },
+  {
+    label: "Supprimer",
+    icon: "pi pi-trash",
+    command: () => deleteStage(),
+    class: "text-primary",
+  },
 ];
 
 function buildTaskLists() {

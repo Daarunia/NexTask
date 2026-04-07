@@ -8,7 +8,4 @@ export default defineConfig({
   datasource: {
     url: `file:${defaultDbPath}`,
   },
-  generator: {
-    provider: "prisma-client",
-  },
 });

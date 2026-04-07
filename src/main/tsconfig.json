@@ -12,5 +12,5 @@
     "types": ["node", "electron"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["../../build/main"]
+  "exclude": ["../../build/main", "preload/**/*.ts"]
 }

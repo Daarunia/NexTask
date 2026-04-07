@@ -1,3 +1,4 @@
+import Logger from "electron-log";
 import { prisma } from "../prismaClient.js";
 import { stageSchema } from "../schemas/stageShema.js";
 
@@ -273,7 +274,7 @@ export default async function stagesRoutes(fastify) {
 
         return updatedStages;
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         return reply
           .status(500)
           .send({ error: "Impossible de mettre à jour les stages" });

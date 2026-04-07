@@ -34,3 +34,13 @@ model Stage {
   position Int
   tasks    Task[]
 }
+
+// Seed
+model Seed {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  executed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("_seeds")
+}

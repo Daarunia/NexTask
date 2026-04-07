@@ -2,7 +2,7 @@ process.env.NODE_ENV = "development";
 
 import dotenv from "dotenv";
 import { createServer } from "vite";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import path from "node:path";
 import pc from "picocolors";
 import chokidar from "chokidar";
@@ -33,6 +33,11 @@ async function startElectron() {
   if (electronProcess) {
     return; // single instance lock
   }
+
+  // Build
+  execSync(`node ${path.join(__dirname, "build.js")}`, {
+    stdio: "inherit",
+  });
 
   try {
     await compile(path.join(__dirname, "..", "src", "main"));

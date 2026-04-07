@@ -1,35 +1,28 @@
 import fs from "node:fs";
 import path from "node:path";
-import { app } from "electron";
 import Database from "better-sqlite3";
+import { DB_PATH, IS_DEV, MIGRATIONS_PATH } from "./constants.js";
+import Logger from "electron-log";
 
-// chemin vers la DB
-const isDev = process.env.NODE_ENV === "development";
-const dbPath = isDev
-  ? path.join(process.cwd(), "dev.db")
-  : path.join(app.getPath("userData"), "app.db");
-
-// chemin vers tes migrations SQL
-const migrationsPath = path.join(process.resourcesPath, "prisma", "migrations");
-
+/**
+ * Éxécution des scripts de migrations
+ */
 export function setupDatabase() {
-  const isDev = process.env.NODE_ENV === "development";
-
-  if (isDev) {
+  if (IS_DEV) {
     // En dev, on ne touche pas à la DB
-    console.log(
+    Logger.info(
       "Mode dev : pas de migration automatique, utilisez `prisma migrate dev`",
     );
     return;
   }
 
   // Vérifier si la DB existe
-  if (!fs.existsSync(dbPath)) {
-    fs.closeSync(fs.openSync(dbPath, "w")); // crée un fichier vide
-    console.log("Premier lancement, DB créée :", dbPath);
+  if (!fs.existsSync(DB_PATH)) {
+    fs.closeSync(fs.openSync(DB_PATH, "w"));
+    Logger.info("Premier lancement, DB créée :", DB_PATH);
   }
 
-  const db = new Database(dbPath);
+  const db = new Database(DB_PATH);
 
   // Créer la table _prisma_migrations si elle n'existe pas
   db.exec(`
@@ -39,28 +32,25 @@ export function setupDatabase() {
     );
   `);
 
-  // Appliquer les nouvelles migrations
   const appliedRows = db
     .prepare("SELECT migration_name FROM _prisma_migrations")
     .all();
 
   const applied = new Set(appliedRows.map((row: any) => row.migration_name));
-
-  // Appliquer les nouvelles migrations
-  const folders = fs.readdirSync(migrationsPath);
+  const folders = fs.readdirSync(MIGRATIONS_PATH);
 
   // Appliquer les nouvelles migrations
   for (const folder of folders) {
-    if (applied.has(folder)) continue; // déjà appliquée
+    if (applied.has(folder)) continue;
 
-    const sqlPath = path.join(migrationsPath, folder, "migration.sql");
+    const sqlPath = path.join(MIGRATIONS_PATH, folder, "migration.sql");
     if (fs.existsSync(sqlPath)) {
       const sql = fs.readFileSync(sqlPath, "utf8");
-      db.exec(sql); // exécute le SQL
+      db.exec(sql);
       db.prepare(
         "INSERT INTO _prisma_migrations(migration_name) VALUES(?)",
       ).run(folder);
-      console.log(`Migration ${folder} appliquée`);
+      Logger.info(`Migration ${folder} appliquée`);
     }
   }
 

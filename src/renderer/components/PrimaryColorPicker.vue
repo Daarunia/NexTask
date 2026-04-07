@@ -1,13 +1,13 @@
 <template>
-  <div class="border border-gray-300 inline-block rounded-md p-2">
-    <div class="flex flex-wrap">
+  <div class="color-picker border border-gray-300 inline-block rounded-md p-2">
+    <div class="grid grid-cols-8 gap-1">
       <button
         v-for="color in primaryColors"
         :key="color.name"
         type="button"
-        @click="updateColors(color)"
+        @click="applyColor(color)"
         :class="[
-          'w-8 h-8 m-0.5 rounded-sm border-2 cursor-pointer',
+          'w-8 h-8 rounded-sm border-2 cursor-pointer',
           selectedColor === color.name ? 'border-black' : 'border-transparent',
         ]"
         :style="{ backgroundColor: color.palette?.[500] || '#000' }"
@@ -20,24 +20,30 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { PRIMARY_COLORS } from "../constants/palette.constants";
+import { useSettingsStore } from "../stores/Settings";
+import { applyPrimaryColor } from "../utils/settings.helper";
 
-// Palette primevue
+const settings = useSettingsStore();
+const selectedColor = ref(settings.primaryColor || "emerald");
 const primaryColors = ref(PRIMARY_COLORS);
 
-// couleur sélectionnée
-const selectedColor = ref("emerald");
-
-// fonction de mise à jour de couleur
-const updateColors = (color: {
+const applyColor = (color: {
   name: string;
   palette: Record<string, string>;
 }) => {
+  applyPrimaryColor(color);
   selectedColor.value = color.name;
-  Object.keys(color.palette).forEach((key) => {
-    document.documentElement.style.setProperty(
-      `--p-primary-${key}`,
-      color.palette![key],
-    );
-  });
 };
 </script>
+
+<style scoped>
+@reference "tailwindcss";
+
+.color-picker {
+  background-color: var(--p-surface-200);
+}
+
+.app-dark .color-picker {
+  background-color: var(--p-surface-900);
+}
+</style>
