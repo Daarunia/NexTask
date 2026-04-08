@@ -35,7 +35,7 @@ async function startElectron() {
   }
 
   // Build
-  execSync(`node ${path.join(__dirname, "build.js")}`, {
+  xecSync("node", [path.join(__dirname, "build.js")], {
     stdio: "inherit",
   });
 
