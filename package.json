@@ -43,7 +43,7 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "autoprefixer": "^10.4.27",
     "chokidar": "^5.0.0",
-    "electron": "^41.1.1",
+    "electron": "^41.2.0",
     "electron-builder": "^26.8.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
@@ -83,5 +83,9 @@
   },
   "lint-staged": {
     "*.{js,ts,vue,json,md,css}": "prettier --write ."
+  },
+  "overrides": {
+    "@hono/node-server": ">=1.19.13",
+    "hono": ">=4.12.12"
   }
 }
