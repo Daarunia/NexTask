@@ -15,6 +15,7 @@
         ]"
         :style="{ backgroundColor: color.palette?.[500] || '#000' }"
         :title="color.name"
+        :data-testcolor="color.palette?.[500]"
       ></button>
     </div>
   </div>

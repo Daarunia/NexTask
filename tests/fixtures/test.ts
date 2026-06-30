@@ -1,11 +1,7 @@
 import { test as base, expect, Page } from "@playwright/test";
 import { _electron as electron, ElectronApplication } from "playwright";
 import { Header } from "../components/Header";
-import {
-  compileMain,
-  electronArgs,
-  startRenderer,
-} from "../../scripts/server-utils.js";
+import { startRenderer, electronArgs } from "../../scripts/server-utils.js";
 
 type Fixtures = {
   electronApp: ElectronApplication;
@@ -13,26 +9,41 @@ type Fixtures = {
   header: Header;
 };
 
+type WorkerFixtures = {
+  vitePort: number;
+};
+
 /**
  * Base du lancement d'un test
  */
-export const test = base.extend<Fixtures>({
-  electronApp: async ({}, use) => {
-    await compileMain(); // Compilation du main
-    const vite = await startRenderer(); // Lancement du serveur vite / front
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  vitePort: [
+    async ({}, use) => {
+      const vite = await startRenderer();
 
-    // Lancement electron
-    const app = await electron.launch({
-      args: electronArgs(vite.config.server.port, ["--test"]),
-    });
+      try {
+        await use(vite.config.server.port);
+      } finally {
+        await vite.close();
+      }
+    },
+    { scope: "worker" },
+  ],
 
-    try {
-      await use(app);
-    } finally {
-      await app.close();
-      await vite.close();
-    }
-  },
+  electronApp: [
+    async ({ vitePort }, use) => {
+      const app = await electron.launch({
+        args: electronArgs(vitePort, ["--test"]),
+      });
+
+      try {
+        await use(app);
+      } finally {
+        await app.close();
+      }
+    },
+    { scope: "worker", auto: true } as any,
+  ],
 
   page: async ({ electronApp }, use) => {
     const page = await electronApp.firstWindow();

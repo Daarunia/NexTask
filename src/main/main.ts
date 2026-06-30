@@ -22,7 +22,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    show: IS_TEST ? false : true,
+    show: !IS_TEST,
   });
 
   if (IS_DEV) {
@@ -30,11 +30,11 @@ function createWindow() {
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
 
     // On ouvre la console que en dev, et pas en test playwright
-    if (!IS_TEST) {
+    if (IS_TEST) {
+      mainWindow.minimize();
+    } else {
       mainWindow.webContents.openDevTools();
       mainWindow.maximize(); // Plein écran fenêtré
-    } else {
-      mainWindow.minimize();
     }
   } else {
     mainWindow.loadFile(join(app.getAppPath(), "renderer", "index.html"));
