@@ -3,6 +3,7 @@ import { app } from "electron";
 
 // En dev ?
 export const IS_DEV = process.env.NODE_ENV === "development";
+export const IS_TEST = process.argv.includes("--test");
 
 // Chemin de base pour dev / prod
 export const CURRENT_PATH = IS_DEV ? process.cwd() : app.getPath("userData");

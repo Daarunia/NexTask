@@ -5,6 +5,7 @@
     <div class="flex items-center gap-2" ref="menuWrapper">
       <!-- Bouton Dark / Light -->
       <Button
+        data-testid="btn-theme"
         :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
         text
         rounded
@@ -12,7 +13,13 @@
       />
 
       <!-- Bouton Palette -->
-      <Button icon="pi pi-palette" text rounded @click.stop="togglePalette" />
+      <Button
+        data-testid="btn-palette"
+        icon="pi pi-palette"
+        text
+        rounded
+        @click.stop="togglePalette"
+      />
 
       <!-- Panneau Palette -->
       <div
@@ -23,8 +30,16 @@
         <PrimaryColorPicker />
       </div>
 
-      <Button icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
       <Button
+        data-testid="btn-home"
+        icon="pi pi-home"
+        @click="goHome"
+        v-if="!isHome"
+        text
+        rounded
+      />
+      <Button
+        data-testid="btn-settings"
         icon="pi pi-cog"
         @click="goSettings"
         v-if="!isSettings"
@@ -39,10 +54,10 @@
 import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import Button from "primevue/button";
 import PrimaryColorPicker from "./PrimaryColorPicker.vue";
-import { useSettingsStore } from "../stores/Settings";
-import { getLogger } from "../utils/logger";
-import { PRIMARY_COLORS } from "../constants/palette.constants";
-import { applyPrimaryColor } from "../utils/settings.helper";
+import { useSettingsStore } from "../stores/Settings.js";
+import { getLogger } from "../utils/logger.js";
+import { PRIMARY_COLORS } from "../constants/palette.constants.js";
+import { applyPrimaryColor } from "../utils/settings.helper.js";
 import { useRouter, useRoute } from "vue-router";
 
 const settings = useSettingsStore();

@@ -27,6 +27,7 @@
     "rebuild": "electron-rebuild",
     "sonar": "sonar-scanner",
     "test": "playwright test",
+    "test:ui": "playwright test --ui",
     "prepare": "husky"
   },
   "repository": "https://github.com/Daarunia/NexTask",

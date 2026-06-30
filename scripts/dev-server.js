@@ -1,7 +1,6 @@
 process.env.NODE_ENV = "development";
 
 import dotenv from "dotenv";
-import { createServer } from "vite";
 import { spawn, execSync } from "node:child_process";
 import path from "node:path";
 import pc from "picocolors";
@@ -11,36 +10,23 @@ import compile from "./private/tsc.js";
 import fs from "node:fs";
 import { EOL } from "node:os";
 import { fileURLToPath } from "node:url";
+import { startRenderer, compileMain, electronArgs } from "./server-utils.js";
 
 // jcp --ignore-checks le fichier doit être ignoré par le pre-commit
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let viteServer = null;
 let electronProcess = null;
 let electronProcessLocker = false;
 let rendererPort = 0;
-
-async function startRenderer() {
-  viteServer = await createServer({
-    configFile: path.join(__dirname, "..", "vite.config.mjs"),
-    mode: "development",
-  });
-  return viteServer.listen();
-}
 
 async function startElectron() {
   if (electronProcess) {
     return; // single instance lock
   }
 
-  // Build
-  execSync("node", [path.join(__dirname, "build.js")], {
-    stdio: "inherit",
-  });
-
   try {
-    await compile(path.join(__dirname, "..", "src", "main"));
+    await compileMain();
   } catch {
     console.log(
       pc.red(
@@ -51,12 +37,7 @@ async function startElectron() {
     return;
   }
 
-  const args = [
-    path.join(__dirname, "..", "build", "main", "main.js"),
-    rendererPort,
-  ];
-
-  electronProcess = spawn(electron, args);
+  electronProcess = spawn(electron, electronArgs(rendererPort));
   electronProcessLocker = false;
 
   electronProcess.stdout.on("data", (data) => {
@@ -71,6 +52,9 @@ async function startElectron() {
   electronProcess.on("exit", () => stop());
 }
 
+/**
+ * Redémarrage d'Electron
+ */
 function restartElectron() {
   if (electronProcess) {
     electronProcess.removeAllListeners("exit");
@@ -101,7 +85,7 @@ function copy(relativePath) {
 }
 
 function stop() {
-  viteServer.close();
+  devServer.close();
   process.exit();
 }
 

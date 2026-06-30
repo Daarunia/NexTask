@@ -25,6 +25,11 @@ const getStagedFiles = () => {
 
 // Function to check for TODO, FIXME, or console.log in a file
 const checkForKeywords = (filePath) => {
+  if (!fs.existsSync(filePath)) {
+    console.log(`Skipping missing file: ${filePath}`);
+    return false;
+  }
+
   const fileContent = fs.readFileSync(filePath, "utf-8");
 
   // Si le fichier contient "jcp --ignore-checks", on ignore la vérification

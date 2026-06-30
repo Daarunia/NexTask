@@ -1,5 +1,8 @@
 <template>
-  <div class="color-picker border border-gray-300 inline-block rounded-md p-2">
+  <div
+    data-testid="palette-panel"
+    class="color-picker border border-gray-300 inline-block rounded-md p-2"
+  >
     <div class="grid grid-cols-8 gap-1">
       <button
         v-for="color in primaryColors"
