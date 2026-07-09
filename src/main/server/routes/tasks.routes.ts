@@ -32,7 +32,7 @@ export default async function taskRoutes(fastify) {
         querystring: {
           type: "object",
           properties: {
-            historized: { type: "boolean" },
+            isHistorized: { type: "boolean" },
           },
         },
         response: {
@@ -48,7 +48,7 @@ export default async function taskRoutes(fastify) {
 
       return prisma.task.findMany({
         where: isHistorized === undefined ? undefined : { isHistorized },
-        orderBy: [{ id: "asc" }, { position: "asc" }],
+        orderBy: [{ stageId: "asc" }, { position: "asc" }],
       });
     },
   );
@@ -120,7 +120,7 @@ export default async function taskRoutes(fastify) {
             position: { type: "integer" },
             title: { type: "string" },
           },
-          required: ["stageId", "position", "title"],
+          required: ["stageId", "position", "title", "version", "description"],
         },
         response: { 200: taskSchema },
       },
@@ -156,11 +156,16 @@ export default async function taskRoutes(fastify) {
         body: {
           type: "object",
           properties: {
-            stage: { type: "string" },
+            title: { type: "string" },
             version: { type: "string" },
             description: { type: "string" },
             position: { type: "integer" },
-            status: { type: "string" },
+            stageId: { type: ["integer", "null"] },
+            isHistorized: { type: "boolean" },
+            historizationDate: {
+              type: ["string", "null"],
+              format: "date-time",
+            },
           },
         },
         response: {

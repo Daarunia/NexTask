@@ -38,7 +38,6 @@
               @click="(event) => toggleStageMenu(event, stage)"
               text
             />
-            <Menu ref="stageMenu" :model="stageMenuItems" popup />
           </div>
 
           <StageTaskList
@@ -82,6 +81,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Menu contextuel partagé (une seule instance, cible = selectedStage) -->
+  <Menu ref="stageMenu" :model="stageMenuItems" popup />
 
   <TaskDialog
     v-model="showDialog"
@@ -241,9 +243,12 @@ async function onStagesDrop() {
 /**
  * Archivage
  */
-function archiveTask(task: Task) {
-  taskStore.archiveTask(task.id);
+async function archiveTask(task: Task) {
+  await taskStore.archiveTask(task.id);
 
+  // On retire la carte de sa colonne locale (taskLists est la source de
+  // vérité après le montage — ne PAS reconstruire depuis props.tasks, qui est
+  // un instantané figé et réafficherait la tâche archivée).
   const list = taskLists.get(task.stageId);
   if (list) {
     taskLists.set(
@@ -252,7 +257,6 @@ function archiveTask(task: Task) {
     );
   }
 
-  buildTaskLists();
   logger.debug("Tâche archivée", task);
 }
 

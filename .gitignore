@@ -7,5 +7,6 @@ build
 generated
 components.d.ts
 *.db
+.claude
 .scannerwork
 test-results

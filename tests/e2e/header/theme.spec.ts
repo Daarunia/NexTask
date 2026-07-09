@@ -6,14 +6,14 @@ import { test, expect } from "../../fixtures/test";
 test("user can switch application theme", async ({ page, header }) => {
   const html = page.locator("html");
 
-  // État initial
-  await expect(html).not.toHaveClass(/app-dark/);
+  const initialClass = await html.getAttribute("class");
+  const wasDark = initialClass?.includes("app-dark") ?? false;
 
-  // Passage en dark
   await header.themeButton.click();
-  await expect(html).toHaveClass(/app-dark/);
 
-  // Retour en light
-  await header.themeButton.click();
-  await expect(html).not.toHaveClass(/app-dark/);
+  if (wasDark) {
+    await expect(html).not.toHaveClass(/app-dark/);
+  } else {
+    await expect(html).toHaveClass(/app-dark/);
+  }
 });

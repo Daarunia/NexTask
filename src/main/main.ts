@@ -28,13 +28,11 @@ function createWindow() {
   if (IS_DEV) {
     const rendererPort = process.argv[2];
     mainWindow.loadURL(`http://localhost:${rendererPort}`);
+    mainWindow.maximize(); // Plein écran fenêtré
 
     // On ouvre la console que en dev, et pas en test playwright
-    if (IS_TEST) {
-      mainWindow.minimize();
-    } else {
+    if (!IS_TEST) {
       mainWindow.webContents.openDevTools();
-      mainWindow.maximize(); // Plein écran fenêtré
     }
   } else {
     mainWindow.loadFile(join(app.getAppPath(), "renderer", "index.html"));
