@@ -1,12 +1,14 @@
 import { test as base, expect, Page } from "@playwright/test";
 import { _electron as electron, ElectronApplication } from "playwright";
 import { Header } from "../components/Header";
+import { TaskBoard } from "../components/TaskBoard";
 import { startRenderer, electronArgs } from "../../scripts/server-utils.js";
 
 type Fixtures = {
   electronApp: ElectronApplication;
   page: Page;
   header: Header;
+  taskBoard: TaskBoard;
 };
 
 type WorkerFixtures = {
@@ -52,6 +54,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   header: async ({ page }, use) => {
     await use(new Header(page));
+  },
+
+  taskBoard: async ({ page }, use) => {
+    await use(new TaskBoard(page));
   },
 });
 

@@ -11,7 +11,7 @@
       @end="onStagesDrop"
     >
       <template #item="{ element: stage }">
-        <div class="stages-container">
+        <div data-testid="stage-column" class="stages-container">
           <div class="flex items-center justify-between mb-3">
             <template v-if="editingStageId === stage.id">
               <input
@@ -35,6 +35,7 @@
             <!-- Menu -->
             <Button
               icon="pi pi-ellipsis-v"
+              data-testid="btn-stage-menu"
               @click="(event) => toggleStageMenu(event, stage)"
               text
             />
@@ -55,6 +56,7 @@
       <Button
         v-if="!isAddingStage"
         class="btn-add-stage"
+        data-testid="btn-add-stage"
         text
         @click="showAddStageInput"
       >
@@ -66,15 +68,21 @@
         <input
           ref="newStageInput"
           v-model="newStageName"
+          data-testid="stage-name-input"
           class="flex-1 p-2 rounded border"
           placeholder="Nom de la liste"
           @keyup.enter="createStage"
           autofocus
         />
 
-        <Button icon="pi pi-check" @click="createStage" />
+        <Button
+          icon="pi pi-check"
+          data-testid="btn-confirm-stage"
+          @click="createStage"
+        />
         <Button
           icon="pi pi-times"
+          data-testid="btn-cancel-stage"
           severity="secondary"
           @click="cancelCreateStage"
         />

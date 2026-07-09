@@ -20,6 +20,10 @@ test("user can open and close color palette", async ({ header }) => {
  * Test du change de la couleur primaire via la palette de couleur
  */
 test("user can change primary color", async ({ header, page }) => {
+  // On force le thème clair : dans ce mode, PrimeVue mappe `--p-primary-color`
+  // sur la nuance 500, qui est justement celle exposée par `data-testcolor`.
+  await header.ensureLightTheme();
+
   await header.openPalette();
 
   // Récupération du premier bouton de couleur, et la couleur primaire associé

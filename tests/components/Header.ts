@@ -38,6 +38,17 @@ export class Header {
     await this.themeButton.click();
   }
 
+  /**
+   * Force l'application en thème clair.
+   */
+  async ensureLightTheme() {
+    const html = this.page.locator("html");
+    if (((await html.getAttribute("class")) ?? "").includes("app-dark")) {
+      await this.themeButton.click();
+    }
+    await expect(html).not.toHaveClass(/app-dark/);
+  }
+
   async openPalette() {
     await this.paletteButton.click();
   }

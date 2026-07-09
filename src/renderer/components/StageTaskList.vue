@@ -4,16 +4,19 @@
       :list="tasks"
       group="tasks"
       itemKey="id"
+      :forceFallback="true"
+      :fallbackTolerance="3"
       class="flex flex-col w-full"
       @end="$emit('tasks-drop')"
     >
       <template #item="{ element }">
-        <div class="group draggable-item">
+        <div data-testid="task-card" class="group draggable-item">
           <strong>{{ element.title }}</strong>
 
           <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2">
             <Button
               severity="success"
+              data-testid="btn-edit-task"
               class="draggable-button"
               @click="$emit('edit-task', element)"
             >
@@ -22,6 +25,7 @@
 
             <Button
               severity="danger"
+              data-testid="btn-archive-task"
               class="draggable-button"
               @click="$emit('archive-task', element)"
             >
@@ -32,7 +36,12 @@
       </template>
     </draggable>
 
-    <Button class="btn-edit-task mt-3" text @click="$emit('create-task')">
+    <Button
+      class="btn-edit-task mt-3"
+      data-testid="btn-add-task"
+      text
+      @click="$emit('create-task')"
+    >
       <i class="pi pi-plus absolute left-3"></i>
       <span>Ajouter une tâche</span>
     </Button>

@@ -6,12 +6,13 @@
     :draggable="true"
     class="max-w-md w-full"
   >
-    <div class="pt-4 flex flex-col gap-4">
+    <div data-testid="task-dialog" class="pt-4 flex flex-col gap-4">
       <!-- Titre -->
       <div class="flex flex-col gap-2 w-full">
         <label for="inputValue" class="font-medium">Titre</label>
         <InputText
           id="inputValue"
+          data-testid="task-title-input"
           v-model="title"
           placeholder="Décris ton titre ici..."
         />
@@ -22,6 +23,7 @@
         <label for="description" class="font-medium"> Description </label>
         <Textarea
           id="description"
+          data-testid="task-description-input"
           v-model="description"
           autoResize
           rows="4"
@@ -35,6 +37,7 @@
         <label for="version" class="font-medium">Version</label>
         <Select
           id="version"
+          data-testid="task-version-select"
           v-model="selectedVersion"
           :options="versions"
           optionLabel="label"
@@ -48,6 +51,7 @@
         <Button
           type="button"
           label="Cancel"
+          data-testid="task-cancel-btn"
           severity="secondary"
           class="flex-1"
           @click="visible = false"
@@ -55,6 +59,7 @@
         <Button
           type="button"
           label="Save"
+          data-testid="task-save-btn"
           severity="success"
           class="flex-1"
           @click="saveTask"
