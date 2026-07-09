@@ -124,14 +124,98 @@ export class TaskBoard {
   }
 
   /**
+   * Ouvre le formulaire "Ajouter une liste" et saisit un nom (sans valider).
+   * @param name Nom de la colonne à saisir
+   */
+  async startAddStage(name: string) {
+    await this.page.getByTestId("btn-add-stage").click();
+    await this.page.getByTestId("stage-name-input").fill(name);
+  }
+
+  /** Annule le formulaire d'ajout de colonne. */
+  async cancelAddStage() {
+    await this.page.getByTestId("btn-cancel-stage").click();
+  }
+
+  /**
    * Ajoute une nouvelle colonne via le formulaire "Ajouter une liste".
    * @param name Nom de la colonne à créer
    */
   async addStage(name: string) {
-    await this.page.getByTestId("btn-add-stage").click();
-    await this.page.getByTestId("stage-name-input").fill(name);
+    await this.startAddStage(name);
     await this.page.getByTestId("btn-confirm-stage").click();
     await expect(this.column(name)).toHaveCount(1);
+  }
+
+  /**
+   * Renomme une colonne : double-clic sur son titre puis saisie du nouveau nom.
+   * @param oldName Nom actuel
+   * @param newName Nouveau nom
+   */
+  async renameStage(oldName: string, newName: string) {
+    await this.page
+      .getByRole("heading", { name: oldName, exact: true })
+      .dblclick();
+    const input = this.page.getByTestId("stage-edit-input");
+    await input.fill(newName);
+    await input.press("Enter");
+    await expect(
+      this.page.getByRole("heading", { name: newName, exact: true }),
+    ).toBeVisible();
+  }
+
+  /**
+   * Noms des colonnes, dans l'ordre d'affichage (gauche → droite).
+   */
+  async stageTitles(): Promise<string[]> {
+    const titles = await this.page.getByTestId("stage-title").allInnerTexts();
+    return titles.map((t) => t.trim());
+  }
+
+  /**
+   * Ordre des seules colonnes connues (parmi `known`).
+   * Robuste aux colonnes seedées/préexistantes de la base partagée.
+   * @param known Noms de colonnes de test à conserver
+   */
+  async orderedStagesAmong(known: string[]): Promise<string[]> {
+    const all = await this.stageTitles();
+    return all.filter((t) => known.includes(t));
+  }
+
+  /**
+   * Déplace une colonne juste avant une autre (les colonnes sont horizontales,
+   * on dépose près du bord gauche de la cible). Poignée = le titre (.stage-handle).
+   * @param sourceName Colonne à déplacer
+   * @param targetName Colonne de référence
+   */
+  async dragStageBefore(sourceName: string, targetName: string) {
+    const source = this.page.getByRole("heading", {
+      name: sourceName,
+      exact: true,
+    });
+    const target = this.page.getByRole("heading", {
+      name: targetName,
+      exact: true,
+    });
+
+    await source.scrollIntoViewIfNeeded();
+    const sb = await source.boundingBox();
+    const tb = await target.boundingBox();
+    if (!sb || !tb)
+      throw new Error("Poignée de colonne introuvable pour le drag");
+
+    const grabX = sb.x + sb.width / 2;
+    const grabY = sb.y + sb.height / 2;
+    const dropX = tb.x + 4;
+    const dropY = tb.y + tb.height / 2;
+
+    await this.page.mouse.move(grabX, grabY);
+    await this.page.mouse.down();
+    // Amorce horizontale (> fallbackTolerance)
+    await this.page.mouse.move(grabX - 12, grabY, { steps: 6 });
+    await this.page.mouse.move(dropX, dropY, { steps: 25 });
+    await this.page.mouse.move(dropX, dropY, { steps: 5 });
+    await this.page.mouse.up();
   }
 
   /**

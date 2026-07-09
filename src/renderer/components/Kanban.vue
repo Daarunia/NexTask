@@ -6,6 +6,8 @@
     <draggable
       v-model="stagesLocal"
       itemKey="id"
+      :forceFallback="true"
+      :fallbackTolerance="3"
       class="flex gap-4"
       handle=".stage-handle"
       @end="onStagesDrop"
@@ -16,6 +18,7 @@
             <template v-if="editingStageId === stage.id">
               <input
                 id="stage-input-{{stage.id}}"
+                data-testid="stage-edit-input"
                 v-model="editedStageName"
                 @keyup.enter="saveStageName(stage)"
                 @keyup.esc="cancelEditingStage"
@@ -25,6 +28,7 @@
             </template>
             <template v-else>
               <h2
+                data-testid="stage-title"
                 class="stage-handle cursor-grab text-lg"
                 @dblclick="startEditingStage(stage)"
               >

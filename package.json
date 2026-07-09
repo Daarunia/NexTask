@@ -26,6 +26,7 @@
     "build:linux": "node scripts/build.js && electron-builder --linux",
     "rebuild": "electron-rebuild",
     "sonar": "sonar-scanner",
+    "typecheck": "tsc -p src/main/tsconfig.json --noEmit",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "prepare": "husky"
