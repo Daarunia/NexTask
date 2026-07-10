@@ -40,6 +40,21 @@
         />
       </div>
 
+      <!-- Échéance -->
+      <div class="flex flex-col gap-2 w-full">
+        <label for="dueDate" class="font-medium">Échéance</label>
+        <DatePicker
+          id="dueDate"
+          data-testid="task-duedate-input"
+          v-model="dueDate"
+          showTime
+          hourFormat="24"
+          showButtonBar
+          dateFormat="dd/mm/yy"
+          placeholder="Date à laquelle la tâche doit être réalisée"
+        />
+      </div>
+
       <!-- Boutons -->
       <div class="flex gap-2 w-full">
         <Button
@@ -69,6 +84,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import { Task } from '../types/task.types'
 import { useTaskStore } from '../stores/Task'
@@ -111,6 +127,7 @@ const position = ref(props.position)
 const title = ref('')
 const description = ref('')
 const selectedVersion = ref('1.5.0')
+const dueDate = ref<Date | null>(null)
 
 const versions = ref([
   { label: '1.4.4', value: '1.4.4' },
@@ -138,6 +155,8 @@ watch(
         title.value = props.editTask.title
         selectedVersion.value = props.editTask.version
         description.value = props.editTask.description
+        // La date arrive en chaîne ISO via HTTP : reconvertir en Date pour le DatePicker
+        dueDate.value = props.editTask.dueDate ? new Date(props.editTask.dueDate) : null
       }
     }
   },
@@ -150,6 +169,7 @@ function initDefaultField() {
   title.value = ''
   selectedVersion.value = '1.5.0'
   description.value = ''
+  dueDate.value = null
 }
 
 // Sauvegarde
@@ -173,6 +193,7 @@ async function saveTask() {
         description: description.value || '',
         isHistorized: false,
         historizationDate: undefined,
+        dueDate: dueDate.value ?? undefined,
       }
 
       savedTask = await taskStore.saveTask(newTask)
@@ -187,6 +208,7 @@ async function saveTask() {
         description: description.value || '',
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
+        dueDate: dueDate.value ?? undefined,
       }
 
       savedTask = await taskStore.updateTask(updatedTask)

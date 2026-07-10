@@ -24,6 +24,8 @@ test("ouvre l'écran de tâche en création avec les valeurs par défaut", async
   await expect(taskBoard.titleInput).toHaveValue('')
   await expect(taskBoard.descriptionInput).toHaveValue('')
   await expect(taskBoard.versionSelect).toContainText('1.5.0')
+  // L'échéance est vide par défaut (champ optionnel)
+  await expect(taskBoard.dueDateInput).toHaveValue('')
 
   await taskBoard.cancelButton.click()
   await expect(taskBoard.dialog).toBeHidden()
@@ -80,6 +82,25 @@ test("pré-remplit l'écran puis reflète l'édition d'une tâche", async ({ tas
 
   // Nettoyage
   await taskBoard.archiveTask(editedTitle)
+})
+
+test("enregistre une échéance et la ré-affiche à l'édition", async ({ taskBoard }) => {
+  const title = uniqueTitle('Tâche avec échéance')
+  // Format affiché par la DatePicker : jj/mm/aa hh:mm (dateFormat dd/mm/yy + showTime 24h)
+  const dueDate = '25/12/30 14:30'
+
+  await taskBoard.createTask(COLUMN, { title, description: 'Avec deadline', dueDate })
+  await expect(taskBoard.taskCard(title)).toBeVisible()
+
+  // À la réouverture en édition, l'échéance est pré-remplie
+  await taskBoard.openEditDialog(title)
+  await expect(taskBoard.dueDateInput).toHaveValue(dueDate)
+
+  await taskBoard.cancelButton.click()
+  await expect(taskBoard.dialog).toBeHidden()
+
+  // Nettoyage
+  await taskBoard.archiveTask(title)
 })
 
 test('archive une tâche la retire du tableau', async ({ taskBoard }) => {

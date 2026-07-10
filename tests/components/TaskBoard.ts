@@ -15,6 +15,7 @@ export class TaskBoard {
   readonly titleInput: Locator
   readonly descriptionInput: Locator
   readonly versionSelect: Locator
+  readonly dueDateInput: Locator
   readonly saveButton: Locator
   readonly cancelButton: Locator
 
@@ -29,6 +30,8 @@ export class TaskBoard {
     this.titleInput = page.getByTestId('task-title-input')
     this.descriptionInput = page.getByTestId('task-description-input')
     this.versionSelect = page.getByTestId('task-version-select')
+    // La DatePicker PrimeVue expose un <input> interne sous le data-testid
+    this.dueDateInput = page.getByTestId('task-duedate-input').locator('input')
     this.saveButton = page.getByTestId('task-save-btn')
     this.cancelButton = page.getByTestId('task-cancel-btn')
   }
@@ -83,13 +86,24 @@ export class TaskBoard {
   }
 
   /**
+   * Saisit l'échéance dans la DatePicker puis ferme le panneau de sélection.
+   * @param value Date au format affiché "jj/mm/aa hh:mm" (ex : "25/12/30 14:30")
+   */
+  async setDueDate(value: string) {
+    await this.dueDateInput.fill(value)
+    // Ferme l'overlay du calendrier pour laisser l'UI utilisable
+    await this.page.keyboard.press('Escape')
+  }
+
+  /**
    * Remplit les champs présents puis enregistre (création ou édition selon le
    * dialog ouvert). Les champs non fournis sont laissés en l'état.
    */
-  async fillAndSave(data: { title?: string; description?: string; version?: string }) {
+  async fillAndSave(data: { title?: string; description?: string; version?: string; dueDate?: string }) {
     if (data.title !== undefined) await this.titleInput.fill(data.title)
     if (data.description !== undefined) await this.descriptionInput.fill(data.description)
     if (data.version !== undefined) await this.selectVersion(data.version)
+    if (data.dueDate !== undefined) await this.setDueDate(data.dueDate)
 
     await this.saveButton.click()
     await expect(this.dialog).toBeHidden()
@@ -100,7 +114,10 @@ export class TaskBoard {
    * @param columnName Nom de la colonne
    * @param data Données de la tâche
    */
-  async createTask(columnName: string, data: { title: string; description?: string; version?: string }) {
+  async createTask(
+    columnName: string,
+    data: { title: string; description?: string; version?: string; dueDate?: string },
+  ) {
     await this.openCreateDialog(columnName)
     await this.fillAndSave(data)
   }

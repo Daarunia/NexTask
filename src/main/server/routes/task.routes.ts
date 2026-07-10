@@ -116,6 +116,7 @@ export default async function taskRoutes(fastify) {
             description: { type: 'string' },
             position: { type: 'integer' },
             title: { type: 'string' },
+            dueDate: { type: ['string', 'null'], format: 'date-time' },
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
@@ -159,6 +160,8 @@ export default async function taskRoutes(fastify) {
               type: ['string', 'null'],
               format: 'date-time',
             },
+            dueDate: { type: ['string', 'null'], format: 'date-time' },
+            notifiedAt: { type: ['string', 'null'], format: 'date-time' },
           },
         },
         response: {
