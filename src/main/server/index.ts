@@ -1,9 +1,11 @@
 import Fastify from 'fastify'
 import taskRoutes from './routes/task.routes.js'
 import stageRoutes from './routes/stage.routes.js'
+import testRoutes from './routes/test.routes.js'
 import swagger from '@fastify/swagger'
 import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
+import { IS_TEST } from '../constants.js'
 import Logger from 'electron-log'
 
 export async function startServer() {
@@ -40,6 +42,11 @@ export async function startServer() {
   // Routes
   await fastify.register(taskRoutes)
   await fastify.register(stageRoutes)
+
+  // Route de reset réservée aux tests E2E
+  if (IS_TEST) {
+    await fastify.register(testRoutes)
+  }
 
   try {
     await fastify.listen({ port: 3000 })

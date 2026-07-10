@@ -61,4 +61,36 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   },
 })
 
+/**
+ * Isolation : remet la base de test à zéro avant chaque test via l'endpoint
+ * test-only POST /test/reset. Petite boucle de retry pour couvrir le tout
+ * premier test (le serveur Fastify peut finir de démarrer).
+ */
+test.beforeEach(async ({ page }) => {
+  // Garantit que l'app (et donc le serveur :3000) est démarrée
+  await page.waitForLoadState('domcontentloaded')
+
+  // 1) Reset de la base (avec retry pour couvrir le tout premier test)
+  let lastError: unknown
+  let done = false
+  for (let attempt = 0; attempt < 20 && !done; attempt++) {
+    try {
+      const res = await page.request.post('http://localhost:3000/test/reset')
+      if (res.ok()) {
+        done = true
+        break
+      }
+      lastError = new Error(`Reset a répondu ${res.status()}`)
+    } catch (err) {
+      lastError = err
+    }
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
+
+  // 2) Recharge le renderer pour vider le cache Pinia et refetch l'état propre
+  await page.reload()
+  await page.waitForLoadState('domcontentloaded')
+})
+
 export { expect }

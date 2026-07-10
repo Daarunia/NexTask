@@ -4,10 +4,19 @@ import { app } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 
-// Path to app.db or dev.db
-const dbPath = fs.existsSync(path.join(process.cwd(), 'dev.db'))
-  ? path.join(process.cwd(), 'dev.db')
-  : path.join(app.getPath('userData'), 'app.db')
+// Path to test.db (mode test), dev.db ou app.db
+const IS_TEST = process.argv.includes('--test')
+const devDbPath = path.join(process.cwd(), 'dev.db')
+
+let dbPath: string
+if (IS_TEST) {
+  dbPath = path.join(process.cwd(), 'test.db')
+} else if (fs.existsSync(devDbPath)) {
+  dbPath = devDbPath
+} else {
+  dbPath = path.join(app.getPath('userData'), 'app.db')
+}
+
 const connectionString = `file:${dbPath}`
 
 const adapter = new PrismaBetterSqlite3({ url: connectionString })

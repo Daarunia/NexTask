@@ -15,7 +15,7 @@ export class TaskBoard {
   readonly titleInput: Locator
   readonly descriptionInput: Locator
   readonly versionSelect: Locator
-  readonly dueDateInput: Locator
+  readonly startDateInput: Locator
   readonly saveButton: Locator
   readonly cancelButton: Locator
 
@@ -31,7 +31,7 @@ export class TaskBoard {
     this.descriptionInput = page.getByTestId('task-description-input')
     this.versionSelect = page.getByTestId('task-version-select')
     // La DatePicker PrimeVue expose un <input> interne sous le data-testid
-    this.dueDateInput = page.getByTestId('task-duedate-input').locator('input')
+    this.startDateInput = page.getByTestId('task-startdate-input').locator('input')
     this.saveButton = page.getByTestId('task-save-btn')
     this.cancelButton = page.getByTestId('task-cancel-btn')
   }
@@ -86,24 +86,36 @@ export class TaskBoard {
   }
 
   /**
-   * Saisit l'échéance dans la DatePicker puis ferme le panneau de sélection.
-   * @param value Date au format affiché "jj/mm/aa hh:mm" (ex : "25/12/30 14:30")
+   * Sélectionne le 1er jour du mois affiché dans la DatePicker (la saisie
+   * clavier étant désactivée sur ce composant, on pilote le calendrier).
+   * @returns La date attendue au format affiché "jj/mm/aaaa" (partie date seule)
    */
-  async setDueDate(value: string) {
-    await this.dueDateInput.fill(value)
-    // Ferme l'overlay du calendrier pour laisser l'UI utilisable
+  async pickStartDateFirstOfMonth(): Promise<string> {
+    await this.startDateInput.click()
+    const panel = this.page.locator('.p-datepicker-panel')
+    await expect(panel).toBeVisible()
+
+    // Cellule "1" du mois courant (on exclut les jours débordant des autres mois)
+    await panel.locator('td:not(.p-datepicker-other-month) span').filter({ hasText: /^1$/ }).first().click()
+
+    // Referme l'overlay (showTime le laisse ouvert) pour libérer le bouton Save.
+    // Sûr ici : la date est déjà sélectionnée au clic, Escape ne l'annule pas.
     await this.page.keyboard.press('Escape')
+    await expect(panel).toBeHidden()
+
+    const now = new Date()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    return `01/${mm}/${now.getFullYear()}`
   }
 
   /**
    * Remplit les champs présents puis enregistre (création ou édition selon le
    * dialog ouvert). Les champs non fournis sont laissés en l'état.
    */
-  async fillAndSave(data: { title?: string; description?: string; version?: string; dueDate?: string }) {
+  async fillAndSave(data: { title?: string; description?: string; version?: string }) {
     if (data.title !== undefined) await this.titleInput.fill(data.title)
     if (data.description !== undefined) await this.descriptionInput.fill(data.description)
     if (data.version !== undefined) await this.selectVersion(data.version)
-    if (data.dueDate !== undefined) await this.setDueDate(data.dueDate)
 
     await this.saveButton.click()
     await expect(this.dialog).toBeHidden()
@@ -114,10 +126,7 @@ export class TaskBoard {
    * @param columnName Nom de la colonne
    * @param data Données de la tâche
    */
-  async createTask(
-    columnName: string,
-    data: { title: string; description?: string; version?: string; dueDate?: string },
-  ) {
+  async createTask(columnName: string, data: { title: string; description?: string; version?: string }) {
     await this.openCreateDialog(columnName)
     await this.fillAndSave(data)
   }

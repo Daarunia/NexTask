@@ -10,7 +10,7 @@ export const taskSchema = {
     isHistorized: { type: 'boolean' },
     historizationDate: { type: ['string', 'null'], format: 'date-time' },
     stageId: { type: 'integer' },
-    dueDate: { type: ['string', 'null'], format: 'date-time' },
+    startDate: { type: ['string', 'null'], format: 'date-time' },
     notifiedAt: { type: ['string', 'null'], format: 'date-time' },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },

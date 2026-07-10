@@ -1,14 +1,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { DB_PATH, IS_DEV, MIGRATIONS_PATH } from './constants.js'
+import { DB_PATH, IS_DEV, IS_TEST, MIGRATIONS_PATH } from './constants.js'
 import Logger from 'electron-log'
 
 /**
  * Éxécution des scripts de migrations
  */
 export function setupDatabase() {
-  if (IS_DEV) {
+  if (IS_DEV && !IS_TEST) {
     // En dev, on ne touche pas à la DB
     Logger.info('Mode dev : pas de migration automatique, utilisez `prisma migrate dev`')
     return

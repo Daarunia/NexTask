@@ -25,7 +25,7 @@ model Task {
   historizationDate DateTime?
   stageId           Int?
   stage             Stage?     @relation(fields: [stageId], references: [id])
-  dueDate           DateTime?
+  startDate         DateTime?
   notifiedAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

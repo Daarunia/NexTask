@@ -5,17 +5,14 @@ import { test, expect } from '../../fixtures/test'
  * création, valeurs par défaut, annulation, édition et archivage d'une tâche
  * depuis le tableau Kanban.
  *
- * Remarque : les specs partagent la même instance Electron et la même base
- * SQLite (pas de reset entre les runs). On génère donc des titres uniques pour
- * éviter toute collision avec des tâches créées lors d'un run précédent, et on
- * archive les tâches créées pour laisser le tableau propre.
+ * Isolation : la base de test est remise à zéro avant chaque test (voir le
+ * beforeEach dans fixtures/test.ts). Chaque test part donc d'un tableau propre
+ * avec uniquement les colonnes seedées — pas besoin de titres uniques ni de
+ * nettoyage manuel.
  */
 
 // Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
 const COLUMN = 'A faire'
-
-// Titre unique par test pour l'isolation malgré la base partagée
-const uniqueTitle = (label: string) => `${label} ${Date.now()}`
 
 test("ouvre l'écran de tâche en création avec les valeurs par défaut", async ({ taskBoard }) => {
   await taskBoard.openCreateDialog(COLUMN)
@@ -24,15 +21,15 @@ test("ouvre l'écran de tâche en création avec les valeurs par défaut", async
   await expect(taskBoard.titleInput).toHaveValue('')
   await expect(taskBoard.descriptionInput).toHaveValue('')
   await expect(taskBoard.versionSelect).toContainText('1.5.0')
-  // L'échéance est vide par défaut (champ optionnel)
-  await expect(taskBoard.dueDateInput).toHaveValue('')
+  // La date de début est vide par défaut (champ optionnel)
+  await expect(taskBoard.startDateInput).toHaveValue('')
 
   await taskBoard.cancelButton.click()
   await expect(taskBoard.dialog).toBeHidden()
 })
 
 test('crée une nouvelle tâche qui apparaît dans la colonne', async ({ taskBoard }) => {
-  const title = uniqueTitle('Tâche créée')
+  const title = 'Tâche créée'
 
   await taskBoard.createTask(COLUMN, {
     title,
@@ -46,13 +43,10 @@ test('crée une nouvelle tâche qui apparaît dans la colonne', async ({ taskBoa
     .getByTestId('task-card')
     .filter({ has: taskBoard.page.getByText(title, { exact: true }) })
   await expect(card).toBeVisible()
-
-  // Nettoyage
-  await taskBoard.archiveTask(title)
 })
 
 test('annuler la création ne crée aucune tâche', async ({ taskBoard }) => {
-  const title = uniqueTitle('Tâche annulée')
+  const title = 'Tâche annulée'
 
   await taskBoard.openCreateDialog(COLUMN)
   await taskBoard.titleInput.fill(title)
@@ -63,7 +57,7 @@ test('annuler la création ne crée aucune tâche', async ({ taskBoard }) => {
 })
 
 test("pré-remplit l'écran puis reflète l'édition d'une tâche", async ({ taskBoard }) => {
-  const title = uniqueTitle('Tâche à éditer')
+  const title = 'Tâche à éditer'
   const editedTitle = `${title} (modifiée)`
 
   await taskBoard.createTask(COLUMN, { title, description: 'Avant' })
@@ -79,32 +73,30 @@ test("pré-remplit l'écran puis reflète l'édition d'une tâche", async ({ tas
   // Nouveau titre visible, ancien titre disparu
   await expect(taskBoard.taskCard(editedTitle)).toBeVisible()
   await expect(taskBoard.taskCard(title)).toHaveCount(0)
-
-  // Nettoyage
-  await taskBoard.archiveTask(editedTitle)
 })
 
-test("enregistre une échéance et la ré-affiche à l'édition", async ({ taskBoard }) => {
-  const title = uniqueTitle('Tâche avec échéance')
-  // Format affiché par la DatePicker : jj/mm/aa hh:mm (dateFormat dd/mm/yy + showTime 24h)
-  const dueDate = '25/12/30 14:30'
+test("enregistre une date de début et la ré-affiche à l'édition", async ({ taskBoard }) => {
+  const title = 'Tâche avec date de début'
 
-  await taskBoard.createTask(COLUMN, { title, description: 'Avec deadline', dueDate })
+  // Création avec le 1er du mois courant comme date de début
+  await taskBoard.openCreateDialog(COLUMN)
+  await taskBoard.titleInput.fill(title)
+  const expectedDate = await taskBoard.pickStartDateFirstOfMonth()
+  await taskBoard.saveButton.click()
+  await expect(taskBoard.dialog).toBeHidden()
   await expect(taskBoard.taskCard(title)).toBeVisible()
 
-  // À la réouverture en édition, l'échéance est pré-remplie
+  // À la réouverture en édition, la date de début est pré-remplie (on vérifie la
+  // partie date ; l'heure dépend de l'instant de sélection)
   await taskBoard.openEditDialog(title)
-  await expect(taskBoard.dueDateInput).toHaveValue(dueDate)
+  await expect(taskBoard.startDateInput).toHaveValue(new RegExp(`^${expectedDate}`))
 
   await taskBoard.cancelButton.click()
   await expect(taskBoard.dialog).toBeHidden()
-
-  // Nettoyage
-  await taskBoard.archiveTask(title)
 })
 
 test('archive une tâche la retire du tableau', async ({ taskBoard }) => {
-  const title = uniqueTitle('Tâche à archiver')
+  const title = 'Tâche à archiver'
 
   await taskBoard.createTask(COLUMN, { title })
   await expect(taskBoard.taskCard(title)).toBeVisible()
