@@ -1,19 +1,19 @@
-import Store from "electron-store";
+import Store from 'electron-store'
 
 /**
  * Schéma des paramètres
  */
 const schema = {
   theme: {
-    type: "string",
-    enum: ["light", "dark"],
-    default: "dark",
+    type: 'string',
+    enum: ['light', 'dark'],
+    default: 'dark',
   },
   primaryColor: {
-    type: "string",
-    default: "violet",
+    type: 'string',
+    default: 'violet',
   },
-};
+}
 
-export type SettingsKeys = "theme" | "primaryColor";
-export const settingsStore = new Store({ schema });
+export type SettingsKeys = 'theme' | 'primaryColor'
+export const settingsStore = new Store({ schema })

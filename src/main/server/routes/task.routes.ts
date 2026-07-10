@@ -1,7 +1,8 @@
-import { prisma } from "../prismaClient.js";
-import type { Task as PrismaTask } from "../../prisma/generated/prisma/client.js";
-import { taskSchema } from "../schemas/taskSchema.js";
-import Logger from "electron-log";
+import { prisma } from '../prismaClient.js'
+import type { Task as PrismaTask } from '../../prisma/generated/prisma/client.js'
+import { taskSchema } from '../schemas/taskSchema.js'
+import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
+import Logger from 'electron-log'
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -24,34 +25,34 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<Array<Object>>} Tableau d'objets Task
    */
   fastify.get(
-    "/tasks",
+    '/tasks',
     {
       schema: {
-        description: "Récupère toutes les tâches",
-        tags: ["Task"],
+        description: 'Récupère toutes les tâches',
+        tags: ['Task'],
         querystring: {
-          type: "object",
+          type: 'object',
           properties: {
-            isHistorized: { type: "boolean" },
+            isHistorized: { type: 'boolean' },
           },
         },
         response: {
           200: {
-            type: "array",
+            type: 'array',
             items: taskSchema,
           },
         },
       },
     },
     async (request) => {
-      const { isHistorized } = request.query as { isHistorized?: boolean };
+      const { isHistorized } = request.query as { isHistorized?: boolean }
 
       return prisma.task.findMany({
         where: isHistorized === undefined ? undefined : { isHistorized },
-        orderBy: [{ stageId: "asc" }, { position: "asc" }],
-      });
+        orderBy: [{ stageId: 'asc' }, { position: 'asc' }],
+      })
     },
-  );
+  )
 
   /**
    * GET /tasks/:id
@@ -65,32 +66,28 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<Object|{error: string}>} Objet Task ou erreur
    */
   fastify.get(
-    "/tasks/:id",
+    '/tasks/:id',
     {
       schema: {
-        description: "Récupère une tâche par son ID",
-        tags: ["Task"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Récupère une tâche par son ID',
+        tags: ['Task'],
+        params: idParam,
         response: {
           200: taskSchema,
-          404: { type: "object", properties: { error: { type: "string" } } },
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
-      const task = await prisma.task.findUnique({ where: { id } });
+      const id = Number(req.params.id)
+      const task = await prisma.task.findUnique({ where: { id } })
       if (!task) {
-        reply.code(404);
-        return { error: "Tâche non trouvée" };
+        reply.code(404)
+        return { error: 'Tâche non trouvée' }
       }
-      return task;
+      return task
     },
-  );
+  )
 
   /**
    * POST /tasks
@@ -106,29 +103,29 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<Object>} Objet Task créé
    */
   fastify.post(
-    "/tasks",
+    '/tasks',
     {
       schema: {
-        description: "Crée une nouvelle tâche",
-        tags: ["Task"],
+        description: 'Crée une nouvelle tâche',
+        tags: ['Task'],
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            stageId: { type: "number" },
-            version: { type: "string" },
-            description: { type: "string" },
-            position: { type: "integer" },
-            title: { type: "string" },
+            stageId: { type: 'number' },
+            version: { type: 'string' },
+            description: { type: 'string' },
+            position: { type: 'integer' },
+            title: { type: 'string' },
           },
-          required: ["stageId", "position", "title", "version", "description"],
+          required: ['stageId', 'position', 'title', 'version', 'description'],
         },
         response: { 200: taskSchema },
       },
     },
     async (req) => {
-      return prisma.task.create({ data: req.body });
+      return prisma.task.create({ data: req.body })
     },
-  );
+  )
 
   /**
    * PATCH /tasks/:id
@@ -143,50 +140,46 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<Object|{error: string}>} Objet Task mis à jour ou erreur
    */
   fastify.patch(
-    "/tasks/:id",
+    '/tasks/:id',
     {
       schema: {
-        description: "Met à jour une tâche existante",
-        tags: ["Task"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Met à jour une tâche existante',
+        tags: ['Task'],
+        params: idParam,
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            title: { type: "string" },
-            version: { type: "string" },
-            description: { type: "string" },
-            position: { type: "integer" },
-            stageId: { type: ["integer", "null"] },
-            isHistorized: { type: "boolean" },
+            title: { type: 'string' },
+            version: { type: 'string' },
+            description: { type: 'string' },
+            position: { type: 'integer' },
+            stageId: { type: ['integer', 'null'] },
+            isHistorized: { type: 'boolean' },
             historizationDate: {
-              type: ["string", "null"],
-              format: "date-time",
+              type: ['string', 'null'],
+              format: 'date-time',
             },
           },
         },
         response: {
           200: taskSchema,
-          404: { type: "object", properties: { error: { type: "string" } } },
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
+      const id = Number(req.params.id)
       try {
         return await prisma.task.update({
           where: { id },
           data: req.body,
-        });
+        })
       } catch {
-        reply.code(404);
-        return { error: "Tâche non trouvée" };
+        reply.code(404)
+        return { error: 'Tâche non trouvée' }
       }
     },
-  );
+  )
 
   /**
    * DELETE /tasks/:id
@@ -200,33 +193,29 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<{message: string}|{error: string}>} Message de succès ou erreur
    */
   fastify.delete(
-    "/tasks/:id",
+    '/tasks/:id',
     {
       schema: {
-        description: "Supprime une tâche par son ID",
-        tags: ["Task"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Supprime une tâche par son ID',
+        tags: ['Task'],
+        params: idParam,
         response: {
-          200: { type: "object", properties: { message: { type: "string" } } },
-          404: { type: "object", properties: { error: { type: "string" } } },
+          200: messageResponse,
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
+      const id = Number(req.params.id)
       try {
-        await prisma.task.delete({ where: { id } });
-        return { message: "Tâche supprimée" };
+        await prisma.task.delete({ where: { id } })
+        return { message: 'Tâche supprimée' }
       } catch {
-        reply.code(404);
-        return { error: "Tâche non trouvée" };
+        reply.code(404)
+        return { error: 'Tâche non trouvée' }
       }
     },
-  );
+  )
 
   /**
    * PUT /tasks/:id
@@ -240,24 +229,20 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<{message: string}|{error: string}>} Message de succès ou erreur
    */
   fastify.put(
-    "/tasks/:id",
+    '/tasks/:id',
     {
       schema: {
-        description: "Marque une tâche comme historisée par son ID",
-        tags: ["Task"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Marque une tâche comme historisée par son ID',
+        tags: ['Task'],
+        params: idParam,
         response: {
-          200: { type: "object", properties: { message: { type: "string" } } },
-          404: { type: "object", properties: { error: { type: "string" } } },
+          200: messageResponse,
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
+      const id = Number(req.params.id)
       try {
         // Mise à jour de la tâche pour la marquer comme historisée
         const updatedTask = await prisma.task.update({
@@ -267,18 +252,18 @@ export default async function taskRoutes(fastify) {
             historizationDate: new Date(),
             stageId: null,
           },
-        });
+        })
 
-        return { message: `Tâche ${updatedTask.id} marquée comme historisée` };
+        return { message: `Tâche ${updatedTask.id} marquée comme historisée` }
       } catch (error) {
-        Logger.error("Erreur lors de l'historisation de la tâche:", error);
-        reply.code(500);
+        Logger.error("Erreur lors de l'historisation de la tâche:", error)
+        reply.code(500)
         return {
           error: "Une erreur est survenue lors de l'historisation de la tâche",
-        };
+        }
       }
     },
-  );
+  )
 
   /**
    * PATCH /tasks/batch
@@ -298,38 +283,38 @@ export default async function taskRoutes(fastify) {
    * @returns {Promise<Array<Object>|{error: string}>} Tableau des tâches mises à jour ou message d'erreur
    */
   fastify.patch(
-    "/tasks/batch",
+    '/tasks/batch',
     {
       schema: {
-        description: "Met à jour plusieurs tâches en une seule requête",
-        tags: ["Task"],
+        description: 'Met à jour plusieurs tâches en une seule requête',
+        tags: ['Task'],
         body: {
-          type: "array",
+          type: 'array',
           items: {
-            type: "object",
+            type: 'object',
             properties: {
-              id: { type: "integer" },
-              stage: { type: "string" },
-              version: { type: "string" },
-              description: { type: "string" },
-              position: { type: "integer" },
-              status: { type: "string" },
+              id: { type: 'integer' },
+              stage: { type: 'string' },
+              version: { type: 'string' },
+              description: { type: 'string' },
+              position: { type: 'integer' },
+              status: { type: 'string' },
             },
-            required: ["id"],
+            required: ['id'],
           },
         },
         response: {
           200: {
-            type: "array",
+            type: 'array',
             items: {
-              type: "object",
+              type: 'object',
               properties: {
-                id: { type: "integer" },
-                stage: { type: "string" },
-                version: { type: "string" },
-                description: { type: "string" },
-                position: { type: "integer" },
-                status: { type: "string" },
+                id: { type: 'integer' },
+                stage: { type: 'string' },
+                version: { type: 'string' },
+                description: { type: 'string' },
+                position: { type: 'integer' },
+                status: { type: 'string' },
               },
             },
           },
@@ -337,12 +322,10 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const tasks = req.body as Array<Partial<PrismaTask> & { id: number }>;
+      const tasks = req.body as Array<Partial<PrismaTask> & { id: number }>
 
       if (!tasks.length) {
-        return reply
-          .status(400)
-          .send({ error: "Le tableau de tâches est vide" });
+        return reply.status(400).send({ error: 'Le tableau de tâches est vide' })
       }
 
       try {
@@ -354,15 +337,13 @@ export default async function taskRoutes(fastify) {
               data: t,
             }),
           ),
-        );
+        )
 
-        return updatedTasks;
+        return updatedTasks
       } catch (error) {
-        Logger.error(error);
-        return reply
-          .status(500)
-          .send({ error: "Impossible de mettre à jour les tâches" });
+        Logger.error(error)
+        return reply.status(500).send({ error: 'Impossible de mettre à jour les tâches' })
       }
     },
-  );
+  )
 }

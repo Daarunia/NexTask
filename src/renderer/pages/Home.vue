@@ -1,38 +1,38 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import Kanban from "../components/Kanban.vue";
-import { useTaskStore } from "../stores/Task";
-import type { Task } from "../types/task.types";
-import ProgressSpinner from "primevue/progressspinner";
-import { getLogger } from "../utils/logger";
-import { useStageStore } from "../stores/Stage";
-import { Stage } from "../types/stage.types";
+import { ref, onMounted } from 'vue'
+import Kanban from '../components/Kanban.vue'
+import { useTaskStore } from '../stores/Task'
+import type { Task } from '../types/task.types'
+import ProgressSpinner from 'primevue/progressspinner'
+import { getLogger } from '../utils/logger'
+import { useStageStore } from '../stores/Stage'
+import { Stage } from '../types/stage.types'
 
 // Logger
-const logger = getLogger();
+const logger = getLogger()
 
 // Liste de stages et de tâches
-const stageStore = useStageStore();
-const taskStore = useTaskStore();
-const tasks = ref<Task[]>([]);
-const stages = ref<Stage[]>([]);
+const stageStore = useStageStore()
+const taskStore = useTaskStore()
+const tasks = ref<Task[]>([])
+const stages = ref<Stage[]>([])
 
 // Indicateur de chargement
-const loading = ref(true);
+const loading = ref(true)
 
 // Récupération des tâches
 onMounted(async () => {
-  loading.value = true;
+  loading.value = true
 
-  await stageStore.loadAllStages();
+  await stageStore.loadAllStages()
 
-  stages.value = stageStore.getAllStages;
-  tasks.value = taskStore.getAllTasks;
-  logger.debug("Stages récupérées : ", stages.value);
-  logger.debug("Tâches récupérées : ", tasks.value);
+  stages.value = stageStore.getAllStages
+  tasks.value = taskStore.getAllTasks
+  logger.debug('Stages récupérées : ', stages.value)
+  logger.debug('Tâches récupérées : ', tasks.value)
 
-  loading.value = false;
-});
+  loading.value = false
+})
 </script>
 
 <template>

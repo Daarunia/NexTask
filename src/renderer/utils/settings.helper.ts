@@ -1,9 +1,9 @@
-import { useSettingsStore } from "../stores/Settings";
+import { useSettingsStore } from '../stores/Settings'
 
 // type de couleur
 export interface Color {
-  name: string;
-  palette: Record<string, string>;
+  name: string
+  palette: Record<string, string>
 }
 
 /**
@@ -11,13 +11,10 @@ export interface Color {
  * @param color objet couleur {name, palette}
  */
 export const applyPrimaryColor = async (color: Color) => {
-  const settings = useSettingsStore();
-  await settings.setPrimaryColor(color.name);
+  const settings = useSettingsStore()
+  await settings.setPrimaryColor(color.name)
 
   Object.keys(color.palette).forEach((key) => {
-    document.documentElement.style.setProperty(
-      `--p-primary-${key}`,
-      color.palette[key],
-    );
-  });
-};
+    document.documentElement.style.setProperty(`--p-primary-${key}`, color.palette[key])
+  })
+}

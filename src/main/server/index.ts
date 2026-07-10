@@ -1,52 +1,52 @@
-import Fastify from "fastify";
-import taskRoutes from "./routes/tasks.routes.js";
-import stageRoutes from "./routes/stage.routes.js";
-import swagger from "@fastify/swagger";
-import swaggerUI from "@fastify/swagger-ui";
-import fastifyCors from "@fastify/cors";
-import Logger from "electron-log";
+import Fastify from 'fastify'
+import taskRoutes from './routes/task.routes.js'
+import stageRoutes from './routes/stage.routes.js'
+import swagger from '@fastify/swagger'
+import swaggerUI from '@fastify/swagger-ui'
+import fastifyCors from '@fastify/cors'
+import Logger from 'electron-log'
 
 export async function startServer() {
-  const fastify = Fastify({ logger: true });
+  const fastify = Fastify({ logger: true })
 
   // Enregistrer le plugin CORS
   fastify.register(fastifyCors, {
     origin: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  });
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  })
 
   // ---- Swagger ----
   await fastify.register(swagger, {
     openapi: {
       info: {
-        title: "nexTask API",
-        description: "API pour gérer les tâches",
-        version: "1.0.2",
+        title: 'nexTask API',
+        description: 'API pour gérer les tâches',
+        version: '1.0.2',
       },
     },
-  });
+  })
 
   // ---- point d'accés Swagger ----
   await fastify.register(swaggerUI, {
-    routePrefix: "/docs",
+    routePrefix: '/docs',
     uiConfig: {
-      docExpansion: "full",
+      docExpansion: 'full',
       deepLinking: false,
     },
     staticCSP: true,
     transformStaticCSP: (header) => header,
-  });
+  })
 
   // Routes
-  await fastify.register(taskRoutes);
-  await fastify.register(stageRoutes);
+  await fastify.register(taskRoutes)
+  await fastify.register(stageRoutes)
 
   try {
-    await fastify.listen({ port: 3000 });
-    Logger.info("Fastify API -> http://localhost:3000");
-    Logger.info("Swagger UI -> http://localhost:3000/docs");
+    await fastify.listen({ port: 3000 })
+    Logger.info('Fastify API -> http://localhost:3000')
+    Logger.info('Swagger UI -> http://localhost:3000/docs')
   } catch (err) {
-    fastify.log.error(err);
-    throw err;
+    fastify.log.error(err)
+    throw err
   }
 }

@@ -1,15 +1,15 @@
-import { app, BrowserWindow, ipcMain, session } from "electron";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { startServer } from "./server/index.js";
-import { setupDatabase } from "./setupDatabase.js";
-import { applySeeds } from "./seedDatabase.js";
-import { settingsStore } from "./stores/settings.js";
-import { IS_DEV, IS_TEST } from "./constants.js";
-import Logger from "electron-log";
+import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { startServer } from './server/index.js'
+import { setupDatabase } from './setupDatabase.js'
+import { applySeeds } from './seedDatabase.js'
+import { settingsStore } from './stores/settings.js'
+import { IS_DEV, IS_TEST } from './constants.js'
+import Logger from 'electron-log'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -18,83 +18,83 @@ function createWindow() {
     autoHideMenuBar: true,
     frame: true,
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
     show: !IS_TEST,
-  });
+  })
 
   if (IS_DEV) {
-    const rendererPort = process.argv[2];
-    mainWindow.loadURL(`http://localhost:${rendererPort}`);
-    mainWindow.maximize(); // Plein écran fenêtré
+    const rendererPort = process.argv[2]
+    mainWindow.loadURL(`http://localhost:${rendererPort}`)
+    mainWindow.maximize() // Plein écran fenêtré
 
     // On ouvre la console que en dev, et pas en test playwright
     if (!IS_TEST) {
-      mainWindow.webContents.openDevTools();
+      mainWindow.webContents.openDevTools()
     }
   } else {
-    mainWindow.loadFile(join(app.getAppPath(), "renderer", "index.html"));
+    mainWindow.loadFile(join(app.getAppPath(), 'renderer', 'index.html'))
   }
 }
 
 app.whenReady().then(async () => {
-  createWindow();
+  createWindow()
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        "Content-Security-Policy": ["script-src 'self'"],
+        'Content-Security-Policy': ["script-src 'self'"],
       },
-    });
-  });
+    })
+  })
 
   try {
     // Migrations
-    setupDatabase();
+    setupDatabase()
 
     // Seeds
-    applySeeds();
+    applySeeds()
   } catch (err) {
-    Logger.error("Erreur du lancement des migrations :", err);
+    Logger.error('Erreur du lancement des migrations :', err)
   }
 
   try {
-    await startServer();
+    await startServer()
   } catch (err) {
-    Logger.error("Erreur au démarrage du serveur Fastify :", err);
+    Logger.error('Erreur au démarrage du serveur Fastify :', err)
   }
 
-  app.on("activate", async () => {
+  app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow()
       try {
-        await startServer();
+        await startServer()
       } catch (err) {
-        Logger.error("Erreur au redémarrage du serveur Fastify :", err);
+        Logger.error('Erreur au redémarrage du serveur Fastify :', err)
       }
     }
-  });
-});
+  })
+})
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
+})
 
-ipcMain.on("message", (event, message) => {
-  Logger.debug(message);
-});
+ipcMain.on('message', (event, message) => {
+  Logger.debug(message)
+})
 
 // expose settings store
-ipcMain.handle("settings:get", (_, key) => {
-  let value = settingsStore.get(key);
-  Logger.debug(`Get parameter: ${key} = ${value}`);
-  return value;
-});
+ipcMain.handle('settings:get', (_, key) => {
+  let value = settingsStore.get(key)
+  Logger.debug(`Get parameter: ${key} = ${value}`)
+  return value
+})
 
-ipcMain.handle("settings:set", (_, key, value) => {
-  Logger.debug(`Set parameter: ${key} = ${value}`);
-  settingsStore.set(key, value);
-});
+ipcMain.handle('settings:set', (_, key, value) => {
+  Logger.debug(`Set parameter: ${key} = ${value}`)
+  settingsStore.set(key, value)
+})

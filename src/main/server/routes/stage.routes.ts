@@ -1,6 +1,7 @@
-import Logger from "electron-log";
-import { prisma } from "../prismaClient.js";
-import { stageSchema } from "../schemas/stageShema.js";
+import Logger from 'electron-log'
+import { prisma } from '../prismaClient.js'
+import { stageSchema } from '../schemas/stageSchema.js'
+import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -23,12 +24,12 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<Array<Object>>} Tableau d'objets Stage
    */
   fastify.get(
-    "/stages",
+    '/stages',
     {
       schema: {
-        description: "Récupère toutes les colonnes avec leurs tâches",
-        tags: ["Stage"],
-        response: { 200: { type: "array", items: stageSchema } },
+        description: 'Récupère toutes les colonnes avec leurs tâches',
+        tags: ['Stage'],
+        response: { 200: { type: 'array', items: stageSchema } },
       },
     },
     async () => {
@@ -36,10 +37,10 @@ export default async function stagesRoutes(fastify) {
         include: {
           tasks: true,
         },
-        orderBy: [{ id: "asc" }, { position: "asc" }],
-      });
+        orderBy: [{ id: 'asc' }, { position: 'asc' }],
+      })
     },
-  );
+  )
 
   /**
    * GET /stages/:id
@@ -53,32 +54,28 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<Object|{error: string}>} Objet Stage ou erreur
    */
   fastify.get(
-    "/stages/:id",
+    '/stages/:id',
     {
       schema: {
-        description: "Récupère une stage par son ID",
-        tags: ["Stage"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Récupère une stage par son ID',
+        tags: ['Stage'],
+        params: idParam,
         response: {
           200: stageSchema,
-          404: { type: "object", properties: { error: { type: "string" } } },
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
-      const stage = await prisma.stage.findUnique({ where: { id } });
+      const id = Number(req.params.id)
+      const stage = await prisma.stage.findUnique({ where: { id } })
       if (!stage) {
-        reply.code(404);
-        return { error: "Stage non trouvée" };
+        reply.code(404)
+        return { error: 'Stage non trouvée' }
       }
-      return stage;
+      return stage
     },
-  );
+  )
 
   /**
    * PATCH /stages/:id
@@ -93,42 +90,38 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<Object|{error: string}>} Objet Stage mis à jour ou erreur
    */
   fastify.patch(
-    "/stages/:id",
+    '/stages/:id',
     {
       schema: {
-        description: "Met à jour une stage existante",
-        tags: ["Stage"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Met à jour une stage existante',
+        tags: ['Stage'],
+        params: idParam,
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            name: { type: "string" },
-            position: { type: "integer" },
+            name: { type: 'string' },
+            position: { type: 'integer' },
           },
         },
         response: {
           200: stageSchema,
-          404: { type: "object", properties: { error: { type: "string" } } },
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
+      const id = Number(req.params.id)
       try {
         return await prisma.stage.update({
           where: { id },
           data: req.body,
-        });
+        })
       } catch {
-        reply.code(404);
-        return { error: "Stage non trouvée" };
+        reply.code(404)
+        return { error: 'Stage non trouvée' }
       }
     },
-  );
+  )
 
   /**
    * DELETE /stages/:id
@@ -142,33 +135,29 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<{message: string}|{error: string}>} Message de succès ou erreur
    */
   fastify.delete(
-    "/stages/:id",
+    '/stages/:id',
     {
       schema: {
-        description: "Supprime une stage par son ID",
-        tags: ["Stage"],
-        params: {
-          type: "object",
-          properties: { id: { type: "integer" } },
-          required: ["id"],
-        },
+        description: 'Supprime une stage par son ID',
+        tags: ['Stage'],
+        params: idParam,
         response: {
-          200: { type: "object", properties: { message: { type: "string" } } },
-          404: { type: "object", properties: { error: { type: "string" } } },
+          200: messageResponse,
+          404: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const id = Number(req.params.id);
+      const id = Number(req.params.id)
       try {
-        await prisma.stage.delete({ where: { id } });
-        return { message: "Stage supprimée" };
+        await prisma.stage.delete({ where: { id } })
+        return { message: 'Stage supprimée' }
       } catch {
-        reply.code(404);
-        return { error: "Stage non trouvée" };
+        reply.code(404)
+        return { error: 'Stage non trouvée' }
       }
     },
-  );
+  )
 
   /**
    * POST /stages
@@ -182,26 +171,26 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<Object>} Objet Stage créé
    */
   fastify.post(
-    "/stages",
+    '/stages',
     {
       schema: {
-        description: "Crée une nouvelle stage",
-        tags: ["Stage"],
+        description: 'Crée une nouvelle stage',
+        tags: ['Stage'],
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            name: { type: "string" },
-            position: { type: "integer" },
+            name: { type: 'string' },
+            position: { type: 'integer' },
           },
-          required: ["name", "position"],
+          required: ['name', 'position'],
         },
         response: { 200: stageSchema },
       },
     },
     async (req) => {
-      return prisma.stage.create({ data: req.body });
+      return prisma.stage.create({ data: req.body })
     },
-  );
+  )
 
   /**
    * PATCH /stages/batch
@@ -217,32 +206,32 @@ export default async function stagesRoutes(fastify) {
    * @returns {Promise<Array<Object>|{error: string}>} Tableau des stages mis à jour ou message d'erreur
    */
   fastify.patch(
-    "/stages/batch",
+    '/stages/batch',
     {
       schema: {
-        description: "Met à jour plusieurs stages en une seule requête",
-        tags: ["Stage"],
+        description: 'Met à jour plusieurs stages en une seule requête',
+        tags: ['Stage'],
         body: {
-          type: "array",
+          type: 'array',
           items: {
-            type: "object",
+            type: 'object',
             properties: {
-              id: { type: "integer" },
-              name: { type: "string" },
-              position: { type: "integer" },
+              id: { type: 'integer' },
+              name: { type: 'string' },
+              position: { type: 'integer' },
             },
-            required: ["id"],
+            required: ['id'],
           },
         },
         response: {
           200: {
-            type: "array",
+            type: 'array',
             items: {
-              type: "object",
+              type: 'object',
               properties: {
-                id: { type: "integer" },
-                name: { type: "string" },
-                position: { type: "integer" },
+                id: { type: 'integer' },
+                name: { type: 'string' },
+                position: { type: 'integer' },
               },
             },
           },
@@ -250,12 +239,10 @@ export default async function stagesRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const stages = req.body;
+      const stages = req.body
 
       if (!stages.length) {
-        return reply
-          .status(400)
-          .send({ error: "Le tableau de stages est vide" });
+        return reply.status(400).send({ error: 'Le tableau de stages est vide' })
       }
 
       try {
@@ -270,15 +257,13 @@ export default async function stagesRoutes(fastify) {
               },
             }),
           ),
-        );
+        )
 
-        return updatedStages;
+        return updatedStages
       } catch (error) {
-        Logger.error(error);
-        return reply
-          .status(500)
-          .send({ error: "Impossible de mettre à jour les stages" });
+        Logger.error(error)
+        return reply.status(500).send({ error: 'Impossible de mettre à jour les stages' })
       }
     },
-  );
+  )
 }

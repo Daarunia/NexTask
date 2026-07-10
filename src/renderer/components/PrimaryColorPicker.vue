@@ -1,8 +1,5 @@
 <template>
-  <div
-    data-testid="palette-panel"
-    class="color-picker border border-gray-300 inline-block rounded-md p-2"
-  >
+  <div data-testid="palette-panel" class="color-picker border border-gray-300 inline-block rounded-md p-2">
     <div class="grid grid-cols-8 gap-1">
       <button
         v-for="color in primaryColors"
@@ -22,22 +19,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { PRIMARY_COLORS } from "../constants/palette.constants";
-import { useSettingsStore } from "../stores/Settings";
-import { applyPrimaryColor } from "../utils/settings.helper";
+import { ref } from 'vue'
+import { PRIMARY_COLORS } from '../constants/palette.constants'
+import { useSettingsStore } from '../stores/Settings'
+import { applyPrimaryColor } from '../utils/settings.helper'
 
-const settings = useSettingsStore();
-const selectedColor = ref(settings.primaryColor || "emerald");
-const primaryColors = ref(PRIMARY_COLORS);
+const settings = useSettingsStore()
+const selectedColor = ref(settings.primaryColor || 'emerald')
+const primaryColors = ref(PRIMARY_COLORS)
 
-const applyColor = (color: {
-  name: string;
-  palette: Record<string, string>;
-}) => {
-  applyPrimaryColor(color);
-  selectedColor.value = color.name;
-};
+const applyColor = (color: { name: string; palette: Record<string, string> }) => {
+  applyPrimaryColor(color)
+  selectedColor.value = color.name
+}
 </script>
 
 <style scoped>

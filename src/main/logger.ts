@@ -1,19 +1,19 @@
-import log, { LevelOption } from "electron-log";
+import log, { LevelOption } from 'electron-log'
 
 class Logger {
-  private static instance: typeof log;
+  private static instance: typeof log
 
   public static getInstance(): typeof log {
     // Instanciation
     if (!Logger.instance) {
-      let logLevel = (process.env.VITE_LOG_LEVEL as LevelOption) || "error";
-      log.transports.console.level = logLevel;
-      log.transports.file.level = logLevel;
-      Logger.instance = log;
+      let logLevel = (process.env.VITE_LOG_LEVEL as LevelOption) || 'error'
+      log.transports.console.level = logLevel
+      log.transports.file.level = logLevel
+      Logger.instance = log
     }
 
-    return Logger.instance;
+    return Logger.instance
   }
 }
 
-export default Logger;
+export default Logger

@@ -1,11 +1,5 @@
 <template>
-  <Dialog
-    v-model:visible="visible"
-    :modal="true"
-    :show-header="false"
-    :draggable="true"
-    class="max-w-md w-full"
-  >
+  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-md w-full">
     <div data-testid="task-dialog" class="pt-4 flex flex-col gap-4">
       <!-- Titre -->
       <div class="flex flex-col gap-2 w-full">
@@ -70,15 +64,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, PropType } from "vue";
-import Dialog from "primevue/dialog";
-import InputText from "primevue/inputtext";
-import Textarea from "primevue/textarea";
-import Select from "primevue/select";
-import Button from "primevue/button";
-import { Task } from "../types/task.types";
-import { useTaskStore } from "../stores/Task";
-import { getLogger } from "../utils/logger";
+import { ref, watch, PropType } from 'vue'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import Select from 'primevue/select'
+import Button from 'primevue/button'
+import { Task } from '../types/task.types'
+import { useTaskStore } from '../stores/Task'
+import { getLogger } from '../utils/logger'
 
 // Props
 const props = defineProps({
@@ -101,88 +95,88 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-});
+})
 
 // Emits
 const emit = defineEmits<{
-  (e: "update:modelValue", value: boolean): void;
-  (e: "task-saved", task: Task): void;
-}>();
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'task-saved', task: Task): void
+}>()
 
 // State
-const visible = ref(props.modelValue);
-const stageId = ref(props.stageId);
-const position = ref(props.position);
+const visible = ref(props.modelValue)
+const stageId = ref(props.stageId)
+const position = ref(props.position)
 
-const title = ref("");
-const description = ref("");
-const selectedVersion = ref("1.5.0");
+const title = ref('')
+const description = ref('')
+const selectedVersion = ref('1.5.0')
 
 const versions = ref([
-  { label: "1.4.4", value: "1.4.4" },
-  { label: "1.4.5", value: "1.4.5" },
-  { label: "1.5.0", value: "1.5.0" },
-]);
+  { label: '1.4.4', value: '1.4.4' },
+  { label: '1.4.5', value: '1.4.5' },
+  { label: '1.5.0', value: '1.5.0' },
+])
 
 // Logger & Store
-const logger = getLogger();
-const taskStore = useTaskStore();
+const logger = getLogger()
+const taskStore = useTaskStore()
 
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
   (val) => {
-    visible.value = val;
+    visible.value = val
 
     if (val) {
-      stageId.value = props.stageId;
-      position.value = props.position;
+      stageId.value = props.stageId
+      position.value = props.position
 
       if (props.creationMode) {
-        initDefaultField();
+        initDefaultField()
       } else if (props.editTask) {
-        title.value = props.editTask.title;
-        selectedVersion.value = props.editTask.version;
-        description.value = props.editTask.description;
+        title.value = props.editTask.title
+        selectedVersion.value = props.editTask.version
+        description.value = props.editTask.description
       }
     }
   },
-);
+)
 
-watch(visible, (val) => emit("update:modelValue", val));
+watch(visible, (val) => emit('update:modelValue', val))
 
 // Init champs par défaut
 function initDefaultField() {
-  title.value = "";
-  selectedVersion.value = "1.5.0";
-  description.value = "";
+  title.value = ''
+  selectedVersion.value = '1.5.0'
+  description.value = ''
 }
 
 // Sauvegarde
 async function saveTask() {
-  logger.debug("Début sauvegarde tâche :", {
+  logger.debug('Début sauvegarde tâche :', {
     stageId: stageId.value,
     title: title.value,
     selectedVersion: selectedVersion.value,
     position: position.value,
-  });
+  })
 
   try {
-    let savedTask: Task | undefined;
+    let savedTask: Task | undefined
 
     if (props.creationMode) {
-      const newTask: Omit<Task, "id"> = {
+      const newTask: Omit<Task, 'id'> = {
         stageId: stageId.value,
         title: title.value,
         version: selectedVersion.value,
         position: position.value,
-        description: description.value || "",
+        description: description.value || '',
         isHistorized: false,
         historizationDate: undefined,
-      };
+      }
 
-      savedTask = await taskStore.saveTask(newTask);
-      logger.info("Tâche créée avec succès", savedTask);
+      savedTask = await taskStore.saveTask(newTask)
+      logger.info('Tâche créée avec succès', savedTask)
     } else if (props.editTask) {
       const updatedTask: Task = {
         id: props.editTask.id,
@@ -190,25 +184,25 @@ async function saveTask() {
         title: title.value,
         version: selectedVersion.value,
         position: position.value,
-        description: description.value || "",
+        description: description.value || '',
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
-      };
+      }
 
-      savedTask = await taskStore.updateTask(updatedTask);
-      logger.info("Tâche mise à jour avec succès", savedTask);
+      savedTask = await taskStore.updateTask(updatedTask)
+      logger.info('Tâche mise à jour avec succès', savedTask)
     } else {
-      logger.error("Aucune tâche à mettre à jour");
-      return;
+      logger.error('Aucune tâche à mettre à jour')
+      return
     }
 
     if (savedTask) {
-      emit("task-saved", savedTask);
+      emit('task-saved', savedTask)
     }
 
-    emit("update:modelValue", false);
+    emit('update:modelValue', false)
   } catch (error) {
-    logger.error("Erreur lors de la sauvegarde", error);
+    logger.error('Erreur lors de la sauvegarde', error)
   }
 }
 </script>

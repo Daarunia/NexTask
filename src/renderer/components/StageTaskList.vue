@@ -36,12 +36,7 @@
       </template>
     </draggable>
 
-    <Button
-      class="btn-edit-task mt-3"
-      data-testid="btn-add-task"
-      text
-      @click="$emit('create-task')"
-    >
+    <Button class="btn-edit-task mt-3" data-testid="btn-add-task" text @click="$emit('create-task')">
       <i class="pi pi-plus absolute left-3"></i>
       <span>Ajouter une tâche</span>
     </Button>
@@ -49,15 +44,15 @@
 </template>
 
 <script setup lang="ts">
-import draggable from "vuedraggable";
-import Button from "primevue/button";
-import { Task } from "../types/task.types";
+import draggable from 'vuedraggable'
+import Button from 'primevue/button'
+import { Task } from '../types/task.types'
 
 defineProps<{
-  tasks: Task[];
-}>();
+  tasks: Task[]
+}>()
 
-defineEmits(["tasks-drop", "edit-task", "archive-task", "create-task"]);
+defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task'])
 </script>
 
 <style scoped>
