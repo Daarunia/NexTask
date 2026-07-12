@@ -2,14 +2,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { prisma } from '../prismaClient.js'
 import { SEEDS_PATH } from '../../constants.js'
+import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import Logger from 'electron-log'
 
 /**
  * Plugin de routes Fastify réservé aux tests E2E (enregistré uniquement quand
  * l'app tourne avec `--test`).
  *
- * Fournit un endpoint de remise à zéro de la base pour isoler chaque test :
- * - POST /test/reset → vide les tâches et les colonnes puis rejoue les seeds
+ * Fournit des endpoints utilitaires pour isoler et piloter les tests :
+ * - POST /test/reset              → vide les tâches et les colonnes puis rejoue les seeds
+ * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -65,6 +67,44 @@ export default async function testRoutes(fastify) {
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
+    },
+  )
+
+  /**
+   * POST /test/run-notifications
+   *
+   * Déclenche manuellement un passage du planificateur de notifications
+   * (`runNotificationCheck`) pour un comportement déterministe en test, le cron
+   * automatique étant désactivé en mode `--test`.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} [req.body] - Corps optionnel
+   * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
+   * @returns {Promise<{count: number}>} Nombre de tâches notifiées lors du passage
+   */
+  fastify.post(
+    '/test/run-notifications',
+    {
+      schema: {
+        description: 'Déclenche un passage du planificateur de notifications (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { now: { type: 'string', format: 'date-time' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: { count: { type: 'integer' } },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const body = (req.body ?? {}) as { now?: string }
+      const now = body.now ? new Date(body.now) : new Date()
+      const count = await runNotificationCheck(now)
+      return { count }
     },
   )
 }

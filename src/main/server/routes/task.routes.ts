@@ -172,12 +172,20 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
+      const data = { ...(req.body as Record<string, unknown>) }
+
+      // Si la startDate est repoussée dans le futur, on réarme la notification.
+      if (data.startDate && new Date(data.startDate as string) > new Date()) {
+        data.notifiedAt = null
+      }
+
       try {
         return await prisma.task.update({
           where: { id },
-          data: req.body,
+          data,
         })
-      } catch {
+      } catch (error) {
+        Logger.warn(`Échec de la mise à jour de la tâche ${id} (traitée comme introuvable) :`, error)
         reply.code(404)
         return { error: 'Tâche non trouvée' }
       }
@@ -212,8 +220,10 @@ export default async function taskRoutes(fastify) {
       const id = Number(req.params.id)
       try {
         await prisma.task.delete({ where: { id } })
+        Logger.info(`Tâche ${id} supprimée`)
         return { message: 'Tâche supprimée' }
-      } catch {
+      } catch (error) {
+        Logger.warn(`Échec de la suppression de la tâche ${id} (traitée comme introuvable) :`, error)
         reply.code(404)
         return { error: 'Tâche non trouvée' }
       }
@@ -331,20 +341,30 @@ export default async function taskRoutes(fastify) {
         return reply.status(400).send({ error: 'Le tableau de tâches est vide' })
       }
 
+      const now = new Date()
+
       try {
         // On fait un update pour chaque tâche, dans une transaction
         const updatedTasks = await prisma.$transaction(
-          tasks.map((t) =>
-            prisma.task.update({
+          tasks.map((t) => {
+            const data = { ...t }
+
+            // startDate repoussée dans le futur → on réarme la notification.
+            if (data.startDate && new Date(data.startDate) > now) {
+              data.notifiedAt = null
+            }
+
+            return prisma.task.update({
               where: { id: t.id },
-              data: t,
-            }),
-          ),
+              data,
+            })
+          }),
         )
 
+        Logger.info(`Batch : ${updatedTasks.length} tâche(s) mise(s) à jour`)
         return updatedTasks
       } catch (error) {
-        Logger.error(error)
+        Logger.error(`Erreur lors de la mise à jour batch de ${tasks.length} tâche(s) :`, error)
         return reply.status(500).send({ error: 'Impossible de mettre à jour les tâches' })
       }
     },

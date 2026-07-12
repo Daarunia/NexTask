@@ -10,3 +10,5 @@ components.d.ts
 .claude
 .scannerwork
 test-results
+dev.db-shm
+dev.db-wal

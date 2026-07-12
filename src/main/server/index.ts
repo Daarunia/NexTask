@@ -6,10 +6,15 @@ import swagger from '@fastify/swagger'
 import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
 import { IS_TEST } from '../constants.js'
+import { applyDatabasePragmas } from './prismaClient.js'
+import { IS_DEV } from '../constants.js'
 import Logger from 'electron-log'
 
 export async function startServer() {
-  const fastify = Fastify({ logger: true })
+  const fastify = Fastify({ logger: IS_DEV ? true : { level: 'error' } })
+
+  // Pragmas SQLite (WAL, etc.) avant de servir les premières requêtes.
+  await applyDatabasePragmas()
 
   // Enregistrer le plugin CORS
   fastify.register(fastifyCors, {

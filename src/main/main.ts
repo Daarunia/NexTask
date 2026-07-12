@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
+import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
 import { settingsStore } from './stores/settings.js'
 import { IS_DEV, IS_TEST } from './constants.js'
 import Logger from 'electron-log'
@@ -67,6 +68,11 @@ app.whenReady().then(async () => {
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
   }
 
+  // Planificateur de notifications (tâches dont la startDate est dépassée).
+  // Désactivé en mode test : les tests le déclenchent manuellement via
+  // /test/run-notifications pour un comportement déterministe.
+  if (!IS_TEST) startNotificationScheduler()
+
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -75,11 +81,13 @@ app.whenReady().then(async () => {
       } catch (err) {
         Logger.error('Erreur au redémarrage du serveur Fastify :', err)
       }
+      if (!IS_TEST) startNotificationScheduler()
     }
   })
 })
 
 app.on('window-all-closed', () => {
+  stopNotificationScheduler()
   if (process.platform !== 'darwin') app.quit()
 })
 

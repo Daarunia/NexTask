@@ -1,7 +1,7 @@
 {
   "name": "nextask",
   "version": "1.0.2",
-  "description": "NexTask",
+  "description": "NexTask — a modern cross-platform desktop todo app built with Electron, Vue 3, Prisma and TailwindCSS.",
   "main": "main/main.js",
   "type": "module",
   "private": true,
@@ -67,6 +67,7 @@
     "@tailwindcss/postcss": "^4.3.2",
     "@tailwindcss/vite": "^4.3.2",
     "axios": "^1.18.1",
+    "croner": "^10.0.1",
     "dotenv": "^17.4.2",
     "electron-log": "^5.4.4",
     "electron-store": "^11.0.2",

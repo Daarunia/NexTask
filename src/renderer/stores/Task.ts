@@ -73,7 +73,7 @@ export const useTaskStore = defineStore('task', {
       if (isCacheValid(this.allEntities, this.ttl)) return
 
       const res = await api.get<Task[]>(`/tasks`)
-      getLogger().debug('test', res)
+      getLogger().debug(`Chargement initial : ${res.length} tâche(s) récupérée(s)`, res)
       this.setAllTasksCache(res)
     },
 

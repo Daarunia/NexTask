@@ -116,7 +116,8 @@ export default async function stagesRoutes(fastify) {
           where: { id },
           data: req.body,
         })
-      } catch {
+      } catch (error) {
+        Logger.warn(`Échec de la mise à jour de la stage ${id} (traitée comme introuvable) :`, error)
         reply.code(404)
         return { error: 'Stage non trouvée' }
       }
@@ -151,8 +152,10 @@ export default async function stagesRoutes(fastify) {
       const id = Number(req.params.id)
       try {
         await prisma.stage.delete({ where: { id } })
+        Logger.info(`Stage ${id} supprimée`)
         return { message: 'Stage supprimée' }
-      } catch {
+      } catch (error) {
+        Logger.warn(`Échec de la suppression de la stage ${id} (traitée comme introuvable) :`, error)
         reply.code(404)
         return { error: 'Stage non trouvée' }
       }
@@ -259,9 +262,10 @@ export default async function stagesRoutes(fastify) {
           ),
         )
 
+        Logger.info(`Batch : ${updatedStages.length} stage(s) mise(s) à jour`)
         return updatedStages
       } catch (error) {
-        Logger.error(error)
+        Logger.error(`Erreur lors de la mise à jour batch de ${stages.length} stage(s) :`, error)
         return reply.status(500).send({ error: 'Impossible de mettre à jour les stages' })
       }
     },

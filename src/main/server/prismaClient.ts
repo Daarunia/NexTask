@@ -1,5 +1,6 @@
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../prisma/generated/prisma/client.js'
+import { IS_DEV } from '../constants.js'
 import { app } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -21,5 +22,14 @@ const connectionString = `file:${dbPath}`
 
 const adapter = new PrismaBetterSqlite3({ url: connectionString })
 
-// Create prisma client
-export const prisma = new PrismaClient({ adapter, log: ['query'] })
+// En dev on veut voir les requêtes ; en prod on ne garde que les erreurs.
+export const prisma = new PrismaClient({ adapter, log: IS_DEV ? ['query'] : ['error'] })
+
+/**
+ * Applique les pragmas SQLite orientés performance sur la connexion Prisma.
+ */
+export async function applyDatabasePragmas(): Promise<void> {
+  await prisma.$queryRawUnsafe('PRAGMA journal_mode = WAL')
+  await prisma.$queryRawUnsafe('PRAGMA synchronous = NORMAL')
+  await prisma.$queryRawUnsafe('PRAGMA busy_timeout = 5000')
+}

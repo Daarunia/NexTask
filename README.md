@@ -1,8 +1,10 @@
-# Todo List
+# NexTask
+
+> Une _Todo List_ de bureau moderne et multiplateforme, construite avec Electron, Vue 3, Prisma et TailwindCSS.
 
 ## Description
 
-Ce projet est ma vision d'une _Todo List_ moderne, réalisée dans le but de développer mes compétences et d'explorer des technologies que je n'avais pas encore eu l'occasion de découvrir. C'est un projet en constante évolution, où chaque fonctionnalité ajoutée est une occasion d'expérimenter avec de nouvelles approches et d'améliorer ma compréhension du développement logiciel.
+**NexTask** est ma vision d'une _Todo List_ moderne, réalisée dans le but de développer mes compétences et d'explorer des technologies que je n'avais pas encore eu l'occasion de découvrir. C'est un projet en constante évolution, où chaque fonctionnalité ajoutée est une occasion d'expérimenter avec de nouvelles approches et d'améliorer ma compréhension du développement logiciel.
 
 Ce projet me permet également de me familiariser avec l'usage de **Vue 3**, **Electron**, **Prisma**, **TailwindCSS**, **Vite**, et bien d'autres outils modernes dans le monde du développement. Le but est d'assembler une _Todo List_ fonctionnelle et agréable à utiliser, tout en faisant l'expérience de la gestion d'un projet complet, de la conception à la production.
 
@@ -42,14 +44,14 @@ Ce projet me permet également de me familiariser avec l'usage de **Vue 3**, **E
 Avant de commencer, assure-toi d'avoir les outils suivants installés :
 
 - **Node.js** (version 24 ou supérieure)
-- **npm** (version 11 ou supérieure)
+- **npm** (version 12 ou supérieure)
 
 ### Installation
 
 1. Clone le projet :
    ```bash
-   git clone https://github.com/Daarunia/todo-list
-   cd todo-list
+   git clone https://github.com/Daarunia/NexTask
+   cd NexTask
    ```
 2. Installe les dépendances :
 
@@ -57,16 +59,10 @@ Avant de commencer, assure-toi d'avoir les outils suivants installés :
 npm install
 ```
 
-3. Lance le serveur de développement :
+3. Lance le serveur de développement (démarre Vite **et** Electron ensemble, avec hot-reload) :
 
 ```bash
  npm run dev
-```
-
-4. Pour lancer l'application en mode Electron (si tu veux tester en tant qu'application de bureau) :
-
-```bash
- npm run electron:dev
 ```
 
 ### Build
