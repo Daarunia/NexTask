@@ -50,7 +50,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.5",
-    "prisma": "^7.8.0",
+    "prisma": "^7.9.0",
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^4.3.2",
     "typescript": "6.0.3",
