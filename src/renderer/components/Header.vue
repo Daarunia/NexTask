@@ -1,6 +1,10 @@
 <template>
   <header class="flex items-center justify-between p-2 relative">
-    <h1 class="ml-4 text-xl">NexTask</h1>
+    <h1 class="ml-4 flex items-center gap-2 text-xl">
+      <AppLogo :size="26" style="color: var(--p-primary-color)" />
+      <!-- Le texte hérite déjà de la couleur d'accent : seul « Nex » est neutralisé. -->
+      <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
+    </h1>
 
     <div class="flex items-center gap-2" ref="menuWrapper">
       <!-- Bouton Dark / Light -->
@@ -24,6 +28,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import Button from 'primevue/button'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
+import AppLogo from './AppLogo.vue'
 import { useSettingsStore } from '../stores/Settings.js'
 import { getLogger } from '../utils/logger.js'
 import { PRIMARY_COLORS } from '../constants/palette.constants.js'

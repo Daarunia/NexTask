@@ -6,16 +6,21 @@ import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
 import { settingsStore } from './stores/settings.js'
-import { IS_DEV, IS_TEST } from './constants.js'
+import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+// Icône de la fenêtre et de la barre des tâches. L'exécutable packagé porte
+// déjà la sienne, mais la fenêtre garde celle d'Electron sans ce réglage.
+const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'icon-256.png')
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    icon: WINDOW_ICON,
     autoHideMenuBar: true,
     frame: true,
     webPreferences: {
@@ -41,6 +46,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Windows rattache l'icône de la barre des tâches et les notifications à cet
+  // identifiant. Sans lui, l'app s'affiche sous l'identité d'Electron.
+  app.setAppUserModelId(APP_ID)
+
   createWindow()
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

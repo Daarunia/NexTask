@@ -2,7 +2,7 @@ import { Cron } from 'croner'
 import { Notification } from 'electron'
 import Logger from 'electron-log'
 import { prisma } from '../server/prismaClient.js'
-import { IS_TEST } from '../constants.js'
+import { IS_TEST, staticAsset } from '../constants.js'
 
 /**
  * Planificateur de notifications.
@@ -19,6 +19,9 @@ let job: Cron | null = null
 // les corps trop longs). Le compteur du titre reflète toujours le total réel.
 const CAP = 10
 
+// Marque affichée dans la notification OS.
+const ICON = staticAsset('icon-256.png')
+
 /**
  * Affiche une unique notification OS regroupant toutes les tâches échues.
  *
@@ -33,6 +36,7 @@ function notify(tasks: { id: number; title: string }[]): void {
   const notification = new Notification({
     title: `Tâches à démarrer (${tasks.length})`,
     body: lines.join('\n'),
+    icon: ICON,
   })
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
@@ -59,10 +63,10 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<numb
 
   if (dueTasks.length === 0) return 0
 
-  if (!Notification.isSupported()) {
-    Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
-  } else {
+  if (Notification.isSupported()) {
     notify(dueTasks)
+  } else {
+    Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }
 
   await prisma.task.updateMany({

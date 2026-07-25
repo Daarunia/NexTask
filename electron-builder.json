@@ -1,21 +1,32 @@
 {
-  "appId": "com.electron.app",
+  "appId": "com.daarunia.nextask",
+  "productName": "NexTask",
   "directories": {
-    "output": "dist"
+    "output": "dist",
+    "buildResources": "resources"
   },
   "nsis": {
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "shortcutName": "Electron App"
+    "shortcutName": "NexTask",
+    "installerIcon": "resources/icon.ico",
+    "uninstallerIcon": "resources/icon.ico",
+    "installerHeaderIcon": "resources/icon.ico"
   },
   "win": {
     "forceCodeSigning": false,
-    "icon": "path/to/icon.ico",
+    "icon": "resources/icon.ico",
     "target": ["nsis", "zip"]
   },
+  "mac": {
+    "icon": "resources/icon.png",
+    "category": "public.app-category.productivity"
+  },
   "linux": {
-    "target": ["snap"]
+    "target": ["snap"],
+    "icon": "resources/icon.png",
+    "category": "Utility"
   },
   "files": [
     {

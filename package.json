@@ -24,6 +24,7 @@
     "build:win": "node scripts/build.js && electron-builder --win",
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux",
+    "icons": "node scripts/generate-icons.js",
     "rebuild": "electron-rebuild",
     "sonar": "sonar-scanner",
     "typecheck": "tsc -p src/main/tsconfig.json --noEmit",
