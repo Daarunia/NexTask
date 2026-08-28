@@ -35,8 +35,13 @@ test('user can change primary color', async ({ header, page }) => {
   await header.closePaletteByOutsideClick()
 
   // Récupération de la couleur appliquée et comparaison entre la couleur du bouton utilisé dans la palette, et la couleur réellement utilisée
-  const updatedRootColor = await page.evaluate(() =>
+  const rawRootColor = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--p-primary-color').trim(),
   )
+  // PrimeVue expose désormais --p-primary-color via light-dark(clair, sombre) :
+  // getComputedStyle renvoie la valeur spécifiée brute (non résolue) pour une custom property,
+  // on extrait donc manuellement la valeur "clair" puisque le thème clair est forcé ci-dessus.
+  const lightDarkMatch = rawRootColor.match(/^light-dark\(\s*([^,]+)\s*,/)
+  const updatedRootColor = lightDarkMatch ? lightDarkMatch[1].trim() : rawRootColor
   expect(updatedRootColor).toBe(bgColor)
 })
