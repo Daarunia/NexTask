@@ -50,6 +50,10 @@
   ],
   "extraResources": [
     {
+      "from": "src/main/static",
+      "to": "static"
+    },
+    {
       "from": "build/main/prisma",
       "to": "prisma"
     },

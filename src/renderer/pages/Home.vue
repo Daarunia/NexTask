@@ -38,6 +38,8 @@ onMounted(async () => {
 <template>
   <div class="h-full">
     <Kanban v-if="!loading" :stages="stages" :tasks="tasks" />
-    <ProgressSpinner v-else />
+    <div v-else class="flex h-full items-center justify-center">
+      <ProgressSpinner />
+    </div>
   </div>
 </template>

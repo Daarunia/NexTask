@@ -40,7 +40,7 @@ export async function startServer() {
       info: {
         title: 'NexTask API',
         description: 'API pour gérer les tâches',
-        version: '1.0.2',
+        version: '1.1.0',
       },
     },
   })

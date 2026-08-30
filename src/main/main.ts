@@ -31,10 +31,12 @@ function createWindow() {
     show: !IS_TEST,
   })
 
+  // Plein écran fenêtré
+  mainWindow.maximize()
+
   if (IS_DEV) {
     const rendererPort = process.argv[2]
     mainWindow.loadURL(`http://localhost:${rendererPort}`)
-    mainWindow.maximize() // Plein écran fenêtré
 
     // On ouvre la console que en dev, et pas en test playwright
     if (!IS_TEST) {
@@ -48,7 +50,9 @@ function createWindow() {
 app.whenReady().then(async () => {
   // Windows rattache l'icône de la barre des tâches et les notifications à cet
   // identifiant. Sans lui, l'app s'affiche sous l'identité d'Electron.
-  app.setAppUserModelId(APP_ID)
+  //
+  // Dissociation prod et dev au niveau de l'id de l'app
+  app.setAppUserModelId(IS_DEV ? `${APP_ID}.dev` : APP_ID)
 
   createWindow()
 

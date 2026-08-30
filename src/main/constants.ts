@@ -34,11 +34,12 @@ export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/se
 // Chemin vers les migrations
 export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/migrations' : 'prisma/migrations')
 
-// Emplacements possibles des assets statiques (icônes de la marque) : les
-// sources d'abord (dev et tests E2E, toujours à jour), puis le dossier empaqueté
-// par electron-builder. La recherche se fait fichier par fichier, un dossier
-// pouvant exister sans contenir l'asset demandé.
-const STATIC_DIRS = [path.join(process.cwd(), 'src', 'main', 'static'), path.join(app.getAppPath(), 'static')]
+// Emplacements possibles des assets statiques
+const STATIC_DIRS = [
+  path.join(process.cwd(), 'src', 'main', 'static'),
+  path.join(RESOURCES_PATH, 'static'),
+  path.join(app.getAppPath(), 'static'),
+]
 
 /**
  * Chemin absolu d'un asset statique, ou `undefined` s'il est introuvable.
