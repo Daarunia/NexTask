@@ -16,8 +16,11 @@ const __dirname = dirname(__filename)
 // déjà la sienne, mais la fenêtre garde celle d'Electron sans ce réglage.
 const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'icon-256.png')
 
+// Référence à la fenêtre principale
+let mainWindow: BrowserWindow | null = null
+
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     icon: WINDOW_ICON,
@@ -45,6 +48,27 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(app.getAppPath(), 'renderer', 'index.html'))
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+}
+
+// Verrou d'instance unique
+const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Une instance tourne déjà : on quitte, le processus existant sera notifié
+  // via `second-instance` et ramènera sa fenêtre au premier plan.
+  app.quit()
+} else {
+  // Déclenché dans l'instance déjà en cours quand une seconde est lancée.
+  app.on('second-instance', () => {
+    if (!mainWindow) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    if (!mainWindow.isVisible()) mainWindow.show()
+    mainWindow.focus()
+  })
 }
 
 app.whenReady().then(async () => {
