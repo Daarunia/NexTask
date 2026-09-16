@@ -22,6 +22,11 @@ const CAP = 10
 // Marque affichée dans la notification OS.
 const ICON = staticAsset('icon-256.png')
 
+// Échappe les caractères spéciaux XML pour une insertion sûre dans le toast.
+function escapeXml(text: string): string {
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
 /**
  * Affiche une unique notification OS regroupant toutes les tâches échues.
  *
@@ -33,11 +38,34 @@ function notify(tasks: { id: number; title: string }[]): void {
     lines.push(`… et ${tasks.length - CAP} autre(s)`)
   }
 
-  const notification = new Notification({
-    title: `Tâches à démarrer (${tasks.length})`,
-    body: lines.join('\n'),
-    icon: ICON,
-  })
+  const title = `Tâches à démarrer (${tasks.length})`
+  const body = lines.join('\n')
+
+  const notification = new Notification({ title, body, icon: ICON })
+
+  // Sur Windows, on remplace le toast par défaut (qui disparaît de l'écran
+  // après quelques secondes, même s'il reste dans le Centre de notifications)
+  // par un toast XML en scénario "reminder". Il reste affiché à l'écran tant
+  // que l'utilisateur ne l'a pas fermé ou n'a pas cliqué dessus.
+  if (process.platform === 'win32') {
+    const imageTag = ICON
+      ? `<image placement="appLogoOverride" hint-crop="circle" src="file:///${ICON.replaceAll('\\', '/')}"/>`
+      : ''
+    notification.toastXml = `
+      <toast scenario="reminder">
+        <visual>
+          <binding template="ToastGeneric">
+            <text>${escapeXml(title)}</text>
+            <text>${escapeXml(body)}</text>
+            ${imageTag}
+          </binding>
+        </visual>
+        <actions>
+          <action activationType="system" arguments="dismiss" content="Fermer"/>
+        </actions>
+      </toast>
+    `
+  }
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
   // déclenché manuellement via /test/run-notifications).

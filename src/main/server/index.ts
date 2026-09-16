@@ -29,8 +29,15 @@ export async function startServer() {
   await applyDatabasePragmas()
 
   // Enregistrer le plugin CORS
+  //
+  // Origine restreinte au renderer de l'app (pas d'en-tête Origin en prod,
+  // le renderer étant chargé en file://; localhost:8080 en dev via Vite) afin
+  // qu'une page web tierce ne puisse pas interroger l'API locale.
+  const allowedOrigins = new Set(IS_DEV ? ['http://localhost:8080'] : [])
   fastify.register(fastifyCors, {
-    origin: true,
+    origin: (origin, callback) => {
+      callback(null, !origin || allowedOrigins.has(origin))
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
 
