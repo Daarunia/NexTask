@@ -313,7 +313,7 @@ export class TaskBoard {
     if (!tb) throw new Error(`Carte cible introuvable : "${targetTitle}"`)
 
     const x = tb.x + tb.width / 2
-    const y = where === 'before' ? tb.y + 4 : tb.y + tb.height - 4
+    const y = where === 'before' ? tb.y + tb.height * 0.25 : tb.y + tb.height * 0.75
     await this.performDrag(sourceTitle, x, y)
   }
 
@@ -328,6 +328,6 @@ export class TaskBoard {
     const lb = await last.boundingBox()
     if (!lb) throw new Error(`Colonne "${columnName}" sans carte pour servir de cible de dépôt`)
 
-    await this.performDrag(sourceTitle, lb.x + lb.width / 2, lb.y + lb.height - 4)
+    await this.performDrag(sourceTitle, lb.x + lb.width / 2, lb.y + lb.height * 0.75)
   }
 }
