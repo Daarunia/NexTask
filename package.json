@@ -48,12 +48,12 @@
     "@vitejs/plugin-vue": "^6.0.9",
     "autoprefixer": "^10.6.1",
     "chokidar": "^5.0.0",
-    "electron": "^44.4.1",
+    "electron": "^44.4.3",
     "electron-builder": "^26.15.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
     "node-abi": "^4.35.0",
-    "prettier": "^3.9.7",
+    "prettier": "^3.9.8",
     "prisma": "^7.10.0",
     "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
@@ -63,16 +63,16 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
-    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger": "^9.8.2",
     "@fastify/swagger-ui": "^6.1.1",
-    "@primeuix/themes": "^3.0.0",
+    "@primeuix/themes": "^3.0.1",
     "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.20.0",
     "croner": "^10.0.1",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.2",
     "electron-log": "^5.4.4",
     "electron-store": "^11.0.2",
     "fastify": "^5.12.5",
@@ -80,7 +80,7 @@
     "pinia": "^4.0.3",
     "primeicons": "^8.0.1",
     "primevue": "^5.0.1",
-    "vue": "^3.5.42",
+    "vue": "^3.5.43",
     "vue-logger-plugin": "^2.2.3",
     "vue-router": "^5.3.1",
     "vuedraggable": "4.1.0"
@@ -94,5 +94,11 @@
   },
   "lint-staged": {
     "*.{js,ts,vue,json,md,css}": "prettier --write ."
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.0": true,
+    "better-sqlite3@12.11.1": true,
+    "electron-winstaller@5.4.0": true,
+    "prisma@7.10.0": true
   }
 }

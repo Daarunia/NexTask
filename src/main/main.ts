@@ -57,11 +57,7 @@ function createWindow() {
 // Verrou d'instance unique
 const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
 
-if (!gotTheLock) {
-  // Une instance tourne déjà : on quitte, le processus existant sera notifié
-  // via `second-instance` et ramènera sa fenêtre au premier plan.
-  app.quit()
-} else {
+if (gotTheLock) {
   // Déclenché dans l'instance déjà en cours quand une seconde est lancée.
   app.on('second-instance', () => {
     if (!mainWindow) return
@@ -69,6 +65,10 @@ if (!gotTheLock) {
     if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
   })
+} else {
+  // Une instance tourne déjà ? On quitte, le processus existant sera notifié
+  // via `second-instance` et ramènera sa fenêtre au premier plan.
+  app.quit()
 }
 
 app.whenReady().then(async () => {

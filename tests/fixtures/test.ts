@@ -1,4 +1,4 @@
-import { test as base, expect, Page } from '@playwright/test'
+import { test as base, Page } from '@playwright/test'
 import { _electron as electron, ElectronApplication } from 'playwright'
 import { Header } from '../components/Header'
 import { TaskBoard } from '../components/TaskBoard'
@@ -88,9 +88,8 @@ test.beforeEach(async ({ page }) => {
   }
   if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
 
-  // 2) Recharge le renderer pour vider le cache Pinia et refetch l'état propre
   await page.reload()
   await page.waitForLoadState('domcontentloaded')
 })
 
-export { expect }
+export { expect } from '@playwright/test'

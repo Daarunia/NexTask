@@ -7,8 +7,8 @@ build
 generated
 components.d.ts
 *.db
+*.db-shm
+*.db-wal
 .claude
 .scannerwork
 test-results
-dev.db-shm
-dev.db-wal
