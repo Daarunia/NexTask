@@ -1,21 +1,17 @@
 process.env.NODE_ENV = 'development'
 
 import dotenv from 'dotenv'
-import { spawn, execSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 import pc from 'picocolors'
 import chokidar from 'chokidar'
 import electron from 'electron'
-import compile from './private/tsc.js'
 import fs from 'node:fs'
 import { EOL } from 'node:os'
-import { fileURLToPath } from 'node:url'
 import { startRenderer, compileMain, electronArgs } from './server-utils.js'
+import { ROOT } from './private/paths.js'
 
 // jcp --ignore-checks le fichier doit être ignoré par le pre-commit
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
 let electronProcess = null
 let electronProcessLocker = false
 let rendererPort = 0
@@ -37,11 +33,11 @@ async function startElectron() {
   electronProcessLocker = false
 
   electronProcess.stdout.on('data', (data) => {
-    if (data == EOL) return
+    if (data.toString() === EOL) return
     process.stdout.write(pc.blue('[electron] ') + pc.white(data.toString()))
   })
 
-  electronProcess.stderr.on('data', (data) => process.stderr.write(pc.blue('[electron] ') + pc.white(data.toString())))
+  electronProcess.stderr.on('data', (data) => process.stderr.write(pc.red('[electron] ') + pc.white(data.toString())))
 
   electronProcess.on('exit', () => stop())
 }
@@ -71,11 +67,9 @@ function copyStaticFiles() {
  * tsc does not copy static files, so copy them over manually for dev server.
  */
 function copy(relativePath) {
-  fs.cpSync(
-    path.join(__dirname, '..', 'src', 'main', relativePath),
-    path.join(__dirname, '..', 'build', 'main', relativePath),
-    { recursive: true },
-  )
+  fs.cpSync(path.join(ROOT, 'src', 'main', relativePath), path.join(ROOT, 'build', 'main', relativePath), {
+    recursive: true,
+  })
 }
 
 function stop() {
@@ -88,7 +82,7 @@ console.log(pc.green('  Starting Electron + Vite Dev Server  '))
 console.log(pc.green('======================================='))
 
 // Variable d'environnement
-dotenv.config({ path: path.join(__dirname, '../.env') })
+dotenv.config({ path: path.join(ROOT, '.env') })
 
 const devServer = await startRenderer()
 rendererPort = devServer.config.server.port
@@ -96,7 +90,7 @@ rendererPort = devServer.config.server.port
 copyStaticFiles()
 await startElectron()
 
-const mainPath = path.join(__dirname, '..', 'src', 'main')
+const mainPath = path.join(ROOT, 'src', 'main')
 chokidar.watch(mainPath, { cwd: mainPath }).on('change', (changedPath) => {
   console.log(pc.blue('[electron] ') + `Change in ${changedPath}. reloading... 🚀`)
 

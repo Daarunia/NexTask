@@ -1,5 +1,9 @@
 import { exec } from 'node:child_process'
+import path from 'node:path'
 import pc from 'picocolors'
+import { ROOT } from './paths.js'
+
+const TSC_BIN = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc')
 
 /**
  * Compile TypeScript in the given directory using tsc.
@@ -8,7 +12,7 @@ import pc from 'picocolors'
  */
 export default function compile(directory) {
   return new Promise((resolve, reject) => {
-    const tscProcess = exec('npx tsc', { cwd: directory, shell: false })
+    const tscProcess = exec(TSC_BIN, { cwd: directory })
     tscProcess.stdout.on('data', (data) => {
       process.stdout.write(pc.yellow('[tsc] ') + pc.white(data.toString()))
     })

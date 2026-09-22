@@ -1,24 +1,20 @@
 import path from 'node:path'
 import pc from 'picocolors'
 import fs from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import compile from './private/tsc.js'
-
-// jcp --ignore-checks le fichier doit être ignoré par le pre-commit
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import { ROOT } from './private/paths.js'
 
 function buildRenderer() {
   return build({
-    configFile: path.join(__dirname, '..', 'vite.config.mjs'),
+    configFile: path.join(ROOT, 'vite.config.mjs'),
     base: './',
     mode: 'production',
   })
 }
 
 // Suppression du dossier build
-fs.rmSync(path.join(__dirname, '..', 'build'), {
+fs.rmSync(path.join(ROOT, 'build'), {
   recursive: true,
   force: true,
 })
@@ -30,11 +26,11 @@ console.log(pc.blue('Transpiling Prisma, renderer & main...'))
  */
 try {
   // Compiler le main
-  const mainPath = path.join(__dirname, '..', 'src', 'main')
+  const mainPath = path.join(ROOT, 'src', 'main')
   await compile(mainPath)
 
   // Compiler le preload
-  const preloadPath = path.join(__dirname, '..', 'src', 'main', 'preload')
+  const preloadPath = path.join(ROOT, 'src', 'main', 'preload')
   await compile(preloadPath)
 
   // Compiler le renderer
