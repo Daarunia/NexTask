@@ -96,9 +96,9 @@
     "*.{js,ts,vue,json,md,css}": "prettier --write ."
   },
   "allowScripts": {
-    "@prisma/engines@7.10.0": true,
-    "better-sqlite3@12.11.1": true,
-    "electron-winstaller@5.4.0": true,
-    "prisma@7.10.0": true
+    "@prisma/engines": true,
+    "better-sqlite3": true,
+    "electron-winstaller": true,
+    "prisma": true
   }
 }

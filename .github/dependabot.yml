@@ -1,0 +1,30 @@
+# Dependabot : PR automatiques pour les montées de versions mineures / patch
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+      time: '08:00'
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      electron:
+        patterns: ['electron', '@electron/*', 'electron-builder']
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Versions des actions utilisées dans .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
