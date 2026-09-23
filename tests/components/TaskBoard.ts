@@ -320,6 +320,11 @@ export class TaskBoard {
   /**
    * Déplace une carte à la fin d'une colonne cible (dépôt sous sa dernière
    * carte). La colonne cible doit contenir au moins une carte.
+   *
+   * On relâche dans la marge basse de la dernière carte (hors de la carte
+   * elle-même) : SortableJS détecte alors un dépôt « après le dernier élément »
+   * et ajoute en fin. Relâcher SUR la carte rend l'index dépendant de la
+   * trajectoire et de la taille de la fenêtre (échec observé en CI).
    * @param sourceTitle Carte à déplacer
    * @param columnName Colonne de destination
    */
@@ -328,6 +333,6 @@ export class TaskBoard {
     const lb = await last.boundingBox()
     if (!lb) throw new Error(`Colonne "${columnName}" sans carte pour servir de cible de dépôt`)
 
-    await this.performDrag(sourceTitle, lb.x + lb.width / 2, lb.y + lb.height * 0.75)
+    await this.performDrag(sourceTitle, lb.x + lb.width / 2, lb.y + lb.height + 4)
   }
 }
