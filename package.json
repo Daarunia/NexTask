@@ -44,7 +44,7 @@
     "@playwright/test": "^1.63.0",
     "@primevue/auto-import-resolver": "^5.0.1",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.13.6",
     "@vitejs/plugin-vue": "^6.0.9",
     "autoprefixer": "^10.6.1",
     "chokidar": "^5.0.0",
