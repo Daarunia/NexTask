@@ -1,0 +1,58 @@
+# CI : lance les tests E2E Playwright (Electron) à chaque push sur main et sur chaque PR
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Annule l'exécution précédente si un nouveau push arrive sur la même branche
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    # Runner Windows : Electron dispose d'un vrai affichage, pas besoin de xvfb
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Aligne npm sur la version déclarée dans packageManager
+      - name: Install npm 12
+        run: npm install -g npm@12.0.2
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Le .env est ignoré par git, on repart du template
+      - name: Create .env
+        run: cp .env.template .env
+        shell: bash
+
+      # Le client Prisma (src/main/prisma/generated) n'est pas versionné
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run E2E tests
+        run: npm run test
+
+      # Traces, captures et vidéos Playwright en cas d'échec
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7
