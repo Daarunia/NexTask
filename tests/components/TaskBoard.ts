@@ -251,7 +251,12 @@ export class TaskBoard {
    * @param name Nom de la colonne
    */
   async openStageMenu(name: string) {
-    await this.column(name).getByTestId('btn-stage-menu').click()
+    const button = this.column(name).getByTestId('btn-stage-menu')
+
+    // Défilement avant le clic
+    await button.scrollIntoViewIfNeeded()
+    await button.click()
+    await expect(this.page.getByRole('menuitem', { name: 'Supprimer' })).toBeVisible()
   }
 
   /**
