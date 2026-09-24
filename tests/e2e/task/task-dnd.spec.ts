@@ -96,3 +96,35 @@ test('insère une tâche à une position précise dans la colonne cible', async 
 
   for (const title of [a1, b1, b2]) await taskBoard.archiveTask(title)
 })
+
+test("persiste l'ordre final après un aller-retour de réordonnancement", async ({ taskBoard, page }) => {
+  const s = uid()
+  const [t1, t2] = [`P1-${s}`, `P2-${s}`]
+  const all = [t1, t2]
+
+  for (const title of all) await taskBoard.createTask(A_FAIRE, { title })
+  await expect(await taskBoard.orderedTitlesAmong(A_FAIRE, all)).toEqual(all)
+
+  // Attend la sauvegarde batch déclenchée par un drop
+  const waitForBatchSave = () =>
+    page.waitForResponse((res) => res.url().includes('/tasks/batch') && res.request().method() === 'PATCH' && res.ok())
+
+  // 1er drop : la 2e tâche passe au-dessus de la 1re
+  let saved = waitForBatchSave()
+  await taskBoard.dragTaskOntoCard(t2, t1, 'before')
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, all)).toEqual([t2, t1])
+  await saved
+
+  // 2e drop : retour à l'ordre initial, qui doit lui aussi être envoyé au serveur
+  saved = waitForBatchSave()
+  await taskBoard.dragTaskOntoCard(t1, t2, 'before')
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, all)).toEqual([t1, t2])
+  await saved
+
+  // Après rechargement, l'ordre affiché est celui persisté en base
+  await page.reload()
+  await expect(taskBoard.taskCard(t1)).toBeVisible()
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, all)).toEqual([t1, t2])
+
+  for (const title of all) await taskBoard.archiveTask(title)
+})
