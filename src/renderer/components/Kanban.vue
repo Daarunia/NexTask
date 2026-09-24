@@ -193,22 +193,30 @@ function openEditTaskDialog(stageId: number, task: Task) {
  * Listener quand une tâche est drop dans une colonne
  */
 async function onTasksDrop() {
-  const modifiedTasks: Task[] = []
+  // Comparaison avec le dernier état persisté, porté par les tâches de taskLists
+  // (et non avec props.tasks, instantané figé au montage)
+  const changes: { task: Task; position: number; stageId: number }[] = []
 
   for (const stage of stagesLocal.value) {
-    const originalTasks = props.tasks.filter((t) => t.stageId === stage.id)
     const currentTasks = taskLists.get(stage.id) ?? []
 
     currentTasks.forEach((task, index) => {
-      if (!originalTasks.some((t) => t.id === task.id && t.position === index && t.stageId === stage.id)) {
-        modifiedTasks.push({ ...task, position: index, stageId: stage.id })
+      if (task.position !== index || task.stageId !== stage.id) {
+        changes.push({ task, position: index, stageId: stage.id })
       }
     })
   }
 
-  if (modifiedTasks.length) {
-    logger.debug('Mise à jour DnD des tâches', modifiedTasks)
-    await taskStore.updateTaskBatch(modifiedTasks)
+  if (!changes.length) return
+
+  const modifiedTasks = changes.map(({ task, position, stageId }) => ({ ...task, position, stageId }))
+  logger.debug('Mise à jour DnD des tâches', modifiedTasks)
+  await taskStore.updateTaskBatch(modifiedTasks)
+
+  // Sauvegarde réussie : les tâches locales reflètent désormais l'état persisté
+  for (const { task, position, stageId } of changes) {
+    task.position = position
+    task.stageId = stageId
   }
 }
 
