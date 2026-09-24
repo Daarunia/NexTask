@@ -193,7 +193,7 @@ async function saveTask() {
         description: description.value || '',
         isHistorized: false,
         historizationDate: undefined,
-        startDate: startDate.value ?? undefined,
+        startDate: startDate.value,
       }
 
       savedTask = await taskStore.saveTask(newTask)
@@ -208,7 +208,9 @@ async function saveTask() {
         description: description.value || '',
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
-        startDate: startDate.value ?? undefined,
+        // null (et non undefined) : JSON.stringify supprime les clés undefined,
+        // le PATCH n'effacerait donc pas une date vidée côté serveur.
+        startDate: startDate.value,
       }
 
       savedTask = await taskStore.updateTask(updatedTask)

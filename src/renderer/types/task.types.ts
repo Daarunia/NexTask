@@ -10,7 +10,7 @@ export interface Task {
   isHistorized: boolean
   historizationDate?: Date
   stageId: number
-  startDate?: Date // date de début de la tâche
+  startDate?: Date | null // date de début de la tâche (null = effacée, envoyée telle quelle au serveur)
   notifiedAt?: Date // date d'envoi du rappel (évite de re-notifier en boucle)
   createdAt?: Date // géré par le serveur (@default(now()))
   updatedAt?: Date // géré par le serveur (@updatedAt)
