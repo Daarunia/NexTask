@@ -1,6 +1,5 @@
 node ./scripts/pre-commit-checks.js
 npx lint-staged
 
-# Typecheck du process principal (rapide et fiable). Le typecheck du renderer
-# (vue-tsc) tourne en CI car il nécessite les fichiers générés.
+# Typecheck du process principal
 npm run typecheck

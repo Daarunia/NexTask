@@ -1,4 +1,4 @@
-# CI : lance les tests E2E Playwright (Electron) à chaque push sur main et sur chaque PR
+# CI : formatage, build de l'installateur et tests E2E à chaque push sur main et sur chaque PR
 name: Tests
 
 on:
@@ -13,6 +13,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Formatage Prettier
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm 12
+        run: npm install -g npm@12.0.2
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check formatting
+        run: npx prettier --check .
+
+  # Construction de l'installateur Windows
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm 12
+        run: npm install -g npm@12.0.2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env
+        run: cp .env.template .env
+        shell: bash
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build Windows installer
+        run: npm run build:win -- --publish never
+
   e2e:
     # Runner Windows : Electron dispose d'un vrai affichage, pas besoin de xvfb
     runs-on: windows-latest
