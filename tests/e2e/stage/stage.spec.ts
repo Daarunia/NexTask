@@ -37,6 +37,51 @@ test.describe('Gestion des colonnes', () => {
     await taskBoard.deleteStage(after)
   })
 
+  test('le double-clic sur le titre donne le focus au champ de renommage, texte sélectionné', async ({ taskBoard }) => {
+    const before = `Focus ${uid()}`
+    const after = `Nouveau ${uid()}`
+
+    await taskBoard.addStage(before)
+    await taskBoard.page.getByRole('heading', { name: before, exact: true }).dblclick()
+
+    const input = taskBoard.page.getByTestId('stage-edit-input')
+    await expect(input).toBeFocused()
+
+    // Texte entièrement sélectionné : la frappe remplace l'ancien nom sans l'effacer
+    await taskBoard.page.keyboard.type(after)
+    await taskBoard.page.keyboard.press('Enter')
+
+    await expect(taskBoard.column(after)).toHaveCount(1)
+    await expect(taskBoard.column(before)).toHaveCount(0)
+
+    await taskBoard.deleteStage(after)
+  })
+
+  test('Échap annule le renommage, même après rechargement', async ({ taskBoard }) => {
+    const name = `Annule renommage ${uid()}`
+    const other = `Jamais ${uid()}`
+
+    await taskBoard.addStage(name)
+    await taskBoard.page.getByRole('heading', { name, exact: true }).dblclick()
+
+    const input = taskBoard.page.getByTestId('stage-edit-input')
+    await expect(input).toBeFocused()
+    await input.fill(other)
+    await input.press('Escape')
+
+    // Le blur au retrait de l'input ne doit pas enregistrer le nom saisi
+    await expect(input).toHaveCount(0)
+    await expect(taskBoard.column(name)).toHaveCount(1)
+    await expect(taskBoard.column(other)).toHaveCount(0)
+
+    // Rien n'a été persisté côté serveur
+    await taskBoard.page.reload()
+    await expect(taskBoard.column(name)).toHaveCount(1)
+    await expect(taskBoard.column(other)).toHaveCount(0)
+
+    await taskBoard.deleteStage(name)
+  })
+
   test('réordonne deux colonnes par glisser-déposer', async ({ taskBoard }) => {
     const s = uid()
     const [a, b] = [`Ord-A ${s}`, `Ord-B ${s}`]
