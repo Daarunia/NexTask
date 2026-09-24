@@ -286,14 +286,17 @@ export default async function taskRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Array<Object>} req.body - Tableau des tâches à mettre à jour
    * @param {number} req.body[].id - ID de la tâche (requis)
-   * @param {string} [req.body[].stage] - Nouvelle colonne de la tâche
+   * @param {string} [req.body[].title] - Titre
    * @param {string} [req.body[].version] - Version
    * @param {string} [req.body[].description] - Description
-   * @param {string} [req.body[].title] - Titre
    * @param {number} [req.body[].position] - Position dans la colonne
-   * @param {string} [req.body[].status] - Statut
+   * @param {number|null} [req.body[].stageId] - ID de la colonne (null si archivée)
+   * @param {boolean} [req.body[].isHistorized] - Tâche historisée ou non
+   * @param {string|null} [req.body[].historizationDate] - Date d'historisation
+   * @param {string|null} [req.body[].startDate] - Date de début
+   * @param {string|null} [req.body[].notifiedAt] - Date d'envoi du rappel
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Array<Object>|{error: string}>} Tableau des tâches mises à jour ou message d'erreur
+   * @returns {Promise<Array<Object>|{error: string}>} Tableau des tâches complètes mises à jour ou message d'erreur
    */
   fastify.patch(
     '/tasks/batch',
@@ -307,29 +310,27 @@ export default async function taskRoutes(fastify) {
             type: 'object',
             properties: {
               id: { type: 'integer' },
-              stage: { type: 'string' },
+              title: { type: 'string' },
               version: { type: 'string' },
               description: { type: 'string' },
               position: { type: 'integer' },
-              status: { type: 'string' },
+              stageId: { type: ['integer', 'null'] },
+              isHistorized: { type: 'boolean' },
+              historizationDate: {
+                type: ['string', 'null'],
+                format: 'date-time',
+              },
+              startDate: { type: ['string', 'null'], format: 'date-time' },
+              notifiedAt: { type: ['string', 'null'], format: 'date-time' },
             },
             required: ['id'],
           },
         },
         response: {
+          // Tâches complètes : le store remplace ses entrées de cache par ces objets
           200: {
             type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'integer' },
-                stage: { type: 'string' },
-                version: { type: 'string' },
-                description: { type: 'string' },
-                position: { type: 'integer' },
-                status: { type: 'string' },
-              },
-            },
+            items: taskSchema,
           },
         },
       },
