@@ -1,4 +1,4 @@
-// Incrémente la version du projet (package.json + version de l'API Swagger),
+// Incrémente la version du projet (package.json, lue aussi par la doc Swagger),
 // affiche le changement puis propose de poser le tag git correspondant.
 //
 // Usage — node scripts/bump-version.js <major|minor|patch>
@@ -11,7 +11,6 @@ import { ROOT } from './private/paths.js'
 
 // Constantes
 const PACKAGE_JSON_PATH = path.join(ROOT, 'package.json')
-const API_INDEX_PATH = path.join(ROOT, 'src/main/server/index.ts')
 const BUMP_TYPES = ['major', 'minor', 'patch']
 
 // Calcule la version suivante (X.Y.Z) selon le type d'incrément.
@@ -95,13 +94,8 @@ async function main() {
   // package.json — seule occurrence du champ "version" de premier niveau.
   replaceOnce(PACKAGE_JSON_PATH, /"version": "\d+\.\d+\.\d+"/, `"version": "${newVersion}"`)
 
-  // Version de l'API exposée dans la doc Swagger.
-  replaceOnce(API_INDEX_PATH, /version: '\d+\.\d+\.\d+'/, `version: '${newVersion}'`)
-
   console.log(`\nBump ${type} — ${oldVersion} -> ${newVersion}`)
-  console.log('Fichiers mis à jour —')
-  console.log(`  - ${path.relative(ROOT, PACKAGE_JSON_PATH)}`)
-  console.log(`  - ${path.relative(ROOT, API_INDEX_PATH)}`)
+  console.log(`Fichier mis à jour — ${path.relative(ROOT, PACKAGE_JSON_PATH)}`)
 
   const shouldCommit = await askYesNo(`\nCommiter ces changements ("chore: release ${newVersion}") ?`)
   if (!shouldCommit) {
@@ -111,7 +105,7 @@ async function main() {
     return
   }
 
-  run(['add', PACKAGE_JSON_PATH, API_INDEX_PATH])
+  run(['add', PACKAGE_JSON_PATH])
   run(['commit', '-m', `chore: release ${newVersion}`])
 
   const refsToPush = ['HEAD']

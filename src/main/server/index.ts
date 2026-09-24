@@ -6,7 +6,7 @@ import swagger from '@fastify/swagger'
 import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
-import { IS_DEV, IS_TEST, staticAsset } from '../constants.js'
+import { APP_VERSION, IS_DEV, IS_TEST, staticAsset } from '../constants.js'
 import Logger from 'electron-log'
 import { readFileSync } from 'node:fs'
 
@@ -47,7 +47,7 @@ export async function startServer() {
       info: {
         title: 'NexTask API',
         description: 'API pour gérer les tâches',
-        version: '1.1.2',
+        version: APP_VERSION,
       },
     },
   })

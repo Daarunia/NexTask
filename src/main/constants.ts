@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
@@ -10,6 +10,11 @@ export const APP_ID = 'com.daarunia.nextask'
 // En dev ?
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_TEST = process.argv.includes('--test')
+
+// Version de l'app.
+export const APP_VERSION: string = app.isPackaged
+  ? app.getVersion()
+  : JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).version
 
 // Chemin de base pour dev / prod
 export const CURRENT_PATH = IS_DEV ? process.cwd() : app.getPath('userData')
