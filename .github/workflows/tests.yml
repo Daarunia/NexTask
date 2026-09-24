@@ -11,6 +11,8 @@ on:
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
   # Formatage Prettier
