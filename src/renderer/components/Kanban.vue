@@ -17,7 +17,7 @@
           <div class="flex items-center justify-between mb-3">
             <template v-if="editingStageId === stage.id">
               <input
-                id="stage-input-{{stage.id}}"
+                :id="`stage-input-${stage.id}`"
                 data-testid="stage-edit-input"
                 v-model="editedStageName"
                 @keyup.enter="saveStageName(stage)"
@@ -337,6 +337,9 @@ function startEditingStage(stage: Stage) {
 }
 
 async function saveStageName(stage: Stage) {
+  // Le retrait de l'input (après Échap ou Entrée) peut déclencher un blur :
+  // on ignore cet appel si l'édition est déjà terminée ou annulée.
+  if (editingStageId.value !== stage.id) return
   if (!editedStageName.value.trim()) return
 
   stage.name = editedStageName.value
