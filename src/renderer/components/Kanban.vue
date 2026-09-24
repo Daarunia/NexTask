@@ -182,8 +182,12 @@ function openCreateTaskDialog(stageId: number) {
 function openEditTaskDialog(stageId: number, task: Task) {
   logger.debug('Ouverture édition', { stageId, task })
 
+  // Position = index actuel de la carte dans sa colonne : task.position peut
+  // être obsolète juste après un DnD (sauvegarde batch en cours ou échouée)
+  const index = taskLists.get(stageId)?.findIndex((t) => t.id === task.id) ?? -1
+
   stageDialog.value = stageId
-  positionDialog.value = task.position
+  positionDialog.value = index !== -1 ? index : task.position
   editTask.value = task
   creationMode.value = false
   showDialog.value = true
@@ -247,11 +251,12 @@ async function archiveTask(task: Task) {
   // On retire la carte de sa colonne locale (taskLists est la source de
   // vérité après le montage — ne PAS reconstruire depuis props.tasks, qui est
   // un instantané figé et réafficherait la tâche archivée).
-  const list = taskLists.get(task.stageId)
-  if (list) {
+  // La colonne est retrouvée par id : task.stageId peut être obsolète après un DnD.
+  const location = findTaskLocation(task.id)
+  if (location) {
     taskLists.set(
-      task.stageId,
-      list.filter((t) => t.id !== task.id),
+      location.stageId,
+      location.list.filter((t) => t.id !== task.id),
     )
   }
 
@@ -262,17 +267,36 @@ async function archiveTask(task: Task) {
  * Save depuis dialog
  */
 function onTaskSaved(task: Task) {
-  const list = taskLists.get(task.stageId) ?? []
-
   if (creationMode.value) {
-    list.push(task)
-  } else {
-    const index = list.findIndex((t) => t.id === task.id)
-    if (index !== -1) list[index] = task
+    // Nouvelle carte : ajoutée en fin de colonne (position = longueur à l'ouverture)
+    const list = taskLists.get(task.stageId) ?? []
+    taskLists.set(task.stageId, [...list, task])
+    return
   }
 
-  list.sort((a, b) => a.position - b.position)
-  taskLists.set(task.stageId, [...list])
+  // Édition : remplacement sur place, dans la colonne où la carte est affichée.
+  // Pas de tri par position : celles des autres cartes peuvent être obsolètes
+  // tant que la sauvegarde d'un DnD n'a pas abouti.
+  const location = findTaskLocation(task.id)
+  if (!location) return
+
+  const list = [...location.list]
+  list[location.index] = task
+  taskLists.set(location.stageId, list)
+}
+
+/**
+ * Retrouve la colonne locale et l'index d'une carte par son id.
+ * On ne se fie pas à task.stageId : vuedraggable déplace l'objet entre les
+ * listes sans le modifier, le champ n'est remis à jour qu'après la sauvegarde.
+ * @param taskId Id de la tâche
+ */
+function findTaskLocation(taskId: number): { stageId: number; list: Task[]; index: number } | null {
+  for (const [stageId, list] of taskLists) {
+    const index = list.findIndex((t) => t.id === taskId)
+    if (index !== -1) return { stageId, list, index }
+  }
+  return null
 }
 
 /**
