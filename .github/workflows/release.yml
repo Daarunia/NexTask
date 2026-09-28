@@ -1,0 +1,75 @@
+# Release : build de l'installateur Windows et publication d'une GitHub Release à chaque tag vX.Y.Z
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  # Lancement manuel pour tester la chaîne sans rien publier (release en brouillon)
+  workflow_dispatch:
+
+# Une seule release à la fois par tag, sans annuler une publication en cours
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # Écriture nécessaire pour créer la release et y joindre les fichiers
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Aligne npm sur la version déclarée dans packageManager
+      - name: Install npm 12
+        run: npm install -g npm@12.0.2
+
+      # Le tag doit correspondre à la version de package.json, sinon l'installateur porterait un autre numéro
+      - name: Check tag matches package.json
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Le tag $GITHUB_REF_NAME ne correspond pas à la version de package.json (v$VERSION)"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Le .env est ignoré par git, on repart du template
+      - name: Create .env
+        run: cp .env.template .env
+        shell: bash
+
+      # Le client Prisma (src/main/prisma/generated) n'est pas versionné
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build Windows installer
+        run: npm run build:win -- --publish never
+
+      # gh est préinstallé sur les runners GitHub, les notes sont générées à partir des PR mergées
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.zip --title "NexTask $GITHUB_REF_NAME" --generate-notes
+
+      # Hors tag, brouillon invisible du public et sans tag créé, à supprimer après vérification
+      - name: Publish draft release
+        if: github.ref_type != 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID"
