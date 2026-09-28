@@ -4,6 +4,7 @@
     "useDefineForClassFields": true,
     "module": "preserve",
     "strict": true,
+    "skipLibCheck": true,
     "jsx": "preserve",
     "sourceMap": true,
     "resolveJsonModule": true,
