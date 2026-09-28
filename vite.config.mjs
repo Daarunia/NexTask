@@ -24,6 +24,17 @@ export default defineConfig({
     outDir: path.join(__dirname, 'build', 'renderer'),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
+    rolldownOptions: {
+      output: {
+        // Dépendances dans des chunks séparés, pour que la limite de taille surveille le code de l'app
+        codeSplitting: {
+          groups: [
+            { name: 'primevue', test: /node_modules[\\/](primevue|@primevue|@primeuix)[\\/]/, priority: 2 },
+            { name: 'vendor', test: /node_modules[\\/]/, priority: 1 },
+          ],
+        },
+      },
+    },
   },
   plugins: [
     tailwindcss(),
