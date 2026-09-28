@@ -1,7 +1,7 @@
 import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { stageSchema } from '../schemas/stageSchema.js'
-import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
+import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -99,7 +99,7 @@ export default async function stagesRoutes(fastify) {
         body: {
           type: 'object',
           properties: {
-            name: { type: 'string' },
+            name: requiredLabel,
             position: { type: 'integer' },
           },
         },
@@ -182,7 +182,7 @@ export default async function stagesRoutes(fastify) {
         body: {
           type: 'object',
           properties: {
-            name: { type: 'string' },
+            name: requiredLabel,
             position: { type: 'integer' },
           },
           required: ['name', 'position'],
@@ -220,7 +220,7 @@ export default async function stagesRoutes(fastify) {
             type: 'object',
             properties: {
               id: { type: 'integer' },
-              name: { type: 'string' },
+              name: requiredLabel,
               position: { type: 'integer' },
             },
             required: ['id'],

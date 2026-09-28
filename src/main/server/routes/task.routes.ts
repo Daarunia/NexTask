@@ -1,7 +1,7 @@
 import { prisma } from '../prismaClient.js'
 import type { Task as PrismaTask } from '../../prisma/generated/prisma/client.js'
 import { taskSchema } from '../schemas/taskSchema.js'
-import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
+import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import Logger from 'electron-log'
 
 /**
@@ -115,7 +115,7 @@ export default async function taskRoutes(fastify) {
             version: { type: 'string' },
             description: { type: 'string' },
             position: { type: 'integer' },
-            title: { type: 'string' },
+            title: requiredLabel,
             startDate: { type: ['string', 'null'], format: 'date-time' },
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
@@ -150,7 +150,7 @@ export default async function taskRoutes(fastify) {
         body: {
           type: 'object',
           properties: {
-            title: { type: 'string' },
+            title: requiredLabel,
             version: { type: 'string' },
             description: { type: 'string' },
             position: { type: 'integer' },
@@ -310,7 +310,7 @@ export default async function taskRoutes(fastify) {
             type: 'object',
             properties: {
               id: { type: 'integer' },
-              title: { type: 'string' },
+              title: requiredLabel,
               version: { type: 'string' },
               description: { type: 'string' },
               position: { type: 'integer' },
