@@ -187,7 +187,7 @@ function openEditTaskDialog(stageId: number, task: Task) {
   const index = taskLists.get(stageId)?.findIndex((t) => t.id === task.id) ?? -1
 
   stageDialog.value = stageId
-  positionDialog.value = index !== -1 ? index : task.position
+  positionDialog.value = index === -1 ? task.position : index
   editTask.value = task
   creationMode.value = false
   showDialog.value = true
