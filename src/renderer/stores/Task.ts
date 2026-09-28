@@ -133,6 +133,25 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Historise dans le cache les tâches d'une colonne supprimée
+     * (l'archivage est déjà fait côté serveur par DELETE /stages/:id)
+     * @param stageId ID de la colonne supprimée
+     */
+    markStageTasksArchived(stageId: number) {
+      if (!this.allEntities) return
+
+      const now = new Date()
+
+      this.allEntities.data = this.allEntities.data.map((task) => {
+        if (task.stageId !== stageId || task.isHistorized) return task
+
+        delete this.entities[task.id]
+        return { ...task, isHistorized: true, historizationDate: now }
+      })
+      this.allEntities.timestamp = Date.now()
+    },
+
+    /**
      * Supprime une tâche par ID
      * @param id ID de la tâche
      */

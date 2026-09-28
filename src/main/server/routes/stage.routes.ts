@@ -11,7 +11,7 @@ import { idParam, errorResponse, messageResponse, requiredLabel } from '../schem
  * - GET    /stages/:id   → Récupère une stage par son ID
  * - POST   /stages       → Crée une nouvelle stage
  * - PATCH  /stages/:id   → Modifie une stage existante
- * - DELETE /stages/:id   → Supprime une stage existante
+ * - DELETE /stages/:id   → Supprime une stage existante et historise ses tâches
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -127,7 +127,8 @@ export default async function stagesRoutes(fastify) {
   /**
    * DELETE /stages/:id
    *
-   * Supprime une stage par son ID.
+   * Supprime une stage par son ID et historise ses tâches, dans une même
+   * transaction : si la suppression échoue, aucune tâche n'est archivée.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -139,7 +140,7 @@ export default async function stagesRoutes(fastify) {
     '/stages/:id',
     {
       schema: {
-        description: 'Supprime une stage par son ID',
+        description: 'Supprime une stage par son ID et historise ses tâches',
         tags: ['Stage'],
         params: idParam,
         response: {
@@ -151,8 +152,15 @@ export default async function stagesRoutes(fastify) {
     async (req, reply) => {
       const id = Number(req.params.id)
       try {
-        await prisma.stage.delete({ where: { id } })
-        Logger.info(`Stage ${id} supprimée`)
+        const [archived] = await prisma.$transaction([
+          prisma.task.updateMany({
+            where: { stageId: id },
+            data: { isHistorized: true, historizationDate: new Date(), stageId: null },
+          }),
+          prisma.stage.delete({ where: { id } }),
+        ])
+
+        Logger.info(`Stage ${id} supprimée, ${archived.count} tâche(s) historisée(s)`)
         return { message: 'Stage supprimée' }
       } catch (error) {
         Logger.warn(`Échec de la suppression de la stage ${id} (traitée comme introuvable) :`, error)
