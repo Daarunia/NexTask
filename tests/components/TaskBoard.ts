@@ -13,6 +13,7 @@ export class TaskBoard {
   // Écran de tâche (TaskDialog)
   readonly dialog: Locator
   readonly titleInput: Locator
+  readonly titleError: Locator
   readonly descriptionInput: Locator
   readonly versionSelect: Locator
   readonly startDateInput: Locator
@@ -28,6 +29,7 @@ export class TaskBoard {
 
     this.dialog = page.getByTestId('task-dialog')
     this.titleInput = page.getByTestId('task-title-input')
+    this.titleError = page.getByTestId('task-title-error')
     this.descriptionInput = page.getByTestId('task-description-input')
     this.versionSelect = page.getByTestId('task-version-select')
     // La DatePicker PrimeVue expose un <input> interne sous le data-testid
