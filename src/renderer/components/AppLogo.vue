@@ -1,6 +1,6 @@
 <template>
   <!-- Marque « case ouverte » : la coche sort du cadre par le coin manquant.
-       Tracé maître partagé avec scripts/generate-icons.js (grille 48×48). -->
+       Tracé maître partagé avec resources/icon-mark.svg (grille 48×48). -->
   <svg
     :width="size"
     :height="size"
