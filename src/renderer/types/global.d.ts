@@ -1,10 +1,17 @@
 export {}
 
+/**
+ * Paramètres persistés par electron-store (cf. src/main/stores/settings.ts)
+ */
+interface AppSettings {
+  theme: 'light' | 'dark'
+  primaryColor: string
+}
+
 declare global {
-  interface GlobalThis {
-    settings: {
-      get: (key: 'theme' | 'primaryColor') => any
-      set: (key: 'theme' | 'primaryColor', value: any) => void
-    }
+  // Pont exposé par le preload
+  var settings: {
+    get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>
+    set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>
   }
 }
