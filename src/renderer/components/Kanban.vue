@@ -213,7 +213,9 @@ async function onTasksDrop() {
 
   if (!changes.length) return
 
-  const modifiedTasks = changes.map(({ task, position, stageId }) => ({ ...task, position, stageId }))
+  // Seuls les champs du déplacement sont envoyés, car renvoyer la tâche entière ferait
+  // échouer tout le batch si une ancienne tâche a un titre vide (refusé par l'API)
+  const modifiedTasks = changes.map(({ task, position, stageId }) => ({ id: task.id, position, stageId }))
   logger.debug('Mise à jour DnD des tâches', modifiedTasks)
   await taskStore.updateTaskBatch(modifiedTasks)
 

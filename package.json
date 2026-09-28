@@ -66,6 +66,7 @@
     "@fastify/swagger": "^9.9.0",
     "@fastify/swagger-ui": "^6.1.1",
     "@primeuix/themes": "^3.0.1",
+    "@primevue/forms": "^5.0.1",
     "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/postcss": "^4.3.3",
@@ -83,7 +84,8 @@
     "vue": "^3.5.43",
     "vue-logger-plugin": "^2.2.3",
     "vue-router": "^5.3.1",
-    "vuedraggable": "4.1.0"
+    "vuedraggable": "4.1.0",
+    "zod": "^4.6.5"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",

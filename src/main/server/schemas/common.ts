@@ -16,6 +16,13 @@ export const idParam = {
   required: ['id'],
 }
 
+// Libellé obligatoire. Fastify répond 400 sinon.
+export const requiredLabel = {
+  type: 'string',
+  pattern: String.raw`\S`,
+  maxLength: 255,
+}
+
 /** Corps de réponse d'erreur simple : `{ error: string }`. */
 export const errorResponse = {
   type: 'object',

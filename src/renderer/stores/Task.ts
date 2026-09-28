@@ -247,10 +247,10 @@ export const useTaskStore = defineStore('task', {
       }
     },
     /**
-     * Mise à jour complète d'un ensemble de tâches
-     * @param tasks Tableau de Task avec des id existants
+     * Mise à jour partielle d'un ensemble de tâches
+     * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés)
      */
-    async updateTaskBatch(tasks: Task[]): Promise<void> {
+    async updateTaskBatch(tasks: Array<Pick<Task, 'id'> & Partial<Task>>): Promise<void> {
       if (!tasks.length) return
 
       try {
