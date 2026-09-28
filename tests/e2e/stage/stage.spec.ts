@@ -139,5 +139,11 @@ test.describe('Suppression de colonne', () => {
     await expect(taskBoard.column(stage)).toHaveCount(0)
     // … et sa tâche n'est plus affichée (archivée, retirée du tableau)
     await expect(taskBoard.taskCard(task)).toHaveCount(0)
+
+    // En base, la tâche est historisée et détachée de la colonne (pas orpheline)
+    const res = await taskBoard.page.request.get('http://localhost:3000/tasks?isHistorized=true')
+    expect(res.ok()).toBeTruthy()
+    const archived = ((await res.json()) as { title: string; stageId: number | null }[]).find((t) => t.title === task)
+    expect(archived).toMatchObject({ stageId: null })
   })
 })

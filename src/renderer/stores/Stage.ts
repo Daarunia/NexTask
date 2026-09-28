@@ -134,14 +134,9 @@ export const useStageStore = defineStore('stage', {
       const taskStore = useTaskStore()
 
       try {
-        const tasksToArchive =
-          taskStore.allEntities?.data.filter((task) => task.stageId === id && !task.isHistorized) ?? []
-
-        for (const task of tasksToArchive) {
-          await taskStore.archiveTask(task.id)
-        }
-
+        // Le serveur historise les tâches et supprime la colonne dans une même transaction
         await api.delete(`/stages/${id}`)
+        taskStore.markStageTasksArchived(id)
 
         if (this.entities[id]) {
           delete this.entities[id]
