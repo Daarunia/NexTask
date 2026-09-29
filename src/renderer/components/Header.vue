@@ -1,5 +1,5 @@
 <template>
-  <header class="flex items-center justify-between p-2 relative">
+  <header class="flex items-center justify-between p-2 relative select-none">
     <h1 class="ml-4 flex items-center gap-2 text-xl">
       <AppLogo :size="26" style="color: var(--p-primary-color)" />
       <!-- Le texte hérite déjà de la couleur d'accent : seul « Nex » est neutralisé. -->
