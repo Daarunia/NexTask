@@ -2,7 +2,11 @@
   <span
     v-if="label !== undefined"
     :data-tag-color="colorName"
-    :class="['tag-chip', size === 'small' ? 'tag-chip-small' : 'tag-chip-normal']"
+    :class="[
+      'tag-chip',
+      size === 'small' ? 'tag-chip-small' : 'tag-chip-normal',
+      { 'tag-chip-hover-remove': removeOnHover },
+    ]"
     :style="tintVars"
   >
     <span class="truncate">{{ label }}</span>
@@ -40,6 +44,8 @@ const props = withDefaults(
     removable?: boolean
     // data-testid du bouton de retrait, propre à chaque usage
     removeTestId?: string
+    // Croix visible seulement au survol du chip (ou au focus clavier)
+    removeOnHover?: boolean
     size?: 'small' | 'normal'
   }>(),
   {
@@ -47,6 +53,7 @@ const props = withDefaults(
     name: undefined,
     removable: false,
     removeTestId: undefined,
+    removeOnHover: false,
     size: 'normal',
   },
 )
@@ -112,6 +119,19 @@ const tintVars = computed(() => {
 }
 
 .tag-chip-remove:hover {
+  @apply opacity-100;
+}
+
+.tag-chip-hover-remove .tag-chip-remove {
+  @apply opacity-0;
+}
+
+.tag-chip-hover-remove:hover .tag-chip-remove,
+.tag-chip-hover-remove .tag-chip-remove:focus-visible {
+  @apply opacity-60;
+}
+
+.tag-chip-hover-remove .tag-chip-remove:hover {
   @apply opacity-100;
 }
 

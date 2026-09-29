@@ -225,6 +225,30 @@ test.describe('Recherche dans la liste', () => {
 })
 
 test.describe("Retrait de tags d'une tâche", () => {
+  test('retire un tag directement depuis la carte, via la croix au survol du chip', async ({ page, taskBoard }) => {
+    const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha', 'beta'])
+    await page.reload()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['alpha', 'beta'])
+
+    // Sans ouvrir le dialogue : survol du chip puis clic sur sa croix
+    const alpha = taskBoard.taskCardTags('Porteuse').filter({ hasText: 'alpha' })
+    await alpha.hover()
+    await alpha.getByTestId('task-card-tag-remove').click()
+
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['beta'])
+    await expect(taskBoard.dialog).toBeHidden()
+    await expect.poll(async () => tagNames((await getTask(page.request, task.id)).tags)).toEqual(['beta'])
+
+    // Le tag reste en base (R5), sans usage
+    expect(await getTags(page.request)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'alpha', taskCount: 0 })]),
+    )
+
+    // Persisté : toujours retiré après rechargement
+    await page.reload()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['beta'])
+  })
+
   test('retire un tag via le bouton × de sa chip', async ({ page, taskBoard, tagPicker }) => {
     const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha', 'beta'])
     await page.reload()

@@ -142,6 +142,24 @@ export const useTaskStore = defineStore('task', {
      * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
      * @param tag Tag mis à jour
      */
+    /**
+     * Remplace les tags d'une tâche (retrait direct depuis une carte)
+     * @param id Id de la tâche
+     * @param tagNames Noms des tags à garder
+     * @returns La tâche mise à jour, avec ses tags résolus
+     */
+    async updateTaskTags(id: number, tagNames: string[]): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { tags: tagNames })
+        this.patchCachedTask(id, { tags: updatedTask.tags })
+
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de la mise à jour des tags de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
     patchTagInTasks(tag: Tag) {
       if (!this.allEntities) return
 

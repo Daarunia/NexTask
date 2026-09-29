@@ -45,6 +45,10 @@
               :tagId="tag.id"
               :name="tag.name"
               size="small"
+              removable
+              removeOnHover
+              removeTestId="task-card-tag-remove"
+              @remove="$emit('remove-tag', element, tag.id)"
             />
           </div>
         </div>
@@ -78,7 +82,7 @@ const props = withDefaults(
   { filterActive: false },
 )
 
-defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task'])
+defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag'])
 
 const tagStore = useTagStore()
 

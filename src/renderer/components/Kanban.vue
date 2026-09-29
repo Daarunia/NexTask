@@ -53,6 +53,7 @@
             @tasks-drop="onTasksDrop"
             @edit-task="openEditTaskDialog(stage.id, $event)"
             @archive-task="archiveTask"
+            @remove-tag="removeTagFromTask"
             @create-task="openCreateTaskDialog(stage.id)"
           />
         </div>
@@ -346,6 +347,43 @@ async function onStagesDrop() {
 /**
  * Archivage
  */
+/**
+ * Retire un tag d'une tâche directement depuis sa carte (croix au survol du chip)
+ * @param task Tâche de la carte
+ * @param tagId Tag à retirer
+ */
+async function removeTagFromTask(task: Task, tagId: number) {
+  // Un renommage en vol changerait les noms à envoyer
+  await tagStore.waitForPendingEdits()
+
+  const location = findTaskLocation(task.id)
+  if (!location) return
+
+  const oldTags = (location.list[location.index].tags ?? []).filter((tag) => !tagStore.wasDeleted(tag.id))
+  const keptNames = oldTags
+    .filter((tag) => tag.id !== tagId)
+    .map((tag) => tagStore.getTagById(tag.id)?.name ?? tag.name)
+
+  try {
+    const updatedTask = await taskStore.updateTaskTags(task.id, keptNames)
+
+    // Seuls les tags de la copie locale changent : la carte a pu bouger pendant l'appel
+    const current = findTaskLocation(task.id)
+    if (current) {
+      const list = [...current.list]
+      list[current.index] = { ...list[current.index], tags: updatedTask.tags }
+      taskLists.set(current.stageId, list)
+    }
+
+    updateTagCounts(
+      oldTags.map((tag) => tag.id),
+      (updatedTask.tags ?? []).map((tag) => tag.id),
+    )
+  } catch {
+    showError('Retrait impossible', "Le tag n'a pas été retiré de la tâche.")
+  }
+}
+
 async function archiveTask(task: Task) {
   try {
     await taskStore.archiveTask(task.id)
