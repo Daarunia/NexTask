@@ -2,6 +2,7 @@ import { test as base, Page } from '@playwright/test'
 import { _electron as electron, ElectronApplication } from 'playwright'
 import { Header } from '../components/Header'
 import { TaskBoard } from '../components/TaskBoard'
+import { TagPicker } from '../components/TagPicker'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
 
 type Fixtures = {
@@ -9,6 +10,7 @@ type Fixtures = {
   page: Page
   header: Header
   taskBoard: TaskBoard
+  tagPicker: TagPicker
 }
 
 type WorkerFixtures = {
@@ -58,6 +60,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   taskBoard: async ({ page }, use) => {
     await use(new TaskBoard(page))
+  },
+
+  tagPicker: async ({ page }, use) => {
+    await use(new TagPicker(page))
   },
 })
 

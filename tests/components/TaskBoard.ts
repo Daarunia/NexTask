@@ -59,6 +59,14 @@ export class TaskBoard {
   }
 
   /**
+   * Chips de tags d'une carte, dans l'ordre d'affichage (gauche → droite).
+   * @param title Titre exact de la tâche
+   */
+  taskCardTags(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-tag')
+  }
+
+  /**
    * Ouvre l'écran de tâche en mode création depuis une colonne.
    * @param columnName Nom de la colonne
    */
