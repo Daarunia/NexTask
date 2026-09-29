@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startServer } from './server/index.js'
@@ -78,6 +78,26 @@ app.whenReady().then(async () => {
   // Dissociation prod et dev au niveau de l'id de l'app
   app.setAppUserModelId(IS_DEV ? `${APP_ID}.dev` : APP_ID)
 
+  try {
+    // Migrations
+    setupDatabase()
+
+    // Seeds
+    applySeeds()
+  } catch (err) {
+    // La migration fautive a été annulée : on n'ouvre pas l'app sur un schéma
+    // qui ne correspond pas au code
+    Logger.error('Erreur du lancement des migrations :', err)
+    if (!IS_TEST) {
+      dialog.showErrorBox(
+        'NexTask ne peut pas démarrer',
+        `La mise à jour de la base de données a échoué et a été annulée.\n\n${err}`,
+      )
+    }
+    app.quit()
+    return
+  }
+
   createWindow()
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -88,16 +108,6 @@ app.whenReady().then(async () => {
       },
     })
   })
-
-  try {
-    // Migrations
-    setupDatabase()
-
-    // Seeds
-    applySeeds()
-  } catch (err) {
-    Logger.error('Erreur du lancement des migrations :', err)
-  }
 
   try {
     await startServer()
