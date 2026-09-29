@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
 import { useStageStore } from '../stores/Stage'
+import { useTagStore } from '../stores/Tag'
 import { Stage } from '../types/stage.types'
 
 // Logger
@@ -17,6 +18,7 @@ const showError = useErrorToast()
 // Liste de stages et de tâches
 const stageStore = useStageStore()
 const taskStore = useTaskStore()
+const tagStore = useTagStore()
 const tasks = ref<Task[]>([])
 const stages = ref<Stage[]>([])
 
@@ -24,14 +26,15 @@ const stages = ref<Stage[]>([])
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
 /**
- * Chargement des colonnes et des tâches.
+ * Chargement des colonnes et des tâches, et en parallèle des tags pour que les
+ * chips des cartes aient leur nom dès le premier affichage.
  * En cas d'échec, un toast prévient l'utilisateur et l'écran propose de réessayer.
  */
 async function loadBoard() {
   status.value = 'loading'
 
   try {
-    await stageStore.loadAllStages()
+    await Promise.all([stageStore.loadAllStages(), tagStore.loadAllTags()])
   } catch (error) {
     logger.error('Erreur lors du chargement du tableau :', error)
     showError('Chargement impossible', "Le tableau n'a pas pu être chargé.")
