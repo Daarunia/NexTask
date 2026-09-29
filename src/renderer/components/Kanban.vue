@@ -2,7 +2,7 @@
   <p v-if="showFilterEmpty" data-testid="filter-empty" class="filter-empty">Aucune tâche ne correspond au filtre</p>
 
   <div
-    class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4"
+    class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4 select-none"
     ref="scrollContainer"
   >
     <draggable
