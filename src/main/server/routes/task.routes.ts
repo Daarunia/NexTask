@@ -380,6 +380,8 @@ export default async function taskRoutes(fastify) {
               notifiedAt: { type: ['string', 'null'], format: 'date-time' },
             },
             required: ['id'],
+            // Les tags ne se modifient pas en batch : 400 plutôt qu'une erreur Prisma (500)
+            not: { required: ['tags'] },
           },
         },
         response: {

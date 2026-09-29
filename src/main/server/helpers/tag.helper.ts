@@ -7,9 +7,8 @@ import Logger from 'electron-log'
  * des tâches et des tags.
  *
  * SQLite (via Prisma) ne sait pas comparer des chaînes sans tenir compte de la
- * casse : l'unicité insensible à la casse des noms est donc garantie ici, en
- * comparant les noms mis en minuscules. Le `@unique` du modèle ne sert que de
- * garde-fou.
+ * casse : chaque tag porte donc sa clé `nameKey` (nom en minuscules), unique en
+ * base. Toute écriture du nom doit passer par `tagKey` pour la tenir à jour.
  */
 
 /** Client Prisma utilisable dans une transaction interactive. */
@@ -20,7 +19,7 @@ type TransactionClient = Prisma.TransactionClient
  *
  * @param name Nom de tag, déjà nettoyé
  */
-function tagKey(name: string): string {
+export function tagKey(name: string): string {
   return name.toLowerCase()
 }
 
@@ -32,23 +31,17 @@ function tagKey(name: string): string {
  * @returns Le tag trouvé, ou `null`
  */
 export async function findTagByName(tx: TransactionClient, name: string): Promise<Tag | null> {
-  const key = tagKey(name.trim())
-  const tags = await tx.tag.findMany()
-  return tags.find((tag) => tagKey(tag.name) === key) ?? null
+  return tx.tag.findUnique({ where: { nameKey: tagKey(name.trim()) } })
 }
 
 /**
- * Compte les tags de chaque couleur.
+ * Nombre de tags par couleur, compté en base.
  *
- * @param tags Tags existants
- * @returns Nombre de tags par couleur
+ * @param tx Client Prisma de la transaction
  */
-function countColors(tags: Pick<Tag, 'color'>[]): Map<string, number> {
-  const usage = new Map<string, number>()
-  for (const tag of tags) {
-    usage.set(tag.color, (usage.get(tag.color) ?? 0) + 1)
-  }
-  return usage
+async function countColors(tx: TransactionClient): Promise<Map<string, number>> {
+  const groups = await tx.tag.groupBy({ by: ['color'], _count: { _all: true } })
+  return new Map(groups.map((group) => [group.color, group._count._all]))
 }
 
 /**
@@ -68,14 +61,12 @@ function leastUsedColor(usage: Map<string, number>): TagColor {
 }
 
 /**
- * Couleur à attribuer à un nouveau tag (R4) : la moins utilisée par les tags
- * existants. À appeler dans la transaction qui crée le tag.
+ * Couleur à donner au prochain tag créé (R4).
  *
  * @param tx Client Prisma de la transaction
  */
 export async function nextTagColor(tx: TransactionClient): Promise<TagColor> {
-  const tags = await tx.tag.findMany({ select: { color: true } })
-  return leastUsedColor(countColors(tags))
+  return leastUsedColor(await countColors(tx))
 }
 
 /**
@@ -83,7 +74,7 @@ export async function nextTagColor(tx: TransactionClient): Promise<TagColor> {
  *
  * 1. Nettoie les noms (trim) et les dédoublonne sans tenir compte de la casse
  *    (la première saisie l'emporte).
- * 2. Réutilise les tags existants, rapprochés sans tenir compte de la casse.
+ * 2. Réutilise les tags existants, rapprochés par leur clé `nameKey`.
  * 3. Crée les autres avec la couleur la moins utilisée de la palette, en
  *    comptant les tags créés juste avant dans la même requête.
  *
@@ -106,12 +97,12 @@ export async function resolveTagIds(tx: TransactionClient, names: string[]): Pro
 
   if (!uniqueNames.size) return []
 
-  // 2. Index des tags existants et usage des couleurs
-  const existingTags = await tx.tag.findMany()
-  const tagsByKey = new Map(existingTags.map((tag) => [tagKey(tag.name), tag]))
-  const colorUsage = countColors(existingTags)
+  // 2. Tags existants parmi les noms demandés
+  const existingTags = await tx.tag.findMany({ where: { nameKey: { in: [...uniqueNames.keys()] } } })
+  const tagsByKey = new Map(existingTags.map((tag) => [tag.nameKey, tag]))
 
-  // 3. Rapprochement ou création
+  // 3. Rapprochement ou création (usage des couleurs lu seulement s'il faut créer)
+  let colorUsage: Map<string, number> | null = null
   const ids: number[] = []
   for (const [key, name] of uniqueNames) {
     const existing = tagsByKey.get(key)
@@ -120,8 +111,9 @@ export async function resolveTagIds(tx: TransactionClient, names: string[]): Pro
       continue
     }
 
+    colorUsage ??= await countColors(tx)
     const color = leastUsedColor(colorUsage)
-    const created = await tx.tag.create({ data: { name, color } })
+    const created = await tx.tag.create({ data: { name, nameKey: key, color } })
     colorUsage.set(color, (colorUsage.get(color) ?? 0) + 1)
     ids.push(created.id)
     Logger.info(`Tag « ${name} » créé (couleur ${color})`)

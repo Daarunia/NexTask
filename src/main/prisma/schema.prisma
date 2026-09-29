@@ -36,6 +36,8 @@ model Task {
 model Tag {
   id        Int      @id @default(autoincrement())
   name      String   @unique
+  // Nom en minuscules : unicité et recherche sans tenir compte de la casse
+  nameKey   String   @unique
   color     String // nom de couleur de la palette (ex. "sky"), pas un hexa
   createdAt DateTime @default(now())
   tasks     Task[]

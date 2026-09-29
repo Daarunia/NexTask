@@ -570,6 +570,22 @@ test.describe('Tags dans les réponses des tâches et des colonnes', () => {
     expect(tagNames((await getTask(page.request, task.id)).tags)).toEqual(SORTED)
   })
 
+  test('PATCH /tasks/batch refuse les tags (400) sans rien modifier', async ({ page }) => {
+    const [, secondStageId] = await stageIds(page.request)
+    const task = await createTask(page.request, ['bug'])
+
+    const res = await page.request.patch(`${API}/tasks/batch`, {
+      data: [{ id: task.id, stageId: secondStageId, position: 0, tags: ['ui'] }],
+    })
+    expect(res.status()).toBe(400)
+
+    // Ni déplacement ni tag créé
+    const unchanged = await getTask(page.request, task.id)
+    expect(unchanged.stageId).toBe(task.stageId)
+    expect(tagNames(unchanged.tags)).toEqual(['bug'])
+    expect(tagNames(await getTags(page.request))).toEqual(['bug'])
+  })
+
   test('GET /stages inclut les tags des tâches de chaque colonne, triés par nom', async ({ page }) => {
     const task = await createTask(page.request, UNSORTED)
     const untagged = await createTask(page.request, undefined, 'Sans tag')

@@ -3,7 +3,7 @@ import { prisma } from '../prismaClient.js'
 import { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagSchema, tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
-import { findTagByName, nextTagColor } from '../helpers/tag.helper.js'
+import { findTagByName, nextTagColor, tagKey } from '../helpers/tag.helper.js'
 import { TAG_COLORS, type TagColor } from '../../constants.js'
 
 // Nombre de tâches (actives et historisées) qui portent le tag
@@ -101,7 +101,7 @@ export default async function tagRoutes(fastify) {
         }
 
         const color = await nextTagColor(tx)
-        const created = await tx.tag.create({ data: { name, color }, include: taskCountInclude })
+        const created = await tx.tag.create({ data: { name, nameKey: tagKey(name), color }, include: taskCountInclude })
 
         Logger.info(`Tag « ${name} » créé depuis le sélecteur (couleur ${color})`)
         reply.code(201)
@@ -172,7 +172,7 @@ export default async function tagRoutes(fastify) {
 
         const updated = await tx.tag.update({
           where: { id },
-          data: { name: cleanName, color },
+          data: { name: cleanName, nameKey: cleanName === undefined ? undefined : tagKey(cleanName), color },
           include: taskCountInclude,
         })
 
