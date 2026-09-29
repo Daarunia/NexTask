@@ -2,68 +2,47 @@ import { defineStore } from 'pinia'
 import { MINUTE } from '../constants/time.constants'
 import { Stage } from '../types/stage.types'
 import { BaseEntityState } from '../types/base-store.types'
-import { Task } from '../types/task.types'
 import { api } from '../utils/api.helper'
 import { isCacheValid } from '../utils/cache.helper'
 import { useTaskStore } from './Task'
 import { getLogger } from '../utils/logger'
 
-interface StageState extends BaseEntityState<Stage> {
-  // No custom attribut
-}
-
+/**
+ * Cache des colonnes, chargé en même temps que celui des tâches.
+ * Même règle que le store des tâches : le timestamp est celui du dernier
+ * chargement serveur, les mutations ne le rafraîchissent pas.
+ */
 export const useStageStore = defineStore('stage', {
-  state: (): StageState => ({
-    entities: {},
+  state: (): BaseEntityState<Stage> => ({
     allEntities: null,
     ttl: 5 * MINUTE, // 5 minutes avant de rafraichir
-    lastFetch: null,
-    baseUrl: import.meta.env.VITE_BASE_URL,
   }),
   getters: {
     /**
-     * Getter pour récupérer toutes les tâches non historisées
+     * Getter pour récupérer toutes les colonnes (sans contrôle du TTL, cf. getAllTasks)
      */
     getAllStages(state): Stage[] {
-      if (!state.allEntities) return []
-
-      if (isCacheValid(state.allEntities, state.ttl)) {
-        return state.allEntities.data
-      }
-
-      return []
-    },
-
-    getStageById: (state) => {
-      return (id: number): Stage | null => {
-        const stage = state.entities[id]
-        if (!stage) return null
-        const isExpired = Date.now() - stage.timestamp > state.ttl
-        return isExpired ? null : stage.data
-      }
+      return state.allEntities?.data ?? []
     },
   },
   actions: {
-    setStageCache(id: number, data: Stage) {
-      this.entities[id] = { data, timestamp: Date.now() }
-    },
-
     setAllStagesCache(data: Stage[]) {
       this.allEntities = { data, timestamp: Date.now() }
-      this.lastFetch = Date.now()
     },
 
+    /**
+     * Chargement des colonnes et de leurs tâches.
+     * Les deux caches sont remplis par le même appel : on ne le saute que s'ils
+     * sont tous deux valides, sinon l'un pourrait être servi sans l'autre.
+     */
     async loadAllStages(): Promise<void> {
-      if (isCacheValid(this.allEntities, this.ttl)) return
+      const taskStore = useTaskStore()
+      if (isCacheValid(this.allEntities, this.ttl) && isCacheValid(taskStore.allEntities, taskStore.ttl)) return
+
       const stagesFromApi = await api.get<Stage[]>(`/stages`)
 
-      this.allEntities = { data: stagesFromApi, timestamp: Date.now() }
-      this.lastFetch = Date.now()
-
-      const allTasks: Task[] = stagesFromApi.flatMap((stage) => stage.tasks)
-      const taskStore = useTaskStore()
-
-      taskStore.setAllTasksCache(allTasks)
+      this.setAllStagesCache(stagesFromApi)
+      taskStore.setAllTasksCache(stagesFromApi.flatMap((stage) => stage.tasks))
     },
 
     async updateStageBatch(stages: { id: number; position: number }[]): Promise<void> {
@@ -91,10 +70,7 @@ export const useStageStore = defineStore('stage', {
         // re-trier
         updatedStages.sort((a, b) => a.position - b.position)
 
-        this.allEntities = {
-          data: updatedStages,
-          timestamp: Date.now(),
-        }
+        this.allEntities.data = updatedStages
       }
     },
 
@@ -112,15 +88,8 @@ export const useStageStore = defineStore('stage', {
 
         const newStage = await api.post<Stage>(`/stages`, payload)
 
-        // Mise à jour du cache
-        this.setStageCache(newStage.id, newStage)
-
-        if (this.allEntities?.data) {
-          this.allEntities.data.push(newStage)
-          this.allEntities.timestamp = Date.now()
-        } else {
-          this.setAllStagesCache([newStage])
-        }
+        // Sans cache chargé, on laisse le prochain chargement ramener la colonne (cf. saveTask)
+        this.allEntities?.data.push(newStage)
 
         return newStage
       } catch (error) {
@@ -143,17 +112,8 @@ export const useStageStore = defineStore('stage', {
         await api.delete(`/stages/${id}`)
         taskStore.markStageTasksArchived(id)
 
-        if (this.entities[id]) {
-          delete this.entities[id]
-        }
-
         if (this.allEntities) {
-          const index = this.allEntities.data.findIndex((s) => s.id === id)
-
-          if (index !== -1) {
-            this.allEntities.data.splice(index, 1)
-            this.allEntities.timestamp = Date.now()
-          }
+          this.allEntities.data = this.allEntities.data.filter((s) => s.id !== id)
         }
 
         logger.debug(`Stage ${id} supprimée + tâches archivées`)
@@ -174,21 +134,11 @@ export const useStageStore = defineStore('stage', {
         const updatedStage = await api.patch<Stage>(`/stages/${id}`, { name })
 
         // Met à jour le cache local
-        const existingStage = this.getStageById(id)
-        if (existingStage) {
-          this.setStageCache(id, updatedStage)
+        const stageToUpdate = this.allEntities?.data.find((s) => s.id === id)
+        if (stageToUpdate) {
+          Object.assign(stageToUpdate, updatedStage)
         } else {
-          getLogger().warn("Aucune colonne trouvée dans le cache pour l'ID", id)
-        }
-
-        if (this.allEntities?.data) {
-          const stageToUpdate = this.allEntities.data.find((s) => s.id === id)
-          if (stageToUpdate) {
-            Object.assign(stageToUpdate, updatedStage)
-            this.allEntities.timestamp = Date.now()
-          } else {
-            getLogger().warn("Colonne non trouvée dans allEntities pour l'ID", id)
-          }
+          getLogger().warn("Colonne non trouvée dans le cache pour l'ID", id)
         }
 
         return updatedStage
