@@ -95,6 +95,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
 import draggable from 'vuedraggable'
+import Menu from 'primevue/menu'
+import Button from 'primevue/button'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
