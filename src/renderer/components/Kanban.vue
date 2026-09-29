@@ -101,6 +101,7 @@ import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
 import { useStageStore } from '../stores/Stage'
+import { useTagStore } from '../stores/Tag'
 import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
 import { getLogger } from '../utils/logger'
@@ -115,6 +116,7 @@ const props = defineProps<{
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const tagStore = useTagStore()
 const showError = useErrorToast()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
@@ -314,6 +316,9 @@ async function archiveTask(task: Task) {
  * Save depuis dialog
  */
 function onTaskSaved(task: Task) {
+  // Récupère les tags créés à la volée et les compteurs de tâches à jour
+  tagStore.loadAllTags(true).catch((error) => logger.error('Erreur lors du rechargement des tags :', error))
+
   if (creationMode.value) {
     // Nouvelle carte : ajoutée en fin de colonne (position = longueur à l'ouverture)
     const list = taskLists.get(task.stageId) ?? []
