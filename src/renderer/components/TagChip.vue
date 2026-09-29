@@ -47,7 +47,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'remove'): void
+  remove: []
 }>()
 
 const tagStore = useTagStore()

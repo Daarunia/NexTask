@@ -1,16 +1,13 @@
 <template>
   <!-- Champ fermé : chips sélectionnées, un clic ouvre le sélecteur -->
-  <div
+  <button
     ref="fieldRef"
+    type="button"
     data-testid="task-tags-field"
     class="tag-field"
-    role="button"
-    tabindex="0"
     aria-haspopup="dialog"
     :aria-expanded="isOpen"
     @click="togglePanel"
-    @keydown.enter.prevent="togglePanel"
-    @keydown.space.prevent="togglePanel"
   >
     <template v-if="visibleSelection.length">
       <TagChip
@@ -22,7 +19,7 @@
       />
     </template>
     <span v-else class="tag-field-placeholder">Aucun tag</span>
-  </div>
+  </button>
 
   <!-- Un seul popover : pas d'overlay imbriqué, fermeture au clic extérieur gérée par PrimeVue -->
   <Popover ref="popover" :closeOnEscape="false" @show="onShow" @hide="onHide">
@@ -219,7 +216,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: TagSelection[]): void
+  'update:modelValue': [value: TagSelection[]]
 }>()
 
 /** Message affiché quand le nom est déjà porté par un autre tag */
@@ -230,7 +227,7 @@ const tagStore = useTagStore()
 const showError = useErrorToast()
 
 const popover = ref()
-const fieldRef = ref<HTMLElement | null>(null)
+const fieldRef = ref<HTMLButtonElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const searchRef = ref<HTMLInputElement | null>(null)
 const editNameRef = ref<HTMLInputElement | null>(null)
@@ -308,7 +305,11 @@ function isSelected(tagId: number): boolean {
  */
 function resetHighlight() {
   const exactIndex = filteredTags.value.findIndex((tag) => sameName(tag.name, trimmedSearch.value))
-  highlightedIndex.value = exactIndex !== -1 ? exactIndex : itemCount.value > 0 ? 0 : -1
+  if (exactIndex === -1) {
+    highlightedIndex.value = itemCount.value > 0 ? 0 : -1
+  } else {
+    highlightedIndex.value = exactIndex
+  }
 }
 
 watch([trimmedSearch, itemCount], resetHighlight)
@@ -755,7 +756,8 @@ async function confirmDelete() {
 @reference "tailwindcss";
 
 .tag-field {
-  @apply flex flex-wrap items-center gap-1 w-full min-h-10 px-3 py-2 rounded-md border cursor-pointer;
+  @apply flex flex-wrap items-center gap-1 w-full min-h-10 px-3 py-2 rounded-md border cursor-pointer text-left;
+  font: inherit;
   background-color: var(--p-form-field-background);
   border-color: var(--p-form-field-border-color);
   transition: border-color 0.2s;

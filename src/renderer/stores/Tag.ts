@@ -154,7 +154,7 @@ export const useTagStore = defineStore('tag', {
     async waitForPendingEdits(): Promise<void> {
       // Boucle, une édition pouvant démarrer pendant l'attente des précédentes
       while (pendingEdits.size) {
-        await Promise.allSettled([...pendingEdits])
+        await Promise.allSettled(pendingEdits)
       }
     },
   },
