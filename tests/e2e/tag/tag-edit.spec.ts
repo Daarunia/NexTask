@@ -4,16 +4,14 @@ import { TAG_COLORS, createTaskViaApi, getTags, getTask, tagNames } from '../../
 
 /**
  * Tests E2E du menu d'édition d'un tag façon Notion, ouvert depuis le bouton
- * « … » d'une ligne du sélecteur (spec `.claude/tags.md`, règles R7 à R13) :
- * renommage, couleur, suppression avec confirmation, et propagation immédiate
- * aux cartes, au formulaire en cours et à la base. Couvre aussi le menu d'un
- * tag tout juste créé depuis le sélecteur, avant l'enregistrement de la tâche
- * (R7b).
+ * « … » d'une ligne du sélecteur : renommage, couleur, suppression avec
+ * confirmation, et propagation immédiate aux cartes, au formulaire en cours et
+ * à la base. Couvre aussi le menu d'un tag tout juste créé depuis le
+ * sélecteur, avant l'enregistrement de la tâche.
  *
- * Écrits d'après le contrat de test de la spec, sans lire l'implémentation.
  * Les tâches taguées sont créées via l'API puis la page est rechargée. Quand
  * l'ordre des couleurs compte, les tags sont créés un par un (un tag par
- * requête) : le premier reçoit « sky », le deuxième « emerald » (R4).
+ * requête) : le premier reçoit « sky », le deuxième « emerald ».
  *
  * Isolation : la base, tags compris, est remise à zéro avant chaque test
  * (fixture automatique `cleanState`).
@@ -83,13 +81,13 @@ test.describe("Menu d'édition", () => {
     await taskBoard.openCreateDialog(COLUMN)
     await tagPicker.open()
 
-    // Création immédiate en base (R7b), sans enregistrer la tâche
+    // Création immédiate en base, sans enregistrer la tâche
     await tagPicker.createWithOption('nouveau')
 
     await tagPicker.option('nouveau').hover()
     await expect(tagPicker.option('nouveau').getByTestId('tag-option-menu')).toHaveCount(1)
 
-    // Le menu s'ouvre sur le tag réel : son nom, aucune tâche, sa couleur R4
+    // Le menu s'ouvre sur le tag réel : son nom, aucune tâche, sa couleur automatique
     await tagPicker.openMenu('nouveau')
     await expect(tagPicker.editName).toHaveValue('nouveau')
     await expect(tagPicker.editCount).toContainText(/Utilisé par 0 tâches?/)
@@ -110,11 +108,11 @@ test.describe('Renommage', () => {
     await tagPicker.openMenu('bug')
     await tagPicker.rename('anomalie')
 
-    // Cartes mises à jour sur place (R13)
+    // Cartes mises à jour sur place
     await expect(taskBoard.taskCardTags('T1')).toHaveText(['anomalie'])
     await expect(taskBoard.taskCardTags('T2')).toHaveText(['anomalie', 'ui'])
 
-    // Enregistré immédiatement en base (R12)
+    // Enregistré immédiatement en base
     await expect.poll(async () => tagNames(await getTags(page.request))).toEqual(['anomalie', 'ui'])
   })
 
@@ -147,7 +145,7 @@ test.describe('Renommage', () => {
     await tagPicker.open()
     await tagPicker.openMenu('ui')
 
-    // Nom porté par un autre tag, avec une autre casse (R1, R9)
+    // Nom porté par un autre tag, avec une autre casse
     await tagPicker.rename('BUG')
 
     await expect(tagPicker.editError).toBeVisible()
@@ -204,7 +202,7 @@ test.describe('Renommage', () => {
     await tagPicker.rename('anomalie')
     await expect(taskBoard.taskCardTags('T1')).toHaveText(['anomalie'])
 
-    // L'édition ne dépend pas du bouton Save : annuler ne la défait pas (R12)
+    // L'édition ne dépend pas du bouton Save : annuler ne la défait pas
     await tagPicker.closeIfOpen()
     await taskBoard.cancelButton.click()
     await expect(taskBoard.dialog).toBeHidden()
@@ -230,7 +228,7 @@ test.describe('Renommage', () => {
     await tagPicker.rename('anomalie')
     await expect(taskBoard.taskCardTags('T1')).toHaveText(['anomalie'])
 
-    // Le formulaire en cours affiche le nouveau nom (R13)
+    // Le formulaire en cours affiche le nouveau nom
     await tagPicker.closeIfOpen()
     await expect(tagPicker.fieldChip('anomalie')).toBeVisible()
     await expect(tagPicker.fieldChip('bug')).toHaveCount(0)
@@ -263,12 +261,12 @@ test.describe('Couleur', () => {
     await tagPicker.openMenu('bug')
     await expect(tagPicker.selectedColor).toHaveAttribute('data-color', TAG_COLORS[0])
 
-    // Un clic applique la couleur immédiatement (R10)
+    // Un clic applique la couleur immédiatement
     await tagPicker.setColor('rose')
     await expect(tagPicker.selectedColor).toHaveCount(1)
     await expect(tagPicker.selectedColor).toHaveAttribute('data-color', 'rose')
 
-    // Cartes mises à jour sur place (R13)
+    // Cartes mises à jour sur place
     await expect(taskBoard.taskCardTags('T1')).toHaveAttribute('data-tag-color', 'rose')
     await expect(taskBoard.taskCardTags('T2')).toHaveAttribute('data-tag-color', 'rose')
 
@@ -290,17 +288,17 @@ test.describe('Couleur', () => {
     await taskBoard.titleInput.fill(title)
     await tagPicker.open()
 
-    // Tag créé depuis le sélecteur : couleur R4 (la première, la base est vide)
+    // Tag créé depuis le sélecteur : couleur automatique (la première, la base est vide)
     await tagPicker.createWithOption('urgent')
     await tagPicker.openMenu('urgent')
     await expect(tagPicker.selectedColor).toHaveAttribute('data-color', TAG_COLORS[0])
 
-    // Nouvelle couleur choisie avant tout enregistrement de la tâche (R7b, R10)
+    // Nouvelle couleur choisie avant tout enregistrement de la tâche
     await tagPicker.setColor('violet')
     await expect(tagPicker.selectedColor).toHaveCount(1)
     await expect(tagPicker.selectedColor).toHaveAttribute('data-color', 'violet')
 
-    // Enregistrée immédiatement, indépendamment du bouton Save (R12)
+    // Enregistrée immédiatement, indépendamment du bouton Save
     await expect
       .poll(() => getTags(page.request))
       .toEqual([expect.objectContaining({ name: 'urgent', color: 'violet', taskCount: 0 })])
@@ -314,7 +312,7 @@ test.describe('Couleur', () => {
     await taskBoard.saveButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 
-    // La carte porte le tag à la couleur choisie, sans doublon ni retour à la couleur R4
+    // La carte porte le tag à la couleur choisie, sans doublon ni retour à la couleur automatique
     const chips = taskBoard.taskCardTags(title)
     await expect(chips).toHaveText(['urgent'])
     await expect(chips).toHaveAttribute('data-tag-color', 'violet')
@@ -345,7 +343,7 @@ test.describe('Couleur', () => {
     await taskBoard.cancelButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 
-    // Ni la création ni la couleur ne sont défaites par l'annulation (R7b, R12)
+    // Ni la création ni la couleur ne sont défaites par l'annulation
     await expect
       .poll(() => getTags(page.request))
       .toEqual([expect.objectContaining({ name: 'urgent', color: 'teal', taskCount: 0 })])
@@ -369,7 +367,7 @@ test.describe('Suppression', () => {
     await tagPicker.open()
     await tagPicker.openMenu('bug')
 
-    // Confirmation sur place, qui annonce le nombre de tâches concernées (R11)
+    // Confirmation sur place, qui annonce le nombre de tâches concernées
     await tagPicker.editDelete.click()
     await expect(tagPicker.deleteConfirm).toBeVisible()
     await expect(tagPicker.panel).toContainText(/retiré de 2 tâches/)
@@ -398,7 +396,7 @@ test.describe('Suppression', () => {
     await tagPicker.openMenu('bug')
     await tagPicker.deleteTag()
 
-    // Chips retirées de toutes les cartes (R11, R13)
+    // Chips retirées de toutes les cartes
     await expect(taskBoard.taskCardTags('T1')).toHaveCount(0)
     await expect(taskBoard.taskCardTags('T2')).toHaveText(['ui'])
     await expect(taskBoard.taskCardTags('T3')).toHaveText(['ui'])
@@ -420,7 +418,7 @@ test.describe('Suppression', () => {
     await tagPicker.openMenu('bug')
     await tagPicker.deleteTag()
 
-    // Plus aucune chip « bug », ni dans le popover ni dans le champ (R13)
+    // Plus aucune chip « bug », ni dans le popover ni dans le champ
     await expect(tagPicker.anyChip('bug')).toHaveCount(0)
     await tagPicker.closeIfOpen()
     await expect(tagPicker.fieldChips).toHaveCount(1)
@@ -446,11 +444,11 @@ test.describe('Suppression', () => {
     await tagPicker.createWithOption('erreur')
     await expect.poll(async () => tagNames(await getTags(page.request))).toEqual(['erreur'])
 
-    // Supprimable via « … » comme tout tag existant (R7b)
+    // Supprimable via « … » comme tout tag existant
     await tagPicker.openMenu('erreur')
     await tagPicker.deleteTag()
 
-    // Retiré de la base, de la liste et du formulaire en cours (R13)
+    // Retiré de la base, de la liste et du formulaire en cours
     await expect.poll(() => getTags(page.request)).toEqual([])
     await expect(tagPicker.option('erreur')).toHaveCount(0)
     await expect(tagPicker.anyChip('erreur')).toHaveCount(0)

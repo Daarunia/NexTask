@@ -46,7 +46,7 @@ async function countColors(tx: TransactionClient): Promise<Map<string, number>> 
 
 /**
  * Couleur de la palette la moins utilisée, la première dans l'ordre de
- * `TAG_COLORS` en cas d'égalité (R4).
+ * `TAG_COLORS` en cas d'égalité.
  *
  * @param usage Nombre de tags par couleur
  */
@@ -61,7 +61,7 @@ function leastUsedColor(usage: Map<string, number>): TagColor {
 }
 
 /**
- * Couleur à donner au prochain tag créé (R4).
+ * Couleur à donner au prochain tag créé.
  *
  * @param tx Client Prisma de la transaction
  */

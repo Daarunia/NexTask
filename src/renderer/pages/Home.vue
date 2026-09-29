@@ -29,11 +29,11 @@ const stages = ref<Stage[]>([])
 // État du chargement du tableau
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
-// Ids des tags du filtre. État local à la page : remis à zéro au redémarrage (R18)
+// Ids des tags du filtre. État local à la page : remis à zéro au redémarrage
 const filterTagIds = ref<number[]>([])
 
 /**
- * Tags proposés par le filtre : ceux portés par au moins une tâche active (R15),
+ * Tags proposés par le filtre : ceux portés par au moins une tâche active,
  * lus dans le store (réactif) et non dans `tasks`, figé au chargement. Les tags
  * déjà sélectionnés restent proposés même s'ils ne sont plus portés, pour
  * garder leur chip et pouvoir les décocher. Nom et couleur viennent du store
@@ -52,7 +52,7 @@ const filterOptions = computed<Tag[]>(() => {
     .sort(compareTagNames)
 })
 
-// Un tag supprimé sort du filtre (R13). Un tag qui n'est simplement plus porté reste sélectionné.
+// Un tag supprimé sort du filtre. Un tag qui n'est simplement plus porté reste sélectionné.
 watch(
   () => filterTagIds.value.filter((id) => tagStore.getTagById(id) !== undefined),
   (existingIds) => {

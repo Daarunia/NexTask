@@ -2,19 +2,18 @@ import { test, expect } from '../../fixtures/test'
 import { TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
 
 /**
- * Tests E2E du sélecteur de tags de l'écran de tâche (spec `.claude/tags.md`,
- * sections 3 et 6) : création immédiate depuis le sélecteur (R7b), sélection
+ * Tests E2E du sélecteur de tags de l'écran de tâche : création immédiate
+ * depuis le sélecteur, sélection
  * d'un tag existant, rapprochement sans casse, retrait, conservation après
  * rechargement, navigation clavier et affichage des chips sur les cartes.
  *
- * Écrits d'après le contrat de test de la spec, sans lire l'implémentation.
  * Les tâches taguées servant de décor sont créées via l'API, puis la page est
  * rechargée pour que le tableau (et ses tags) les charge. L'UI est réservée au
  * geste testé.
  *
  * Isolation : la base, tags compris, est remise à zéro avant chaque test
  * (fixture automatique `cleanState`). Le premier tag créé reçoit donc toujours la première
- * couleur de la palette (R4).
+ * couleur de la palette.
  */
 
 // Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
@@ -63,12 +62,12 @@ test.describe('Création et sélection de tags', () => {
     await tagPicker.open()
     await tagPicker.createWithOption('nouveau')
 
-    // Le tag existe en base avant tout enregistrement de la tâche (R7b)
+    // Le tag existe en base avant tout enregistrement de la tâche
     await expect
       .poll(() => getTags(page.request))
       .toEqual([expect.objectContaining({ name: 'nouveau', color: TAG_COLORS[0], taskCount: 0 })])
 
-    // Chip directement à sa couleur R4, dans le popover comme dans le champ fermé
+    // Chip directement à sa couleur automatique, dans le popover comme dans le champ fermé
     await expect(tagPicker.panelChip('nouveau')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
     await expect(tagPicker.panelChips).toHaveCount(1)
     await tagPicker.close()
@@ -130,7 +129,7 @@ test.describe('Création et sélection de tags', () => {
     await expect(tagPicker.option('bug')).toBeVisible()
     await expect(tagPicker.createOption).toHaveCount(0)
 
-    // Entrée sélectionne le tag existant, avec la casse de sa première saisie (R1, R2)
+    // Entrée sélectionne le tag existant, avec la casse de sa première saisie
     await tagPicker.search.press('Enter')
     await expect(tagPicker.panelChip('bug')).toBeVisible()
     await expect(tagPicker.panelChips).toHaveCount(1)
@@ -165,7 +164,7 @@ test.describe('Création et sélection de tags', () => {
     await expect(taskBoard.taskCard(title)).toHaveCount(0)
     expect((await getTasks(page.request)).map((t) => t.title)).not.toContain(title)
 
-    // Le tag créé depuis le sélecteur reste en base, sans tâche (R7b, R5)
+    // Le tag créé depuis le sélecteur reste en base, sans tâche
     expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'fantome', taskCount: 0 })])
 
     // Et il reste proposé, non sélectionné, dans un nouveau dialogue
@@ -239,7 +238,7 @@ test.describe("Retrait de tags d'une tâche", () => {
     await expect(taskBoard.dialog).toBeHidden()
     await expect.poll(async () => tagNames((await getTask(page.request, task.id)).tags)).toEqual(['beta'])
 
-    // Le tag reste en base (R5), sans usage
+    // Le tag reste en base, sans usage
     expect(await getTags(page.request)).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'alpha', taskCount: 0 })]),
     )
@@ -270,7 +269,7 @@ test.describe("Retrait de tags d'une tâche", () => {
 
     await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['beta'])
     expect(tagNames((await getTask(page.request, task.id)).tags)).toEqual(['beta'])
-    // Le tag retiré reste en base (R5)
+    // Le tag retiré reste en base
     expect(tagNames(await getTags(page.request))).toEqual(['alpha', 'beta'])
   })
 
@@ -393,7 +392,7 @@ test.describe('Navigation au clavier', () => {
 
     await tagPicker.createWithEnter('clavier')
 
-    // Même effet que le clic sur « Créer » : tag en base avant Save, chip à sa couleur R4 (R7b)
+    // Même effet que le clic sur « Créer » : tag en base avant Save, chip à sa couleur automatique
     await expect(tagPicker.panelChip('clavier')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
     await expect
       .poll(() => getTags(page.request))

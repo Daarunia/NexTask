@@ -19,7 +19,7 @@ function tagNamePattern(name: string): RegExp {
  * Couvre le champ fermé du TaskDialog, la vue liste du popover (recherche,
  * sélection, création, retrait, clavier) et la vue édition d'un tag (nom,
  * compteur, couleurs, suppression, retour). Le ciblage repose uniquement sur
- * le contrat de test de la spec (`.claude/tags.md`, section 6).
+ * les `data-testid` et attributs `data-*` des composants de tags.
  */
 export class TagPicker {
   readonly page: Page
@@ -159,7 +159,7 @@ export class TagPicker {
 
   /**
    * Attend qu'un tag tout juste créé depuis le sélecteur soit enregistré et
-   * sélectionné (R7b) : recherche vidée, chip à une couleur de la palette (plus
+   * sélectionné : recherche vidée, chip à une couleur de la palette (plus
    * de chip neutre) et ligne du tag présente dans la liste.
    * @param name Nom exact du tag créé
    */
@@ -171,7 +171,7 @@ export class TagPicker {
 
   /**
    * Crée un tag via la ligne « Créer « xxx » ». Le tag est enregistré en base
-   * dès ce clic (R7b), puis sélectionné.
+   * dès ce clic, puis sélectionné.
    * @param name Nom du tag à créer
    */
   async createWithOption(name: string) {
@@ -183,7 +183,7 @@ export class TagPicker {
 
   /**
    * Crée un tag en validant par Entrée une saisie qui ne correspond à aucun
-   * tag. Le tag est enregistré en base dès cette validation (R7b), puis
+   * tag. Le tag est enregistré en base dès cette validation, puis
    * sélectionné.
    * @param name Nom du tag à créer
    */

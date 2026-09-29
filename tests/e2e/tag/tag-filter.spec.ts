@@ -4,19 +4,17 @@ import type { TaskBoard } from '../../components/TaskBoard'
 import { API, createTaskViaApi, getTasks, tagNames, type Task } from '../../helpers/tag.helper'
 
 /**
- * Tests E2E du filtre du Kanban par tag (spec `.claude/tags.md`, règles R13 à
- * R17 et section 6, « Filtre ») : OU logique entre les tags cochés, tags
+ * Tests E2E du filtre du Kanban par tag : OU logique entre les tags cochés, tags
  * proposés, DnD des tâches désactivé sous filtre, création pré-remplie et
  * positionnée sur la colonne complète, message quand plus rien n'est visible
  * et sortie du filtre d'un tag supprimé.
  *
- * Écrits d'après le contrat de test de la spec, sans lire l'implémentation.
  * Les cartes masquées par le filtre sont absentes du DOM : `task-card` ne
  * compte que les cartes visibles.
  *
  * Le décor (`BOARD`) est créé via l'API avec des positions explicites, puis la
- * page est rechargée pour que le tableau le charge. R18 (filtre remis à zéro
- * au redémarrage) n'est pas couvert.
+ * page est rechargée pour que le tableau le charge. La remise à zéro du filtre
+ * au redémarrage de l'app n'est pas couverte.
  *
  * Isolation : la base, tags compris, est remise à zéro avant chaque test
  * (fixture automatique `cleanState`).
@@ -205,7 +203,7 @@ test.describe('Filtrage des cartes', () => {
   })
 })
 
-test.describe('Tags proposés (R15)', () => {
+test.describe('Tags proposés', () => {
   test('ne propose que les tags portés par une tâche active, et suit les tags ajoutés sans rechargement', async ({
     page,
     taskBoard,
@@ -248,7 +246,7 @@ test.describe('Tags proposés (R15)', () => {
   })
 })
 
-test.describe('Drag-and-drop sous filtre (R16)', () => {
+test.describe('Drag-and-drop sous filtre', () => {
   test('un drag de tâche sous filtre ne déplace rien, puis le DnD refonctionne une fois le filtre vidé', async ({
     page,
     taskBoard,
@@ -318,7 +316,7 @@ test.describe('Drag-and-drop sous filtre (R16)', () => {
   })
 })
 
-test.describe('Création sous filtre (R17)', () => {
+test.describe('Création sous filtre', () => {
   test('pré-remplit les tags du filtre et place la tâche en fin de colonne complète', async ({
     page,
     taskBoard,
@@ -386,8 +384,8 @@ test.describe('Filtre sans résultat', () => {
     await expect(page.getByTestId('task-card')).toHaveCount(0)
     await expect(tagFilter.dndHint).toBeVisible()
 
-    // « doc » n'est plus proposé (R15) : on le prouve encore sélectionné par une
-    // création sous filtre, pré-remplie avec lui (R17) et donc visible
+    // « doc » n'est plus porté par une tâche active : on le prouve encore sélectionné par une
+    // création sous filtre, pré-remplie avec lui et donc visible
     await taskBoard.openCreateDialog(A_FAIRE)
     await expect(tagPicker.fieldChips).toHaveCount(1)
     await expect(tagPicker.fieldChip('doc')).toBeVisible()
@@ -412,7 +410,7 @@ test.describe('Filtre sans résultat', () => {
   })
 })
 
-test.describe('Tag supprimé (R13)', () => {
+test.describe('Tag supprimé', () => {
   test('supprimer un tag filtré le sort du filtre et réaffiche les cartes selon le filtre restant', async ({
     page,
     taskBoard,

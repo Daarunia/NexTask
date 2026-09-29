@@ -2,12 +2,12 @@ import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 
 /**
- * Tests E2E de l'API des tags (spec `.claude/tags.md`, sections 3 à 5).
+ * Tests E2E de l'API des tags.
  *
  * Tests API purs, via `request` Playwright comme `task-validation.spec.ts` :
  * création et rapprochement des tags au travers des routes de tâches,
- * attribution des couleurs (R4), conservation des tags (R5, R6), lecture via
- * `GET /tags`, création directe via `POST /tags` (R7b), présence des tags dans
+ * attribution des couleurs, conservation des tags, lecture via
+ * `GET /tags`, création directe via `POST /tags`, présence des tags dans
  * les réponses des tâches et des colonnes, puis édition et suppression via
  * `/tags/:id`.
  *
@@ -180,7 +180,7 @@ test.describe('Création et rapprochement des tags', () => {
     const third = await createTask(page.request, [], 'Troisième')
     const patched = await updateTask(page.request, third.id, { tags: ['BUG'] })
 
-    // Un seul tag, qui garde la casse de sa première saisie (R2)
+    // Un seul tag, qui garde la casse de sa première saisie
     const [tag] = first.tags
     expect(second.tags).toEqual([expect.objectContaining({ id: tag.id, name: 'bug' })])
     expect(patched.tags).toEqual([expect.objectContaining({ id: tag.id, name: 'bug' })])
@@ -303,7 +303,7 @@ test.describe('Validation des noms de tags', () => {
   })
 })
 
-test.describe('Couleurs attribuées à la création (R4)', () => {
+test.describe('Couleurs attribuées à la création', () => {
   test("les 8 premiers tags reçoivent les 8 couleurs de la palette, dans l'ordre", async ({ page }) => {
     await createTagsOneByOne(page.request, EIGHT_TAGS)
 
@@ -345,7 +345,7 @@ test.describe('Couleurs attribuées à la création (R4)', () => {
   })
 })
 
-test.describe('Conservation des tags (R5, R6)', () => {
+test.describe('Conservation des tags', () => {
   test('un tag reste listé après le retrait de son dernier usage', async ({ page }) => {
     const task = await createTask(page.request, ['bug'])
 
@@ -371,7 +371,7 @@ test.describe('Conservation des tags (R5, R6)', () => {
     const res = await page.request.put(`${API}/tasks/${task.id}`)
     expect(res.ok()).toBeTruthy()
 
-    // R6 : la tâche historisée porte toujours ses tags
+    // La tâche historisée porte toujours ses tags
     const archived = await getTask(page.request, task.id)
     expect(archived.isHistorized).toBe(true)
     expect(tagNames(archived.tags)).toEqual(['bug', 'ui'])
@@ -381,7 +381,7 @@ test.describe('Conservation des tags (R5, R6)', () => {
     const listed = ((await listRes.json()) as Task[]).find((t) => t.id === task.id)
     expect(tagNames(listed?.tags ?? [])).toEqual(['bug', 'ui'])
 
-    // R5 : les tags sont toujours là, et la tâche historisée compte dans taskCount
+    // Les tags sont toujours là, et la tâche historisée compte dans taskCount
     const tags = await getTags(page.request)
     expect(tags).toEqual([
       expect.objectContaining({ name: 'bug', taskCount: 1 }),
@@ -417,14 +417,14 @@ test.describe('GET /tags', () => {
 })
 
 test.describe('POST /tags', () => {
-  test('crée un tag (201) avec la couleur R4 et un taskCount à 0', async ({ page }) => {
+  test('crée un tag (201) avec la couleur automatique et un taskCount à 0', async ({ page }) => {
     const res = await postTag(page.request, { name: 'bug' })
     expect(res.status()).toBe(201)
     const bug = (await res.json()) as Tag
     expect(typeof bug.id).toBe('number')
     expect(bug).toMatchObject({ name: 'bug', color: TAG_COLORS[0], taskCount: 0 })
 
-    // Le tag existe sans être porté par aucune tâche (R5)
+    // Le tag existe sans être porté par aucune tâche
     expect(await getTags(page.request)).toEqual([
       expect.objectContaining({ id: bug.id, name: 'bug', color: TAG_COLORS[0], taskCount: 0 }),
     ])
@@ -454,7 +454,7 @@ test.describe('POST /tags', () => {
     for (const name of ['bug', 'BUG', 'Bug', '  bUg  ']) {
       const res = await postTag(page.request, { name })
       expect(res.status(), `nom ${JSON.stringify(name)}`).toBe(200)
-      // Nom d'origine (R2), couleur et taskCount inchangés
+      // Nom d'origine, couleur et taskCount inchangés
       expect(await res.json()).toMatchObject({ id: bug.id, name: 'bug', color: 'rose', taskCount: 1 })
     }
 
@@ -513,7 +513,7 @@ test.describe('POST /tags', () => {
   test('une tâche qui cite un tag créé par POST /tags le réutilise sans le recréer', async ({ page }) => {
     const tag = await createTag(page.request, 'bug')
 
-    // Même nom, autre casse : rapprochement sans casse (R1)
+    // Même nom, autre casse : rapprochement sans casse
     const task = await createTask(page.request, ['BUG'])
     expect(task.tags).toEqual([expect.objectContaining({ id: tag.id, name: 'bug', color: tag.color })])
 

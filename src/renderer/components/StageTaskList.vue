@@ -76,7 +76,7 @@ const props = withDefaults(
   defineProps<{
     tasks: Task[]
     // Filtre actif : DnD des tâches désactivé, les index de la vue filtrée ne
-    // correspondant plus aux positions réelles de la colonne (R16)
+    // correspondant plus aux positions réelles de la colonne
     filterActive?: boolean
   }>(),
   { filterActive: false },

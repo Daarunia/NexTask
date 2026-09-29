@@ -16,7 +16,7 @@ export interface Tag {
 
 /**
  * Tag choisi dans le formulaire d'une tâche.
- * Le sélecteur crée les tags immédiatement (R7b), il produit donc toujours un
+ * Le sélecteur crée les tags immédiatement, il produit donc toujours un
  * `id`. Sans `id` (conservé pour compatibilité), le tag n'existe pas encore :
  * le serveur le créera à l'enregistrement.
  */

@@ -80,7 +80,7 @@
             </button>
           </div>
 
-          <!-- Saisie sans tag correspondant : le tag est créé immédiatement (R7b) -->
+          <!-- Saisie sans tag correspondant : le tag est créé immédiatement -->
           <div
             v-if="showCreateOption"
             data-testid="tag-create-option"
@@ -213,7 +213,7 @@ import { httpStatus } from '../utils/api.helper'
  *
  * La valeur est une liste de `TagSelection`, chaque tag par son id (nom et
  * couleur lus dans le store). « Créer « xxx » » crée le tag immédiatement en
- * base (R7b) puis le sélectionne : il a aussitôt son menu « … ».
+ * base puis le sélectionne : il a aussitôt son menu « … ».
  *
  * Le menu « … » d'un tag existant ouvre la vue édition (renommer, recolorer,
  * supprimer). Ces éditions sont enregistrées immédiatement via le store, sans
@@ -374,7 +374,7 @@ function onShow() {
 }
 
 /**
- * Fermeture du popover : un renommage en cours est enregistré (R9), puis le
+ * Fermeture du popover : un renommage en cours est enregistré, puis le
  * sélecteur repart de la vue liste à la prochaine ouverture
  */
 function onHide() {
@@ -408,7 +408,7 @@ function selectTag(tag: Tag) {
 }
 
 /**
- * Crée immédiatement le tag saisi (R7b) puis le sélectionne. Une seconde
+ * Crée immédiatement le tag saisi puis le sélectionne. Une seconde
  * validation du même nom pendant l'appel (double Entrée, double clic) est
  * ignorée. En cas d'erreur, toast et rien n'est sélectionné.
  */
@@ -622,7 +622,7 @@ watch(editedTag, (tag) => {
 })
 
 /**
- * Contrôle d'un nouveau nom (R1) : 1 à 30 caractères, unique sans tenir compte
+ * Contrôle d'un nouveau nom : 1 à 30 caractères, unique sans tenir compte
  * de la casse parmi les autres tags (changer la casse de son propre nom est permis)
  * @param name Nom nettoyé
  * @param tagId Id du tag renommé
@@ -753,7 +753,7 @@ function onEditNameKeydown(event: KeyboardEvent) {
 }
 
 /**
- * Applique immédiatement une couleur (R10)
+ * Applique immédiatement une couleur
  * @param color Couleur choisie
  */
 async function applyColor(color: TagColor) {
@@ -779,7 +779,7 @@ function cancelDelete() {
 }
 
 /**
- * Supprime le tag (R11), qui sort aussi de la sélection en cours (R13)
+ * Supprime le tag, qui sort aussi de la sélection en cours
  */
 async function confirmDelete() {
   const tag = editedTag.value
@@ -875,7 +875,7 @@ async function confirmDelete() {
   color: var(--p-text-muted-color);
 }
 
-/* « … » visible au survol de la ligne (R7) ou quand elle est en surbrillance */
+/* « … » visible au survol de la ligne ou quand elle est en surbrillance */
 .tag-option:hover .tag-option-menu,
 .tag-option[data-highlighted='true'] .tag-option-menu {
   @apply opacity-100;

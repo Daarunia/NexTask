@@ -5,9 +5,8 @@ import { Page, Locator, expect } from '@playwright/test'
  *
  * Couvre l'ouverture de la liste, le cochage / décochage d'un tag, la
  * fermeture par Échap, la lecture des tags proposés et les deux messages liés
- * au filtre. Le ciblage repose uniquement sur le contrat de test de la spec
- * (`.claude/tags.md`, section 6, « Filtre ») et sur les rôles ARIA standards
- * de la liste (`listbox`, `option`, `aria-selected`).
+ * au filtre. Le ciblage repose sur les `data-testid` du filtre et sur les
+ * rôles ARIA standards de la liste (`listbox`, `option`, `aria-selected`).
  */
 export class TagFilter {
   readonly page: Page

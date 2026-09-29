@@ -64,7 +64,7 @@ export default async function tagRoutes(fastify) {
    * Crée un tag depuis le sélecteur (« Créer « xxx » »). Le nom est nettoyé
    * (trim). Si un tag porte déjà ce nom sans tenir compte de la casse, il est
    * renvoyé tel quel (200) plutôt que dupliqué. Sinon le tag est créé avec la
-   * couleur la moins utilisée de la palette (R4) et renvoyé (201).
+   * couleur la moins utilisée de la palette et renvoyé (201).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Données du tag

@@ -146,16 +146,16 @@ const newStageName = ref('')
 const stageMenu = ref()
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
-const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création (R17)
+const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
 
-// Filtre par tag actif : le DnD des tâches est alors désactivé (R16)
+// Filtre par tag actif : le DnD des tâches est alors désactivé
 const filterActive = computed(() => props.filterTagIds.length > 0)
 
 /**
  * Colonnes telles qu'affichées. taskLists reste la liste complète, seule source
  * des positions et du DnD. Sans filtre, c'est taskLists lui-même : chaque
  * colonne reçoit alors le tableau d'origine, que vuedraggable modifie sur place.
- * Avec un filtre, des copies filtrées (OU logique, R14), jamais modifiées
+ * Avec un filtre, des copies filtrées (OU logique), jamais modifiées
  * puisque le DnD est désactivé.
  */
 const visibleTaskLists = computed<Map<number, Task[]>>(() => {
@@ -219,7 +219,7 @@ function openCreateTaskDialog(stageId: number) {
   logger.debug('Ouverture création', { stageId })
 
   stageDialog.value = stageId
-  // Position calculée sur la colonne complète, pas sur la vue filtrée (R17)
+  // Position calculée sur la colonne complète, pas sur la vue filtrée
   positionDialog.value = taskLists.get(stageId)?.length ?? 0
   defaultTagsDialog.value = filterTagSelection()
   editTask.value = null
@@ -229,7 +229,7 @@ function openCreateTaskDialog(stageId: number) {
 
 /**
  * Tags du filtre en valeur de formulaire, triés par nom, pour qu'une tâche
- * créée sous filtre reste visible après enregistrement (R17)
+ * créée sous filtre reste visible après enregistrement
  */
 function filterTagSelection(): TagSelection[] {
   return props.filterTagIds

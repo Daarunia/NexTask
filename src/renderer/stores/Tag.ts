@@ -157,7 +157,7 @@ export const useTagStore = defineStore('tag', {
     },
 
     /**
-     * Création d'un tag depuis le sélecteur (R7b). Si un tag porte déjà ce nom
+     * Création d'un tag depuis le sélecteur. Si un tag porte déjà ce nom
      * (casse mise à part), le serveur le renvoie tel quel : il remplace alors
      * celui du cache au lieu d'être ajouté en double.
      * @param name Nom saisi (nettoyé par le serveur)
