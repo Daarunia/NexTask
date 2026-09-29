@@ -137,41 +137,6 @@
 
         <p data-testid="tag-edit-count" class="tag-panel-hint">{{ usageLabel(editedTag.taskCount ?? 0) }}</p>
 
-        <!-- Suppression, confirmée sur place -->
-        <div v-if="confirmingDelete" class="tag-delete-box">
-          <p class="text-sm">{{ deleteQuestion(editedTag) }}</p>
-          <div class="flex gap-2">
-            <Button
-              data-testid="tag-delete-cancel"
-              label="Annuler"
-              severity="secondary"
-              size="small"
-              class="flex-1"
-              @click="cancelDelete"
-            />
-            <Button
-              data-testid="tag-delete-confirm"
-              label="Supprimer"
-              severity="danger"
-              size="small"
-              class="flex-1"
-              :loading="deleting"
-              @click="confirmDelete"
-            />
-          </div>
-        </div>
-        <Button
-          v-else
-          data-testid="tag-edit-delete"
-          label="Supprimer"
-          icon="pi pi-trash"
-          severity="danger"
-          size="small"
-          text
-          class="self-start"
-          @click="askDelete"
-        />
-
         <!-- Couleurs : un clic applique immédiatement -->
         <p class="tag-panel-hint">Couleurs</p>
         <div class="grid grid-cols-2 gap-0.5">
@@ -189,6 +154,43 @@
             <span class="flex-1 text-left text-sm">{{ color.label }}</span>
             <i v-if="editedTag.color === color.name" class="pi pi-check text-xs"></i>
           </button>
+        </div>
+
+        <!-- Suppression en bas, séparée des réglages : action destructive, confirmée sur place -->
+        <div class="tag-edit-footer">
+          <div v-if="confirmingDelete" class="tag-delete-box">
+            <p class="text-sm">{{ deleteQuestion(editedTag) }}</p>
+            <div class="flex gap-2">
+              <Button
+                data-testid="tag-delete-cancel"
+                label="Annuler"
+                severity="secondary"
+                size="small"
+                class="flex-1"
+                @click="cancelDelete"
+              />
+              <Button
+                data-testid="tag-delete-confirm"
+                label="Supprimer"
+                severity="danger"
+                size="small"
+                class="flex-1"
+                :loading="deleting"
+                @click="confirmDelete"
+              />
+            </div>
+          </div>
+          <Button
+            v-else
+            data-testid="tag-edit-delete"
+            label="Supprimer"
+            icon="pi pi-trash"
+            severity="danger"
+            size="small"
+            text
+            class="self-start"
+            @click="askDelete"
+          />
         </div>
       </template>
     </div>
@@ -567,12 +569,7 @@ function deleteQuestion(tag: Tag): string {
  * @param color Couleur de la palette
  */
 function swatchVars(color: TagColorStyle) {
-  return {
-    '--swatch-bg': color.light.background,
-    '--swatch-border': color.light.text,
-    '--swatch-bg-dark': color.dark.background,
-    '--swatch-border-dark': color.dark.text,
-  }
+  return { '--swatch': color.swatch }
 }
 
 /**
@@ -893,6 +890,11 @@ async function confirmDelete() {
   color: var(--p-red-500);
 }
 
+.tag-edit-footer {
+  @apply mt-auto flex flex-col pt-2 border-t;
+  border-color: var(--p-content-border-color);
+}
+
 .tag-delete-box {
   @apply flex flex-col gap-2 p-2 rounded-md border;
   border-color: var(--p-content-border-color);
@@ -908,14 +910,8 @@ async function confirmDelete() {
 }
 
 .tag-color-swatch {
-  @apply w-4 h-4 rounded-sm border;
-  background-color: var(--swatch-bg);
-  border-color: var(--swatch-border);
-}
-
-.app-dark .tag-color-swatch {
-  background-color: var(--swatch-bg-dark);
-  border-color: var(--swatch-border-dark);
+  @apply w-3.5 h-3.5 rounded-full shrink-0;
+  background-color: var(--swatch);
 }
 
 .tag-option-check {
