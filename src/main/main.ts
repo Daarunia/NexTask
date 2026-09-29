@@ -85,9 +85,9 @@ app.whenReady().then(async () => {
     // Seeds
     applySeeds()
   } catch (err) {
-    // La migration fautive a été annulée : on n'ouvre pas l'app sur un schéma
-    // qui ne correspond pas au code
-    Logger.error('Erreur du lancement des migrations :', err)
+    // La migration ou la seed fautive a été annulée : on n'ouvre pas l'app sur
+    // une base qui ne correspond pas au code
+    Logger.error('Erreur du lancement des migrations ou des seeds :', err)
     if (!IS_TEST) {
       dialog.showErrorBox(
         'NexTask ne peut pas démarrer',
