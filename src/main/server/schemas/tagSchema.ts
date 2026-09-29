@@ -14,3 +14,14 @@ export const tagSchema = {
     taskCount: { type: 'integer' },
   },
 }
+
+/** Longueur maximale d'un nom de tag. */
+export const TAG_NAME_MAX_LENGTH = 30
+
+// Nom de tag saisi : au moins un caractère non blanc, 30 caractères maximum.
+// Fastify répond 400 sinon. Le trim est fait par les routes.
+export const tagNameSchema = {
+  type: 'string',
+  pattern: String.raw`\S`,
+  maxLength: TAG_NAME_MAX_LENGTH,
+}

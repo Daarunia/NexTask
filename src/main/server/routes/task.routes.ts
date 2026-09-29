@@ -1,11 +1,25 @@
 import { prisma } from '../prismaClient.js'
-import type { Task as PrismaTask } from '../../prisma/generated/prisma/client.js'
+import { Prisma, type Task as PrismaTask } from '../../prisma/generated/prisma/client.js'
 import { taskSchema } from '../schemas/taskSchema.js'
+import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
+import { resolveTagIds } from '../helpers/tag.helper.js'
 import Logger from 'electron-log'
 
 // Relations renvoyées avec chaque tâche : ses tags, triés par nom.
 const taskInclude = { tags: { orderBy: { name: 'asc' } } } as const
+
+// Noms des tags d'une tâche, rapprochés ou créés par le serveur (cf. tag.helper)
+const taskTagsBody = {
+  type: 'array',
+  items: tagNameSchema,
+}
+
+/** Corps de POST /tasks, une fois validé par Fastify. */
+type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[] }
+
+/** Corps de PATCH /tasks/:id, une fois validé par Fastify. */
+type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & { tags?: string[] }
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -98,13 +112,20 @@ export default async function taskRoutes(fastify) {
    *
    * Crée une nouvelle tâche avec les données fournies.
    *
+   * Les tags sont transmis par leur nom : les noms connus (sans tenir compte
+   * de la casse) sont réutilisés, les autres créés. Tags et tâche sont écrits
+   * dans une même transaction.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
-   * @param {string} req.body.stage - Étape de la tâche
+   * @param {number} req.body.stageId - ID de la colonne
+   * @param {string} req.body.title - Titre
    * @param {string} req.body.version - Version associée
    * @param {string} req.body.description - Description
-   * @param {string} req.body.status - Statut
-   * @returns {Promise<Object>} Objet Task créé
+   * @param {number} req.body.position - Position dans la colonne
+   * @param {string|null} [req.body.startDate] - Date de début
+   * @param {string[]} [req.body.tags] - Noms des tags de la tâche
+   * @returns {Promise<Object>} Objet Task créé, avec ses tags
    */
   fastify.post(
     '/tasks',
@@ -121,6 +142,7 @@ export default async function taskRoutes(fastify) {
             position: { type: 'integer' },
             title: requiredLabel,
             startDate: { type: ['string', 'null'], format: 'date-time' },
+            tags: taskTagsBody,
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
@@ -128,7 +150,15 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req) => {
-      return prisma.task.create({ data: req.body, include: taskInclude })
+      const { tags, ...data } = req.body as TaskCreateBody
+
+      return prisma.$transaction(async (tx) => {
+        const tagIds = tags ? await resolveTagIds(tx, tags) : []
+        return tx.task.create({
+          data: { ...data, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
+          include: taskInclude,
+        })
+      })
     },
   )
 
@@ -137,12 +167,18 @@ export default async function taskRoutes(fastify) {
    *
    * Met à jour les informations d'une tâche existante.
    *
+   * `tags` absent laisse les tags inchangés, `tags: []` les retire tous.
+   * Sinon la tâche porte exactement les tags nommés, rapprochés ou créés
+   * comme pour POST /tasks, dans la même transaction que la mise à jour.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
    * @param {Object} req.body - Données à mettre à jour
+   * @param {string[]} [req.body.tags] - Noms des tags de la tâche (remplacent les actuels)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour ou erreur
+   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags,
+   *   404 si la tâche n'existe pas, 500 pour toute autre erreur
    */
   fastify.patch(
     '/tasks/:id',
@@ -166,17 +202,19 @@ export default async function taskRoutes(fastify) {
             },
             startDate: { type: ['string', 'null'], format: 'date-time' },
             notifiedAt: { type: ['string', 'null'], format: 'date-time' },
+            tags: taskTagsBody,
           },
         },
         response: {
           200: taskSchema,
           404: errorResponse,
+          500: errorResponse,
         },
       },
     },
     async (req, reply) => {
       const id = Number(req.params.id)
-      const data = { ...(req.body as Record<string, unknown>) }
+      const { tags, ...data } = req.body as TaskUpdateBody
 
       // Si la startDate est repoussée dans le futur, on réarme la notification.
       if (data.startDate && new Date(data.startDate as string) > new Date()) {
@@ -184,15 +222,30 @@ export default async function taskRoutes(fastify) {
       }
 
       try {
-        return await prisma.task.update({
-          where: { id },
-          data,
-          include: taskInclude,
+        // Transaction : si la tâche n'existe pas, aucun tag n'est créé
+        return await prisma.$transaction(async (tx) => {
+          const tagIds = tags === undefined ? undefined : await resolveTagIds(tx, tags)
+
+          return tx.task.update({
+            where: { id },
+            data: {
+              ...data,
+              ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
+            },
+            include: taskInclude,
+          })
         })
       } catch (error) {
-        Logger.warn(`Échec de la mise à jour de la tâche ${id} (traitée comme introuvable) :`, error)
-        reply.code(404)
-        return { error: 'Tâche non trouvée' }
+        // P2025 : enregistrement à mettre à jour introuvable
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          Logger.warn(`Mise à jour de la tâche ${id} impossible, tâche introuvable`)
+          reply.code(404)
+          return { error: 'Tâche non trouvée' }
+        }
+
+        Logger.error(`Erreur lors de la mise à jour de la tâche ${id} :`, error)
+        reply.code(500)
+        return { error: 'Impossible de mettre à jour la tâche' }
       }
     },
   )
