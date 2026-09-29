@@ -15,8 +15,9 @@ function compareTagNames(a: Tag, b: Tag): number {
 }
 
 /**
- * Éditions de tags (renommage, couleur, suppression) envoyées au serveur et pas
- * encore terminées. Hors du state : rien à afficher, seulement à attendre.
+ * Éditions de tags (création, renommage, couleur, suppression) envoyées au
+ * serveur et pas encore terminées. Hors du state : rien à afficher, seulement
+ * à attendre.
  */
 const pendingEdits = new Set<Promise<unknown>>()
 
@@ -87,6 +88,37 @@ export const useTagStore = defineStore('tag', {
     },
 
     /**
+     * Création d'un tag depuis le sélecteur (R7b). Si un tag porte déjà ce nom
+     * (casse mise à part), le serveur le renvoie tel quel : il remplace alors
+     * celui du cache au lieu d'être ajouté en double.
+     * @param name Nom saisi (nettoyé par le serveur)
+     * @returns Le tag créé ou existant
+     */
+    createTag(name: string): Promise<Tag> {
+      // Suivie pour que l'enregistrement d'une tâche attende le tag créé
+      return trackEdit(
+        (async () => {
+          try {
+            const tag = await api.post<Tag>(`/tags`, { name })
+
+            // Met à jour le cache local (timestamp 0 si aucun chargement : le cache reste à recharger)
+            if (this.allEntities) {
+              this.allEntities.data = [...this.allEntities.data.filter((t) => t.id !== tag.id), tag]
+            } else {
+              this.allEntities = { data: [tag], timestamp: 0 }
+            }
+
+            getLogger().debug('Tag créé', tag)
+            return tag
+          } catch (error) {
+            getLogger().error(`Erreur lors de la création du tag « ${name} » :`, error)
+            throw error
+          }
+        })(),
+      )
+    },
+
+    /**
      * Renomme et/ou recolore un tag, puis répercute l'édition sur les tâches du cache
      * @param id Id du tag
      * @param changes Nouveau nom et/ou nouvelle couleur
@@ -149,7 +181,8 @@ export const useTagStore = defineStore('tag', {
     /**
      * Attend la fin des éditions de tags en cours, réussies ou non (ne lève jamais).
      * À appeler avant de convertir les tags d'une tâche en noms, car un renommage
-     * encore en vol ferait renvoyer l'ancien nom, que le serveur recréerait.
+     * encore en vol ferait renvoyer l'ancien nom, que le serveur recréerait, et
+     * une création encore en vol ne serait pas encore dans le cache.
      */
     async waitForPendingEdits(): Promise<void> {
       // Boucle, une édition pouvant démarrer pendant l'attente des précédentes

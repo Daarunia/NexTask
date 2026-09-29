@@ -29,7 +29,8 @@ import { getTagColorStyle } from '../constants/tag.constants'
  *
  * Avec `tagId`, nom et couleur viennent du store (source de vérité) : une
  * édition s'y reflète aussitôt, et rien n'est affiché si le tag a été supprimé.
- * Avec `name` seul, chip neutre pour un tag pas encore créé.
+ * Avec `name` seul, chip neutre pour un tag pas encore créé (ligne « Créer
+ * « xxx » » du sélecteur, les tags sélectionnés ayant toujours un id).
  */
 const props = withDefaults(
   defineProps<{

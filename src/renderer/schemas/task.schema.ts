@@ -7,7 +7,8 @@ export const TASK_TITLE_MAX_LENGTH = 255
 export const TAG_NAME_MAX_LENGTH = 30
 
 /**
- * Tags choisis dans le formulaire (cf. TagSelection) : sans `id`, tag à créer.
+ * Tags choisis dans le formulaire (cf. TagSelection). Le sélecteur crée les
+ * tags immédiatement, chaque tag a donc un `id` (sans `id`, tag à créer).
  * Chaque nom est nettoyé (trim) puis doit faire de 1 à 30 caractères, comme
  * côté API. Le contrôle porte sur le tableau entier pour que l'erreur soit
  * rattachée au champ `tags` (une erreur par élément serait rangée sous

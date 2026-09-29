@@ -79,17 +79,23 @@
             </button>
           </div>
 
-          <!-- Saisie sans tag correspondant : création à l'enregistrement de la tâche -->
+          <!-- Saisie sans tag correspondant : le tag est créé immédiatement (R7b) -->
           <div
             v-if="showCreateOption"
             data-testid="tag-create-option"
             class="tag-option"
             :data-highlighted="createIndex === highlightedIndex ? 'true' : undefined"
+            :aria-busy="isCreatingSearch || undefined"
             @click="createTag"
             @mouseenter="highlightedIndex = createIndex"
           >
             <span class="tag-create-label">Créer</span>
             <TagChip :name="trimmedSearch" />
+            <i
+              v-if="isCreatingSearch"
+              class="pi pi-spinner pi-spin tag-option-check"
+              aria-label="Création en cours"
+            ></i>
           </div>
         </div>
       </template>
@@ -189,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import Popover from 'primevue/popover'
 import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
@@ -203,9 +209,9 @@ import { useErrorToast } from '../utils/toast.helper'
 /**
  * Sélecteur de tags façon Notion, branché au formulaire de TaskDialog.
  *
- * La valeur est une liste de `TagSelection` : un tag existant par son id (nom
- * et couleur lus dans le store), un tag à créer par son seul nom. Les tags à
- * créer ne sont envoyés au serveur qu'à l'enregistrement de la tâche.
+ * La valeur est une liste de `TagSelection`, chaque tag par son id (nom et
+ * couleur lus dans le store). « Créer « xxx » » crée le tag immédiatement en
+ * base (R7b) puis le sélectionne : il a aussitôt son menu « … ».
  *
  * Le menu « … » d'un tag existant ouvre la vue édition (renommer, recolorer,
  * supprimer). Ces éditions sont enregistrées immédiatement via le store, sans
@@ -244,6 +250,12 @@ const editError = ref('')
 const confirmingDelete = ref(false)
 const deleting = ref(false)
 
+// Noms (en minuscules) des tags en cours de création, contre une double création
+const creatingNames = reactive(new Set<string>())
+
+// Créations lancées et pas encore terminées, sélection comprise (hors état réactif)
+const pendingCreations = new Set<Promise<void>>()
+
 // Renommage envoyé et pas encore terminé (hors état réactif, rien à afficher)
 let renameInFlight: { tagId: number; name: string; promise: Promise<boolean> } | null = null
 
@@ -270,16 +282,14 @@ const filteredTags = computed(() => {
   return tagStore.getAllTags.filter((tag) => tag.name.toLowerCase().includes(query))
 })
 
-// « Créer « xxx » » seulement si la saisie ne correspond exactement à aucun tag,
-// existant ou déjà choisi pour être créé
+// « Créer « xxx » » seulement si la saisie ne correspond exactement à aucun tag existant
 const showCreateOption = computed(() => {
   const name = trimmedSearch.value
-  if (!name) return false
-
-  const exists = tagStore.getAllTags.some((tag) => sameName(tag.name, name))
-  const pending = props.modelValue.some((selection) => selection.id === undefined && sameName(selection.name, name))
-  return !exists && !pending
+  return !!name && !tagStore.getAllTags.some((tag) => sameName(tag.name, name))
 })
+
+// La saisie est-elle déjà en cours de création ?
+const isCreatingSearch = computed(() => creatingNames.has(trimmedSearch.value.toLowerCase()))
 
 // La ligne de création suit toujours les tags existants
 const createIndex = computed(() => filteredTags.value.length)
@@ -384,14 +394,44 @@ function selectTag(tag: Tag) {
 }
 
 /**
- * Ajoute la saisie comme tag à créer
+ * Crée immédiatement le tag saisi (R7b) puis le sélectionne. Une seconde
+ * validation du même nom pendant l'appel (double Entrée, double clic) est
+ * ignorée. En cas d'erreur, toast et rien n'est sélectionné.
  */
 function createTag() {
-  if (!showCreateOption.value) return
+  const name = trimmedSearch.value
+  const key = name.toLowerCase()
+  if (!showCreateOption.value || creatingNames.has(key)) return
 
-  emit('update:modelValue', [...props.modelValue, { name: trimmedSearch.value }])
-  search.value = ''
+  creatingNames.add(key)
+  const creation = createAndSelect(name).finally(() => {
+    creatingNames.delete(key)
+    pendingCreations.delete(creation)
+  })
+  pendingCreations.add(creation)
   focusSearch()
+}
+
+/**
+ * Appelle le store puis ajoute le tag à la sélection
+ * @param name Nom saisi, nettoyé
+ */
+async function createAndSelect(name: string): Promise<void> {
+  try {
+    // createTag est suivi par le store dès cet appel : l'enregistrement de la tâche l'attendra
+    const tag = await tagStore.createTag(name)
+
+    // Sélection lue après l'appel, elle a pu changer entre-temps
+    if (!isSelected(tag.id)) {
+      emit('update:modelValue', [...props.modelValue, { id: tag.id, name: tag.name }])
+    }
+
+    // La recherche n'est vidée que si elle n'a pas été modifiée pendant l'appel
+    if (sameName(search.value.trim(), name)) search.value = ''
+  } catch {
+    // Le store a journalisé l'erreur et n'a rien modifié
+    showError('Création impossible', `Le tag « ${name} » n'a pas été créé.`)
+  }
 }
 
 /**
@@ -419,14 +459,8 @@ function pickHighlighted() {
     return
   }
 
-  // Saisie identique à un tag déjà choisi pour être créé : rien à ajouter
-  const pendingName = props.modelValue.some(
-    (selection) => selection.id === undefined && sameName(selection.name, trimmedSearch.value),
-  )
-  if (trimmedSearch.value && pendingName) {
-    search.value = ''
-    return
-  }
+  // Saisie déjà en cours de création : la sélection suivra la fin de l'appel
+  if (trimmedSearch.value && isCreatingSearch.value) return
 
   const index = highlightedIndex.value
   if (index < 0 || index >= itemCount.value) return
@@ -676,13 +710,20 @@ async function sendRename(tag: Tag, name: string, inline: boolean): Promise<bool
 
 /**
  * Enregistre le renommage saisi dans la vue édition, s'il y en a un, et attend
- * sa fin. Appelé par TaskDialog avant d'enregistrer la tâche : rien ne garantit
- * que la fermeture du popover (clic extérieur) passe avant la soumission.
- * Ne lève jamais : un renommage refusé laisse le nom d'origine (message en toast).
+ * sa fin ainsi que celle des créations de tags en cours (sélection comprise).
+ * Appelé par TaskDialog avant d'enregistrer la tâche : rien ne garantit que la
+ * fermeture du popover (clic extérieur) passe avant la soumission, ni qu'un
+ * tag créé juste avant le Save soit déjà sélectionné.
+ * Ne lève jamais : un renommage refusé laisse le nom d'origine (message en toast),
+ * une création échouée ne sélectionne rien.
  */
 async function commitPendingEdit(): Promise<void> {
-  if (view.value !== 'edit') return
-  await commitRename(false)
+  if (view.value === 'edit') await commitRename(false)
+
+  // Boucle, une création pouvant démarrer pendant l'attente des précédentes
+  while (pendingCreations.size) {
+    await Promise.allSettled(pendingCreations)
+  }
 }
 
 defineExpose({ commitPendingEdit })

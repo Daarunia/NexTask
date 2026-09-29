@@ -39,14 +39,19 @@
         />
       </div>
 
-      <!-- Tags : valeur du formulaire = TagSelection[] (id absent = tag à créer) -->
+      <!-- Tags : valeur du formulaire = TagSelection[], suivie aussi dans currentTags -->
       <div class="flex flex-col gap-2 w-full">
         <span class="font-medium">Tags</span>
         <FormField v-slot="$field" name="tags">
           <TagSelect
             ref="tagSelectRef"
             :modelValue="$field.value ?? []"
-            @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
+            @update:modelValue="
+              (value: TagSelection[]) => {
+                currentTags = value
+                $field.props.onChange({ value })
+              }
+            "
           />
         </FormField>
         <Message v-if="$form.tags?.invalid" severity="error" size="small" variant="simple">
@@ -166,6 +171,11 @@ const position = ref(props.position)
 // Valeurs de départ du formulaire, relues par <Form> à chaque ouverture
 const initialValues = ref<TaskFormValues>(defaultValues())
 
+// Dernière valeur du champ tags. Les valeurs reçues à la soumission sont figées :
+// un tag créé depuis le sélecteur juste avant le Save n'est sélectionné qu'à la
+// fin de sa création, que l'enregistrement attend avant de lire ce champ.
+const currentTags = ref<TagSelection[]>(initialValues.value.tags)
+
 const versions = ref([
   { label: '1.4.4', value: '1.4.4' },
   { label: '1.4.5', value: '1.4.5' },
@@ -203,6 +213,8 @@ watch(
           tags: toTagSelection(props.editTask),
         }
       }
+
+      currentTags.value = initialValues.value.tags
     }
 
     visible.value = val
@@ -238,8 +250,8 @@ function toTagSelection(task: Task): TagSelection[] {
 /**
  * Noms des tags à envoyer au serveur. Un tag existant est converti en son nom
  * actuel (il a pu être renommé depuis le menu d'édition, renvoyer l'ancien nom
- * recréerait un tag), un tag supprimé entre-temps est ignoré et un tag à créer
- * garde son nom.
+ * recréerait un tag) et un tag supprimé entre-temps est ignoré. Un tag sans id,
+ * que le sélecteur ne produit plus (création immédiate), garderait son nom.
  * @param selection Valeur du champ tags
  */
 function toTagNames(selection: TagSelection[]): string[] {
@@ -271,12 +283,16 @@ async function saveTask(values: TaskFormValues) {
   })
 
   try {
-    // Un renommage ou une suppression de tag peut être encore en vol (nom tapé
-    // puis clic direct sur Save) : on le lance s'il ne l'est pas encore, puis on
-    // attend toutes les éditions pour lire les noms à jour. Un renommage refusé
-    // laisse le nom d'origine, avec lequel la tâche est enregistrée.
+    // Une création, un renommage ou une suppression de tag peut être encore en
+    // vol (nom tapé puis clic direct sur Save) : on lance le renommage s'il ne
+    // l'est pas encore, on attend que les tags créés soient sélectionnés, puis
+    // toutes les éditions pour lire les noms à jour. Un renommage refusé laisse
+    // le nom d'origine, avec lequel la tâche est enregistrée.
     await tagSelectRef.value?.commitPendingEdit()
     await tagStore.waitForPendingEdits()
+
+    // Sélection lue après l'attente (cf. currentTags), pas dans les valeurs figées
+    const tagNames = toTagNames(currentTags.value)
 
     let savedTask: Task | undefined
 
@@ -290,7 +306,7 @@ async function saveTask(values: TaskFormValues) {
         isHistorized: false,
         historizationDate: undefined,
         startDate: values.startDate,
-        tags: toTagNames(values.tags),
+        tags: tagNames,
       }
 
       savedTask = await taskStore.saveTask(newTask)
@@ -306,7 +322,7 @@ async function saveTask(values: TaskFormValues) {
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
-        tags: toTagNames(values.tags),
+        tags: tagNames,
       }
 
       savedTask = await taskStore.updateTask(updatedTask)
