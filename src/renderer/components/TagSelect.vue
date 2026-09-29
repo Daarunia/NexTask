@@ -244,6 +244,9 @@ const editError = ref('')
 const confirmingDelete = ref(false)
 const deleting = ref(false)
 
+// Renommage envoyé et pas encore terminé (hors état réactif, rien à afficher)
+let renameInFlight: { tagId: number; name: string; promise: Promise<boolean> } | null = null
+
 // Tag édité, lu dans le store (undefined une fois supprimé)
 const editedTag = computed(() => (editedTagId.value === null ? undefined : tagStore.getTagById(editedTagId.value)))
 
@@ -623,7 +626,33 @@ async function commitRename(inline: boolean): Promise<boolean> {
   const invalid = validateTagName(name, tag.id)
   if (invalid) return rejectRename(tag, invalid, inline)
 
+  // Même renommage déjà en vol (Entrée puis Save, Save puis fermeture du popover) :
+  // on le rejoint au lieu d'envoyer un second PATCH (et un second message d'erreur)
+  if (renameInFlight && renameInFlight.tagId === tag.id && renameInFlight.name === name) {
+    return renameInFlight.promise
+  }
+
+  const promise = sendRename(tag, name, inline)
+  const inFlight = { tagId: tag.id, name, promise }
+  renameInFlight = inFlight
+  promise.finally(() => {
+    if (renameInFlight === inFlight) renameInFlight = null
+  })
+
+  return promise
+}
+
+/**
+ * Envoie un renommage déjà validé localement
+ * @param tag Tag renommé
+ * @param name Nouveau nom nettoyé
+ * @param inline Message d'erreur sous le champ plutôt qu'en toast
+ * @returns true si le nom est enregistré
+ */
+async function sendRename(tag: Tag, name: string, inline: boolean): Promise<boolean> {
   try {
+    // updateTag est appelé sans attente préalable : l'édition est suivie par le
+    // store dès cet appel, avant tout enregistrement de la tâche qui l'attendrait
     const updatedTag = await tagStore.updateTag(tag.id, { name })
     if (editedTagId.value === tag.id) editName.value = updatedTag.name
     logger.debug('Tag renommé', updatedTag)
@@ -640,6 +669,19 @@ async function commitRename(inline: boolean): Promise<boolean> {
     return false
   }
 }
+
+/**
+ * Enregistre le renommage saisi dans la vue édition, s'il y en a un, et attend
+ * sa fin. Appelé par TaskDialog avant d'enregistrer la tâche : rien ne garantit
+ * que la fermeture du popover (clic extérieur) passe avant la soumission.
+ * Ne lève jamais : un renommage refusé laisse le nom d'origine (message en toast).
+ */
+async function commitPendingEdit(): Promise<void> {
+  if (view.value !== 'edit') return
+  await commitRename(false)
+}
+
+defineExpose({ commitPendingEdit })
 
 /**
  * Clavier du champ du nom : Entrée enregistre (Échap est géré par le panneau)

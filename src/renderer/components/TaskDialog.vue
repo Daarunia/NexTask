@@ -44,6 +44,7 @@
         <span class="font-medium">Tags</span>
         <FormField v-slot="$field" name="tags">
           <TagSelect
+            ref="tagSelectRef"
             :modelValue="$field.value ?? []"
             @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
           />
@@ -179,6 +180,9 @@ const taskStore = useTaskStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
 
+// Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
+const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
+
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
@@ -267,6 +271,13 @@ async function saveTask(values: TaskFormValues) {
   })
 
   try {
+    // Un renommage ou une suppression de tag peut être encore en vol (nom tapé
+    // puis clic direct sur Save) : on le lance s'il ne l'est pas encore, puis on
+    // attend toutes les éditions pour lire les noms à jour. Un renommage refusé
+    // laisse le nom d'origine, avec lequel la tâche est enregistrée.
+    await tagSelectRef.value?.commitPendingEdit()
+    await tagStore.waitForPendingEdits()
+
     let savedTask: Task | undefined
 
     if (props.creationMode) {

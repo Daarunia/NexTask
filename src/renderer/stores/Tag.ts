@@ -15,6 +15,26 @@ function compareTagNames(a: Tag, b: Tag): number {
 }
 
 /**
+ * Éditions de tags (renommage, couleur, suppression) envoyées au serveur et pas
+ * encore terminées. Hors du state : rien à afficher, seulement à attendre.
+ */
+const pendingEdits = new Set<Promise<unknown>>()
+
+/**
+ * Enregistre une édition en cours jusqu'à sa fin (réussie ou non)
+ * @param edit Promesse de l'appel serveur
+ * @returns La même promesse
+ */
+function trackEdit<T>(edit: Promise<T>): Promise<T> {
+  pendingEdits.add(edit)
+  edit.then(
+    () => pendingEdits.delete(edit),
+    () => pendingEdits.delete(edit),
+  )
+  return edit
+}
+
+/**
  * Cache des tags, source de vérité de leur affichage.
  *
  * Nom et couleur d'un tag s'affichent toujours via `getTagById`, jamais depuis
@@ -72,25 +92,30 @@ export const useTagStore = defineStore('tag', {
      * @param changes Nouveau nom et/ou nouvelle couleur
      * @returns Le tag mis à jour
      */
-    async updateTag(id: number, changes: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag> {
-      try {
-        const updatedTag = await api.patch<Tag>(`/tags/${id}`, changes)
+    updateTag(id: number, changes: Partial<Pick<Tag, 'name' | 'color'>>): Promise<Tag> {
+      // Suivie pour que l'enregistrement d'une tâche puisse attendre le nouveau nom
+      return trackEdit(
+        (async () => {
+          try {
+            const updatedTag = await api.patch<Tag>(`/tags/${id}`, changes)
 
-        // Met à jour le cache local
-        const tagToUpdate = this.allEntities?.data.find((t) => t.id === id)
-        if (tagToUpdate) {
-          Object.assign(tagToUpdate, updatedTag)
-        } else {
-          getLogger().warn("Tag non trouvé dans le cache pour l'ID", id)
-        }
+            // Met à jour le cache local
+            const tagToUpdate = this.allEntities?.data.find((t) => t.id === id)
+            if (tagToUpdate) {
+              Object.assign(tagToUpdate, updatedTag)
+            } else {
+              getLogger().warn("Tag non trouvé dans le cache pour l'ID", id)
+            }
 
-        useTaskStore().patchTagInTasks(updatedTag)
+            useTaskStore().patchTagInTasks(updatedTag)
 
-        return updatedTag
-      } catch (error) {
-        getLogger().error(`Erreur lors de la mise à jour du tag ${id} :`, error)
-        throw error
-      }
+            return updatedTag
+          } catch (error) {
+            getLogger().error(`Erreur lors de la mise à jour du tag ${id} :`, error)
+            throw error
+          }
+        })(),
+      )
     },
 
     /**
@@ -98,21 +123,38 @@ export const useTagStore = defineStore('tag', {
      * (le serveur le retire des tâches en base, actives comme historisées)
      * @param id Id du tag
      */
-    async deleteTag(id: number): Promise<void> {
+    deleteTag(id: number): Promise<void> {
       const logger = getLogger()
 
-      try {
-        await api.delete(`/tags/${id}`)
+      // Suivie pour que l'enregistrement d'une tâche puisse écarter le tag supprimé
+      return trackEdit(
+        (async () => {
+          try {
+            await api.delete(`/tags/${id}`)
 
-        if (this.allEntities) {
-          this.allEntities.data = this.allEntities.data.filter((t) => t.id !== id)
-        }
+            if (this.allEntities) {
+              this.allEntities.data = this.allEntities.data.filter((t) => t.id !== id)
+            }
 
-        useTaskStore().removeTagFromTasks(id)
-        logger.debug(`Tag ${id} supprimé`)
-      } catch (error) {
-        logger.error(`Erreur lors de la suppression du tag ${id} :`, error)
-        throw error
+            useTaskStore().removeTagFromTasks(id)
+            logger.debug(`Tag ${id} supprimé`)
+          } catch (error) {
+            logger.error(`Erreur lors de la suppression du tag ${id} :`, error)
+            throw error
+          }
+        })(),
+      )
+    },
+
+    /**
+     * Attend la fin des éditions de tags en cours, réussies ou non (ne lève jamais).
+     * À appeler avant de convertir les tags d'une tâche en noms, car un renommage
+     * encore en vol ferait renvoyer l'ancien nom, que le serveur recréerait.
+     */
+    async waitForPendingEdits(): Promise<void> {
+      // Boucle, une édition pouvant démarrer pendant l'attente des précédentes
+      while (pendingEdits.size) {
+        await Promise.allSettled([...pendingEdits])
       }
     },
   },
