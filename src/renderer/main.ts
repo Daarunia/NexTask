@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import './style.css'
 import { createLogger } from 'vue-logger-plugin'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import Aura from '@primeuix/themes/aura'
 import router from './router'
 
@@ -24,4 +25,5 @@ app.use(PrimeVue, {
     'eyJpZCI6IjQ4MzgxMDQzLTY2MjctNGQ0ZC04M2MwLTkzNTEwMTg2NjM0ZSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODQyMjkwNTAsImV4cCI6MTgxNTc2NTA1MH0.qVJvuNXG7ABnceENJ-N-CyWTFqegDmNA23La3zNAEVxL81AI-TJYx6gOrPJigHBaltNNnMhuW28uCSElaglrDA',
   theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } },
 })
+app.use(ToastService)
 app.mount('#app')

@@ -67,7 +67,12 @@ export const useStageStore = defineStore('stage', {
     },
 
     async updateStageBatch(stages: { id: number; position: number }[]): Promise<void> {
-      await api.patch(`/stages/batch`, stages)
+      try {
+        await api.patch(`/stages/batch`, stages)
+      } catch (error) {
+        getLogger().error('Erreur lors de la mise à jour batch des colonnes :', error)
+        throw error
+      }
 
       // Mise à jour du cache local
       if (this.allEntities) {

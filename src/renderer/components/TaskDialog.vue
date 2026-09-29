@@ -102,6 +102,7 @@ import { Task } from '../types/task.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import { useTaskStore } from '../stores/Task'
 import { getLogger } from '../utils/logger'
+import { useErrorToast } from '../utils/toast.helper'
 
 // Props
 const props = defineProps({
@@ -153,6 +154,7 @@ const resolver = zodResolver(taskFormSchema)
 // Logger & Store
 const logger = getLogger()
 const taskStore = useTaskStore()
+const showError = useErrorToast()
 
 // Sync ouverture / fermeture
 watch(
@@ -253,7 +255,9 @@ async function saveTask(values: TaskFormValues) {
 
     emit('update:modelValue', false)
   } catch (error) {
+    // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)
+    showError('Enregistrement impossible', "La tâche n'a pas été enregistrée.")
   }
 }
 </script>

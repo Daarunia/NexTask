@@ -103,6 +103,7 @@ import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
+import { useErrorToast } from '../utils/toast.helper'
 
 const props = defineProps<{
   stages: Stage[]
@@ -112,6 +113,7 @@ const props = defineProps<{
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const showError = useErrorToast()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -217,7 +219,14 @@ async function onTasksDrop() {
   // échouer tout le batch si une ancienne tâche a un titre vide (refusé par l'API)
   const modifiedTasks = changes.map(({ task, position, stageId }) => ({ id: task.id, position, stageId }))
   logger.debug('Mise à jour DnD des tâches', modifiedTasks)
-  await taskStore.updateTaskBatch(modifiedTasks)
+
+  try {
+    await taskStore.updateTaskBatch(modifiedTasks)
+  } catch {
+    restorePersistedTasks()
+    showError('Déplacement annulé')
+    return
+  }
 
   // Sauvegarde réussie : les tâches locales reflètent désormais l'état persisté
   for (const { task, position, stageId } of changes) {
@@ -227,20 +236,49 @@ async function onTasksDrop() {
 }
 
 /**
+ * Remet les cartes à leur dernière place enregistrée, après un DnD refusé.
+ * Chaque tâche porte encore sa colonne et sa position persistées, qui ne sont
+ * mises à jour qu'une fois la sauvegarde réussie.
+ */
+function restorePersistedTasks() {
+  const tasks = [...taskLists.values()].flat()
+  const map = new Map<number, Task[]>()
+
+  for (const stage of stagesLocal.value) {
+    map.set(
+      stage.id,
+      tasks.filter((t) => t.stageId === stage.id).sort((a, b) => a.position - b.position),
+    )
+  }
+
+  setAll(taskLists, map)
+}
+
+/**
  * Drag stages
  */
 async function onStagesDrop() {
-  const modifiedStages: Stage[] = []
+  // Comme pour les tâches, la position portée par chaque colonne est la
+  // dernière persistée : elle n'est mise à jour qu'après la sauvegarde
+  const changes = stagesLocal.value
+    .map((stage, index) => ({ stage, position: index }))
+    .filter(({ stage, position }) => stage.position !== position)
 
-  stagesLocal.value.forEach((stage, index) => {
-    if (stage.position !== index) {
-      modifiedStages.push({ ...stage, position: index })
-    }
-  })
+  if (!changes.length) return
 
-  if (modifiedStages.length) {
-    logger.debug('Mise à jour DnD stages', modifiedStages)
+  const modifiedStages = changes.map(({ stage, position }) => ({ id: stage.id, position }))
+  logger.debug('Mise à jour DnD stages', modifiedStages)
+
+  try {
     await stageStore.updateStageBatch(modifiedStages)
+  } catch {
+    stagesLocal.value = [...stagesLocal.value].sort((a, b) => a.position - b.position)
+    showError('Déplacement annulé')
+    return
+  }
+
+  for (const { stage, position } of changes) {
+    stage.position = position
   }
 }
 
@@ -248,7 +286,12 @@ async function onStagesDrop() {
  * Archivage
  */
 async function archiveTask(task: Task) {
-  await taskStore.archiveTask(task.id)
+  try {
+    await taskStore.archiveTask(task.id)
+  } catch {
+    showError('Archivage impossible', "La tâche n'a pas été archivée.")
+    return
+  }
 
   // On retire la carte de sa colonne locale (taskLists est la source de
   // vérité après le montage — ne PAS reconstruire depuis props.tasks, qui est
@@ -307,7 +350,16 @@ function findTaskLocation(taskId: number): { stageId: number; list: Task[]; inde
 async function createStage() {
   if (!newStageName.value.trim()) return
 
-  const newStage = await stageStore.saveStage(newStageName.value, stagesLocal.value.length)
+  let newStage: Stage
+
+  try {
+    newStage = await stageStore.saveStage(newStageName.value, stagesLocal.value.length)
+  } catch {
+    // La saisie est conservée pour pouvoir réessayer
+    showError('Création impossible', "La liste n'a pas été créée.")
+    return
+  }
+
   stagesLocal.value.push(newStage)
   taskLists.set(newStage.id, [])
   newStageName.value = ''
@@ -347,6 +399,7 @@ async function deleteStage() {
       stageId,
       error,
     })
+    showError('Suppression impossible', "La liste n'a pas été supprimée.")
   } finally {
     selectedStage.value = null
   }
@@ -368,10 +421,16 @@ async function saveStageName(stage: Stage) {
   if (editingStageId.value !== stage.id) return
   if (!editedStageName.value.trim()) return
 
+  const previousName = stage.name
   stage.name = editedStageName.value
   editingStageId.value = null
 
-  await stageStore.updateStage(stage.id, stage.name)
+  try {
+    await stageStore.updateStage(stage.id, stage.name)
+  } catch {
+    stage.name = previousName
+    showError('Renommage annulé')
+  }
 }
 
 function cancelEditingStage() {

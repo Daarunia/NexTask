@@ -9,5 +9,8 @@ import Header from './components/Header.vue'
     <main class="h-full">
       <router-view />
     </main>
+
+    <!-- Notifications d'erreur (cf. utils/toast.helper.ts) -->
+    <Toast position="bottom-right" />
   </div>
 </template>
