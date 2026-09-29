@@ -80,6 +80,22 @@ test('remet les tâches en place si le déplacement est refusé', async ({ taskB
   await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, [t1, t2])).toEqual([t1, t2])
 })
 
+test('signale un échec du chargement initial et permet de réessayer', async ({ taskBoard, page }) => {
+  await failApi(page, 'GET', `${API}/stages`)
+  await page.reload()
+
+  // Plus de spinner infini : un toast et un bouton pour relancer le chargement
+  await expect(page.getByText('Chargement impossible').first()).toBeVisible()
+  await expect(page.getByTestId('board-load-error')).toBeVisible()
+
+  // L'API répond de nouveau : le tableau s'affiche sans recharger la page
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+  await page.getByTestId('btn-retry-load').click()
+
+  await expect(taskBoard.column(A_FAIRE)).toHaveCount(1)
+  await expect(page.getByTestId('board-load-error')).toHaveCount(0)
+})
+
 test("garde la carte affichée si l'archivage est refusé", async ({ taskBoard, page }) => {
   const title = `Archive ${uid()}`
 

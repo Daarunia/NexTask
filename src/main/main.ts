@@ -98,8 +98,6 @@ app.whenReady().then(async () => {
     return
   }
 
-  createWindow()
-
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -114,6 +112,8 @@ app.whenReady().then(async () => {
   } catch (err) {
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
   }
+
+  createWindow()
 
   // Planificateur de notifications (tâches dont la startDate est dépassée).
   // Désactivé en mode test : les tests le déclenchent manuellement via
