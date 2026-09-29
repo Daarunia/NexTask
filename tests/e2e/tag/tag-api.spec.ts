@@ -10,7 +10,7 @@ import type { APIRequestContext, APIResponse } from '@playwright/test'
  * `GET /tags`, présence des tags dans les réponses des tâches et des colonnes,
  * puis édition et suppression via `/tags/:id`.
  *
- * Isolation : la base est remise à zéro avant chaque test (beforeEach global),
+ * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`),
  * tags compris. Chaque test part donc d'une base sans aucun tag, ce qui rend
  * les couleurs attribuées déterministes.
  */

@@ -13,7 +13,7 @@ import { TAG_COLORS, createTaskViaApi, getTags, getTask, tagNames } from '../../
  * geste testé.
  *
  * Isolation : la base, tags compris, est remise à zéro avant chaque test
- * (beforeEach global). Le premier tag créé reçoit donc toujours la première
+ * (fixture automatique `cleanState`). Le premier tag créé reçoit donc toujours la première
  * couleur de la palette (R4).
  */
 

@@ -40,7 +40,13 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => {
-      // Lecture des seeds hors transaction (accès disque synchrone)
+      // Ordre important : les tâches référencent les colonnes (clé étrangère)
+      await prisma.task.deleteMany()
+      // Les liens tâche-tag sont déjà partis en cascade avec les tâches
+      await prisma.tag.deleteMany()
+      await prisma.stage.deleteMany()
+
+      // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
       const seedFiles = fs.existsSync(SEEDS_PATH)
         ? fs
             .readdirSync(SEEDS_PATH)
@@ -48,31 +54,18 @@ export default async function testRoutes(fastify) {
             .sort((a, b) => a.localeCompare(b))
         : []
 
-      // Exécute chaque instruction des fichiers SQL individuellement
-      const statements = seedFiles.flatMap((file) =>
-        fs
-          .readFileSync(path.join(SEEDS_PATH, file), 'utf8')
+      for (const file of seedFiles) {
+        const sql = fs.readFileSync(path.join(SEEDS_PATH, file), 'utf8')
+        // Exécute chaque instruction du fichier SQL individuellement
+        const statements = sql
           .split(';')
           .map((s) => s.trim())
-          .filter((s) => s.length > 0),
-      )
+          .filter((s) => s.length > 0)
 
-      // Transaction interactive : l'adaptateur SQLite n'ouvre qu'une connexion et ne
-      // sérialise que les transactions. Sans elle, les suppressions pourraient
-      // s'exécuter à l'intérieur de la transaction d'une autre requête encore en
-      // cours et être annulées avec elle.
-      await prisma.$transaction(async (tx) => {
-        // Ordre important : les tâches référencent les colonnes (clé étrangère)
-        await tx.task.deleteMany()
-        // Les liens tâche-tag sont déjà partis en cascade avec les tâches
-        await tx.tag.deleteMany()
-        await tx.stage.deleteMany()
-
-        // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
         for (const statement of statements) {
-          await tx.$executeRawUnsafe(statement)
+          await prisma.$executeRawUnsafe(statement)
         }
-      })
+      }
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }

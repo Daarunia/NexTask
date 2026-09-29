@@ -9,7 +9,7 @@ import type { APIRequestContext } from '@playwright/test'
  * déclaré, la réponse ne contenait plus que id/version/description/position et
  * le store remplaçait son cache par ces tâches tronquées.
  *
- * Isolation : la base est remise à zéro avant chaque test (beforeEach global).
+ * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`).
  */
 
 const API = 'http://localhost:3000'

@@ -14,7 +14,7 @@ import { TAG_COLORS, createTaskViaApi, getTags, getTask, tagNames } from '../../
  * requête) : le premier reçoit « sky », le deuxième « emerald » (R4).
  *
  * Isolation : la base, tags compris, est remise à zéro avant chaque test
- * (beforeEach global).
+ * (fixture automatique `cleanState`).
  */
 
 // Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
