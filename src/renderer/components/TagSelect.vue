@@ -114,14 +114,18 @@
         </div>
 
         <div class="flex flex-col gap-1">
-          <InputText
+          <!-- Input natif aux classes PrimeVue : un InputText s'enregistrerait auprès du
+               FormField « tags » du TaskDialog et écraserait la valeur du formulaire -->
+          <input
             ref="editNameRef"
             v-model="editName"
+            type="text"
             data-testid="tag-edit-name"
-            size="small"
+            class="p-inputtext p-component p-inputtext-sm"
+            :class="{ 'p-invalid': !!editError }"
             aria-label="Nom du tag"
-            :invalid="!!editError"
-            @update:modelValue="editError = ''"
+            :aria-invalid="!!editError || undefined"
+            @input="editError = ''"
             @keydown="onEditNameKeydown"
           />
           <small v-if="editError" data-testid="tag-edit-error" class="tag-edit-error">{{ editError }}</small>
@@ -191,7 +195,6 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import Popover from 'primevue/popover'
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
 import TagChip from './TagChip.vue'
 import { useTagStore } from '../stores/Tag'
 import { Tag, TagColor, TagSelection } from '../types/tag.types'
@@ -230,7 +233,7 @@ const popover = ref()
 const fieldRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const searchRef = ref<HTMLInputElement | null>(null)
-const editNameRef = ref<{ $el: HTMLInputElement } | null>(null)
+const editNameRef = ref<HTMLInputElement | null>(null)
 
 const isOpen = ref(false)
 const search = ref('')
@@ -551,7 +554,7 @@ function openEditView(tag: Tag) {
   confirmingDelete.value = false
   view.value = 'edit'
 
-  nextTick(() => editNameRef.value?.$el?.focus())
+  nextTick(() => editNameRef.value?.focus())
 }
 
 /**
