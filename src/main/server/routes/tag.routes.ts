@@ -3,7 +3,7 @@ import { prisma } from '../prismaClient.js'
 import { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagSchema, tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
-import { findTagByName } from '../helpers/tag.helper.js'
+import { findTagByName, nextTagColor } from '../helpers/tag.helper.js'
 import { TAG_COLORS, type TagColor } from '../../constants.js'
 
 // Nombre de tâches (actives et historisées) qui portent le tag
@@ -22,9 +22,10 @@ function toTagResponse(tag: { id: number; name: string; color: string; _count: {
 /**
  * Plugin de routes Fastify pour la gestion des tags (Tag)
  *
- * Les tags sont créés à la volée par les routes des tâches (POST / PATCH
- * /tasks), il n'y a donc pas d'endpoint de création :
+ * Les tags sont créés depuis le sélecteur (POST /tags), ou à la volée par les
+ * routes des tâches (POST / PATCH /tasks) pour un nom encore inconnu :
  * - GET    /tags       → Liste tous les tags avec leur nombre de tâches
+ * - POST   /tags       → Crée un tag, ou renvoie celui qui porte déjà ce nom
  * - PATCH  /tags/:id   → Renomme et/ou recolore un tag
  * - DELETE /tags/:id   → Supprime un tag et le retire de toutes les tâches
  *
@@ -54,6 +55,58 @@ export default async function tagRoutes(fastify) {
         orderBy: { name: 'asc' },
       })
       return tags.map(toTagResponse)
+    },
+  )
+
+  /**
+   * POST /tags
+   *
+   * Crée un tag depuis le sélecteur (« Créer « xxx » »). Le nom est nettoyé
+   * (trim). Si un tag porte déjà ce nom sans tenir compte de la casse, il est
+   * renvoyé tel quel (200) plutôt que dupliqué. Sinon le tag est créé avec la
+   * couleur la moins utilisée de la palette (R4) et renvoyé (201).
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - Données du tag
+   * @param {string} req.body.name - Nom du tag
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object>} Tag existant (200) ou créé (201), avec `taskCount`
+   */
+  fastify.post(
+    '/tags',
+    {
+      schema: {
+        description: 'Crée un tag, ou renvoie le tag qui porte déjà ce nom (sans tenir compte de la casse)',
+        tags: ['Tag'],
+        body: {
+          type: 'object',
+          properties: { name: tagNameSchema },
+          required: ['name'],
+        },
+        response: {
+          200: tagSchema,
+          201: tagSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const name = (req.body as { name: string }).name.trim()
+
+      // Transaction : la recherche du nom, le choix de la couleur et la création voient le même état
+      return prisma.$transaction(async (tx) => {
+        const existing = await findTagByName(tx, name)
+        if (existing) {
+          const tag = await tx.tag.findUniqueOrThrow({ where: { id: existing.id }, include: taskCountInclude })
+          return toTagResponse(tag)
+        }
+
+        const color = await nextTagColor(tx)
+        const created = await tx.tag.create({ data: { name, color }, include: taskCountInclude })
+
+        Logger.info(`Tag « ${name} » créé depuis le sélecteur (couleur ${color})`)
+        reply.code(201)
+        return toTagResponse(created)
+      })
     },
   )
 

@@ -3,8 +3,8 @@ import { TAG_COLORS, type TagColor } from '../../constants.js'
 import Logger from 'electron-log'
 
 /**
- * Helpers de rapprochement des tags, partagés par les routes des tâches et des
- * tags.
+ * Helpers de rapprochement et de création des tags, partagés par les routes
+ * des tâches et des tags.
  *
  * SQLite (via Prisma) ne sait pas comparer des chaînes sans tenir compte de la
  * casse : l'unicité insensible à la casse des noms est donc garantie ici, en
@@ -38,8 +38,22 @@ export async function findTagByName(tx: TransactionClient, name: string): Promis
 }
 
 /**
+ * Compte les tags de chaque couleur.
+ *
+ * @param tags Tags existants
+ * @returns Nombre de tags par couleur
+ */
+function countColors(tags: Pick<Tag, 'color'>[]): Map<string, number> {
+  const usage = new Map<string, number>()
+  for (const tag of tags) {
+    usage.set(tag.color, (usage.get(tag.color) ?? 0) + 1)
+  }
+  return usage
+}
+
+/**
  * Couleur de la palette la moins utilisée, la première dans l'ordre de
- * `TAG_COLORS` en cas d'égalité.
+ * `TAG_COLORS` en cas d'égalité (R4).
  *
  * @param usage Nombre de tags par couleur
  */
@@ -51,6 +65,17 @@ function leastUsedColor(usage: Map<string, number>): TagColor {
     }
   }
   return best
+}
+
+/**
+ * Couleur à attribuer à un nouveau tag (R4) : la moins utilisée par les tags
+ * existants. À appeler dans la transaction qui crée le tag.
+ *
+ * @param tx Client Prisma de la transaction
+ */
+export async function nextTagColor(tx: TransactionClient): Promise<TagColor> {
+  const tags = await tx.tag.findMany({ select: { color: true } })
+  return leastUsedColor(countColors(tags))
 }
 
 /**
@@ -84,10 +109,7 @@ export async function resolveTagIds(tx: TransactionClient, names: string[]): Pro
   // 2. Index des tags existants et usage des couleurs
   const existingTags = await tx.tag.findMany()
   const tagsByKey = new Map(existingTags.map((tag) => [tagKey(tag.name), tag]))
-  const colorUsage = new Map<string, number>()
-  for (const tag of existingTags) {
-    colorUsage.set(tag.color, (colorUsage.get(tag.color) ?? 0) + 1)
-  }
+  const colorUsage = countColors(existingTags)
 
   // 3. Rapprochement ou création
   const ids: number[] = []
