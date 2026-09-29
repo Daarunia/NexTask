@@ -1,4 +1,4 @@
-import { test as base, Page } from '@playwright/test'
+import { test as base, expect, Page } from '@playwright/test'
 import { _electron as electron, ElectronApplication } from 'playwright'
 import { Header } from '../components/Header'
 import { TaskBoard } from '../components/TaskBoard'
@@ -96,6 +96,10 @@ test.beforeEach(async ({ page }) => {
 
   await page.reload()
   await page.waitForLoadState('domcontentloaded')
+
+  // 2) Attend le tableau chargé (colonnes et tags) : ses requêtes ne doivent pas
+  // se mêler à celles du test, ni au reset du test suivant
+  await expect(page.getByTestId('stage-column').first()).toBeVisible()
 })
 
 export { expect } from '@playwright/test'
