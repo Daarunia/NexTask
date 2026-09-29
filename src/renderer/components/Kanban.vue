@@ -348,12 +348,14 @@ function findTaskLocation(taskId: number): { stageId: number; list: Task[]; inde
  * Création de la colonne
  */
 async function createStage() {
-  if (!newStageName.value.trim()) return
+  // Nom nettoyé comme le titre des tâches (schéma zod de TaskDialog)
+  const name = newStageName.value.trim()
+  if (!name) return
 
   let newStage: Stage
 
   try {
-    newStage = await stageStore.saveStage(newStageName.value, stagesLocal.value.length)
+    newStage = await stageStore.saveStage(name, stagesLocal.value.length)
   } catch {
     // La saisie est conservée pour pouvoir réessayer
     showError('Création impossible', "La liste n'a pas été créée.")
@@ -419,10 +421,12 @@ async function saveStageName(stage: Stage) {
   // Le retrait de l'input (après Échap ou Entrée) peut déclencher un blur :
   // on ignore cet appel si l'édition est déjà terminée ou annulée.
   if (editingStageId.value !== stage.id) return
-  if (!editedStageName.value.trim()) return
+
+  const name = editedStageName.value.trim()
+  if (!name) return
 
   const previousName = stage.name
-  stage.name = editedStageName.value
+  stage.name = name
   editingStageId.value = null
 
   try {
