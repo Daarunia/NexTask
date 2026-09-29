@@ -4,6 +4,9 @@ import { taskSchema } from '../schemas/taskSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import Logger from 'electron-log'
 
+// Relations renvoyées avec chaque tâche : ses tags, triés par nom.
+const taskInclude = { tags: { orderBy: { name: 'asc' } } } as const
+
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
  *
@@ -50,6 +53,7 @@ export default async function taskRoutes(fastify) {
       return prisma.task.findMany({
         where: isHistorized === undefined ? undefined : { isHistorized },
         orderBy: [{ stageId: 'asc' }, { position: 'asc' }],
+        include: taskInclude,
       })
     },
   )
@@ -80,7 +84,7 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
-      const task = await prisma.task.findUnique({ where: { id } })
+      const task = await prisma.task.findUnique({ where: { id }, include: taskInclude })
       if (!task) {
         reply.code(404)
         return { error: 'Tâche non trouvée' }
@@ -124,7 +128,7 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req) => {
-      return prisma.task.create({ data: req.body })
+      return prisma.task.create({ data: req.body, include: taskInclude })
     },
   )
 
@@ -183,6 +187,7 @@ export default async function taskRoutes(fastify) {
         return await prisma.task.update({
           where: { id },
           data,
+          include: taskInclude,
         })
       } catch (error) {
         Logger.warn(`Échec de la mise à jour de la tâche ${id} (traitée comme introuvable) :`, error)
@@ -356,6 +361,7 @@ export default async function taskRoutes(fastify) {
             return prisma.task.update({
               where: { id: t.id },
               data,
+              include: taskInclude,
             })
           }),
         )

@@ -10,7 +10,7 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches et les colonnes puis rejoue les seeds
+ * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -20,7 +20,7 @@ export default async function testRoutes(fastify) {
    * POST /test/reset
    *
    * Remet la base dans un état propre et déterministe : suppression de toutes
-   * les tâches puis de toutes les colonnes, et réapplication des seeds initiaux
+   * les tâches, de tous les tags puis de toutes les colonnes, et réapplication des seeds initiaux
    * (source unique de vérité : les fichiers .sql du dossier seeds).
    *
    * @returns {Promise<{message: string}>} Confirmation du reset
@@ -42,6 +42,8 @@ export default async function testRoutes(fastify) {
     async () => {
       // Ordre important : les tâches référencent les colonnes (clé étrangère)
       await prisma.task.deleteMany()
+      // Les liens tâche-tag sont déjà partis en cascade avec les tâches
+      await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
 
       // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
