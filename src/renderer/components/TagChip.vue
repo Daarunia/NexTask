@@ -9,7 +9,7 @@
     <button
       v-if="removable"
       type="button"
-      data-testid="task-tag-chip-remove"
+      :data-testid="removeTestId"
       class="tag-chip-remove"
       :aria-label="`Retirer le tag ${label}`"
       @click="emit('remove')"
@@ -29,6 +29,7 @@ import { getTagColorStyle } from '../constants/tag.constants'
  *
  * Avec `tagId`, nom et couleur viennent du store (source de vérité) : une
  * édition s'y reflète aussitôt, et rien n'est affiché si le tag a été supprimé.
+ * Un tag que le cache ne connaît pas encore s'affiche en neutre avec `name`.
  * Avec `name` seul, chip neutre pour un tag pas encore créé (ligne « Créer
  * « xxx » » du sélecteur, les tags sélectionnés ayant toujours un id).
  */
@@ -37,12 +38,15 @@ const props = withDefaults(
     tagId?: number
     name?: string
     removable?: boolean
+    // data-testid du bouton de retrait, propre à chaque usage
+    removeTestId?: string
     size?: 'small' | 'normal'
   }>(),
   {
     tagId: undefined,
     name: undefined,
     removable: false,
+    removeTestId: undefined,
     size: 'normal',
   },
 )
@@ -57,7 +61,11 @@ const tagStore = useTagStore()
 const tag = computed(() => (props.tagId === undefined ? undefined : tagStore.getTagById(props.tagId)))
 
 // Nom affiché (undefined = rien à afficher)
-const label = computed(() => (props.tagId === undefined ? props.name : tag.value?.name))
+const label = computed(() => {
+  if (props.tagId === undefined) return props.name
+  if (tag.value) return tag.value.name
+  return tagStore.wasDeleted(props.tagId) ? undefined : props.name
+})
 
 // Nom de la couleur, exposé en data-tag-color pour les tests
 const colorName = computed(() => tag.value?.color ?? 'neutral')

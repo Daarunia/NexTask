@@ -9,6 +9,7 @@ import Button from 'primevue/button'
 import MultiSelect from 'primevue/multiselect'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
 import { useStageStore } from '../stores/Stage'
 import { useTagStore } from '../stores/Tag'
 import { Stage } from '../types/stage.types'
@@ -48,7 +49,7 @@ const filterOptions = computed<Tag[]>(() => {
   return [...ids]
     .map((id) => tagStore.getTagById(id))
     .filter((tag): tag is Tag => tag !== undefined)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .sort(compareTagNames)
 })
 
 // Un tag supprimé sort du filtre (R13). Un tag qui n'est simplement plus porté reste sélectionné.

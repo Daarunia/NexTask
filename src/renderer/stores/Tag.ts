@@ -6,13 +6,10 @@ import { api } from '../utils/api.helper'
 import { isCacheValid } from '../utils/cache.helper'
 import { useTaskStore } from './Task'
 import { getLogger } from '../utils/logger'
+import { compareTagNames } from '../utils/tag.helper'
 
-/**
- * Compare deux tags par nom, dans l'ordre alphabétique sans tenir compte de la casse.
- */
-function compareTagNames(a: Tag, b: Tag): number {
-  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-}
+/** Nombre maximal de lectures de GET /tags quand des éditions la rendent obsolète. */
+const MAX_LOAD_ATTEMPTS = 3
 
 /**
  * Éditions de tags (création, renommage, couleur, suppression) envoyées au
@@ -28,12 +25,37 @@ const pendingEdits = new Set<Promise<unknown>>()
  */
 function trackEdit<T>(edit: Promise<T>): Promise<T> {
   pendingEdits.add(edit)
+  editVersion++
   edit.then(
-    () => pendingEdits.delete(edit),
-    () => pendingEdits.delete(edit),
+    () => settleEdit(edit),
+    () => settleEdit(edit),
   )
   return edit
 }
+
+/**
+ * Fin d'une édition suivie
+ * @param edit Promesse terminée
+ */
+function settleEdit(edit: Promise<unknown>) {
+  pendingEdits.delete(edit)
+  editVersion++
+}
+
+/**
+ * Compteur incrémenté au début et à la fin de chaque édition. Une réponse de
+ * GET /tags demandée avant une édition ne doit pas écraser le cache, sinon un
+ * tag créé ou renommé entre-temps disparaîtrait (et serait retiré de la tâche
+ * enregistrée ensuite).
+ */
+let editVersion = 0
+
+/**
+ * Ids des tags supprimés depuis le démarrage. Un id absent du cache n'est
+ * considéré comme perdu que s'il est ici : sinon c'est un tag que le cache ne
+ * connaît pas encore, à conserver sur les tâches.
+ */
+const deletedTagIds = new Set<number>()
 
 /**
  * Cache des tags, source de vérité de leur affichage.
@@ -61,8 +83,16 @@ export const useTagStore = defineStore('tag', {
     /**
      * Getter pour récupérer un tag par son id (`undefined` s'il a été supprimé)
      */
-    getTagById(state): (id: number) => Tag | undefined {
-      return (id: number) => state.allEntities?.data.find((tag) => tag.id === id)
+    getTagById(): (id: number) => Tag | undefined {
+      const byId = this.tagsById
+      return (id: number) => byId.get(id)
+    },
+
+    /**
+     * Index des tags par id, recalculé seulement quand le cache change
+     */
+    tagsById(state): Map<number, Tag> {
+      return new Map((state.allEntities?.data ?? []).map((tag) => [tag.id, tag]))
     },
   },
   actions: {
@@ -71,16 +101,55 @@ export const useTagStore = defineStore('tag', {
     },
 
     /**
+     * Le tag a-t-il été supprimé depuis le démarrage ?
+     * @param id Id du tag
+     */
+    wasDeleted(id: number): boolean {
+      return deletedTagIds.has(id)
+    },
+
+    /**
+     * Met à jour localement le nombre de tâches des tags, après l'enregistrement
+     * d'une tâche (évite de relire GET /tags)
+     * @param addedIds Tags ajoutés à la tâche
+     * @param removedIds Tags retirés de la tâche
+     */
+    adjustTaskCounts(addedIds: number[], removedIds: number[]) {
+      for (const [ids, delta] of [
+        [addedIds, 1],
+        [removedIds, -1],
+      ] as const) {
+        for (const id of ids) {
+          const tag = this.tagsById.get(id)
+          if (tag) tag.taskCount = Math.max(0, (tag.taskCount ?? 0) + delta)
+        }
+      }
+    },
+
+    /**
      * Chargement des tags et de leur nombre de tâches
-     * @param force Recharge même si le cache est encore valide (ex : après
-     *   l'enregistrement d'une tâche, pour récupérer les tags créés à la volée)
+     * @param force Recharge même si le cache est encore valide
      */
     async loadAllTags(force = false): Promise<void> {
       if (!force && isCacheValid(this.allEntities, this.ttl)) return
 
       try {
-        const tagsFromApi = await api.get<Tag[]>(`/tags`)
-        this.setAllTagsCache(tagsFromApi)
+        // Relit la liste si une édition a démarré ou fini pendant la requête
+        for (let attempt = 1; attempt <= MAX_LOAD_ATTEMPTS; attempt++) {
+          const version = editVersion
+          const tagsFromApi = await api.get<Tag[]>(`/tags`)
+
+          if (version === editVersion && !pendingEdits.size) {
+            this.setAllTagsCache(tagsFromApi)
+            return
+          }
+
+          getLogger().debug('Liste des tags obsolète (édition en cours), nouvelle lecture', { attempt })
+          await this.waitForPendingEdits()
+        }
+
+        // Toujours obsolète : on garde le cache, tenu à jour par les éditions elles-mêmes
+        getLogger().warn('Liste des tags non rechargée, des éditions sont toujours en cours')
       } catch (error) {
         getLogger().error('Erreur lors du chargement des tags :', error)
         throw error
@@ -163,6 +232,7 @@ export const useTagStore = defineStore('tag', {
         (async () => {
           try {
             await api.delete(`/tags/${id}`)
+            deletedTagIds.add(id)
 
             if (this.allEntities) {
               this.allEntities.data = this.allEntities.data.filter((t) => t.id !== id)

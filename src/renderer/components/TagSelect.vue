@@ -35,6 +35,7 @@
             :tagId="selection.id"
             :name="selection.name"
             removable
+            removeTestId="task-tag-chip-remove"
             @remove="removeSelection(selection)"
           />
           <input
@@ -205,6 +206,7 @@ import { TAG_COLOR_STYLES, TagColorStyle } from '../constants/tag.constants'
 import { TAG_NAME_MAX_LENGTH } from '../schemas/task.schema'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { httpStatus } from '../utils/api.helper'
 
 /**
  * Sélecteur de tags façon Notion, branché au formulaire de TaskDialog.
@@ -271,7 +273,10 @@ function sameName(a: string, b: string): boolean {
 
 // Sélection affichable : un tag supprimé entre-temps n'a plus de chip
 const visibleSelection = computed(() =>
-  props.modelValue.filter((selection) => selection.id === undefined || tagStore.getTagById(selection.id)),
+  props.modelValue.filter(
+    (selection) =>
+      selection.id === undefined || !!tagStore.getTagById(selection.id) || !tagStore.wasDeleted(selection.id),
+  ),
 )
 
 const trimmedSearch = computed(() => search.value.trim())
@@ -562,15 +567,6 @@ function swatchVars(color: TagColorStyle) {
 }
 
 /**
- * Code HTTP d'une erreur remontée par api.helper (message « HTTP 409 - ... »)
- * @param error Erreur levée par le store
- */
-function httpStatus(error: unknown): number | undefined {
-  const match = /^HTTP (\d{3})/.exec(error instanceof Error ? error.message : '')
-  return match ? Number(match[1]) : undefined
-}
-
-/**
  * Focus sur le panneau quand l'élément qui avait le focus disparaît
  * (sinon Échap partirait du document et fermerait le Dialog)
  */
@@ -709,24 +705,33 @@ async function sendRename(tag: Tag, name: string, inline: boolean): Promise<bool
 }
 
 /**
- * Enregistre le renommage saisi dans la vue édition, s'il y en a un, et attend
- * sa fin ainsi que celle des créations de tags en cours (sélection comprise).
+ * Termine tout ce qui est en cours puis renvoie la sélection finale : enregistre
+ * le renommage saisi dans la vue édition, attend les créations (sélection
+ * comprise) et toutes les éditions de tags, puis le rendu qui propage la valeur.
  * Appelé par TaskDialog avant d'enregistrer la tâche : rien ne garantit que la
  * fermeture du popover (clic extérieur) passe avant la soumission, ni qu'un
- * tag créé juste avant le Save soit déjà sélectionné.
+ * tag créé juste avant le Save soit déjà sélectionné, et les valeurs de
+ * soumission du formulaire sont figées au clic.
  * Ne lève jamais : un renommage refusé laisse le nom d'origine (message en toast),
  * une création échouée ne sélectionne rien.
+ * @returns Sélection finale, sans les tags supprimés
  */
-async function commitPendingEdit(): Promise<void> {
+async function settle(): Promise<TagSelection[]> {
   if (view.value === 'edit') await commitRename(false)
 
   // Boucle, une création pouvant démarrer pendant l'attente des précédentes
   while (pendingCreations.size) {
     await Promise.allSettled(pendingCreations)
   }
+
+  await tagStore.waitForPendingEdits()
+  // La valeur émise revient par le FormField au rendu suivant
+  await nextTick()
+
+  return visibleSelection.value
 }
 
-defineExpose({ commitPendingEdit })
+defineExpose({ settle })
 
 /**
  * Clavier du champ du nom : Entrée enregistre (Échap est géré par le panneau)

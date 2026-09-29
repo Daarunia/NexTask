@@ -112,6 +112,7 @@ import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
 
 const props = withDefaults(
   defineProps<{
@@ -233,7 +234,7 @@ function filterTagSelection(): TagSelection[] {
   return props.filterTagIds
     .map((id) => tagStore.getTagById(id))
     .filter((tag): tag is Tag => tag !== undefined)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .sort(compareTagNames)
     .map((tag) => ({ id: tag.id, name: tag.name }))
 }
 
@@ -372,13 +373,13 @@ async function archiveTask(task: Task) {
  * Save depuis dialog
  */
 function onTaskSaved(task: Task) {
-  // Récupère les tags créés à la volée et les compteurs de tâches à jour
-  tagStore.loadAllTags(true).catch((error) => logger.error('Erreur lors du rechargement des tags :', error))
+  const newTagIds = (task.tags ?? []).map((tag) => tag.id)
 
   if (creationMode.value) {
     // Nouvelle carte : ajoutée en fin de colonne (position = longueur à l'ouverture)
     const list = taskLists.get(task.stageId) ?? []
     taskLists.set(task.stageId, [...list, task])
+    updateTagCounts([], newTagIds)
     return
   }
 
@@ -388,9 +389,23 @@ function onTaskSaved(task: Task) {
   const location = findTaskLocation(task.id)
   if (!location) return
 
+  const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
   const list = [...location.list]
   list[location.index] = task
   taskLists.set(location.stageId, list)
+  updateTagCounts(oldTagIds, newTagIds)
+}
+
+/**
+ * Nombre de tâches des tags, mis à jour localement après l'enregistrement d'une
+ * tâche (les tags eux-mêmes sont déjà dans le cache : créés via POST /tags)
+ * @param oldTagIds Tags de la tâche avant l'enregistrement
+ * @param newTagIds Tags de la tâche enregistrée
+ */
+function updateTagCounts(oldTagIds: number[], newTagIds: number[]) {
+  const added = newTagIds.filter((id) => !oldTagIds.includes(id))
+  const removed = oldTagIds.filter((id) => !newTagIds.includes(id))
+  tagStore.adjustTaskCounts(added, removed)
 }
 
 /**

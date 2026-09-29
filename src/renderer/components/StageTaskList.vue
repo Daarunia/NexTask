@@ -37,12 +37,13 @@
           </div>
 
           <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
-          <div v-if="cardTagIds(element).length" class="flex flex-wrap gap-1">
+          <div v-if="cardTags.get(element.id)?.length" class="flex flex-wrap gap-1">
             <TagChip
-              v-for="tagId in cardTagIds(element)"
-              :key="tagId"
+              v-for="tag in cardTags.get(element.id)"
+              :key="tag.id"
               data-testid="task-card-tag"
-              :tagId="tagId"
+              :tagId="tag.id"
+              :name="tag.name"
               size="small"
             />
           </div>
@@ -58,14 +59,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import draggable from 'vuedraggable'
 import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
 import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { useTagStore } from '../stores/Tag'
+import { compareTagNames } from '../utils/tag.helper'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     tasks: Task[]
     // Filtre actif : DnD des tâches désactivé, les index de la vue filtrée ne
@@ -80,18 +83,25 @@ defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task'])
 const tagStore = useTagStore()
 
 /**
- * Ids des tags d'une carte, triés par nom actuel sans tenir compte de la casse
- * (le tri de l'API est sensible à la casse). `task.tags` ne sert qu'à connaître
- * les ids : les tags supprimés depuis sont écartés, les renommés re-triés.
- * @param task Tâche de la carte
+ * Tags de chaque carte, calculés une fois par rendu : nom et couleur lus dans le
+ * store (source de vérité), triés par nom sans tenir compte de la casse (le tri
+ * de l'API y est sensible). Un tag supprimé disparaît ; un tag que le cache ne
+ * connaît pas encore reste affiché avec le nom porté par la tâche.
  */
-function cardTagIds(task: Task): number[] {
-  return (task.tags ?? [])
-    .map((t) => tagStore.getTagById(t.id))
-    .filter((tag): tag is Tag => tag !== undefined)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-    .map((tag) => tag.id)
-}
+const cardTags = computed(() => {
+  const map = new Map<number, Pick<Tag, 'id' | 'name'>[]>()
+
+  for (const task of props.tasks) {
+    const tags = (task.tags ?? [])
+      .filter((t) => !tagStore.wasDeleted(t.id))
+      .map((t) => tagStore.getTagById(t.id) ?? t)
+      .sort(compareTagNames)
+      .map((t) => ({ id: t.id, name: t.name }))
+    map.set(task.id, tags)
+  }
+
+  return map
+})
 </script>
 
 <style scoped>

@@ -39,19 +39,14 @@
         />
       </div>
 
-      <!-- Tags : valeur du formulaire = TagSelection[], suivie aussi dans currentTags -->
+      <!-- Tags : valeur du formulaire = TagSelection[] -->
       <div class="flex flex-col gap-2 w-full">
         <span class="font-medium">Tags</span>
         <FormField v-slot="$field" name="tags">
           <TagSelect
             ref="tagSelectRef"
             :modelValue="$field.value ?? []"
-            @update:modelValue="
-              (value: TagSelection[]) => {
-                currentTags = value
-                $field.props.onChange({ value })
-              }
-            "
+            @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
           />
         </FormField>
         <Message v-if="$form.tags?.invalid" severity="error" size="small" variant="simple">
@@ -126,6 +121,7 @@ import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
 
 // Props
 const props = defineProps({
@@ -171,11 +167,6 @@ const position = ref(props.position)
 // Valeurs de départ du formulaire, relues par <Form> à chaque ouverture
 const initialValues = ref<TaskFormValues>(defaultValues())
 
-// Dernière valeur du champ tags. Les valeurs reçues à la soumission sont figées :
-// un tag créé depuis le sélecteur juste avant le Save n'est sélectionné qu'à la
-// fin de sa création, que l'enregistrement attend avant de lire ce champ.
-const currentTags = ref<TagSelection[]>(initialValues.value.tags)
-
 const versions = ref([
   { label: '1.4.4', value: '1.4.4' },
   { label: '1.4.5', value: '1.4.5' },
@@ -213,8 +204,6 @@ watch(
           tags: toTagSelection(props.editTask),
         }
       }
-
-      currentTags.value = initialValues.value.tags
     }
 
     visible.value = val
@@ -236,14 +225,16 @@ function defaultValues(): TaskFormValues {
 
 /**
  * Tags d'une tâche existante en valeur de formulaire, triés par nom actuel.
- * Les tags supprimés depuis le chargement de la tâche sont écartés.
+ * Les tags supprimés depuis le chargement de la tâche sont écartés ; un tag que
+ * le cache ne connaît pas encore est gardé avec le nom porté par la tâche, pour
+ * ne pas le retirer en silence à l'enregistrement.
  * @param task Tâche éditée
  */
 function toTagSelection(task: Task): TagSelection[] {
   return (task.tags ?? [])
-    .map((t) => tagStore.getTagById(t.id))
-    .filter((tag) => tag !== undefined)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .filter((t) => !tagStore.wasDeleted(t.id))
+    .map((t) => tagStore.getTagById(t.id) ?? t)
+    .sort(compareTagNames)
     .map((tag) => ({ id: tag.id, name: tag.name }))
 }
 
@@ -251,15 +242,16 @@ function toTagSelection(task: Task): TagSelection[] {
  * Noms des tags à envoyer au serveur. Un tag existant est converti en son nom
  * actuel (il a pu être renommé depuis le menu d'édition, renvoyer l'ancien nom
  * recréerait un tag) et un tag supprimé entre-temps est ignoré. Un tag sans id,
- * que le sélecteur ne produit plus (création immédiate), garderait son nom.
+ * que le sélecteur ne produit plus (création immédiate), ou inconnu du cache,
+ * garde le nom de la sélection.
  * @param selection Valeur du champ tags
  */
 function toTagNames(selection: TagSelection[]): string[] {
   return selection.flatMap((selected) => {
     if (selected.id === undefined) return [selected.name]
+    if (tagStore.wasDeleted(selected.id)) return []
 
-    const tag = tagStore.getTagById(selected.id)
-    return tag ? [tag.name] : []
+    return [tagStore.getTagById(selected.id)?.name ?? selected.name]
   })
 }
 
@@ -284,15 +276,11 @@ async function saveTask(values: TaskFormValues) {
 
   try {
     // Une création, un renommage ou une suppression de tag peut être encore en
-    // vol (nom tapé puis clic direct sur Save) : on lance le renommage s'il ne
-    // l'est pas encore, on attend que les tags créés soient sélectionnés, puis
-    // toutes les éditions pour lire les noms à jour. Un renommage refusé laisse
-    // le nom d'origine, avec lequel la tâche est enregistrée.
-    await tagSelectRef.value?.commitPendingEdit()
-    await tagStore.waitForPendingEdits()
-
-    // Sélection lue après l'attente (cf. currentTags), pas dans les valeurs figées
-    const tagNames = toTagNames(currentTags.value)
+    // vol (nom tapé puis clic direct sur Save) : le sélecteur termine tout et
+    // renvoie la sélection finale, les valeurs de soumission étant figées au clic.
+    // Un renommage refusé laisse le nom d'origine, avec lequel la tâche est enregistrée.
+    const selection = (await tagSelectRef.value?.settle()) ?? values.tags
+    const tagNames = toTagNames(selection)
 
     let savedTask: Task | undefined
 

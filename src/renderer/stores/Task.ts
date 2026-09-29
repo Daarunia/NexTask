@@ -5,6 +5,7 @@ import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
+import { compareTagNames } from '../utils/tag.helper'
 
 /**
  * Cache des tâches.
@@ -150,9 +151,7 @@ export const useTaskStore = defineStore('task', {
       this.allEntities.data = this.allEntities.data.map((task) => {
         if (!task.tags?.some((t) => t.id === tag.id)) return task
 
-        const tags = task.tags
-          .map((t) => (t.id === tag.id ? taskTag : t))
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        const tags = task.tags.map((t) => (t.id === tag.id ? taskTag : t)).sort(compareTagNames)
         return { ...task, tags }
       })
     },
