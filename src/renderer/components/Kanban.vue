@@ -1,4 +1,6 @@
 <template>
+  <p v-if="showFilterEmpty" data-testid="filter-empty" class="filter-empty">Aucune tâche ne correspond au filtre</p>
+
   <div
     class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4"
     ref="scrollContainer"
@@ -46,7 +48,8 @@
           </div>
 
           <StageTaskList
-            :tasks="taskLists.get(stage.id) ?? []"
+            :tasks="visibleTaskLists.get(stage.id) ?? []"
+            :filterActive="filterActive"
             @tasks-drop="onTasksDrop"
             @edit-task="openEditTaskDialog(stage.id, $event)"
             @archive-task="archiveTask"
@@ -88,12 +91,13 @@
     :editTask="editTask"
     :position="positionDialog"
     :creationMode="creationMode"
+    :defaultTags="defaultTagsDialog"
     @task-saved="onTaskSaved"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
@@ -104,14 +108,20 @@ import { useStageStore } from '../stores/Stage'
 import { useTagStore } from '../stores/Tag'
 import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
+import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useErrorToast } from '../utils/toast.helper'
 
-const props = defineProps<{
-  stages: Stage[]
-  tasks: Task[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    stages: Stage[]
+    tasks: Task[]
+    // Ids des tags du filtre (OU logique), vide = tout est visible
+    filterTagIds?: number[]
+  }>(),
+  { filterTagIds: () => [] },
+)
 
 const logger = getLogger()
 const taskStore = useTaskStore()
@@ -134,6 +144,38 @@ const newStageName = ref('')
 const stageMenu = ref()
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
+const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création (R17)
+
+// Filtre par tag actif : le DnD des tâches est alors désactivé (R16)
+const filterActive = computed(() => props.filterTagIds.length > 0)
+
+/**
+ * Colonnes telles qu'affichées. taskLists reste la liste complète, seule source
+ * des positions et du DnD. Sans filtre, c'est taskLists lui-même : chaque
+ * colonne reçoit alors le tableau d'origine, que vuedraggable modifie sur place.
+ * Avec un filtre, des copies filtrées (OU logique, R14), jamais modifiées
+ * puisque le DnD est désactivé.
+ */
+const visibleTaskLists = computed<Map<number, Task[]>>(() => {
+  if (!filterActive.value) return taskLists
+
+  const selected = new Set(props.filterTagIds)
+  const map = new Map<number, Task[]>()
+
+  for (const [stageId, list] of taskLists) {
+    map.set(
+      stageId,
+      list.filter((task) => task.tags?.some((tag) => selected.has(tag.id))),
+    )
+  }
+
+  return map
+})
+
+// Filtre actif sans aucune carte visible
+const showFilterEmpty = computed(
+  () => filterActive.value && [...visibleTaskLists.value.values()].every((list) => list.length === 0),
+)
 
 const stageMenuItems = [
   {
@@ -175,10 +217,24 @@ function openCreateTaskDialog(stageId: number) {
   logger.debug('Ouverture création', { stageId })
 
   stageDialog.value = stageId
+  // Position calculée sur la colonne complète, pas sur la vue filtrée (R17)
   positionDialog.value = taskLists.get(stageId)?.length ?? 0
+  defaultTagsDialog.value = filterTagSelection()
   editTask.value = null
   creationMode.value = true
   showDialog.value = true
+}
+
+/**
+ * Tags du filtre en valeur de formulaire, triés par nom, pour qu'une tâche
+ * créée sous filtre reste visible après enregistrement (R17)
+ */
+function filterTagSelection(): TagSelection[] {
+  return props.filterTagIds
+    .map((id) => tagStore.getTagById(id))
+    .filter((tag): tag is Tag => tag !== undefined)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .map((tag) => ({ id: tag.id, name: tag.name }))
 }
 
 /**
@@ -500,6 +556,11 @@ onMounted(() => {
 
 .app-dark .stages-container {
   background-color: var(--p-surface-900);
+}
+
+.filter-empty {
+  @apply text-center pt-6;
+  color: var(--p-text-muted-color);
 }
 
 .stage-handle {

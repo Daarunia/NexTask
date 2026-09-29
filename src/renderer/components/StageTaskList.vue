@@ -6,11 +6,12 @@
       itemKey="id"
       :forceFallback="true"
       :fallbackTolerance="3"
+      :disabled="filterActive"
       class="flex flex-col w-full"
       @end="$emit('tasks-drop')"
     >
       <template #item="{ element }">
-        <div data-testid="task-card" class="group draggable-item">
+        <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <div class="flex justify-between items-center gap-2">
             <strong>{{ element.title }}</strong>
 
@@ -64,9 +65,15 @@ import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { useTagStore } from '../stores/Tag'
 
-defineProps<{
-  tasks: Task[]
-}>()
+withDefaults(
+  defineProps<{
+    tasks: Task[]
+    // Filtre actif : DnD des tâches désactivé, les index de la vue filtrée ne
+    // correspondant plus aux positions réelles de la colonne (R16)
+    filterActive?: boolean
+  }>(),
+  { filterActive: false },
+)
 
 defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task'])
 
@@ -109,6 +116,10 @@ function cardTagIds(task: Task): number[] {
 
 .app-dark .draggable-item:hover {
   background-color: var(--p-surface-700);
+}
+
+.draggable-item.drag-disabled {
+  @apply cursor-default;
 }
 
 .draggable-button {
