@@ -98,6 +98,26 @@ test.describe('Gestion des colonnes', () => {
     await taskBoard.deleteStage(a)
     await taskBoard.deleteStage(b)
   })
+
+  // Régression : les colonnes affichées gardaient leur position de départ après
+  // un premier DnD, le second n'envoyait donc rien et l'ordre revenait au rechargement
+  test('persiste deux réordonnancements successifs', async ({ taskBoard }) => {
+    const s = uid()
+    const [a, b] = [`Aller ${s}`, `Retour ${s}`]
+
+    await taskBoard.addStage(a)
+    await taskBoard.addStage(b)
+
+    await taskBoard.dragStageBefore(b, a)
+    await expect.poll(() => taskBoard.orderedStagesAmong([a, b])).toEqual([b, a])
+
+    await taskBoard.dragStageBefore(a, b)
+    await expect.poll(() => taskBoard.orderedStagesAmong([a, b])).toEqual([a, b])
+
+    // L'ordre retrouvé à l'écran doit être celui enregistré en base
+    await taskBoard.page.reload()
+    await expect.poll(() => taskBoard.orderedStagesAmong([a, b])).toEqual([a, b])
+  })
 })
 
 test.describe('Suppression de colonne', () => {
