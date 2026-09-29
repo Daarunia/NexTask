@@ -37,7 +37,7 @@ export default async function stagesRoutes(fastify) {
         include: {
           tasks: true,
         },
-        orderBy: [{ id: 'asc' }, { position: 'asc' }],
+        orderBy: [{ position: 'asc' }, { id: 'asc' }],
       })
     },
   )
