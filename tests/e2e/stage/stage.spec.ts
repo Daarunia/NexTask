@@ -37,6 +37,29 @@ test.describe('Gestion des colonnes', () => {
     await taskBoard.deleteStage(after)
   })
 
+  test('enregistre le nom sans les espaces autour, à la création et au renommage', async ({ taskBoard }) => {
+    const name = `Espaces ${uid()}`
+    const renamed = `${name} bis`
+
+    // L'affichage masque les espaces : on vérifie le nom enregistré côté API
+    const savedNames = async () => {
+      const res = await taskBoard.page.request.get('http://localhost:3000/stages')
+      return ((await res.json()) as { name: string }[]).map((s) => s.name)
+    }
+
+    await taskBoard.startAddStage(`   ${name}   `)
+    await taskBoard.page.getByTestId('btn-confirm-stage').click()
+    await expect(taskBoard.column(name)).toHaveCount(1)
+    expect(await savedNames()).toContain(name)
+
+    await taskBoard.page.getByRole('heading', { name, exact: true }).dblclick()
+    const input = taskBoard.page.getByTestId('stage-edit-input')
+    await input.fill(`  ${renamed}  `)
+    await input.press('Enter')
+    await expect(taskBoard.column(renamed)).toHaveCount(1)
+    await expect.poll(savedNames).toContain(renamed)
+  })
+
   test('le double-clic sur le titre donne le focus au champ de renommage, texte sélectionné', async ({ taskBoard }) => {
     const before = `Focus ${uid()}`
     const after = `Nouveau ${uid()}`
