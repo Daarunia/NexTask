@@ -239,7 +239,7 @@ export default async function taskRoutes(fastify) {
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<{message: string}|{error: string}>} Message de succès ou erreur
+   * @returns {Promise<{message: string}|{error: string}>} Message de succès ou erreur (404 si la tâche n'existe pas)
    */
   fastify.put(
     '/tasks/:id',
@@ -269,11 +269,9 @@ export default async function taskRoutes(fastify) {
 
         return { message: `Tâche ${updatedTask.id} marquée comme historisée` }
       } catch (error) {
-        Logger.error("Erreur lors de l'historisation de la tâche:", error)
-        reply.code(500)
-        return {
-          error: "Une erreur est survenue lors de l'historisation de la tâche",
-        }
+        Logger.warn(`Échec de l'historisation de la tâche ${id} (traitée comme introuvable) :`, error)
+        reply.code(404)
+        return { error: 'Tâche non trouvée' }
       }
     },
   )
