@@ -95,6 +95,13 @@ test("enregistre une date de début et la ré-affiche à l'édition", async ({ t
   await expect(taskBoard.dialog).toBeHidden()
 })
 
+test("l'API répond 404 à l'archivage d'une tâche inexistante", async ({ page }) => {
+  const res = await page.request.put('http://localhost:3000/tasks/999999')
+
+  expect(res.status()).toBe(404)
+  expect(await res.json()).toEqual({ error: 'Tâche non trouvée' })
+})
+
 test('archive une tâche la retire du tableau', async ({ taskBoard }) => {
   const title = 'Tâche à archiver'
 
