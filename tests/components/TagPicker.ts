@@ -1,4 +1,5 @@
 import { Page, Locator, expect } from '@playwright/test'
+import { PALETTE_COLOR } from '../helpers/tag.helper'
 
 /**
  * Motif qui repère un nom de tag dans le texte d'un élément, en respectant la
@@ -157,23 +158,40 @@ export class TagPicker {
   }
 
   /**
-   * Crée un tag à la volée via la ligne « Créer « xxx » ».
+   * Attend qu'un tag tout juste créé depuis le sélecteur soit enregistré et
+   * sélectionné (R7b) : recherche vidée, chip à une couleur de la palette (plus
+   * de chip neutre) et ligne du tag présente dans la liste.
+   * @param name Nom exact du tag créé
+   */
+  private async expectCreated(name: string) {
+    await expect(this.search).toHaveValue('')
+    await expect(this.panelChip(name)).toHaveAttribute('data-tag-color', PALETTE_COLOR)
+    await expect(this.option(name)).toBeVisible()
+  }
+
+  /**
+   * Crée un tag via la ligne « Créer « xxx » ». Le tag est enregistré en base
+   * dès ce clic (R7b), puis sélectionné.
    * @param name Nom du tag à créer
    */
   async createWithOption(name: string) {
     await this.searchFor(name)
     await expect(this.createOption).toContainText(name)
     await this.createOption.click()
-    await expect(this.panelChip(name)).toBeVisible()
+    await this.expectCreated(name)
   }
 
   /**
-   * Crée (ou sélectionne) un tag en validant la saisie par Entrée.
-   * @param name Nom saisi
+   * Crée un tag en validant par Entrée une saisie qui ne correspond à aucun
+   * tag. Le tag est enregistré en base dès cette validation (R7b), puis
+   * sélectionné.
+   * @param name Nom du tag à créer
    */
   async createWithEnter(name: string) {
     await this.searchFor(name)
+    await expect(this.createOption).toContainText(name)
     await this.search.press('Enter')
+    await this.expectCreated(name)
   }
 
   /**

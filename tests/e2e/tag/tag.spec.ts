@@ -1,11 +1,11 @@
 import { test, expect } from '../../fixtures/test'
-import { TAG_COLORS, createTaskViaApi, getTags, getTask, tagNames } from '../../helpers/tag.helper'
+import { TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
 
 /**
  * Tests E2E du sélecteur de tags de l'écran de tâche (spec `.claude/tags.md`,
- * sections 3 et 6) : création à la volée, sélection d'un tag existant,
- * rapprochement sans casse, retrait, conservation après rechargement,
- * navigation clavier et affichage des chips sur les cartes.
+ * sections 3 et 6) : création immédiate depuis le sélecteur (R7b), sélection
+ * d'un tag existant, rapprochement sans casse, retrait, conservation après
+ * rechargement, navigation clavier et affichage des chips sur les cartes.
  *
  * Écrits d'après le contrat de test de la spec, sans lire l'implémentation.
  * Les tâches taguées servant de décor sont créées via l'API, puis la page est
@@ -50,7 +50,11 @@ test.describe('Création et sélection de tags', () => {
     expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'urgent', taskCount: 1 })])
   })
 
-  test("un tag à créer s'affiche en chip neutre jusqu'à l'enregistrement", async ({ taskBoard, tagPicker }) => {
+  test("créer un tag depuis le sélecteur l'enregistre aussitôt, avec sa couleur de palette", async ({
+    page,
+    taskBoard,
+    tagPicker,
+  }) => {
     const title = 'Tâche au tag neuf'
 
     await taskBoard.openCreateDialog(COLUMN)
@@ -59,16 +63,26 @@ test.describe('Création et sélection de tags', () => {
     await tagPicker.open()
     await tagPicker.createWithOption('nouveau')
 
-    // Tag pas encore créé : chip neutre dans le popover et dans le champ fermé
-    await expect(tagPicker.panelChip('nouveau')).toHaveAttribute('data-tag-color', 'neutral')
+    // Le tag existe en base avant tout enregistrement de la tâche (R7b)
+    await expect
+      .poll(() => getTags(page.request))
+      .toEqual([expect.objectContaining({ name: 'nouveau', color: TAG_COLORS[0], taskCount: 0 })])
+
+    // Chip directement à sa couleur R4, dans le popover comme dans le champ fermé
+    await expect(tagPicker.panelChip('nouveau')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
+    await expect(tagPicker.panelChips).toHaveCount(1)
     await tagPicker.close()
-    await expect(tagPicker.fieldChip('nouveau')).toHaveAttribute('data-tag-color', 'neutral')
+    await expect(tagPicker.fieldChip('nouveau')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
 
     await taskBoard.saveButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 
-    // Une fois enregistré, le tag existe et prend sa couleur de palette
+    // L'enregistrement rattache le tag existant, sans en recréer un
+    await expect(taskBoard.taskCardTags(title)).toHaveText(['nouveau'])
     await expect(taskBoard.taskCardTags(title)).toHaveAttribute('data-tag-color', TAG_COLORS[0])
+    expect(await getTags(page.request)).toEqual([
+      expect.objectContaining({ name: 'nouveau', color: TAG_COLORS[0], taskCount: 1 }),
+    ])
   })
 
   test('sélectionne un tag existant et le rattache à la tâche', async ({ page, taskBoard, tagPicker }) => {
@@ -129,7 +143,11 @@ test.describe('Création et sélection de tags', () => {
     expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'bug', taskCount: 2 })])
   })
 
-  test('annuler le dialogue ne crée aucun tag', async ({ page, taskBoard, tagPicker }) => {
+  test('annuler le dialogue après avoir créé un tag ne crée aucune tâche mais conserve le tag', async ({
+    page,
+    taskBoard,
+    tagPicker,
+  }) => {
     const title = 'Tâche abandonnée'
 
     await taskBoard.openCreateDialog(COLUMN)
@@ -137,13 +155,25 @@ test.describe('Création et sélection de tags', () => {
 
     await tagPicker.open()
     await tagPicker.createWithOption('fantome')
+    await expect.poll(async () => tagNames(await getTags(page.request))).toEqual(['fantome'])
     await tagPicker.close()
 
     await taskBoard.cancelButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 
+    // Aucune tâche créée
     await expect(taskBoard.taskCard(title)).toHaveCount(0)
-    expect(await getTags(page.request)).toEqual([])
+    expect((await getTasks(page.request)).map((t) => t.title)).not.toContain(title)
+
+    // Le tag créé depuis le sélecteur reste en base, sans tâche (R7b, R5)
+    expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'fantome', taskCount: 0 })])
+
+    // Et il reste proposé, non sélectionné, dans un nouveau dialogue
+    await taskBoard.openCreateDialog(COLUMN)
+    await expect(tagPicker.fieldChips).toHaveCount(0)
+    await tagPicker.open()
+    await expect(tagPicker.option('fantome')).toBeVisible()
+    await expect(tagPicker.panelChips).toHaveCount(0)
   })
 })
 
@@ -254,7 +284,7 @@ test.describe('Persistance et affichage sur les cartes', () => {
   test('les tags sont conservés après rechargement', async ({ page, taskBoard, tagPicker }) => {
     const title = 'Tâche persistée'
 
-    // « bug » existe déjà (première couleur), « nouveau » sera créé à l'enregistrement
+    // « bug » existe déjà (première couleur), « nouveau » est créé depuis le sélecteur (deuxième)
     await createTaskViaApi(page.request, 'Porteuse', ['bug'])
     await page.reload()
     await expect(taskBoard.taskCard('Porteuse')).toBeVisible()
@@ -276,7 +306,7 @@ test.describe('Persistance et affichage sur les cartes', () => {
     await expect(chips.nth(0)).toHaveAttribute('data-tag-color', TAG_COLORS[0])
     await expect(chips.nth(1)).toHaveAttribute('data-tag-color', TAG_COLORS[1])
 
-    // À la réouverture, le formulaire affiche les deux tags, plus aucun n'est neutre
+    // À la réouverture, le formulaire affiche les deux tags à leur couleur
     await taskBoard.openEditDialog(title)
     await expect(tagPicker.fieldChips).toHaveCount(2)
     await expect(tagPicker.fieldChip('bug')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
@@ -330,7 +360,7 @@ test.describe('Navigation au clavier', () => {
     await expect(tagPicker.panelChips).toHaveCount(1)
   })
 
-  test('Entrée crée le tag saisi quand aucun tag ne correspond', async ({ taskBoard, tagPicker }) => {
+  test('Entrée crée aussitôt le tag saisi quand aucun tag ne correspond', async ({ page, taskBoard, tagPicker }) => {
     const title = 'Tâche au clavier'
 
     await taskBoard.openCreateDialog(COLUMN)
@@ -338,13 +368,48 @@ test.describe('Navigation au clavier', () => {
     await tagPicker.open()
 
     await tagPicker.createWithEnter('clavier')
-    await expect(tagPicker.panelChip('clavier')).toHaveAttribute('data-tag-color', 'neutral')
+
+    // Même effet que le clic sur « Créer » : tag en base avant Save, chip à sa couleur R4 (R7b)
+    await expect(tagPicker.panelChip('clavier')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
+    await expect
+      .poll(() => getTags(page.request))
+      .toEqual([expect.objectContaining({ name: 'clavier', color: TAG_COLORS[0], taskCount: 0 })])
 
     await tagPicker.close()
     await taskBoard.saveButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 
     await expect(taskBoard.taskCardTags(title)).toHaveText(['clavier'])
+    expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'clavier', taskCount: 1 })])
+  })
+
+  test("valider deux fois de suite par Entrée ne crée qu'un seul tag", async ({ page, taskBoard, tagPicker }) => {
+    const title = 'Tâche au double Entrée'
+
+    await taskBoard.openCreateDialog(COLUMN)
+    await taskBoard.titleInput.fill(title)
+    await tagPicker.open()
+
+    // Deux validations rapides, sans attendre la réponse de la première création
+    await tagPicker.searchFor('double')
+    await expect(tagPicker.createOption).toContainText('double')
+    await tagPicker.search.press('Enter')
+    await tagPicker.search.press('Enter')
+
+    // Un seul tag sélectionné, une seule ligne dans la liste
+    await expect(tagPicker.panelChip('double')).toHaveAttribute('data-tag-color', TAG_COLORS[0])
+    await expect(tagPicker.panelChips).toHaveCount(1)
+    await tagPicker.searchFor('')
+    await expect(tagPicker.options).toHaveCount(1)
+
+    await tagPicker.close()
+    await expect(tagPicker.fieldChips).toHaveCount(1)
+    await taskBoard.saveButton.click()
+    await expect(taskBoard.dialog).toBeHidden()
+
+    // Un seul tag en base, porté une seule fois par la tâche
+    await expect(taskBoard.taskCardTags(title)).toHaveText(['double'])
+    expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'double', taskCount: 1 })])
   })
 
   test('Échap ferme le sélecteur sans fermer le dialogue', async ({ taskBoard, tagPicker }) => {

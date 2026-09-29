@@ -14,6 +14,9 @@ export const API = 'http://localhost:3000'
 // Palette de référence, dans son ordre (TAG_COLORS de src/main/constants.ts)
 export const TAG_COLORS = ['sky', 'emerald', 'amber', 'rose', 'violet', 'teal', 'orange', 'slate']
 
+// Valeur de `data-tag-color` d'une chip de tag réel (toute couleur de la palette, jamais `neutral`)
+export const PALETTE_COLOR = new RegExp(`^(${TAG_COLORS.join('|')})$`)
+
 export interface Tag {
   id: number
   name: string
@@ -67,6 +70,13 @@ export async function getTask(request: APIRequestContext, id: number): Promise<T
   const res = await request.get(`${API}/tasks/${id}`)
   expect(res.ok()).toBeTruthy()
   return (await res.json()) as Task
+}
+
+/** Liste des tâches via GET /tasks, sans filtre. */
+export async function getTasks(request: APIRequestContext): Promise<Task[]> {
+  const res = await request.get(`${API}/tasks`)
+  expect(res.ok()).toBeTruthy()
+  return (await res.json()) as Task[]
 }
 
 /** Liste des tags via GET /tags (triés par nom). */
