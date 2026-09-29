@@ -115,27 +115,39 @@ const tintVars = computed(() => {
 }
 
 .tag-chip-remove {
-  @apply inline-flex items-center justify-center rounded-sm cursor-pointer opacity-60;
+  @apply inline-flex items-center justify-center rounded-sm cursor-pointer opacity-70;
 }
 
 .tag-chip-remove:hover {
   @apply opacity-100;
 }
 
+.tag-chip-remove .pi {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Croix au survol (cartes) : posée par-dessus la fin du chip, sans réserver de
+   largeur quand elle est cachée. Même fond que le chip pour masquer le texte dessous. */
+.tag-chip-hover-remove {
+  @apply relative;
+}
+
 .tag-chip-hover-remove .tag-chip-remove {
-  @apply opacity-0;
+  @apply absolute inset-y-0 right-0 px-1 rounded-r-md opacity-0;
+  background-color: var(--tag-bg, var(--p-surface-200));
+}
+
+.app-dark .tag-chip-hover-remove .tag-chip-remove {
+  background-color: var(--tag-bg-dark, var(--p-surface-700));
 }
 
 .tag-chip-hover-remove:hover .tag-chip-remove,
 .tag-chip-hover-remove .tag-chip-remove:focus-visible {
-  @apply opacity-60;
-}
-
-.tag-chip-hover-remove .tag-chip-remove:hover {
   @apply opacity-100;
 }
 
-.tag-chip-remove .pi {
-  font-size: 0.6rem;
+.tag-chip-hover-remove .tag-chip-remove .pi {
+  font-size: 0.75rem;
 }
 </style>
