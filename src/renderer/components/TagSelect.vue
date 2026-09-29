@@ -174,7 +174,7 @@
 
         <!-- Couleurs : un clic applique immédiatement -->
         <p class="tag-panel-hint">Couleurs</p>
-        <div class="flex flex-col gap-0.5">
+        <div class="grid grid-cols-2 gap-0.5">
           <button
             v-for="color in TAG_COLOR_STYLES"
             :key="color.name"
@@ -328,6 +328,15 @@ function resetHighlight() {
 }
 
 watch([trimmedSearch, itemCount], resetHighlight)
+
+// Le champ fermé change de hauteur quand des chips s'ajoutent ou disparaissent : le
+// popover ouvert est recalé sous lui (PrimeVue n'observe que la taille du popover)
+watch(
+  () => visibleSelection.value.length,
+  () => {
+    if (isOpen.value) nextTick(() => popover.value?.alignOverlay())
+  },
+)
 
 // La ligne en surbrillance reste visible dans une longue liste
 watch(highlightedIndex, () => {
@@ -822,8 +831,11 @@ async function confirmDelete() {
   color: var(--p-form-field-placeholder-color);
 }
 
+/* Hauteur fixe : PrimeVue repositionne le popover à chaque changement de taille de
+   son contenu (ResizeObserver) et le bascule au-dessus du champ s'il manque de place
+   en dessous. Avec une taille constante, il reste du même côté quelle que soit la vue. */
 .tag-panel {
-  @apply flex flex-col gap-2 w-72 outline-none;
+  @apply flex flex-col gap-2 w-72 h-[22rem] overflow-y-auto outline-none;
 }
 
 .tag-panel-search {
@@ -843,7 +855,7 @@ async function confirmDelete() {
 
 /* Hauteur maximale et défilement pour une longue liste */
 .tag-list {
-  @apply flex flex-col gap-0.5 max-h-64 overflow-y-auto;
+  @apply flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto;
 }
 
 .tag-option {
