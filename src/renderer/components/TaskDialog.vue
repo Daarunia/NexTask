@@ -98,7 +98,7 @@ import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import { Task } from '../types/task.types'
+import { Task, TaskInput } from '../types/task.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import { useTaskStore } from '../stores/Task'
 import { getLogger } from '../utils/logger'
@@ -216,7 +216,7 @@ async function saveTask(values: TaskFormValues) {
     let savedTask: Task | undefined
 
     if (props.creationMode) {
-      const newTask: Omit<Task, 'id'> = {
+      const newTask: TaskInput = {
         stageId: stageId.value,
         title: values.title,
         version: values.version,
@@ -230,7 +230,8 @@ async function saveTask(values: TaskFormValues) {
       savedTask = await taskStore.saveTask(newTask)
       logger.info('Tâche créée avec succès', savedTask)
     } else if (props.editTask) {
-      const updatedTask: Task = {
+      // Sans `tags`, le serveur laisse les tags de la tâche inchangés
+      const updatedTask: TaskInput & Pick<Task, 'id'> = {
         id: props.editTask.id,
         stageId: stageId.value,
         title: values.title,
