@@ -13,7 +13,8 @@ import type { APIRequestContext, APIResponse } from '@playwright/test'
  *
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`),
  * tags compris. Chaque test part donc d'une base sans aucun tag, ce qui rend
- * les couleurs attribuées déterministes.
+ * les couleurs attribuées déterministes. Seuls les tests des tags par défaut
+ * rejouent le reset en conservant les tags seedés.
  */
 
 const API = 'http://localhost:3000'
@@ -726,5 +727,39 @@ test.describe('DELETE /tags/:id', () => {
     const [tag] = (await createTask(page.request, ['bug'])).tags
     expect((await page.request.delete(`${API}/tags/${tag.id}`)).ok()).toBeTruthy()
     expect((await page.request.delete(`${API}/tags/${tag.id}`)).status()).toBe(404)
+  })
+})
+
+test.describe('Tags par défaut', () => {
+  // Le reset standard retire les tags seedés : on les réclame explicitement
+  test.beforeEach(async ({ page }) => {
+    const res = await page.request.post(`${API}/test/reset?seedTags=true`)
+    expect(res.ok()).toBeTruthy()
+  })
+
+  test('la base démarre avec les 5 tags seedés et leur couleur', async ({ page }) => {
+    const tags = await getTags(page.request)
+    expect(tags.map(({ name, color, taskCount }) => ({ name, color, taskCount }))).toEqual([
+      { name: 'Idée', color: 'amber', taskCount: 0 },
+      { name: 'Important', color: 'orange', taskCount: 0 },
+      { name: 'Perso', color: 'emerald', taskCount: 0 },
+      { name: 'Travail', color: 'sky', taskCount: 0 },
+      { name: 'Urgent', color: 'rose', taskCount: 0 },
+    ])
+  })
+
+  test('un nom saisi dans une autre casse réutilise le tag seedé', async ({ page }) => {
+    const seeded = await getTag(page.request, 'Urgent')
+
+    const task = await createTask(page.request, ['urgent', 'IDÉE'])
+
+    expect(task.tags.map(({ id, name }) => ({ id, name }))).toEqual(
+      expect.arrayContaining([{ id: seeded.id, name: 'Urgent' }, expect.objectContaining({ name: 'Idée' })]),
+    )
+    expect(await getTags(page.request)).toHaveLength(5)
+  })
+
+  test('un nouveau tag prend la première couleur non utilisée par les tags seedés', async ({ page }) => {
+    expect((await createTag(page.request, 'bug')).color).toBe('violet')
   })
 })
