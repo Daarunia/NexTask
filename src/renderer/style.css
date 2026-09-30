@@ -7,3 +7,9 @@ body {
   background: var(--p-surface-ground);
   color: var(--p-primary-color);
 }
+
+/* Drag en cours (carte ou colonne) : main fermée partout, même hors des éléments déplaçables */
+.is-dragging,
+.is-dragging * {
+  cursor: grabbing !important;
+}

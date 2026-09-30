@@ -8,10 +8,10 @@
     <draggable
       v-model="stagesLocal"
       itemKey="id"
-      :forceFallback="true"
-      :fallbackTolerance="3"
+      v-bind="DND_OPTIONS"
       class="flex gap-4"
       handle=".stage-handle"
+      @start="setDragging(true)"
       @end="onStagesDrop"
     >
       <template #item="{ element: stage }">
@@ -118,6 +118,8 @@ import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
+import { DND_OPTIONS } from '../constants/dnd.constants'
+import { setDragging } from '../utils/dnd.helper'
 
 const props = withDefaults(
   defineProps<{
@@ -324,6 +326,8 @@ function restorePersistedTasks() {
  * Drag stages
  */
 async function onStagesDrop() {
+  setDragging(false)
+
   // Comme pour les tâches, la position portée par chaque colonne est la
   // dernière persistée : elle n'est mise à jour qu'après la sauvegarde
   const changes = stagesLocal.value
@@ -613,6 +617,23 @@ onMounted(() => {
 
 .app-dark .stages-container {
   background-color: var(--p-surface-900);
+}
+
+/* Emplacement de dépôt d'une colonne : cadre en pointillés teinté, contenu masqué */
+.stages-container.dnd-ghost {
+  background-color: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -2px;
+}
+
+.stages-container.dnd-ghost > * {
+  visibility: hidden;
+}
+
+/* Colonne tenue : légèrement inclinée et soulevée */
+.stages-container.dnd-dragging {
+  rotate: 1deg;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.25);
 }
 
 .filter-empty {

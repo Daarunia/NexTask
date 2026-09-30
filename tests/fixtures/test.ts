@@ -54,6 +54,12 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   page: async ({ electronApp }, use) => {
     const page = await electronApp.firstWindow()
+
+    // Animations réduites : SortableJS n'anime pas les cartes pendant un drag,
+    // les gestes Playwright visent donc des positions stables. Pris en compte au
+    // rechargement fait par `cleanState` avant chaque test.
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+
     await use(page)
   },
 

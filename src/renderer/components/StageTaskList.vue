@@ -1,14 +1,15 @@
 <template>
-  <div class="flex flex-col justify-between flex-1">
+  <div :class="['task-list flex flex-col justify-between flex-1', { 'is-dragging': isDragging }]">
+    <!-- Liste étirée sur toute la hauteur libre : dépôt possible n'importe où dans la colonne -->
     <draggable
       :list="tasks"
       group="tasks"
       itemKey="id"
-      :forceFallback="true"
-      :fallbackTolerance="3"
+      v-bind="DND_OPTIONS"
       :disabled="filterActive"
-      class="flex flex-col w-full"
-      @end="$emit('tasks-drop')"
+      class="flex flex-col flex-1 w-full min-h-16"
+      @start="setDragging(true)"
+      @end="onDragEnd"
     >
       <template #item="{ element }">
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
@@ -71,6 +72,8 @@ import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { useTagStore } from '../stores/Tag'
 import { compareTagNames } from '../utils/tag.helper'
+import { DND_OPTIONS } from '../constants/dnd.constants'
+import { isDragging, setDragging } from '../utils/dnd.helper'
 
 const props = withDefaults(
   defineProps<{
@@ -82,7 +85,13 @@ const props = withDefaults(
   { filterActive: false },
 )
 
-defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag'])
+const emit = defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag'])
+
+/** Fin d'un drag de carte : fin du curseur de drag, puis sauvegarde par le parent. */
+function onDragEnd() {
+  setDragging(false)
+  emit('tasks-drop')
+}
 
 const tagStore = useTagStore()
 
@@ -124,12 +133,33 @@ const cardTags = computed(() => {
   background-color: var(--p-surface-800);
 }
 
-.draggable-item:hover {
+/* Survol en pause pendant un drag : seules les cartes déplacées changent d'aspect */
+.task-list:not(.is-dragging) .draggable-item:hover {
   background-color: var(--p-surface-400);
 }
 
-.app-dark .draggable-item:hover {
+.app-dark .task-list:not(.is-dragging) .draggable-item:hover {
   background-color: var(--p-surface-700);
+}
+
+/* Emplacement de dépôt : cadre en pointillés teinté, contenu masqué */
+.draggable-item.dnd-ghost {
+  background-color: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.draggable-item.dnd-ghost > * {
+  visibility: hidden;
+}
+
+/* Carte tenue : légèrement inclinée et soulevée (rotate et scale se cumulent
+   au transform posé par SortableJS pour suivre la souris) */
+.draggable-item.dnd-dragging {
+  rotate: 2deg;
+  scale: 1.03;
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.25);
 }
 
 .draggable-item.drag-disabled {
