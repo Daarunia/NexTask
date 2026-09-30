@@ -318,10 +318,13 @@ test.describe('Croix de retrait sur les cartes', () => {
     // Le tag reste coché, pour pouvoir le décocher
     await tagFilter.open()
     await tagFilter.expectSelected('ui')
+
+    // Une fois décoché, plus aucune tâche ne le porte : il sort de la liste
+    await tagFilter.option('ui').click()
+    await expect(tagFilter.option('ui')).toHaveCount(0)
     await tagFilter.close()
 
     // Filtre vidé : les deux cartes reviennent, T1 sans son tag retiré
-    await tagFilter.unselect('ui')
     await expect(taskBoard.taskCardTags('T1')).toHaveText(['bug'])
     await expect(taskBoard.taskCardTags('T2')).toHaveText(['bug'])
   })
