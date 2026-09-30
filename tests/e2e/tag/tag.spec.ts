@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/test'
-import { TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
+import { API, TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
 
 /**
  * Tests E2E du sélecteur de tags de l'écran de tâche : création immédiate
@@ -223,16 +223,19 @@ test.describe('Recherche dans la liste', () => {
   })
 })
 
-test.describe("Retrait de tags d'une tâche", () => {
+test.describe('Croix de retrait sur les cartes', () => {
+  // Interceptions posées par un test (la page est partagée entre les tests)
+  test.afterEach(async ({ page }) => {
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+
   test('retire un tag directement depuis la carte, via la croix au survol du chip', async ({ page, taskBoard }) => {
     const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha', 'beta'])
     await page.reload()
     await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['alpha', 'beta'])
 
     // Sans ouvrir le dialogue : survol du chip puis clic sur sa croix
-    const alpha = taskBoard.taskCardTags('Porteuse').filter({ hasText: 'alpha' })
-    await alpha.hover()
-    await alpha.getByTestId('task-card-tag-remove').click()
+    await taskBoard.removeCardTag('Porteuse', 'alpha')
 
     await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['beta'])
     await expect(taskBoard.dialog).toBeHidden()
@@ -248,6 +251,134 @@ test.describe("Retrait de tags d'une tâche", () => {
     await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['beta'])
   })
 
+  test("la croix n'apparaît qu'au survol du chip", async ({ page, taskBoard }) => {
+    await createTaskViaApi(page.request, 'Porteuse', ['alpha'])
+    await page.reload()
+
+    const chip = taskBoard.taskCardTag('Porteuse', 'alpha')
+    const cross = chip.getByTestId('task-card-tag-remove')
+
+    // Souris ailleurs : croix transparente
+    await page.mouse.move(0, 0)
+    await expect(cross).toHaveCSS('opacity', '0')
+
+    await chip.hover()
+    await expect(cross).toHaveCSS('opacity', '1')
+    await expect(cross).toHaveAccessibleName('Retirer le tag alpha')
+  })
+
+  test('retirer le dernier tag laisse la carte sans chip', async ({ page, taskBoard }) => {
+    const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha'])
+    await page.reload()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['alpha'])
+
+    await taskBoard.removeCardTag('Porteuse', 'alpha')
+
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveCount(0)
+    await expect(taskBoard.taskCard('Porteuse')).toBeVisible()
+    await expect.poll(async () => (await getTask(page.request, task.id)).tags).toEqual([])
+  })
+
+  test('met à jour le nombre de tâches du tag sans rechargement', async ({ page, taskBoard, tagPicker }) => {
+    await createTaskViaApi(page.request, 'T1', ['bug'])
+    await createTaskViaApi(page.request, 'T2', ['bug'])
+    await page.reload()
+    await expect(taskBoard.taskCardTags('T2')).toHaveText(['bug'])
+
+    await taskBoard.removeCardTag('T1', 'bug')
+    await expect(taskBoard.taskCardTags('T1')).toHaveCount(0)
+
+    // Le menu « … » lit le compteur du cache, ajusté par le retrait
+    await taskBoard.openCreateDialog(COLUMN)
+    await tagPicker.open()
+    await tagPicker.openMenu('bug')
+    await expect(tagPicker.editCount).toHaveText('Utilisé par 1 tâche')
+  })
+
+  test('sous filtre, retirer le tag filtré masque la carte et garde le tag coché', async ({
+    page,
+    taskBoard,
+    tagFilter,
+  }) => {
+    const task = await createTaskViaApi(page.request, 'T1', ['bug', 'ui'])
+    await createTaskViaApi(page.request, 'T2', ['bug'])
+    await page.reload()
+    await expect(taskBoard.taskCard('T2')).toBeVisible()
+
+    await tagFilter.select('ui')
+    await expect(taskBoard.page.getByTestId('task-card')).toHaveCount(1)
+
+    await taskBoard.removeCardTag('T1', 'ui')
+
+    // Plus aucune carte ne porte « ui » : message du filtre vide
+    await expect(taskBoard.taskCard('T1')).toHaveCount(0)
+    await expect(tagFilter.emptyMessage).toBeVisible()
+    await expect.poll(async () => tagNames((await getTask(page.request, task.id)).tags)).toEqual(['bug'])
+
+    // Le tag reste coché, pour pouvoir le décocher
+    await tagFilter.open()
+    await tagFilter.expectSelected('ui')
+    await tagFilter.close()
+
+    // Filtre vidé : les deux cartes reviennent, T1 sans son tag retiré
+    await tagFilter.unselect('ui')
+    await expect(taskBoard.taskCardTags('T1')).toHaveText(['bug'])
+    await expect(taskBoard.taskCardTags('T2')).toHaveText(['bug'])
+  })
+
+  test("envoie le nom actuel des tags restants après un renommage, sans recréer l'ancien", async ({
+    page,
+    taskBoard,
+    tagPicker,
+  }) => {
+    const task = await createTaskViaApi(page.request, 'Porteuse', ['bug', 'ui'])
+    const bug = task.tags.find((t) => t.name === 'bug')
+    await page.reload()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['bug', 'ui'])
+
+    // Renommage depuis le sélecteur, puis dialogue annulé (l'édition est déjà enregistrée)
+    await taskBoard.openCreateDialog(COLUMN)
+    await tagPicker.open()
+    await tagPicker.openMenu('bug')
+    await tagPicker.rename('anomalie')
+    await tagPicker.closeIfOpen()
+    await taskBoard.cancelButton.click()
+    await expect(taskBoard.dialog).toBeHidden()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['anomalie', 'ui'])
+
+    await taskBoard.removeCardTag('Porteuse', 'ui')
+
+    // La tâche garde le même tag, sous son nouveau nom ; « bug » n'est pas recréé
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['anomalie'])
+    await expect
+      .poll(async () => (await getTask(page.request, task.id)).tags)
+      .toEqual([expect.objectContaining({ id: bug?.id, name: 'anomalie' })])
+    expect(tagNames(await getTags(page.request))).toEqual(['anomalie', 'ui'])
+  })
+
+  test('un retrait refusé par le serveur affiche une erreur et laisse le tag sur la carte', async ({
+    page,
+    taskBoard,
+  }) => {
+    const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha', 'beta'])
+    await page.reload()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['alpha', 'beta'])
+
+    await page.route(`${API}/tasks/*`, (route) =>
+      route.request().method() === 'PATCH'
+        ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Erreur simulée"}' })
+        : route.fallback(),
+    )
+
+    await taskBoard.removeCardTag('Porteuse', 'alpha')
+
+    await expect(page.getByText('Retrait impossible').first()).toBeVisible()
+    await expect(taskBoard.taskCardTags('Porteuse')).toHaveText(['alpha', 'beta'])
+    expect(tagNames((await getTask(page.request, task.id)).tags)).toEqual(['alpha', 'beta'])
+  })
+})
+
+test.describe("Retrait de tags d'une tâche", () => {
   test('retire un tag via le bouton × de sa chip', async ({ page, taskBoard, tagPicker }) => {
     const task = await createTaskViaApi(page.request, 'Porteuse', ['alpha', 'beta'])
     await page.reload()

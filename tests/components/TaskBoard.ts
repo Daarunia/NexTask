@@ -67,6 +67,27 @@ export class TaskBoard {
   }
 
   /**
+   * Chip d'un tag sur une carte, repéré par son nom affiché.
+   * @param title Titre exact de la tâche
+   * @param tagName Nom exact du tag
+   */
+  taskCardTag(title: string, tagName: string): Locator {
+    return this.taskCardTags(title).filter({ has: this.page.getByText(tagName, { exact: true }) })
+  }
+
+  /**
+   * Retire un tag d'une carte sans ouvrir le dialogue. Survol du chip puis
+   * clic sur sa croix.
+   * @param title Titre exact de la tâche
+   * @param tagName Nom exact du tag à retirer
+   */
+  async removeCardTag(title: string, tagName: string) {
+    const chip = this.taskCardTag(title, tagName)
+    await chip.hover()
+    await chip.getByTestId('task-card-tag-remove').click()
+  }
+
+  /**
    * Ouvre l'écran de tâche en mode création depuis une colonne.
    * @param columnName Nom de la colonne
    */
