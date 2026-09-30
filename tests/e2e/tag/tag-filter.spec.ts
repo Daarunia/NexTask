@@ -201,6 +201,28 @@ test.describe('Filtrage des cartes', () => {
     await tagFilter.unselect('doc')
     await expect(tagFilter.dndHint).toHaveCount(0)
   })
+
+  test('le compteur de chaque colonne suit les cartes affichées par le filtre', async ({
+    page,
+    taskBoard,
+    tagFilter,
+  }) => {
+    await seedBoard(page)
+
+    const expectCounts = async (counts: number[]) => {
+      for (const [index, column] of [A_FAIRE, EN_COURS, EN_ATTENTE, TERMINE].entries()) {
+        await expect(taskBoard.columnCount(column)).toHaveText(String(counts[index]))
+      }
+    }
+
+    await expectCounts([4, 3, 1, 0])
+
+    await tagFilter.select('bug')
+    await expectCounts([2, 1, 0, 0])
+
+    await tagFilter.unselect('bug')
+    await expectCounts([4, 3, 1, 0])
+  })
 })
 
 test.describe('Tags proposés', () => {

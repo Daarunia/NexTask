@@ -28,7 +28,7 @@
                 class="border rounded px-2 py-1 text-lg w-full"
               />
             </template>
-            <template v-else>
+            <div v-else class="flex items-center gap-2 min-w-0">
               <h2
                 data-testid="stage-title"
                 class="stage-handle cursor-grab text-lg"
@@ -36,7 +36,11 @@
               >
                 {{ stage.name }}
               </h2>
-            </template>
+              <!-- Nombre de cartes affichées (filtre compris) -->
+              <span data-testid="stage-count" class="stage-count">
+                {{ visibleTaskLists.get(stage.id)?.length ?? 0 }}
+              </span>
+            </div>
 
             <!-- Menu -->
             <Button
@@ -618,5 +622,17 @@ onMounted(() => {
 
 .stage-handle {
   user-select: none;
+}
+
+/* Seule touche de la couleur d'accent sur le tableau */
+.stage-count {
+  @apply rounded-full px-2 text-xs;
+  background-color: var(--p-primary-100);
+  color: var(--p-primary-700);
+}
+
+.app-dark .stage-count {
+  background-color: color-mix(in srgb, var(--p-primary-400) 18%, transparent);
+  color: var(--p-primary-400);
 }
 </style>

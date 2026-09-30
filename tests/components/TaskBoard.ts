@@ -49,6 +49,14 @@ export class TaskBoard {
   }
 
   /**
+   * Compteur de cartes affiché à côté du titre d'une colonne.
+   * @param name Nom de la colonne
+   */
+  columnCount(name: string): Locator {
+    return this.column(name).getByTestId('stage-count')
+  }
+
+  /**
    * Carte de tâche repérée par son titre exact (sur tout le tableau).
    * @param title Titre exact de la tâche
    */
