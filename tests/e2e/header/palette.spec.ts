@@ -1,8 +1,41 @@
 import { test, expect } from '../../fixtures/test'
+import type { Page } from '@playwright/test'
 
 /**
- * Test de la fermeture et de l'ouverture de la palette de couleur
+ * Tests E2E du sélecteur de thème de couleur de l'en-tête : ouverture et
+ * fermeture du panneau, puis application de la couleur d'accent et des gris
+ * assortis au thème choisi.
  */
+
+// Gris attendus par thème : valeur 500 des familles slate, zinc et stone
+const SURFACE_500 = { slate: '#64748b', zinc: '#71717a', stone: '#78716c' }
+
+/**
+ * Couleur calculée d'une variable CSS de couleur, via un élément témoin
+ * (résout `light-dark()` selon le mode courant).
+ * @param page Page de l'application
+ * @param variable Nom de la variable (ex. `--p-primary-color`)
+ */
+async function resolvedColor(page: Page, variable: string): Promise<string> {
+  return page.evaluate((name) => {
+    const probe = document.createElement('span')
+    probe.style.color = `var(${name})`
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  }, variable)
+}
+
+/**
+ * Valeur d'une variable CSS de la racine, références `var()` résolues.
+ * @param page Page de l'application
+ * @param variable Nom de la variable
+ */
+async function rootVariable(page: Page, variable: string): Promise<string> {
+  return page.evaluate((name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), variable)
+}
+
 test('user can open and close color palette', async ({ header }) => {
   // Par défaut la palette est fermée
   await header.expectPaletteClosed()
@@ -16,32 +49,41 @@ test('user can open and close color palette', async ({ header }) => {
   await header.expectPaletteClosed()
 })
 
-/**
- * Test du change de la couleur primaire via la palette de couleur
- */
-test('user can change primary color', async ({ header, page }) => {
-  // On force le thème clair : dans ce mode, PrimeVue mappe `--p-primary-color`
-  // sur la nuance 500, qui est justement celle exposée par `data-testcolor`.
-  await header.ensureLightTheme()
-
+test('la palette propose 8 thèmes et coche le thème courant', async ({ header }) => {
   await header.openPalette()
 
-  // Récupération du premier bouton de couleur, et la couleur primaire associé
-  const firstButton = header.palettePanel.locator('button').first()
-  const bgColor = await firstButton.getAttribute('data-testcolor')
+  await expect(header.paletteSwatches).toHaveCount(8)
+  await expect(header.paletteSwatches.and(header.page.locator('[aria-pressed="true"]'))).toHaveCount(1)
 
-  // Changement de couleur primaire
-  await firstButton.click()
-  await header.closePaletteByOutsideClick()
+  await header.paletteSwatch('Sarcelle').click()
+  await expect(header.paletteSwatch('Sarcelle')).toHaveAttribute('aria-pressed', 'true')
+  await expect(header.paletteLabel).toHaveText('Sarcelle')
+})
 
-  // Récupération de la couleur appliquée et comparaison entre la couleur du bouton utilisé dans la palette, et la couleur réellement utilisée
-  const rawRootColor = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--p-primary-color').trim(),
-  )
-  // PrimeVue expose désormais --p-primary-color via light-dark(clair, sombre) :
-  // getComputedStyle renvoie la valeur spécifiée brute (non résolue) pour une custom property,
-  // on extrait donc manuellement la valeur "clair" puisque le thème clair est forcé ci-dessus.
-  const lightDarkMatch = rawRootColor.match(/^light-dark\(\s*([^,]+)\s*,/)
-  const updatedRootColor = lightDarkMatch ? lightDarkMatch[1].trim() : rawRootColor
-  expect(updatedRootColor).toBe(bgColor)
+test("le thème choisi applique sa couleur d'accent au bouton principal", async ({ header, page }) => {
+  await header.ensureLightTheme()
+  await header.openPalette()
+
+  for (const label of ['Orange', 'Indigo']) {
+    const swatch = header.paletteSwatch(label)
+    const expected = await swatch.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+    await swatch.click()
+
+    // Pastille et couleur d'accent partagent la même nuance
+    await expect.poll(() => resolvedColor(page, '--p-primary-color')).toBe(expected)
+  }
+})
+
+test('le thème choisi applique ses gris assortis', async ({ header, page }) => {
+  await header.openPalette()
+
+  await header.paletteSwatch('Orange').click()
+  await expect.poll(() => rootVariable(page, '--p-surface-500')).toBe(SURFACE_500.stone)
+
+  await header.paletteSwatch('Sarcelle').click()
+  await expect.poll(() => rootVariable(page, '--p-surface-500')).toBe(SURFACE_500.slate)
+
+  await header.paletteSwatch('Violet').click()
+  await expect.poll(() => rootVariable(page, '--p-surface-500')).toBe(SURFACE_500.zinc)
 })

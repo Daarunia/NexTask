@@ -1,47 +1,69 @@
 <template>
-  <div data-testid="palette-panel" class="color-picker border border-gray-300 inline-block rounded-md p-2">
-    <div class="grid grid-cols-8 gap-1">
+  <div data-testid="palette-panel" class="w-44">
+    <div class="grid grid-cols-4 gap-2 p-1">
       <button
-        v-for="color in primaryColors"
-        :key="color.name"
+        v-for="theme in APP_THEMES"
+        :key="theme.name"
         type="button"
-        @click="applyColor(color)"
-        :class="[
-          'w-8 h-8 rounded-sm border-2 cursor-pointer',
-          selectedColor === color.name ? 'border-black' : 'border-transparent',
-        ]"
-        :style="{ backgroundColor: color.palette?.[500] || '#000' }"
-        :title="color.name"
-        :data-testcolor="color.palette?.[500]"
-      ></button>
+        data-testid="palette-swatch"
+        :data-theme="theme.name"
+        :aria-label="theme.label"
+        :aria-pressed="selected === theme.name"
+        :title="theme.label"
+        :class="['swatch', { selected: selected === theme.name }]"
+        :style="{ backgroundColor: `var(--p-${theme.name}-${theme.shade})` }"
+        @click="selectTheme(theme)"
+      >
+        <i v-if="selected === theme.name" class="pi pi-check" aria-hidden="true" />
+      </button>
     </div>
+    <p data-testid="palette-label" class="theme-label">{{ selectedLabel }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { PRIMARY_COLORS } from '../constants/palette.constants'
+import { computed } from 'vue'
+import { APP_THEMES, AppTheme, getAppTheme } from '../constants/theme.constants'
 import { useSettingsStore } from '../stores/Settings'
-import { applyPrimaryColor } from '../utils/settings.helper'
+import { applyTheme } from '../utils/theme.helper'
 
 const settings = useSettingsStore()
-const selectedColor = ref(settings.primaryColor || 'emerald')
-const primaryColors = ref(PRIMARY_COLORS)
 
-const applyColor = (color: { name: string; palette: Record<string, string> }) => {
-  applyPrimaryColor(color)
-  selectedColor.value = color.name
+// Une ancienne couleur enregistrée est ramenée à son thème le plus proche
+const selected = computed(() => getAppTheme(settings.primaryColor).name)
+const selectedLabel = computed(() => getAppTheme(settings.primaryColor).label)
+
+/**
+ * Applique le thème choisi puis l'enregistre.
+ * @param theme Thème choisi
+ */
+async function selectTheme(theme: AppTheme) {
+  applyTheme(theme)
+  await settings.setPrimaryColor(theme.name)
 }
 </script>
 
 <style scoped>
 @reference "tailwindcss";
 
-.color-picker {
-  background-color: var(--p-surface-200);
+.swatch {
+  @apply flex items-center justify-center w-8 h-8 rounded-full cursor-pointer text-xs text-white;
+  transition: transform 0.1s;
 }
 
-.app-dark .color-picker {
-  background-color: var(--p-surface-900);
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+/* Anneau détaché du fond du panneau, lisible en clair comme en sombre */
+.swatch.selected {
+  box-shadow:
+    0 0 0 2px var(--p-content-background),
+    0 0 0 4px var(--p-text-color);
+}
+
+.theme-label {
+  @apply text-center text-sm mt-2;
+  color: var(--p-text-muted-color);
 }
 </style>

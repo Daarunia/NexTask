@@ -13,6 +13,8 @@ export class Header {
   readonly settingsButton: Locator
   readonly paletteButton: Locator
   readonly palettePanel: Locator
+  readonly paletteSwatches: Locator
+  readonly paletteLabel: Locator
 
   /**
    * Constructeur
@@ -32,6 +34,16 @@ export class Header {
     // Sélecteur de la couleur primaire
     this.paletteButton = page.getByTestId('btn-palette')
     this.palettePanel = page.getByTestId('palette-panel')
+    this.paletteSwatches = this.palettePanel.getByTestId('palette-swatch')
+    this.paletteLabel = this.palettePanel.getByTestId('palette-label')
+  }
+
+  /**
+   * Pastille d'un thème dans la palette ouverte.
+   * @param label Libellé exact du thème (ex. « Sarcelle »)
+   */
+  paletteSwatch(label: string): Locator {
+    return this.palettePanel.getByRole('button', { name: label, exact: true })
   }
 
   async toggleTheme() {
