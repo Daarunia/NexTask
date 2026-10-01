@@ -10,9 +10,10 @@ import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
+import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
-import { APP_ID, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
+import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -248,4 +249,18 @@ ipcMain.handle('folders:open', (_, kind: unknown) => {
   }
 
   return openFolder(kind)
+})
+
+// Version de l'app, affichée dans la section « À propos » des Paramètres
+ipcMain.handle('about:version', () => APP_VERSION)
+
+// Ouverture d'un lien de la section « À propos » dans le navigateur par
+// défaut. Lien limité à la liste connue, échec renvoyé au renderer.
+ipcMain.handle('about:open', (_, kind: unknown) => {
+  if (!isAboutLinkKind(kind)) {
+    Logger.warn(`Lien inconnu refusé : ${String(kind)}`)
+    throw new Error(`Lien inconnu : ${String(kind)}`)
+  }
+
+  return openAboutLink(kind)
 })

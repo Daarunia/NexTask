@@ -6,6 +6,7 @@ import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
+import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system/about.js'
 import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
@@ -16,11 +17,12 @@ import Logger from 'electron-log'
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes
- *                                    et oublie les dossiers ouverts
+ *                                    et oublie les dossiers et les liens ouverts
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -99,8 +101,9 @@ export default async function testRoutes(fastify) {
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
 
-      // Ouvertures de dossiers des tests précédents oubliées
+      // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
+      clearOpenedLinks()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -263,5 +266,37 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedFolders(),
+  )
+
+  /**
+   * GET /test/opened-links
+   *
+   * Liens de la section « À propos » dont l'ouverture a été demandée depuis le
+   * dernier reset, dans l'ordre. En mode test, l'IPC `about:open` ne fait que
+   * les noter, sans ouvrir le navigateur.
+   *
+   * @returns {Promise<Array<{kind: string, url: string}>>} Lien (`releases` ou `notices`) et son adresse
+   */
+  fastify.get(
+    '/test/opened-links',
+    {
+      schema: {
+        description: "Liens « À propos » dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string', enum: [...ABOUT_LINK_KINDS] },
+                url: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async () => getOpenedLinks(),
   )
 }

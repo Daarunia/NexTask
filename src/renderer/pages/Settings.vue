@@ -256,6 +256,8 @@
           />
         </SettingsRow>
       </SettingsSection>
+
+      <AboutSection />
     </div>
   </div>
 </template>
@@ -271,6 +273,7 @@ import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
+import AboutSection from '../components/settings/AboutSection.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'

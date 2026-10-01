@@ -24,4 +24,11 @@ declare global {
     openData: () => Promise<void>
     openLogs: () => Promise<void>
   }
+
+  // Section « À propos » : version de l'app et liens ouverts dans le navigateur
+  var about: {
+    getVersion: () => Promise<string>
+    openReleaseNotes: () => Promise<void>
+    openNotices: () => Promise<void>
+  }
 }
