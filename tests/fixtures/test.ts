@@ -34,7 +34,8 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         await vite.close()
       }
     },
-    { scope: 'worker' },
+    // Démarrage plus long que les tests eux-mêmes, surtout sur un runner CI à froid
+    { scope: 'worker', timeout: 100000 },
   ],
 
   electronApp: [
@@ -49,7 +50,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         await app.close()
       }
     },
-    { scope: 'worker', auto: true } as any,
+    { scope: 'worker', auto: true, timeout: 100000 } as any,
   ],
 
   page: async ({ electronApp }, use) => {
