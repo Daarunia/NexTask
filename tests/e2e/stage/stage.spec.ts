@@ -158,7 +158,7 @@ test.describe('Suppression de colonne', () => {
     await expect(taskBoard.column(stage)).toHaveCount(0)
   })
 
-  test('supprime une colonne vide', async ({ taskBoard }) => {
+  test('supprime une colonne vide sans confirmation', async ({ taskBoard }) => {
     const stage = `Vide ${uid()}`
 
     await taskBoard.addStage(stage)
@@ -167,6 +167,7 @@ test.describe('Suppression de colonne', () => {
     await taskBoard.deleteStage(stage)
 
     await expect(taskBoard.column(stage)).toHaveCount(0)
+    await expect(taskBoard.confirmPopup).toHaveCount(0)
   })
 
   test('supprime une colonne et archive ses tâches', async ({ taskBoard }) => {
@@ -178,6 +179,8 @@ test.describe('Suppression de colonne', () => {
     await expect(taskBoard.taskCard(task)).toBeVisible()
 
     await taskBoard.deleteStage(stage)
+    await expect(taskBoard.confirmPopup).toContainText(`Supprimer la liste « ${stage} » ? Sa tâche sera archivée.`)
+    await taskBoard.confirmAcceptButton.click()
 
     // La colonne disparaît…
     await expect(taskBoard.column(stage)).toHaveCount(0)
@@ -189,5 +192,28 @@ test.describe('Suppression de colonne', () => {
     expect(res.ok()).toBeTruthy()
     const archived = ((await res.json()) as { title: string; stageId: number | null }[]).find((t) => t.title === task)
     expect(archived).toMatchObject({ stageId: null })
+  })
+
+  test('annuler la confirmation garde la colonne et ses tâches', async ({ taskBoard }) => {
+    const stage = `Gardée ${uid()}`
+    const tasks = [`Première ${uid()}`, `Seconde ${uid()}`]
+
+    await taskBoard.addStage(stage)
+    for (const title of tasks) await taskBoard.createTask(stage, { title })
+
+    await taskBoard.deleteStage(stage)
+    await expect(taskBoard.confirmPopup).toContainText(
+      `Supprimer la liste « ${stage} » ? Ses 2 tâches seront archivées.`,
+    )
+    await taskBoard.confirmRejectButton.click()
+    await expect(taskBoard.confirmPopup).toBeHidden()
+
+    // Rien n'a changé, ni à l'écran ni après rechargement
+    await expect(taskBoard.column(stage)).toHaveCount(1)
+    for (const title of tasks) await expect(taskBoard.taskCard(title)).toBeVisible()
+
+    await taskBoard.page.reload()
+    await expect(taskBoard.column(stage)).toHaveCount(1)
+    for (const title of tasks) await expect(taskBoard.taskCard(title)).toBeVisible()
   })
 })
