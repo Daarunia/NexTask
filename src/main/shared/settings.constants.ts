@@ -30,6 +30,7 @@ export interface AppSettings {
   primaryColor: string // nom du thème de couleur (cf. APP_THEMES côté renderer)
   taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
+  confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   primaryColor: 'violet',
   taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
   defaultTaskVersion: '1.5.0',
+  confirmArchive: false,
   notificationsEnabled: true,
   notificationStyle: 'reminder',
   closeToTray: false,

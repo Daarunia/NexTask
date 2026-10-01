@@ -38,6 +38,18 @@
         >
           <TaskVersionsSetting />
         </SettingsRow>
+
+        <SettingsRow
+          label="Confirmer l'archivage"
+          description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
+          testId="settings-row-confirm-archive"
+        >
+          <ToggleSwitch
+            v-model="confirmArchive"
+            data-testid="settings-confirm-archive-toggle"
+            ariaLabel="Confirmer l'archivage"
+          />
+        </SettingsRow>
       </SettingsSection>
 
       <SettingsSection title="Notifications" testId="settings-notifications">
@@ -154,6 +166,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 }
 
 const theme = settingModel('theme')
+const confirmArchive = settingModel('confirmArchive')
 const notificationsEnabled = settingModel('notificationsEnabled')
 const notificationStyle = settingModel('notificationStyle')
 const closeToTray = settingModel('closeToTray')

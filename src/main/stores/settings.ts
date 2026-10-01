@@ -33,6 +33,10 @@ const schema = {
     type: 'string',
     default: DEFAULT_SETTINGS.defaultTaskVersion,
   },
+  confirmArchive: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.confirmArchive,
+  },
   notificationsEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,
