@@ -5,6 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 })
 
 contextBridge.exposeInMainWorld('settings', {
-  get: (key: string) => ipcRenderer.invoke('settings:get', key),
+  getAll: () => ipcRenderer.invoke('settings:getAll'),
   set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
 })

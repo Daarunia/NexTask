@@ -5,7 +5,7 @@ import { startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
-import { settingsStore } from './stores/settings.js'
+import { type AppSettings, isSettingsKey, settingsStore } from './stores/settings.js'
 import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 
@@ -142,14 +142,21 @@ ipcMain.on('message', (event, message) => {
   Logger.debug(message)
 })
 
-// expose settings store
-ipcMain.handle('settings:get', (_, key) => {
-  let value = settingsStore.get(key)
-  Logger.debug(`Get parameter: ${key} = ${value}`)
-  return value
+// Pont des paramètres : lecture groupée en un seul aller-retour au démarrage
+ipcMain.handle('settings:getAll', () => {
+  const values = settingsStore.store
+  Logger.debug('Lecture des paramètres :', values)
+  return values
 })
 
-ipcMain.handle('settings:set', (_, key, value) => {
-  Logger.debug(`Set parameter: ${key} = ${value}`)
-  settingsStore.set(key, value)
+// Écriture d'un paramètre : clé limitée à la liste connue, valeur validée par
+// le schéma d'electron-store (qui lève une erreur, renvoyée au renderer)
+ipcMain.handle('settings:set', (_, key: unknown, value: unknown) => {
+  if (!isSettingsKey(key)) {
+    Logger.warn(`Paramètre inconnu refusé : ${String(key)}`)
+    throw new Error(`Paramètre inconnu : ${String(key)}`)
+  }
+
+  Logger.debug(`Écriture du paramètre : ${key} = ${value}`)
+  settingsStore.set(key, value as AppSettings[typeof key])
 })
