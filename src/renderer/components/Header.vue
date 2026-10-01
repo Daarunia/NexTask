@@ -8,7 +8,13 @@
 
     <div class="flex items-center gap-2" ref="menuWrapper">
       <!-- Bouton Dark / Light -->
-      <Button data-testid="btn-theme" :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" text rounded @click="toggleTheme" />
+      <Button
+        data-testid="btn-theme"
+        :icon="settings.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+        text
+        rounded
+        @click="toggleTheme"
+      />
 
       <!-- Bouton Palette -->
       <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
@@ -25,42 +31,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
 import { useSettingsStore } from '../stores/Settings.js'
-import { getLogger } from '../utils/logger.js'
-import { getAppTheme } from '../constants/theme.constants.js'
-import { applyTheme } from '../utils/theme.helper.js'
+import { useErrorToast } from '../utils/toast.helper.js'
 import { useRouter, useRoute } from 'vue-router'
 
+// Paramètres chargés et appliqués par App.vue, l'en-tête ne fait que les lire
 const settings = useSettingsStore()
-const isDark = ref(false)
+const showError = useErrorToast()
 const palettePopover = ref<InstanceType<typeof Popover> | null>(null)
 const router = useRouter()
 const route = useRoute()
 
-onMounted(async () => {
-  await settings.load() // Chargement des paramètres
-  isDark.value = settings.theme === 'dark'
-  getLogger().debug(`[Header] Theme loaded from store: ${settings.theme}`)
-
-  // Application du theme
-  document.documentElement.classList.toggle('app-dark', isDark.value)
-
-  // Application du thème de couleur (une ancienne couleur est ramenée au thème le plus proche)
-  getLogger().debug(`[Header] Couleur chargée depuis les paramètres : ${settings.primaryColor}`)
-  applyTheme(getAppTheme(settings.primaryColor))
-})
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('app-dark', isDark.value)
-
-  // persistance
-  settings.setTheme(isDark.value ? 'dark' : 'light')
+async function toggleTheme() {
+  try {
+    await settings.setTheme(settings.isDark ? 'light' : 'dark')
+  } catch {
+    showError('Thème non enregistré')
+  }
 }
 
 // Ouverture et fermeture de la palette (clic extérieur et Échap gérés par le Popover)

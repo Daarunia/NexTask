@@ -25,21 +25,25 @@
 import { computed } from 'vue'
 import { APP_THEMES, AppTheme, getAppTheme } from '../constants/theme.constants'
 import { useSettingsStore } from '../stores/Settings'
-import { applyTheme } from '../utils/theme.helper'
+import { useErrorToast } from '../utils/toast.helper'
 
 const settings = useSettingsStore()
+const showError = useErrorToast()
 
 // Une ancienne couleur enregistrée est ramenée à son thème le plus proche
 const selected = computed(() => getAppTheme(settings.primaryColor).name)
 const selectedLabel = computed(() => getAppTheme(settings.primaryColor).label)
 
 /**
- * Applique le thème choisi puis l'enregistre.
+ * Applique le thème choisi puis l'enregistre (application faite par le store).
  * @param theme Thème choisi
  */
 async function selectTheme(theme: AppTheme) {
-  applyTheme(theme)
-  await settings.setPrimaryColor(theme.name)
+  try {
+    await settings.setPrimaryColor(theme.name)
+  } catch {
+    showError('Couleur non enregistrée')
+  }
 }
 </script>
 
