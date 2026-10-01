@@ -3,6 +3,7 @@ import path from 'node:path'
 import { prisma } from '../prismaClient.js'
 import { SEEDS_PATH } from '../../constants.js'
 import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
+import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
 /**
@@ -10,7 +11,8 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut)
+ * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
+ *                                    et remet les paramètres à leurs valeurs par défaut
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -82,6 +84,10 @@ export default async function testRoutes(fastify) {
 
       // Les tests partent d'une liste de tags vide, sauf demande explicite
       if (!seedTags) await prisma.tag.deleteMany()
+
+      // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
+      // relus par le renderer au rechargement qui suit le reset
+      settingsStore.clear()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }

@@ -1,4 +1,5 @@
 import Store from 'electron-store'
+import { SETTINGS_FILE } from '../constants.js'
 
 /**
  * Schéma des paramètres
@@ -16,4 +17,4 @@ const schema = {
 }
 
 export type SettingsKeys = 'theme' | 'primaryColor'
-export const settingsStore = new Store({ schema })
+export const settingsStore = new Store({ schema, name: SETTINGS_FILE })

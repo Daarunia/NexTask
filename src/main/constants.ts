@@ -30,6 +30,16 @@ if (IS_TEST) {
 // Chemin vers la base de données
 export const DB_PATH = path.join(CURRENT_PATH, DB_FILE)
 
+// Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
+// base en test et en dev pour ne jamais toucher aux paramètres réels
+let SETTINGS_NAME = 'config'
+if (IS_TEST) {
+  SETTINGS_NAME = 'config.test'
+} else if (IS_DEV) {
+  SETTINGS_NAME = 'config.dev'
+}
+export const SETTINGS_FILE = SETTINGS_NAME
+
 // Chemin vers les ressources (process.resourcesPath en prod, current en dev)
 export const RESOURCES_PATH = IS_DEV ? CURRENT_PATH : process.resourcesPath
 
