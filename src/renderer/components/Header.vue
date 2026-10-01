@@ -7,22 +7,25 @@
     </h1>
 
     <div class="flex items-center gap-2" ref="menuWrapper">
-      <!-- Bouton Dark / Light -->
-      <Button
-        data-testid="btn-theme"
-        :icon="settings.isDark ? 'pi pi-sun' : 'pi pi-moon'"
-        text
-        rounded
-        @click="toggleTheme"
-      />
+      <!-- Raccourcis d'apparence, masqués sur la page Paramètres qui propose les mêmes réglages -->
+      <template v-if="!isSettings">
+        <!-- Bouton Dark / Light -->
+        <Button
+          data-testid="btn-theme"
+          :icon="settings.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+          text
+          rounded
+          @click="toggleTheme"
+        />
 
-      <!-- Bouton Palette -->
-      <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
+        <!-- Bouton Palette -->
+        <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
 
-      <!-- Panneau Palette -->
-      <Popover ref="palettePopover">
-        <PrimaryColorPicker />
-      </Popover>
+        <!-- Panneau Palette -->
+        <Popover ref="palettePopover">
+          <PrimaryColorPicker />
+        </Popover>
+      </template>
 
       <Button data-testid="btn-home" icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
       <Button
