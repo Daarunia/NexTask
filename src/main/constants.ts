@@ -64,10 +64,3 @@ const STATIC_DIRS = [
 export function staticAsset(name: string): string | undefined {
   return STATIC_DIRS.map((directory) => path.join(directory, name)).find((filePath) => existsSync(filePath))
 }
-
-// Palette des tags, dans l'ordre de préférence d'attribution (cf. tag.helper).
-// À garder alignée sur `TAG_COLOR_STYLES` dans src/renderer/constants/tag.constants.ts.
-export const TAG_COLORS = ['sky', 'emerald', 'amber', 'rose', 'violet', 'teal', 'orange', 'slate'] as const
-
-/** Nom d'une couleur de la palette des tags. */
-export type TagColor = (typeof TAG_COLORS)[number]

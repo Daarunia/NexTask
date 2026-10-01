@@ -36,12 +36,12 @@ import SettingsRow from '../components/settings/SettingsRow.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
-import type { AppSettings } from '../types/global'
+import type { ThemeMode } from '../../main/shared/settings.constants'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
 
-const MODE_OPTIONS: { label: string; value: AppSettings['theme'] }[] = [
+const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
   { label: 'Sombre', value: 'dark' },
 ]
@@ -49,7 +49,7 @@ const MODE_OPTIONS: { label: string; value: AppSettings['theme'] }[] = [
 // Lu dans le store et écrit par lui : l'en-tête suit le même état
 const mode = computed({
   get: () => settings.theme,
-  set: (value: AppSettings['theme']) => {
+  set: (value: ThemeMode) => {
     settings.setTheme(value).catch(() => showError('Thème non enregistré'))
   },
 })

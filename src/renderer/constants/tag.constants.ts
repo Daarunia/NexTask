@@ -1,4 +1,4 @@
-import { TagColor } from '../types/tag.types'
+import { TAG_COLORS, type TagColor } from '../../main/shared/tag.constants'
 
 /** Teintes d'un chip de tag : fond et texte. */
 interface TagTint {
@@ -15,68 +15,63 @@ export interface TagColorStyle {
   dark: TagTint // fond 900 / texte 200
 }
 
-/**
- * Palette des tags, dans le même ordre que `TAG_COLORS` (src/main/constants.ts)
- * qui fait référence côté serveur. Les deux listes doivent rester alignées.
- */
-export const TAG_COLOR_STYLES: TagColorStyle[] = [
-  {
-    name: 'sky',
+/** Rendu de chaque couleur de la palette, hors nom. */
+const TAG_TINTS: Record<TagColor, Omit<TagColorStyle, 'name'>> = {
+  sky: {
     label: 'Bleu',
     swatch: '#0ea5e9',
     light: { background: '#e0f2fe', text: '#0369a1' },
     dark: { background: '#0c4a6e', text: '#bae6fd' },
   },
-  {
-    name: 'emerald',
+  emerald: {
     label: 'Vert',
     swatch: '#10b981',
     light: { background: '#d1fae5', text: '#047857' },
     dark: { background: '#064e3b', text: '#a7f3d0' },
   },
-  {
-    name: 'amber',
+  amber: {
     label: 'Jaune',
     swatch: '#f59e0b',
     light: { background: '#fef3c7', text: '#b45309' },
     dark: { background: '#78350f', text: '#fde68a' },
   },
-  {
-    name: 'rose',
+  rose: {
     label: 'Rose',
     swatch: '#f43f5e',
     light: { background: '#ffe4e6', text: '#be123c' },
     dark: { background: '#881337', text: '#fecdd3' },
   },
-  {
-    name: 'violet',
+  violet: {
     label: 'Violet',
     swatch: '#8b5cf6',
     light: { background: '#ede9fe', text: '#6d28d9' },
     dark: { background: '#4c1d95', text: '#ddd6fe' },
   },
-  {
-    name: 'teal',
+  teal: {
     label: 'Turquoise',
     swatch: '#14b8a6',
     light: { background: '#ccfbf1', text: '#0f766e' },
     dark: { background: '#134e4a', text: '#99f6e4' },
   },
-  {
-    name: 'orange',
+  orange: {
     label: 'Orange',
     swatch: '#f97316',
     light: { background: '#ffedd5', text: '#c2410c' },
     dark: { background: '#7c2d12', text: '#fed7aa' },
   },
-  {
-    name: 'slate',
+  slate: {
     label: 'Gris',
     swatch: '#64748b',
     light: { background: '#f1f5f9', text: '#334155' },
     dark: { background: '#0f172a', text: '#e2e8f0' },
   },
-]
+}
+
+/**
+ * Palette des tags, dans l'ordre de `TAG_COLORS` (palette partagée avec le
+ * serveur). Le typage impose un rendu pour chaque couleur.
+ */
+export const TAG_COLOR_STYLES: TagColorStyle[] = TAG_COLORS.map((name) => ({ name, ...TAG_TINTS[name] }))
 
 /**
  * Rendu d'une couleur de tag, avec repli sur la première couleur de la

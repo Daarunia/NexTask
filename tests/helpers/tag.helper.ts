@@ -1,5 +1,7 @@
 import { expect } from '@playwright/test'
 import type { APIRequestContext } from '@playwright/test'
+import { TAG_COLORS } from '../../src/main/shared/tag.constants'
+import { API } from './api.helper'
 
 /**
  * Appels API partagés par les tests E2E de l'interface des tags.
@@ -9,10 +11,8 @@ import type { APIRequestContext } from '@playwright/test'
  * appels que les helpers de `tests/e2e/tag/tag-api.spec.ts`.
  */
 
-export const API = 'http://localhost:3000'
-
-// Palette de référence, dans son ordre (TAG_COLORS de src/main/constants.ts)
-export const TAG_COLORS = ['sky', 'emerald', 'amber', 'rose', 'violet', 'teal', 'orange', 'slate']
+// Palette de référence, dans son ordre
+export { TAG_COLORS }
 
 // Valeur de `data-tag-color` d'une chip de tag réel (toute couleur de la palette, jamais `neutral`)
 export const PALETTE_COLOR = new RegExp(`^(${TAG_COLORS.join('|')})$`)

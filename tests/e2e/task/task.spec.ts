@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de l'écran de tâche (TaskDialog), feature principale de l'app :
@@ -96,7 +97,7 @@ test("enregistre une date de début et la ré-affiche à l'édition", async ({ t
 })
 
 test("l'API répond 404 à l'archivage d'une tâche inexistante", async ({ page }) => {
-  const res = await page.request.put('http://localhost:3000/tasks/999999')
+  const res = await page.request.put(`${API}/tasks/999999`)
 
   expect(res.status()).toBe(404)
   expect(await res.json()).toEqual({ error: 'Tâche non trouvée' })

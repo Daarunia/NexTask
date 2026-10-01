@@ -1,3 +1,5 @@
+import { DEFAULT_SETTINGS } from '../../main/shared/settings.constants'
+
 /** Famille de gris (surfaces PrimeVue) associée à un thème. */
 export type SurfaceFamily = 'slate' | 'zinc' | 'stone'
 
@@ -21,8 +23,8 @@ export const APP_THEMES: AppTheme[] = [
   { name: 'orange', label: 'Orange', surface: 'stone', shade: 700 },
 ]
 
-/** Thème par défaut, aligné sur la valeur par défaut des paramètres. */
-export const DEFAULT_THEME = 'violet'
+/** Thème par défaut, celui des paramètres par défaut. */
+export const DEFAULT_THEME = DEFAULT_SETTINGS.primaryColor
 
 /** Couleurs de l'ancienne palette retirées, ramenées au thème le plus proche. */
 const LEGACY_THEMES: Record<string, string> = {

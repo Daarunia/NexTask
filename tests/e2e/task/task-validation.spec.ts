@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du titre obligatoire d'une tâche, contrôlé à la fois par le
@@ -8,8 +9,6 @@ import { test, expect } from '../../fixtures/test'
  * cartes avant et après un Save refusé, et les tâches créées sont ciblées par
  * leur titre, comme dans les autres specs.
  */
-
-const API = 'http://localhost:3000'
 
 // Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
 const COLUMN = 'A faire'

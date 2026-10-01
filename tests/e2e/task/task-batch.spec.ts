@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de l'endpoint PATCH /tasks/batch (utilisé par le drag-and-drop).
@@ -11,8 +12,6 @@ import type { APIRequestContext } from '@playwright/test'
  *
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`).
  */
-
-const API = 'http://localhost:3000'
 
 /** Récupère les ids des colonnes seedées, triées par position. */
 async function stageIds(request: APIRequestContext): Promise<number[]> {

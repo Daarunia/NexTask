@@ -8,6 +8,7 @@ import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import { APP_VERSION, IS_DEV, IS_TEST, staticAsset } from '../constants.js'
+import { API_PORT } from '../shared/api.constants.js'
 import Logger from 'electron-log'
 import { readFileSync } from 'node:fs'
 
@@ -90,9 +91,9 @@ export async function startServer() {
   }
 
   try {
-    await fastify.listen({ port: 3000 })
-    Logger.info('Fastify API -> http://localhost:3000')
-    Logger.info('Swagger UI -> http://localhost:3000/docs')
+    await fastify.listen({ port: API_PORT })
+    Logger.info(`Fastify API -> http://localhost:${API_PORT}`)
+    Logger.info(`Swagger UI -> http://localhost:${API_PORT}/docs`)
   } catch (err) {
     fastify.log.error(err)
     throw err

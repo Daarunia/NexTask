@@ -1,7 +1,8 @@
 import type { Page, Request } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import type { TaskBoard } from '../../components/TaskBoard'
-import { API, createTaskViaApi, getTasks, tagNames, type Task } from '../../helpers/tag.helper'
+import { createTaskViaApi, getTasks, tagNames, type Task } from '../../helpers/tag.helper'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du filtre du Kanban par tag : OU logique entre les tags cochés, tags

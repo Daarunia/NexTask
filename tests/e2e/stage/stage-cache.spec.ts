@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
+import { MINUTE } from '../../../src/renderer/constants/time.constants'
 
 /**
  * Tests E2E du cache des stores (colonnes + tâches) côté renderer.
@@ -9,7 +10,6 @@ import { test, expect } from '../../fixtures/test'
  */
 
 const uid = () => Date.now().toString().slice(-6)
-const MINUTE = 60 * 1000
 
 /**
  * Décale l'horloge du renderer par rapport à l'heure réelle.

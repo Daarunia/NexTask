@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du drag & drop des tâches sur le tableau Kanban.
@@ -13,8 +14,6 @@ import { test, expect } from '../../fixtures/test'
  * Base partagée entre runs : titres uniques + assertions sur l'ordre relatif
  * de nos seules tâches de test (via `orderedTitlesAmong`), puis archivage.
  */
-
-const API = 'http://localhost:3000'
 
 const A_FAIRE = 'A faire'
 const EN_COURS = 'En cours'

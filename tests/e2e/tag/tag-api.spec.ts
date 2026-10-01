@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, APIResponse } from '@playwright/test'
+import { API } from '../../helpers/api.helper'
+import { TAG_COLORS } from '../../../src/main/shared/tag.constants'
 
 /**
  * Tests E2E de l'API des tags.
@@ -16,11 +18,6 @@ import type { APIRequestContext, APIResponse } from '@playwright/test'
  * les couleurs attribuées déterministes. Seuls les tests des tags par défaut
  * rejouent le reset en conservant les tags seedés.
  */
-
-const API = 'http://localhost:3000'
-
-// Palette de référence, dans son ordre (TAG_COLORS de src/main/constants.ts)
-const TAG_COLORS = ['sky', 'emerald', 'amber', 'rose', 'violet', 'teal', 'orange', 'slate']
 
 const NAME_TAKEN = 'Un tag porte déjà ce nom'
 
