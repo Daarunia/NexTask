@@ -43,6 +43,16 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.confirmArchive,
   },
+  rememberTagFilter: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.rememberTagFilter,
+  },
+  tagFilterIds: {
+    type: 'array',
+    items: { type: 'integer' },
+    uniqueItems: true,
+    default: DEFAULT_SETTINGS.tagFilterIds,
+  },
   notificationsEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,

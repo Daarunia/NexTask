@@ -4,8 +4,11 @@ import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E des réglages de la section Tâches de la page Paramètres (hors
- * versions, testées à part) : position d'une nouvelle tâche et confirmation
- * avant archivage.
+ * versions, testées à part) : position d'une nouvelle tâche, mémorisation du
+ * filtre de tags et confirmation avant archivage.
+ *
+ * Un rechargement de la page tient lieu de redémarrage : le renderer relit
+ * alors les paramètres enregistrés côté main.
  *
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
@@ -144,6 +147,123 @@ test.describe("Position d'une nouvelle tâche", () => {
     await page.reload()
 
     await expect(settingsPage.newTaskPositionOption('En haut')).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+test.describe('Mémoriser le filtre de tags', () => {
+  // Décor : une carte par tag, plus une sans tag
+  const BOARD = [{ title: 'Bug', tags: ['bug'] }, { title: 'UI', tags: ['ui'] }, { title: 'Libre' }]
+
+  test('désactivé par défaut : le filtre est remis à zéro au rechargement', async ({
+    page,
+    header,
+    taskBoard,
+    tagFilter,
+    settingsPage,
+  }) => {
+    await seedColumn(page, BOARD)
+
+    await tagFilter.select('bug')
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug'])
+
+    await page.reload()
+
+    await expect(tagFilter.dndHint).toHaveCount(0)
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI', 'Libre'])
+
+    await header.goSettings()
+    await expect(settingsPage.rememberFilterSwitch).not.toBeChecked()
+  })
+
+  test('activé : le filtre est retrouvé après un rechargement', async ({
+    page,
+    header,
+    taskBoard,
+    tagFilter,
+    settingsPage,
+  }) => {
+    await seedColumn(page, BOARD)
+
+    await header.goSettings()
+    await settingsPage.rememberFilterSwitch.click()
+    await expect(settingsPage.rememberFilterSwitch).toBeChecked()
+    await header.goHome()
+
+    await tagFilter.select('bug', 'ui')
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI'])
+
+    await page.reload()
+
+    await expect(tagFilter.dndHint).toBeVisible()
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI'])
+    await tagFilter.open()
+    await tagFilter.expectSelected('bug')
+    await tagFilter.expectSelected('ui')
+    await tagFilter.close()
+
+    // Le réglage lui-même est conservé
+    await header.goSettings()
+    await expect(settingsPage.rememberFilterSwitch).toBeChecked()
+  })
+
+  test('un tag supprimé sort du filtre mémorisé', async ({ page, header, taskBoard, tagFilter, settingsPage }) => {
+    await seedColumn(page, BOARD)
+
+    await header.goSettings()
+    await settingsPage.rememberFilterSwitch.click()
+    await expect(settingsPage.rememberFilterSwitch).toBeChecked()
+    await header.goHome()
+
+    await tagFilter.select('bug', 'ui')
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI'])
+
+    // Suppression hors de l'app : seul le filtre mémorisé la voit au rechargement
+    const tags = (await (await page.request.get(`${API}/tags`)).json()) as { id: number; name: string }[]
+    const ui = tags.find((t) => t.name === 'ui')
+    expect(ui).toBeDefined()
+    expect((await page.request.delete(`${API}/tags/${ui!.id}`)).ok()).toBeTruthy()
+
+    await page.reload()
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug'])
+
+    // Le retrait a été enregistré : le filtre reste réduit à « bug » au rechargement suivant
+    await page.reload()
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug'])
+    await tagFilter.open()
+    await tagFilter.expectOptions(['bug'])
+    await tagFilter.expectSelected('bug')
+    await tagFilter.close()
+  })
+
+  test('désactiver la mémorisation oublie le filtre enregistré', async ({
+    page,
+    header,
+    taskBoard,
+    tagFilter,
+    settingsPage,
+  }) => {
+    await seedColumn(page, BOARD)
+
+    await header.goSettings()
+    await settingsPage.rememberFilterSwitch.click()
+    await expect(settingsPage.rememberFilterSwitch).toBeChecked()
+    await header.goHome()
+
+    await tagFilter.select('bug')
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug'])
+
+    // Désactivée puis réactivée : le filtre précédent ne revient pas
+    await header.goSettings()
+    await settingsPage.rememberFilterSwitch.click()
+    await expect(settingsPage.rememberFilterSwitch).not.toBeChecked()
+    await settingsPage.rememberFilterSwitch.click()
+    await expect(settingsPage.rememberFilterSwitch).toBeChecked()
+
+    await page.reload()
+    await header.goHome()
+
+    await expect(tagFilter.dndHint).toHaveCount(0)
+    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI', 'Libre'])
   })
 })
 

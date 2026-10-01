@@ -18,6 +18,7 @@ export class SettingsPage {
   readonly versionAddButton: Locator
   readonly versionError: Locator
   readonly newTaskPositionSelect: Locator
+  readonly rememberFilterSwitch: Locator
   readonly confirmArchiveSwitch: Locator
   readonly notificationsSwitch: Locator
   readonly notificationStyleSelect: Locator
@@ -53,6 +54,7 @@ export class SettingsPage {
     this.notificationStyleSelect = this.root.getByTestId('settings-notification-style')
 
     // Interrupteurs (role switch porté par l'input interne du ToggleSwitch)
+    this.rememberFilterSwitch = this.root.getByRole('switch', { name: 'Mémoriser le filtre de tags' })
     this.confirmArchiveSwitch = this.root.getByRole('switch', { name: "Confirmer l'archivage" })
     this.notificationsSwitch = this.root.getByRole('switch', { name: 'Rappels de date de début' })
     this.traySwitch = this.root.getByRole('switch', { name: 'Garder en arrière-plan' })
