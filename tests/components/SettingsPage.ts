@@ -41,6 +41,8 @@ export class SettingsPage {
   readonly exportButton: Locator
   readonly importButton: Locator
   readonly autoBackupSwitch: Locator
+  readonly openDataFolderButton: Locator
+  readonly openLogsFolderButton: Locator
 
   /**
    * Constructeur
@@ -103,6 +105,10 @@ export class SettingsPage {
     this.exportButton = this.root.getByTestId('btn-data-export')
     this.importButton = this.root.getByTestId('btn-data-import')
     this.autoBackupSwitch = this.root.getByRole('switch', { name: 'Sauvegarde automatique' })
+
+    // Section Organisation et données : ouverture des dossiers
+    this.openDataFolderButton = this.root.getByTestId('btn-open-data-folder')
+    this.openLogsFolderButton = this.root.getByTestId('btn-open-logs-folder')
   }
 
   /**

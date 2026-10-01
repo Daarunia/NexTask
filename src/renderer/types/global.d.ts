@@ -13,4 +13,10 @@ declare global {
     exportToFile: () => Promise<DataTransferResult>
     importFromFile: () => Promise<DataTransferResult>
   }
+
+  // Ouverture des dossiers de l'app dans l'explorateur de fichiers
+  var folders: {
+    openData: () => Promise<void>
+    openLogs: () => Promise<void>
+  }
 }

@@ -14,3 +14,9 @@ contextBridge.exposeInMainWorld('dataTransfer', {
   exportToFile: () => ipcRenderer.invoke('data:export'),
   importFromFile: () => ipcRenderer.invoke('data:import'),
 })
+
+// Ouverture des dossiers de l'app dans l'explorateur de fichiers (cf. system/folders)
+contextBridge.exposeInMainWorld('folders', {
+  openData: () => ipcRenderer.invoke('folders:open', 'data'),
+  openLogs: () => ipcRenderer.invoke('folders:open', 'logs'),
+})

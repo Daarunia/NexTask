@@ -9,6 +9,7 @@ import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
+import { isFolderKind, openFolder } from './system/folders.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
@@ -227,3 +228,14 @@ ipcMain.handle('data:export', (event) => exportDataToFile(BrowserWindow.fromWebC
 // Import des données (confirmé côté renderer) : boîte de dialogue d'ouverture,
 // données remplacées via POST /data/import
 ipcMain.handle('data:import', (event) => importDataFromFile(BrowserWindow.fromWebContents(event.sender)))
+
+// Ouverture du dossier des données ou des journaux dans l'explorateur de
+// fichiers. Dossier limité à la liste connue, échec renvoyé au renderer.
+ipcMain.handle('folders:open', (_, kind: unknown) => {
+  if (!isFolderKind(kind)) {
+    Logger.warn(`Dossier inconnu refusé : ${String(kind)}`)
+    throw new Error(`Dossier inconnu : ${String(kind)}`)
+  }
+
+  return openFolder(kind)
+})
