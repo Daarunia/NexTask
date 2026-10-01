@@ -146,6 +146,21 @@
             :disabled="!settings.launchAtStartup"
           />
         </SettingsRow>
+
+        <SettingsRow
+          label="Fenêtre au démarrage"
+          description="Maximisée, ou à la taille et à la position qu'elle avait à la fermeture."
+          testId="settings-row-window-mode"
+        >
+          <SelectButton
+            v-model="windowMode"
+            data-testid="settings-window-mode"
+            :options="WINDOW_MODE_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+          />
+        </SettingsRow>
       </SettingsSection>
     </div>
   </div>
@@ -161,7 +176,13 @@ import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
-import type { AppSettings, NewTaskPosition, NotificationStyle, ThemeMode } from '../../main/shared/settings.constants'
+import type {
+  AppSettings,
+  NewTaskPosition,
+  NotificationStyle,
+  ThemeMode,
+  WindowMode,
+} from '../../main/shared/settings.constants'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
@@ -170,6 +191,11 @@ const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
   { label: 'Sombre', value: 'dark' },
   { label: 'Système', value: 'system' },
+]
+
+const WINDOW_MODE_OPTIONS: { label: string; value: WindowMode }[] = [
+  { label: 'Maximisée', value: 'maximized' },
+  { label: 'Dernière taille', value: 'last' },
 ]
 
 const NEW_TASK_POSITION_OPTIONS: { label: string; value: NewTaskPosition }[] = [
@@ -213,4 +239,5 @@ const notificationStyle = settingModel('notificationStyle')
 const closeToTray = settingModel('closeToTray')
 const launchAtStartup = settingModel('launchAtStartup')
 const startMinimized = settingModel('startMinimized')
+const windowMode = settingModel('windowMode')
 </script>

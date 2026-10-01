@@ -6,6 +6,7 @@ import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
+import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
@@ -25,9 +26,14 @@ function createWindow() {
   // Lancement « réduit » à l'ouverture de session : la fenêtre ne s'affiche pas
   const launchedHidden = wasLaunchedHidden()
 
+  // Dernière taille et position, si le paramètre le demande et qu'elles tombent sur un écran
+  const restored = getRestorableWindowState()
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: restored?.width ?? 800,
+    height: restored?.height ?? 600,
+    x: restored?.x,
+    y: restored?.y,
     icon: WINDOW_ICON,
     autoHideMenuBar: true,
     frame: true,
@@ -39,16 +45,25 @@ function createWindow() {
     show: !IS_TEST && !launchedHidden,
   })
 
-  // Plein écran fenêtré. Lancée réduite, la fenêtre reste masquée si l'icône de
-  // la zone de notification permet de la rouvrir, sinon elle part dans la barre des tâches
+  // Plein écran fenêtré, sauf dernière taille non maximisée à restaurer (déjà
+  // appliquée à la création)
+  const applyStartupSize = () => {
+    if (!restored || restored.maximized) mainWindow?.maximize()
+  }
+
+  // Lancée réduite, la fenêtre reste masquée si l'icône de la zone de
+  // notification permet de la rouvrir, sinon elle part dans la barre des tâches
   if (!launchedHidden) {
-    mainWindow.maximize()
+    applyStartupSize()
   } else if (shouldHideOnClose()) {
-    mainWindow.once('show', () => mainWindow?.maximize())
+    mainWindow.once('show', applyStartupSize)
   } else {
     mainWindow.minimize()
-    mainWindow.once('restore', () => mainWindow?.maximize())
+    mainWindow.once('restore', applyStartupSize)
   }
+
+  // Taille et position enregistrées pour le prochain démarrage
+  trackWindowState(mainWindow)
 
   // Fermeture avec « garder en arrière-plan » : la fenêtre est seulement masquée
   mainWindow.on('close', (event) => {
