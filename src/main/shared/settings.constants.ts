@@ -21,6 +21,12 @@ export const NOTIFICATION_STYLES = ['reminder', 'default'] as const
 /** Style de notification. */
 export type NotificationStyle = (typeof NOTIFICATION_STYLES)[number]
 
+/** Places possibles d'une nouvelle tâche dans sa colonne. */
+export const NEW_TASK_POSITIONS = ['top', 'bottom'] as const
+
+/** Place d'une nouvelle tâche dans sa colonne. */
+export type NewTaskPosition = (typeof NEW_TASK_POSITIONS)[number]
+
 /** Longueur maximale d'un numéro de version de tâche. */
 export const TASK_VERSION_MAX_LENGTH = 20
 
@@ -30,6 +36,7 @@ export interface AppSettings {
   primaryColor: string // nom du thème de couleur (cf. APP_THEMES côté renderer)
   taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
+  newTaskPosition: NewTaskPosition // nouvelle tâche en haut ou en bas de sa colonne
   confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
@@ -44,6 +51,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   primaryColor: 'violet',
   taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
   defaultTaskVersion: '1.5.0',
+  newTaskPosition: 'bottom',
   confirmArchive: false,
   notificationsEnabled: true,
   notificationStyle: 'reminder',

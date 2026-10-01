@@ -40,6 +40,21 @@
         </SettingsRow>
 
         <SettingsRow
+          label="Position d'une nouvelle tâche"
+          description="Place d'une tâche créée dans sa colonne."
+          testId="settings-row-new-task-position"
+        >
+          <SelectButton
+            v-model="newTaskPosition"
+            data-testid="settings-new-task-position"
+            :options="NEW_TASK_POSITION_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+          />
+        </SettingsRow>
+
+        <SettingsRow
           label="Confirmer l'archivage"
           description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
           testId="settings-row-confirm-archive"
@@ -134,7 +149,7 @@ import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
-import type { AppSettings, NotificationStyle, ThemeMode } from '../../main/shared/settings.constants'
+import type { AppSettings, NewTaskPosition, NotificationStyle, ThemeMode } from '../../main/shared/settings.constants'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
@@ -143,6 +158,11 @@ const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
   { label: 'Sombre', value: 'dark' },
   { label: 'Système', value: 'system' },
+]
+
+const NEW_TASK_POSITION_OPTIONS: { label: string; value: NewTaskPosition }[] = [
+  { label: 'En haut', value: 'top' },
+  { label: 'En bas', value: 'bottom' },
 ]
 
 const NOTIFICATION_STYLE_OPTIONS: { label: string; value: NotificationStyle }[] = [
@@ -166,6 +186,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 }
 
 const theme = settingModel('theme')
+const newTaskPosition = settingModel('newTaskPosition')
 const confirmArchive = settingModel('confirmArchive')
 const notificationsEnabled = settingModel('notificationsEnabled')
 const notificationStyle = settingModel('notificationStyle')
