@@ -14,7 +14,8 @@ onMounted(() => settings.load())
   <div class="flex flex-col h-screen">
     <Header />
 
-    <main class="h-full">
+    <!-- Hauteur restante sous l'en-tête : chaque page gère son propre défilement -->
+    <main class="min-h-0 flex-1">
       <router-view />
     </main>
 
