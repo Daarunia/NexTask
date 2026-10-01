@@ -5,6 +5,7 @@ import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
 import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
+import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
 import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
@@ -14,10 +15,12 @@ import Logger from 'electron-log'
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
- *                                    remet les paramètres à leurs valeurs par défaut et vide le dossier des sauvegardes
+ *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes
+ *                                    et oublie les dossiers ouverts
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
+ * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -95,6 +98,9 @@ export default async function testRoutes(fastify) {
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
+
+      // Ouvertures de dossiers des tests précédents oubliées
+      clearOpenedFolders()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -225,5 +231,37 @@ export default async function testRoutes(fastify) {
       const now = body.now ? new Date(body.now) : new Date()
       return runDatabaseBackup(now)
     },
+  )
+
+  /**
+   * GET /test/opened-folders
+   *
+   * Dossiers dont l'ouverture a été demandée depuis le dernier reset, dans
+   * l'ordre. En mode test, l'IPC `folders:open` ne fait que les noter, sans
+   * ouvrir l'explorateur de fichiers.
+   *
+   * @returns {Promise<Array<{kind: string, path: string}>>} Dossier (`data` ou `logs`) et son chemin absolu
+   */
+  fastify.get(
+    '/test/opened-folders',
+    {
+      schema: {
+        description: "Dossiers dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string', enum: [...FOLDER_KINDS] },
+                path: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async () => getOpenedFolders(),
   )
 }

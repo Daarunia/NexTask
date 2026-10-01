@@ -227,6 +227,34 @@
             ariaLabel="Sauvegarde automatique"
           />
         </SettingsRow>
+
+        <SettingsRow
+          label="Dossier des données"
+          description="Base de données et sauvegardes, à ouvrir dans l'explorateur de fichiers."
+          testId="settings-row-data-folder"
+        >
+          <Button
+            data-testid="btn-open-data-folder"
+            label="Ouvrir"
+            icon="pi pi-folder-open"
+            severity="secondary"
+            @click="openDataFolder"
+          />
+        </SettingsRow>
+
+        <SettingsRow
+          label="Dossier des journaux"
+          description="Fichiers de log de NexTask, utiles pour signaler un problème."
+          testId="settings-row-logs-folder"
+        >
+          <Button
+            data-testid="btn-open-logs-folder"
+            label="Ouvrir"
+            icon="pi pi-folder-open"
+            severity="secondary"
+            @click="openLogsFolder"
+          />
+        </SettingsRow>
       </SettingsSection>
     </div>
   </div>
@@ -246,6 +274,7 @@ import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
+import { getLogger } from '../utils/logger'
 import type {
   AppSettings,
   ArchivePurgeDays,
@@ -325,5 +354,28 @@ const autoBackupEnabled = settingModel('autoBackupEnabled')
 /** Ouvre la page des tâches archivées. */
 function openArchives() {
   router.push({ name: 'Archives' })
+}
+
+/**
+ * Ouvre un dossier de l'app dans l'explorateur de fichiers (via le main)
+ * @param open Appel du pont `folders`
+ */
+async function openFolder(open: () => Promise<void>) {
+  try {
+    await open()
+  } catch (error) {
+    getLogger().error("Erreur lors de l'ouverture d'un dossier :", error)
+    showError('Ouverture impossible', "Le dossier n'a pas pu être ouvert.")
+  }
+}
+
+/** Ouvre le dossier des données (base, sauvegardes). */
+function openDataFolder() {
+  return openFolder(globalThis.folders.openData)
+}
+
+/** Ouvre le dossier des journaux. */
+function openLogsFolder() {
+  return openFolder(globalThis.folders.openLogs)
 }
 </script>
