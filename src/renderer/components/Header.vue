@@ -25,7 +25,15 @@
       </Popover>
 
       <Button data-testid="btn-home" icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
-      <!--<<Button data-testid="btn-settings" icon="pi pi-cog" @click="goSettings" v-if="!isSettings" text rounded />-->
+      <Button
+        data-testid="btn-settings"
+        icon="pi pi-cog"
+        aria-label="Paramètres"
+        @click="goSettings"
+        v-if="!isSettings"
+        text
+        rounded
+      />
     </div>
   </header>
 </template>

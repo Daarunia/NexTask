@@ -4,6 +4,7 @@ import { Header } from '../components/Header'
 import { TaskBoard } from '../components/TaskBoard'
 import { TagPicker } from '../components/TagPicker'
 import { TagFilter } from '../components/TagFilter'
+import { SettingsPage } from '../components/SettingsPage'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
 
 type Fixtures = {
@@ -14,6 +15,7 @@ type Fixtures = {
   taskBoard: TaskBoard
   tagPicker: TagPicker
   tagFilter: TagFilter
+  settingsPage: SettingsPage
 }
 
 type WorkerFixtures = {
@@ -80,6 +82,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     await use(new TagFilter(page))
   },
 
+  settingsPage: async ({ page }, use) => {
+    await use(new SettingsPage(page))
+  },
+
   /**
    * Isolation : remet la base et les paramètres de test à zéro avant chaque test
    * via l'endpoint test-only POST /test/reset, puis recharge la page. Petite boucle de retry
@@ -112,7 +118,11 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       }
       if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
 
-      // 2) Rechargement pour purger le cache Pinia, puis attente du tableau chargé
+      // 2) Retour au tableau (un test précédent a pu finir sur une autre page),
+      // rechargement pour purger le cache Pinia, puis attente du tableau chargé
+      await page.evaluate(() => {
+        window.location.hash = '#/'
+      })
       await page.reload()
       await page.waitForLoadState('domcontentloaded')
       await expect(page.getByTestId('stage-column').first()).toBeVisible()
