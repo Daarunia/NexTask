@@ -8,6 +8,7 @@ import { startNotificationScheduler, stopNotificationScheduler } from './schedul
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
+import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
@@ -71,6 +72,9 @@ function createWindow() {
 
   // Taille et position enregistrées pour le prochain démarrage
   trackWindowState(mainWindow)
+
+  // Taille de l'interface, suivie au fil des changements du paramètre
+  trackInterfaceScale(mainWindow)
 
   // Fermeture avec « garder en arrière-plan » : la fenêtre est seulement masquée
   mainWindow.on('close', (event) => {

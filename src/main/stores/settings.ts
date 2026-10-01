@@ -4,6 +4,7 @@ import {
   type AppSettings,
   ARCHIVE_PURGE_DAYS,
   DEFAULT_SETTINGS,
+  INTERFACE_SCALES,
   NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
   TASK_VERSION_MAX_LENGTH,
@@ -24,6 +25,11 @@ const schema = {
   primaryColor: {
     type: 'string',
     default: DEFAULT_SETTINGS.primaryColor,
+  },
+  interfaceScale: {
+    type: 'integer',
+    enum: [...INTERFACE_SCALES],
+    default: DEFAULT_SETTINGS.interfaceScale,
   },
   taskVersions: {
     type: 'array',

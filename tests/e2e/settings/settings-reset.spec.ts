@@ -34,13 +34,20 @@ async function storedSettings(page: Page): Promise<AppSettings> {
 async function changeSettings(page: Page, settingsPage: SettingsPage) {
   await settingsPage.chooseMode('Clair')
   await settingsPage.chooseColor('Orange')
+  await settingsPage.interfaceScaleOption('125 %').click()
   await settingsPage.addVersion('2.0.0')
   await settingsPage.newTaskPositionOption('En haut').click()
   await settingsPage.confirmArchiveSwitch.click()
 
   await expect
     .poll(() => storedSettings(page))
-    .toMatchObject({ theme: 'light', primaryColor: 'orange', newTaskPosition: 'top', confirmArchive: true })
+    .toMatchObject({
+      theme: 'light',
+      primaryColor: 'orange',
+      interfaceScale: 125,
+      newTaskPosition: 'top',
+      confirmArchive: true,
+    })
 }
 
 /**
@@ -52,6 +59,7 @@ async function expectChangedSettings(header: Header, settingsPage: SettingsPage)
   await header.expectDarkModeDisabled()
   await expect(settingsPage.modeOption('Clair')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.colorSwatch('Orange')).toHaveAttribute('aria-pressed', 'true')
+  await expect(settingsPage.interfaceScaleOption('125 %')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.version('2.0.0')).toHaveCount(1)
   await expect(settingsPage.newTaskPositionOption('En haut')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.confirmArchiveSwitch).toBeChecked()
@@ -66,6 +74,7 @@ async function expectDefaultSettings(header: Header, settingsPage: SettingsPage)
   await header.expectDarkModeEnabled()
   await expect(settingsPage.modeOption('Sombre')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.colorSwatch('Violet')).toHaveAttribute('aria-pressed', 'true')
+  await expect(settingsPage.interfaceScaleOption('100 %')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.versionItems).toHaveCount(DEFAULT_SETTINGS.taskVersions.length)
   await expect(settingsPage.version('2.0.0')).toHaveCount(0)
   await expect(settingsPage.newTaskPositionOption('En bas')).toHaveAttribute('aria-pressed', 'true')

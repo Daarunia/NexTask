@@ -27,6 +27,21 @@
         >
           <PrimaryColorPicker />
         </SettingsRow>
+
+        <SettingsRow
+          label="Taille de l'interface"
+          description="Agrandit ou réduit le texte et les éléments de toute l'application."
+          testId="settings-row-interface-scale"
+        >
+          <SelectButton
+            v-model="interfaceScale"
+            data-testid="settings-interface-scale"
+            :options="INTERFACE_SCALE_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+          />
+        </SettingsRow>
       </SettingsSection>
 
       <SettingsSection title="Tâches" testId="settings-tasks">
@@ -281,13 +296,15 @@ import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
 import { getLogger } from '../utils/logger'
-import type {
-  AppSettings,
-  ArchivePurgeDays,
-  NewTaskPosition,
-  NotificationStyle,
-  ThemeMode,
-  WindowMode,
+import {
+  INTERFACE_SCALES,
+  type AppSettings,
+  type ArchivePurgeDays,
+  type InterfaceScale,
+  type NewTaskPosition,
+  type NotificationStyle,
+  type ThemeMode,
+  type WindowMode,
 } from '../../main/shared/settings.constants'
 
 const settings = useSettingsStore()
@@ -299,6 +316,11 @@ const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Sombre', value: 'dark' },
   { label: 'Système', value: 'system' },
 ]
+
+const INTERFACE_SCALE_OPTIONS: { label: string; value: InterfaceScale }[] = INTERFACE_SCALES.map((scale) => ({
+  label: `${scale} %`,
+  value: scale,
+}))
 
 const WINDOW_MODE_OPTIONS: { label: string; value: WindowMode }[] = [
   { label: 'Maximisée', value: 'maximized' },
@@ -337,6 +359,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 }
 
 const theme = settingModel('theme')
+const interfaceScale = settingModel('interfaceScale')
 const newTaskPosition = settingModel('newTaskPosition')
 const confirmArchive = settingModel('confirmArchive')
 
