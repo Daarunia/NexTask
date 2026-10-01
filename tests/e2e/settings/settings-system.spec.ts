@@ -3,8 +3,12 @@ import type { APIRequestContext } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
 
 /**
- * Tests E2E des réglages Notifications de la page Paramètres. Les rappels sont
- * observés via le passage manuel du planificateur (POST /test/run-notifications).
+ * Tests E2E des réglages Notifications et Démarrage de la page Paramètres.
+ *
+ * L'icône de la zone de notification et l'inscription au démarrage de l'OS ne
+ * sont jamais créées en mode test : seuls l'état des interrupteurs et leur
+ * persistance sont vérifiés ici. Les rappels, eux, sont observés via le
+ * passage manuel du planificateur (POST /test/run-notifications).
  */
 
 const DAY = 24 * 60 * 60 * 1000
@@ -54,5 +58,36 @@ test.describe('Notifications', () => {
     await page.reload()
 
     await expect(settingsPage.notificationsSwitch).not.toBeChecked()
+  })
+})
+
+test.describe('Démarrage et arrière-plan', () => {
+  test('tout est désactivé par défaut, « démarrer réduite » attend le lancement au démarrage', async ({
+    header,
+    settingsPage,
+  }) => {
+    await header.goSettings()
+
+    await expect(settingsPage.traySwitch).not.toBeChecked()
+    await expect(settingsPage.startupSwitch).not.toBeChecked()
+    await expect(settingsPage.minimizedSwitch).not.toBeChecked()
+    await expect(settingsPage.minimizedSwitch).toBeDisabled()
+
+    await settingsPage.startupSwitch.click()
+    await expect(settingsPage.minimizedSwitch).toBeEnabled()
+  })
+
+  test('les réglages sont conservés après un rechargement', async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.traySwitch.click()
+    await settingsPage.startupSwitch.click()
+    await settingsPage.minimizedSwitch.click()
+    await expect(settingsPage.minimizedSwitch).toBeChecked()
+
+    await page.reload()
+
+    await expect(settingsPage.traySwitch).toBeChecked()
+    await expect(settingsPage.startupSwitch).toBeChecked()
+    await expect(settingsPage.minimizedSwitch).toBeChecked()
   })
 })
