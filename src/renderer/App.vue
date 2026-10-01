@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import Toast from 'primevue/toast'
+import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
 import { useSettingsStore } from './stores/Settings'
 
@@ -21,5 +22,8 @@ onMounted(() => settings.load())
 
     <!-- Notifications d'erreur (cf. utils/toast.helper.ts) -->
     <Toast position="bottom-right" />
+
+    <!-- Confirmations ancrées sur leur bouton (cf. useConfirm) -->
+    <ConfirmPopup data-testid="confirm-popup" />
   </div>
 </template>

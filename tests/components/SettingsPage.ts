@@ -17,6 +17,7 @@ export class SettingsPage {
   readonly versionInput: Locator
   readonly versionAddButton: Locator
   readonly versionError: Locator
+  readonly confirmArchiveSwitch: Locator
   readonly notificationsSwitch: Locator
   readonly notificationStyleSelect: Locator
   readonly traySwitch: Locator
@@ -48,6 +49,7 @@ export class SettingsPage {
     this.notificationStyleSelect = this.root.getByTestId('settings-notification-style')
 
     // Interrupteurs (role switch porté par l'input interne du ToggleSwitch)
+    this.confirmArchiveSwitch = this.root.getByRole('switch', { name: "Confirmer l'archivage" })
     this.notificationsSwitch = this.root.getByRole('switch', { name: 'Rappels de date de début' })
     this.traySwitch = this.root.getByRole('switch', { name: 'Garder en arrière-plan' })
     this.startupSwitch = this.root.getByRole('switch', { name: "Lancer à l'ouverture de session" })

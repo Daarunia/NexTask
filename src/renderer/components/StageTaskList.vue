@@ -30,7 +30,7 @@
                 severity="danger"
                 data-testid="btn-archive-task"
                 class="draggable-button"
-                @click="$emit('archive-task', element)"
+                @click="onArchiveClick($event, element)"
               >
                 <i class="pi pi-trash text-white"></i>
               </Button>
@@ -70,7 +70,9 @@ import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
 import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
+import { useConfirm } from 'primevue/useconfirm'
 import { useTagStore } from '../stores/Tag'
+import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { isDragging, setDragging } from '../utils/dnd.helper'
@@ -94,6 +96,30 @@ function onDragEnd() {
 }
 
 const tagStore = useTagStore()
+const settings = useSettingsStore()
+const confirm = useConfirm()
+
+/**
+ * Clic sur la corbeille d'une carte : archivage direct, ou après confirmation
+ * dans une bulle ancrée sur le bouton si le paramètre est activé.
+ * @param event Clic sur le bouton
+ * @param task Tâche de la carte
+ */
+function onArchiveClick(event: MouseEvent, task: Task) {
+  if (!settings.confirmArchive) {
+    emit('archive-task', task)
+    return
+  }
+
+  confirm.require({
+    target: event.currentTarget as HTMLElement,
+    message: 'Archiver cette tâche ?',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
+    acceptProps: { label: 'Archiver', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    accept: () => emit('archive-task', task),
+  })
+}
 
 /**
  * Tags de chaque carte, calculés une fois par rendu : nom et couleur lus dans le
