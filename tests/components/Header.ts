@@ -33,7 +33,8 @@ export class Header {
 
     // Sélecteur de la couleur primaire
     this.paletteButton = page.getByTestId('btn-palette')
-    this.palettePanel = page.getByTestId('palette-panel')
+    // Limité au popover : la page Paramètres affiche aussi un sélecteur de couleur
+    this.palettePanel = page.getByRole('dialog').getByTestId('palette-panel')
     this.paletteSwatches = this.palettePanel.getByTestId('palette-swatch')
     this.paletteLabel = this.palettePanel.getByTestId('palette-label')
   }
