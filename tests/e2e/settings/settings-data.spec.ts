@@ -237,14 +237,13 @@ test.describe('Export et import depuis les Paramètres', () => {
     await header.goSettings()
 
     // Annuler la confirmation ne change rien
-    await settingsPage.importButton.click()
-    await expect(settingsPage.confirmPopup).toBeVisible()
+    await settingsPage.askImport()
     await settingsPage.confirmRejectButton.click()
     await expect(settingsPage.confirmPopup).toBeHidden()
     await expect(settingsPage.tag('ui')).toBeVisible()
 
     // Confirmer importe le fichier : les tags et le tableau sont rechargés sans relancer l'app
-    await settingsPage.importButton.click()
+    await settingsPage.askImport()
     await settingsPage.confirmAcceptButton.click()
     await expect(page.getByText('Données importées', { exact: true })).toBeVisible()
     await expect.poll(() => settingsPage.tagNames()).toEqual(['bug'])
@@ -270,7 +269,7 @@ test.describe('Export et import depuis les Paramètres', () => {
     await stubOpenDialog(electronApp, file)
 
     await header.goSettings()
-    await settingsPage.importButton.click()
+    await settingsPage.askImport()
     await settingsPage.confirmAcceptButton.click()
 
     await expect(page.getByText('Import refusé', { exact: true })).toBeVisible()
