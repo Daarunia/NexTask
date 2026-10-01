@@ -27,3 +27,10 @@ contextBridge.exposeInMainWorld('folders', {
   openData: () => ipcRenderer.invoke('folders:open', 'data'),
   openLogs: () => ipcRenderer.invoke('folders:open', 'logs'),
 })
+
+// Section « À propos » des Paramètres : version et liens externes (cf. system/about)
+contextBridge.exposeInMainWorld('about', {
+  getVersion: () => ipcRenderer.invoke('about:version'),
+  openReleaseNotes: () => ipcRenderer.invoke('about:open', 'releases'),
+  openNotices: () => ipcRenderer.invoke('about:open', 'notices'),
+})

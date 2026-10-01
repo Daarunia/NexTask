@@ -43,6 +43,9 @@ export class SettingsPage {
   readonly autoBackupSwitch: Locator
   readonly openDataFolderButton: Locator
   readonly openLogsFolderButton: Locator
+  readonly appVersion: Locator
+  readonly openReleaseNotesButton: Locator
+  readonly openNoticesButton: Locator
 
   /**
    * Constructeur
@@ -109,6 +112,11 @@ export class SettingsPage {
     // Section Organisation et données : ouverture des dossiers
     this.openDataFolderButton = this.root.getByTestId('btn-open-data-folder')
     this.openLogsFolderButton = this.root.getByTestId('btn-open-logs-folder')
+
+    // Section À propos : version et liens externes
+    this.appVersion = this.root.getByTestId('settings-app-version')
+    this.openReleaseNotesButton = this.root.getByTestId('btn-open-release-notes')
+    this.openNoticesButton = this.root.getByTestId('btn-open-notices')
   }
 
   /**
