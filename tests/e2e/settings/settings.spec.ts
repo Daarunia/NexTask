@@ -72,7 +72,13 @@ test.describe('Page Paramètres', () => {
 
     const res = await page.request.post(`${API}/test/reset`)
     expect(res.ok()).toBeTruthy()
+
+    // Même parcours que la fixture cleanState : démarrage à neuf sur le tableau
+    await page.evaluate(() => {
+      window.location.hash = '#/'
+    })
     await page.reload()
+    await header.goSettings()
 
     // Valeurs par défaut du schéma : mode sombre, thème Violet
     await header.expectDarkModeEnabled()
