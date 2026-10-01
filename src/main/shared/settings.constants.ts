@@ -61,6 +61,7 @@ export interface AppSettings {
   confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
   archivePurgeEnabled: boolean // suppression automatique des tâches archivées depuis longtemps
   archivePurgeDays: ArchivePurgeDays // ancienneté d'archivage au-delà de laquelle la purge supprime
+  autoBackupEnabled: boolean // copie quotidienne de la base dans le dossier des sauvegardes
   rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
@@ -82,6 +83,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   confirmArchive: false,
   archivePurgeEnabled: false,
   archivePurgeDays: 90,
+  autoBackupEnabled: false,
   rememberTagFilter: false,
   tagFilterIds: [],
   notificationsEnabled: true,

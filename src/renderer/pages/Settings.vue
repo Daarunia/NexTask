@@ -213,6 +213,20 @@
             :disabled="!settings.archivePurgeEnabled"
           />
         </SettingsRow>
+
+        <DataTransferSetting />
+
+        <SettingsRow
+          label="Sauvegarde automatique"
+          description="Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées."
+          testId="settings-row-auto-backup"
+        >
+          <ToggleSwitch
+            v-model="autoBackupEnabled"
+            data-testid="settings-auto-backup-toggle"
+            ariaLabel="Sauvegarde automatique"
+          />
+        </SettingsRow>
       </SettingsSection>
     </div>
   </div>
@@ -228,6 +242,7 @@ import SettingsSection from '../components/settings/SettingsSection.vue'
 import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
+import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
@@ -305,6 +320,7 @@ const startMinimized = settingModel('startMinimized')
 const windowMode = settingModel('windowMode')
 const archivePurgeEnabled = settingModel('archivePurgeEnabled')
 const archivePurgeDays = settingModel('archivePurgeDays')
+const autoBackupEnabled = settingModel('autoBackupEnabled')
 
 /** Ouvre la page des tâches archivées. */
 function openArchives() {

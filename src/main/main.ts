@@ -8,6 +8,7 @@ import { startNotificationScheduler, stopNotificationScheduler } from './schedul
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
+import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
@@ -170,7 +171,7 @@ app.whenReady().then(async () => {
   // /test/run-notifications pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
 
-  // Maintenance quotidienne (purge des archives), au démarrage puis chaque
+  // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
   // jour. Désactivée en mode test, comme les notifications (/test/run-*).
   if (!IS_TEST) startMaintenanceScheduler()
 
@@ -218,3 +219,11 @@ ipcMain.handle('settings:set', (_, key: unknown, value: unknown) => {
   Logger.debug(`Écriture du paramètre : ${key} = ${value}`)
   settingsStore.set(key, value as AppSettings[typeof key])
 })
+
+// Export des données : boîte de dialogue d'enregistrement, données lues via
+// GET /data/export. Une erreur est renvoyée au renderer.
+ipcMain.handle('data:export', (event) => exportDataToFile(BrowserWindow.fromWebContents(event.sender)))
+
+// Import des données (confirmé côté renderer) : boîte de dialogue d'ouverture,
+// données remplacées via POST /data/import
+ipcMain.handle('data:import', (event) => importDataFromFile(BrowserWindow.fromWebContents(event.sender)))

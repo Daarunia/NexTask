@@ -6,3 +6,6 @@
 
 /** Port d'écoute du serveur Fastify. */
 export const API_PORT = 3000
+
+/** URL du serveur Fastify, pour les appels faits depuis le main. */
+export const API_URL = `http://localhost:${API_PORT}`

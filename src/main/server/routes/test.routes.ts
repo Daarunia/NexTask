@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { prisma } from '../prismaClient.js'
-import { SEEDS_PATH } from '../../constants.js'
+import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
 import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
+import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
@@ -13,9 +14,10 @@ import Logger from 'electron-log'
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
- *                                    et remet les paramètres à leurs valeurs par défaut
+ *                                    remet les paramètres à leurs valeurs par défaut et vide le dossier des sauvegardes
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
+ * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -90,6 +92,9 @@ export default async function testRoutes(fastify) {
       // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
       // relus par le renderer au rechargement qui suit le reset
       settingsStore.clear()
+
+      // Sauvegardes des tests précédents retirées (dossier propre au mode test)
+      fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -175,6 +180,50 @@ export default async function testRoutes(fastify) {
       const body = (req.body ?? {}) as { now?: string }
       const now = body.now ? new Date(body.now) : new Date()
       return runArchivePurge(now)
+    },
+  )
+
+  /**
+   * POST /test/run-backup
+   *
+   * Déclenche manuellement un passage de la sauvegarde automatique de la base
+   * (`runDatabaseBackup`), la maintenance quotidienne étant désactivée en mode
+   * `--test`.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} [req.body] - Corps optionnel
+   * @param {string} [req.body.now] - Horodatage de référence ISO, qui date la sauvegarde (défaut : maintenant)
+   * @returns {Promise<{enabled: boolean, created: string|null, backups: string[], directory: string}>}
+   *   Sauvegarde activée ou non, fichier écrit par ce passage, sauvegardes présentes (de la plus
+   *   récente à la plus ancienne) et dossier des sauvegardes
+   */
+  fastify.post(
+    '/test/run-backup',
+    {
+      schema: {
+        description: 'Déclenche un passage de la sauvegarde automatique de la base (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { now: { type: 'string', format: 'date-time' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              enabled: { type: 'boolean' },
+              created: { type: ['string', 'null'] },
+              backups: { type: 'array', items: { type: 'string' } },
+              directory: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const body = (req.body ?? {}) as { now?: string }
+      const now = body.now ? new Date(body.now) : new Date()
+      return runDatabaseBackup(now)
     },
   )
 }

@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import taskRoutes from './routes/task.routes.js'
 import stageRoutes from './routes/stage.routes.js'
 import tagRoutes from './routes/tag.routes.js'
+import dataRoutes from './routes/data.routes.js'
 import testRoutes from './routes/test.routes.js'
 import swagger from '@fastify/swagger'
 import swaggerUI from '@fastify/swagger-ui'
@@ -84,6 +85,7 @@ export async function startServer() {
   await fastify.register(taskRoutes)
   await fastify.register(stageRoutes)
   await fastify.register(tagRoutes)
+  await fastify.register(dataRoutes)
 
   // Route de reset réservée aux tests E2E
   if (IS_TEST) {
