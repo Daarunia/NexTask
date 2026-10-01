@@ -21,6 +21,12 @@ export const NOTIFICATION_STYLES = ['reminder', 'default'] as const
 /** Style de notification. */
 export type NotificationStyle = (typeof NOTIFICATION_STYLES)[number]
 
+/** Tailles de l'interface proposées, en pourcentage de la taille normale. */
+export const INTERFACE_SCALES = [90, 100, 110, 125] as const
+
+/** Taille de l'interface, en pourcentage. */
+export type InterfaceScale = (typeof INTERFACE_SCALES)[number]
+
 /** Places possibles d'une nouvelle tâche dans sa colonne. */
 export const NEW_TASK_POSITIONS = ['top', 'bottom'] as const
 
@@ -55,6 +61,7 @@ export const TASK_VERSION_MAX_LENGTH = 20
 export interface AppSettings {
   theme: ThemeMode
   primaryColor: string // nom du thème de couleur (cf. APP_THEMES côté renderer)
+  interfaceScale: InterfaceScale // zoom de toute l'interface, appliqué par le main
   taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
   newTaskPosition: NewTaskPosition // nouvelle tâche en haut ou en bas de sa colonne
@@ -77,6 +84,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   primaryColor: 'violet',
+  interfaceScale: 100,
   taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
   defaultTaskVersion: '1.5.0',
   newTaskPosition: 'bottom',

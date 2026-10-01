@@ -1,10 +1,16 @@
 import { test, expect } from '../../fixtures/test'
+import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de la page Paramètres : navigation depuis l'en-tête, synchronisation
  * des réglages avec l'en-tête, persistance et remise à zéro entre deux tests.
  */
+
+/** Facteur de zoom de la fenêtre principale, lu côté main. */
+async function zoomFactor(electronApp: ElectronApplication): Promise<number> {
+  return electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())
+}
 
 test.describe('Page Paramètres', () => {
   test("s'ouvre depuis l'en-tête et ramène au tableau", async ({ page, header, settingsPage }) => {
@@ -150,5 +156,46 @@ test.describe('Mode système', () => {
 
     await expect(settingsPage.modeOption('Système')).toHaveAttribute('aria-pressed', 'true')
     await header.expectDarkModeDisabled()
+  })
+})
+
+test.describe("Taille de l'interface", () => {
+  test('100 % par défaut, sans zoom', async ({ electronApp, header, settingsPage }) => {
+    await header.goSettings()
+
+    await expect(settingsPage.interfaceScaleOption('100 %')).toHaveAttribute('aria-pressed', 'true')
+    expect(await zoomFactor(electronApp)).toBe(1)
+  })
+
+  test("la taille choisie zoome toute l'interface", async ({ electronApp, header, settingsPage }) => {
+    await header.goSettings()
+
+    await settingsPage.interfaceScaleOption('125 %').click()
+    await expect.poll(() => zoomFactor(electronApp)).toBe(1.25)
+
+    await settingsPage.interfaceScaleOption('90 %').click()
+    await expect.poll(() => zoomFactor(electronApp)).toBe(0.9)
+  })
+
+  test('est conservée après un rechargement', async ({ page, electronApp, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.interfaceScaleOption('110 %').click()
+    await expect.poll(() => zoomFactor(electronApp)).toBe(1.1)
+
+    await page.reload()
+
+    await expect(settingsPage.interfaceScaleOption('110 %')).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => zoomFactor(electronApp)).toBe(1.1)
+  })
+
+  test('revient à 100 % avec le reset de test', async ({ page, electronApp, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.interfaceScaleOption('125 %').click()
+    await expect.poll(() => zoomFactor(electronApp)).toBe(1.25)
+
+    const res = await page.request.post(`${API}/test/reset`)
+    expect(res.ok()).toBeTruthy()
+
+    await expect.poll(() => zoomFactor(electronApp)).toBe(1)
   })
 })

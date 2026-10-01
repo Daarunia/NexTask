@@ -12,6 +12,7 @@ export class SettingsPage {
   readonly appearanceSection: Locator
   readonly modeSelect: Locator
   readonly colorRow: Locator
+  readonly interfaceScaleSelect: Locator
   readonly versions: Locator
   readonly versionItems: Locator
   readonly versionInput: Locator
@@ -61,6 +62,7 @@ export class SettingsPage {
     this.appearanceSection = this.root.getByTestId('settings-appearance')
     this.modeSelect = this.appearanceSection.getByTestId('settings-mode')
     this.colorRow = this.appearanceSection.getByTestId('settings-row-color')
+    this.interfaceScaleSelect = this.appearanceSection.getByTestId('settings-interface-scale')
 
     // Section Tâches : versions proposées
     this.versions = this.root.getByTestId('settings-versions')
@@ -170,6 +172,14 @@ export class SettingsPage {
    */
   colorSwatch(label: string): Locator {
     return this.colorRow.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Option du sélecteur de taille de l'interface.
+   * @param label Libellé exact (« 90 % », « 100 % », « 110 % » ou « 125 % »)
+   */
+  interfaceScaleOption(label: '90 %' | '100 %' | '110 %' | '125 %'): Locator {
+    return this.interfaceScaleSelect.getByRole('button', { name: label, exact: true })
   }
 
   /**
