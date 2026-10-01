@@ -1,5 +1,5 @@
-// Incrémente la version du projet (package.json, lue aussi par la doc Swagger),
-// affiche le changement puis propose de poser le tag git correspondant.
+// Incrémente la version du projet (package.json, lue aussi par la doc Swagger, et
+// package-lock.json), affiche le changement puis propose de poser le tag git correspondant.
 //
 // Usage — node scripts/bump-version.js <major|minor|patch>
 
@@ -11,6 +11,7 @@ import { ROOT } from './private/paths.js'
 
 // Constantes
 const PACKAGE_JSON_PATH = path.join(ROOT, 'package.json')
+const PACKAGE_LOCK_PATH = path.join(ROOT, 'package-lock.json')
 const BUMP_TYPES = ['major', 'minor', 'patch']
 
 // Calcule la version suivante (X.Y.Z) selon le type d'incrément.
@@ -46,6 +47,18 @@ function replaceOnce(filePath, pattern, replacement) {
   }
 
   writeFileSync(filePath, content.replace(pattern, replacement))
+}
+
+// Reporte la version dans package-lock.json (racine et paquet ""), comme le ferait
+// npm install, sans réinstaller les dépendances ni recompiler les modules natifs.
+// Même mise en forme que npm (indentation de 2, retour à la ligne final).
+function syncLockVersion(version) {
+  const lock = JSON.parse(readFileSync(PACKAGE_LOCK_PATH, 'utf8'))
+  if (!lock.packages?.['']) throw new Error(`Paquet racine introuvable dans ${PACKAGE_LOCK_PATH}`)
+
+  lock.version = version
+  lock.packages[''].version = version
+  writeFileSync(PACKAGE_LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`)
 }
 
 // Exécute une commande git dans le repo.
@@ -93,9 +106,12 @@ async function main() {
 
   // package.json — seule occurrence du champ "version" de premier niveau.
   replaceOnce(PACKAGE_JSON_PATH, /"version": "\d+\.\d+\.\d+"/, `"version": "${newVersion}"`)
+  syncLockVersion(newVersion)
 
   console.log(`\nBump ${type} — ${oldVersion} -> ${newVersion}`)
-  console.log(`Fichier mis à jour — ${path.relative(ROOT, PACKAGE_JSON_PATH)}`)
+  console.log(
+    `Fichiers mis à jour — ${path.relative(ROOT, PACKAGE_JSON_PATH)}, ${path.relative(ROOT, PACKAGE_LOCK_PATH)}`,
+  )
 
   const shouldCommit = await askYesNo(`\nCommiter ces changements ("chore: release ${newVersion}") ?`)
   if (!shouldCommit) {
@@ -105,7 +121,7 @@ async function main() {
     return
   }
 
-  run(['add', PACKAGE_JSON_PATH])
+  run(['add', PACKAGE_JSON_PATH, PACKAGE_LOCK_PATH])
   run(['commit', '-m', `chore: release ${newVersion}`])
 
   const refsToPush = ['HEAD']

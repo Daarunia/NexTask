@@ -21,7 +21,10 @@ jobs:
       contents: write
 
     steps:
+      # Historique complet et tags, nécessaires pour générer les notes depuis le tag précédent
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -58,13 +61,21 @@ jobs:
       - name: Build Windows installer
         run: npm run build:win -- --publish never
 
-      # gh est préinstallé sur les runners GitHub, les notes sont générées à partir des PR mergées
+      # Notes construites à partir des commits, les merges locaux n'ayant pas de PR à lister
+      - name: Generate release notes
+        shell: bash
+        env:
+          # Le nom du tag donne aussi le lien de comparaison, hors tag on part du commit
+          NOTES_REF: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+        run: node scripts/release-notes.js "$NOTES_REF" > release-notes.md
+
+      # gh est préinstallé sur les runners GitHub
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.zip --title "NexTask $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.zip --title "NexTask $GITHUB_REF_NAME" --notes-file release-notes.md
 
       # Hors tag, brouillon invisible du public et sans tag créé, à supprimer après vérification
       - name: Publish draft release
@@ -72,4 +83,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID"
+        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID" --notes-file release-notes.md

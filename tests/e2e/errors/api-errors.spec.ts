@@ -8,7 +8,7 @@ import type { Page } from '@playwright/test'
  * l'utilisateur doit voir un toast d'erreur et l'écran doit revenir au dernier
  * état enregistré, au lieu d'afficher un état que la base n'a pas.
  *
- * Isolation : la base est remise à zéro avant chaque test (beforeEach global),
+ * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`),
  * et les interceptions sont retirées après chaque test (la page est partagée).
  */
 

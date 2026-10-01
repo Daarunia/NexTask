@@ -14,6 +14,8 @@ import { test, expect } from '../../fixtures/test'
  * de nos seules tâches de test (via `orderedTitlesAmong`), puis archivage.
  */
 
+const API = 'http://localhost:3000'
+
 const A_FAIRE = 'A faire'
 const EN_COURS = 'En cours'
 
@@ -127,4 +129,64 @@ test("persiste l'ordre final après un aller-retour de réordonnancement", async
   await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, all)).toEqual([t1, t2])
 
   for (const title of all) await taskBoard.archiveTask(title)
+})
+
+test("conserve les tags d'une tâche déplacée vers une autre colonne", async ({ taskBoard, page }) => {
+  const s = uid()
+  const [tagged, other] = [`Tag-${s}`, `Autre-${s}`]
+
+  // Colonnes seedées, repérées par leur nom
+  const stagesRes = await page.request.get(`${API}/stages`)
+  expect(stagesRes.ok()).toBeTruthy()
+  const stages = (await stagesRes.json()) as { id: number; name: string }[]
+  const stageId = (name: string) => stages.find((st) => st.name === name)?.id
+
+  // Tâche taguée via l'API (le sélecteur de tags n'existe pas encore côté UI)
+  const created = await page.request.post(`${API}/tasks`, {
+    data: {
+      stageId: stageId(A_FAIRE),
+      position: 0,
+      title: tagged,
+      version: '1.0.0',
+      description: '',
+      tags: ['ui', 'bug'],
+    },
+  })
+  expect(created.ok()).toBeTruthy()
+  const task = (await created.json()) as { id: number }
+
+  // Carte cible pour déposer en fin de "En cours"
+  const target = await page.request.post(`${API}/tasks`, {
+    data: { stageId: stageId(EN_COURS), position: 0, title: other, version: '1.0.0', description: '' },
+  })
+  expect(target.ok()).toBeTruthy()
+
+  // Les tâches créées par l'API n'apparaissent qu'après rechargement du tableau
+  await page.reload()
+  await expect(taskBoard.taskCard(tagged)).toBeVisible()
+  await expect(taskBoard.taskCard(other)).toBeVisible()
+
+  // Attend la sauvegarde batch qui contient la tâche déplacée
+  const batchSaved = page.waitForResponse(async (res) => {
+    if (!res.url().includes('/tasks/batch') || res.request().method() !== 'PATCH' || !res.ok()) return false
+    const body = (await res.json()) as { id: number }[]
+    return body.some((t) => t.id === task.id)
+  })
+
+  await taskBoard.dragTaskToColumnEnd(tagged, EN_COURS)
+  await expect.poll(() => taskBoard.orderedTitlesAmong(EN_COURS, [other, tagged])).toEqual([other, tagged])
+
+  // La réponse du batch renvoie la tâche déplacée avec ses tags, triés par nom
+  const batch = (await (await batchSaved).json()) as { id: number; tags?: { name: string }[] }[]
+  const moved = batch.find((t) => t.id === task.id)
+  expect(moved?.tags?.map((t) => t.name)).toEqual(['bug', 'ui'])
+
+  // En base, la tâche a changé de colonne et porte toujours ses tags
+  const fetched = await page.request.get(`${API}/tasks/${task.id}`)
+  expect(fetched.ok()).toBeTruthy()
+  const saved = (await fetched.json()) as { stageId: number | null; tags?: { name: string }[] }
+  expect(saved.stageId).toBe(stageId(EN_COURS))
+  expect(saved.tags?.map((t) => t.name)).toEqual(['bug', 'ui'])
+
+  for (const title of [tagged, other]) await taskBoard.archiveTask(title)
 })

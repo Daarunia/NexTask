@@ -10,7 +10,7 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches et les colonnes puis rejoue les seeds
+ * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut)
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -20,9 +20,15 @@ export default async function testRoutes(fastify) {
    * POST /test/reset
    *
    * Remet la base dans un état propre et déterministe : suppression de toutes
-   * les tâches puis de toutes les colonnes, et réapplication des seeds initiaux
+   * les tâches, de tous les tags puis de toutes les colonnes, et réapplication des seeds initiaux
    * (source unique de vérité : les fichiers .sql du dossier seeds).
    *
+   * Les tags par défaut sont retirés ensuite, les tests partant d'une liste de
+   * tags vide, sauf si `seedTags` est demandé.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.query - Paramètres de requête
+   * @param {boolean} [req.query.seedTags] - Conserve les tags par défaut (défaut : false)
    * @returns {Promise<{message: string}>} Confirmation du reset
    */
   fastify.post(
@@ -31,6 +37,11 @@ export default async function testRoutes(fastify) {
       schema: {
         description: 'Remet la base de test à zéro (tests E2E uniquement)',
         tags: ['Test'],
+        // En query plutôt qu'en corps : le reset est le plus souvent appelé sans corps
+        querystring: {
+          type: 'object',
+          properties: { seedTags: { type: 'boolean' } },
+        },
         response: {
           200: {
             type: 'object',
@@ -39,9 +50,13 @@ export default async function testRoutes(fastify) {
         },
       },
     },
-    async () => {
+    async (req) => {
+      const { seedTags } = req.query as { seedTags?: boolean }
+
       // Ordre important : les tâches référencent les colonnes (clé étrangère)
       await prisma.task.deleteMany()
+      // Les liens tâche-tag sont déjà partis en cascade avec les tâches
+      await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
 
       // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
@@ -64,6 +79,9 @@ export default async function testRoutes(fastify) {
           await prisma.$executeRawUnsafe(statement)
         }
       }
+
+      // Les tests partent d'une liste de tags vide, sauf demande explicite
+      if (!seedTags) await prisma.tag.deleteMany()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }

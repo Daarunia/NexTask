@@ -1,9 +1,18 @@
 import { defineConfig } from '@playwright/test'
 
+const isCI = !!process.env.CI
+
 export default defineConfig({
   globalSetup: './tests/global-setup.ts',
   testDir: './tests/e2e',
-  timeout: 100000,
+  // En CI, un test bloqué échoue vite (le plus long prend ~7 s en local). Le lancement
+  // de Vite et d'Electron a son propre timeout dans les fixtures worker.
+  timeout: isCI ? 30000 : 100000,
+  // Une ligne par test (le reporter « dot » par défaut en CI n'affiche rien avant la fin
+  // dans les logs GitHub), plus les échecs en annotations sur le résumé du run.
+  reporter: isCI ? [['list'], ['github']] : 'list',
+  // Arrête la CI après une série d'échecs plutôt que d'aller au timeout du job
+  maxFailures: isCI ? 10 : 0,
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

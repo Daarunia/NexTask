@@ -1,5 +1,5 @@
 <template>
-  <header class="flex items-center justify-between p-2 relative">
+  <header class="flex items-center justify-between p-2 relative select-none">
     <h1 class="ml-4 flex items-center gap-2 text-xl">
       <AppLogo :size="26" style="color: var(--p-primary-color)" />
       <!-- Le texte hérite déjà de la couleur d'accent : seul « Nex » est neutralisé. -->
@@ -11,12 +11,12 @@
       <Button data-testid="btn-theme" :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" text rounded @click="toggleTheme" />
 
       <!-- Bouton Palette -->
-      <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click.stop="togglePalette" />
+      <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
 
       <!-- Panneau Palette -->
-      <div v-if="showPalette" ref="paletteWrapper" class="absolute top-12 right-4 z-50">
+      <Popover ref="palettePopover">
         <PrimaryColorPicker />
-      </div>
+      </Popover>
 
       <Button data-testid="btn-home" icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
       <!--<<Button data-testid="btn-settings" icon="pi pi-cog" @click="goSettings" v-if="!isSettings" text rounded />-->
@@ -25,20 +25,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Button from 'primevue/button'
+import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
 import { useSettingsStore } from '../stores/Settings.js'
 import { getLogger } from '../utils/logger.js'
-import { PRIMARY_COLORS } from '../constants/palette.constants.js'
-import { applyPrimaryColor } from '../utils/settings.helper.js'
+import { getAppTheme } from '../constants/theme.constants.js'
+import { applyTheme } from '../utils/theme.helper.js'
 import { useRouter, useRoute } from 'vue-router'
 
 const settings = useSettingsStore()
 const isDark = ref(false)
-const showPalette = ref(false)
-const paletteWrapper = ref<HTMLElement | null>(null)
+const palettePopover = ref<InstanceType<typeof Popover> | null>(null)
 const router = useRouter()
 const route = useRoute()
 
@@ -49,18 +49,10 @@ onMounted(async () => {
 
   // Application du theme
   document.documentElement.classList.toggle('app-dark', isDark.value)
-  document.addEventListener('click', handleClickOutside)
 
-  let primaryColorsMap = new Map(PRIMARY_COLORS.map((c) => [c.name, c]))
-  getLogger().debug(`[PrimaryColorPicker] Primary color loaded from store: ${settings.primaryColor}`)
-  const colorData = primaryColorsMap.get(settings.primaryColor || 'emerald')
-
-  // Application de la couleur
-  if (colorData) applyPrimaryColor(colorData)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
+  // Application du thème de couleur (une ancienne couleur est ramenée au thème le plus proche)
+  getLogger().debug(`[Header] Couleur chargée depuis les paramètres : ${settings.primaryColor}`)
+  applyTheme(getAppTheme(settings.primaryColor))
 })
 
 function toggleTheme() {
@@ -71,16 +63,9 @@ function toggleTheme() {
   settings.setTheme(isDark.value ? 'dark' : 'light')
 }
 
-// Affichage de la palette
-function togglePalette() {
-  showPalette.value = !showPalette.value
-}
-
-// Fermeture de la palette
-function handleClickOutside(event: MouseEvent) {
-  if (paletteWrapper.value && !paletteWrapper.value.contains(event.target as Node)) {
-    showPalette.value = false
-  }
+// Ouverture et fermeture de la palette (clic extérieur et Échap gérés par le Popover)
+function togglePalette(event: MouseEvent) {
+  palettePopover.value?.toggle(event)
 }
 
 // Affichage des views

@@ -7,7 +7,7 @@ import type { APIRequestContext } from '@playwright/test'
  * Le cron automatique est désactivé en mode `--test` ; chaque test déclenche un
  * passage de façon déterministe via l'endpoint test-only POST /test/run-notifications.
  *
- * Isolation : la base est remise à zéro avant chaque test (beforeEach global),
+ * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`),
  * donc on part d'un tableau propre avec seulement les colonnes seedées.
  */
 

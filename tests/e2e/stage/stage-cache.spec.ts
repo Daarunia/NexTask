@@ -13,7 +13,7 @@ const MINUTE = 60 * 1000
 
 /**
  * Décale l'horloge du renderer par rapport à l'heure réelle.
- * Le rechargement de page du beforeEach remet l'horloge d'origine.
+ * Le rechargement de page de la fixture `cleanState` remet l'horloge d'origine.
  * @param page Page courante
  * @param offset Décalage en millisecondes
  */

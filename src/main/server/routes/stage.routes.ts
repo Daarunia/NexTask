@@ -35,7 +35,8 @@ export default async function stagesRoutes(fastify) {
     async () => {
       return prisma.stage.findMany({
         include: {
-          tasks: true,
+          // Tâches avec leurs tags triés par nom (même forme que les routes /tasks)
+          tasks: { include: { tags: { orderBy: { name: 'asc' } } } },
         },
         orderBy: [{ position: 'asc' }, { id: 'asc' }],
       })

@@ -1,15 +1,17 @@
 <template>
+  <p v-if="showFilterEmpty" data-testid="filter-empty" class="filter-empty">Aucune tâche ne correspond au filtre</p>
+
   <div
-    class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4"
+    class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4 select-none"
     ref="scrollContainer"
   >
     <draggable
       v-model="stagesLocal"
       itemKey="id"
-      :forceFallback="true"
-      :fallbackTolerance="3"
+      v-bind="DND_OPTIONS"
       class="flex gap-4"
       handle=".stage-handle"
+      @start="setDragging(true)"
       @end="onStagesDrop"
     >
       <template #item="{ element: stage }">
@@ -26,7 +28,7 @@
                 class="border rounded px-2 py-1 text-lg w-full"
               />
             </template>
-            <template v-else>
+            <div v-else class="flex items-center gap-2 min-w-0">
               <h2
                 data-testid="stage-title"
                 class="stage-handle cursor-grab text-lg"
@@ -34,7 +36,11 @@
               >
                 {{ stage.name }}
               </h2>
-            </template>
+              <!-- Nombre de cartes affichées (filtre compris) -->
+              <span data-testid="stage-count" class="stage-count">
+                {{ visibleTaskLists.get(stage.id)?.length ?? 0 }}
+              </span>
+            </div>
 
             <!-- Menu -->
             <Button
@@ -46,10 +52,12 @@
           </div>
 
           <StageTaskList
-            :tasks="taskLists.get(stage.id) ?? []"
+            :tasks="visibleTaskLists.get(stage.id) ?? []"
+            :filterActive="filterActive"
             @tasks-drop="onTasksDrop"
             @edit-task="openEditTaskDialog(stage.id, $event)"
             @archive-task="archiveTask"
+            @remove-tag="removeTagFromTask"
             @create-task="openCreateTaskDialog(stage.id)"
           />
         </div>
@@ -88,12 +96,13 @@
     :editTask="editTask"
     :position="positionDialog"
     :creationMode="creationMode"
+    :defaultTags="defaultTagsDialog"
     @task-saved="onTaskSaved"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
@@ -101,20 +110,31 @@ import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
 import { useStageStore } from '../stores/Stage'
+import { useTagStore } from '../stores/Tag'
 import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
+import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
+import { DND_OPTIONS } from '../constants/dnd.constants'
+import { setDragging } from '../utils/dnd.helper'
 
-const props = defineProps<{
-  stages: Stage[]
-  tasks: Task[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    stages: Stage[]
+    tasks: Task[]
+    // Ids des tags du filtre (OU logique), vide = tout est visible
+    filterTagIds?: number[]
+  }>(),
+  { filterTagIds: () => [] },
+)
 
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const tagStore = useTagStore()
 const showError = useErrorToast()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
@@ -132,6 +152,38 @@ const newStageName = ref('')
 const stageMenu = ref()
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
+const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
+
+// Filtre par tag actif : le DnD des tâches est alors désactivé
+const filterActive = computed(() => props.filterTagIds.length > 0)
+
+/**
+ * Colonnes telles qu'affichées. taskLists reste la liste complète, seule source
+ * des positions et du DnD. Sans filtre, c'est taskLists lui-même : chaque
+ * colonne reçoit alors le tableau d'origine, que vuedraggable modifie sur place.
+ * Avec un filtre, des copies filtrées (OU logique), jamais modifiées
+ * puisque le DnD est désactivé.
+ */
+const visibleTaskLists = computed<Map<number, Task[]>>(() => {
+  if (!filterActive.value) return taskLists
+
+  const selected = new Set(props.filterTagIds)
+  const map = new Map<number, Task[]>()
+
+  for (const [stageId, list] of taskLists) {
+    map.set(
+      stageId,
+      list.filter((task) => task.tags?.some((tag) => selected.has(tag.id))),
+    )
+  }
+
+  return map
+})
+
+// Filtre actif sans aucune carte visible
+const showFilterEmpty = computed(
+  () => filterActive.value && [...visibleTaskLists.value.values()].every((list) => list.length === 0),
+)
 
 const stageMenuItems = [
   {
@@ -173,10 +225,24 @@ function openCreateTaskDialog(stageId: number) {
   logger.debug('Ouverture création', { stageId })
 
   stageDialog.value = stageId
+  // Position calculée sur la colonne complète, pas sur la vue filtrée
   positionDialog.value = taskLists.get(stageId)?.length ?? 0
+  defaultTagsDialog.value = filterTagSelection()
   editTask.value = null
   creationMode.value = true
   showDialog.value = true
+}
+
+/**
+ * Tags du filtre en valeur de formulaire, triés par nom, pour qu'une tâche
+ * créée sous filtre reste visible après enregistrement
+ */
+function filterTagSelection(): TagSelection[] {
+  return props.filterTagIds
+    .map((id) => tagStore.getTagById(id))
+    .filter((tag): tag is Tag => tag !== undefined)
+    .sort(compareTagNames)
+    .map((tag) => ({ id: tag.id, name: tag.name }))
 }
 
 /**
@@ -260,6 +326,8 @@ function restorePersistedTasks() {
  * Drag stages
  */
 async function onStagesDrop() {
+  setDragging(false)
+
   // Comme pour les tâches, la position portée par chaque colonne est la
   // dernière persistée : elle n'est mise à jour qu'après la sauvegarde
   const changes = stagesLocal.value
@@ -287,6 +355,43 @@ async function onStagesDrop() {
 /**
  * Archivage
  */
+/**
+ * Retire un tag d'une tâche directement depuis sa carte (croix au survol du chip)
+ * @param task Tâche de la carte
+ * @param tagId Tag à retirer
+ */
+async function removeTagFromTask(task: Task, tagId: number) {
+  // Un renommage en vol changerait les noms à envoyer
+  await tagStore.waitForPendingEdits()
+
+  const location = findTaskLocation(task.id)
+  if (!location) return
+
+  const oldTags = (location.list[location.index].tags ?? []).filter((tag) => !tagStore.wasDeleted(tag.id))
+  const keptNames = oldTags
+    .filter((tag) => tag.id !== tagId)
+    .map((tag) => tagStore.getTagById(tag.id)?.name ?? tag.name)
+
+  try {
+    const updatedTask = await taskStore.updateTaskTags(task.id, keptNames)
+
+    // Seuls les tags de la copie locale changent : la carte a pu bouger pendant l'appel
+    const current = findTaskLocation(task.id)
+    if (current) {
+      const list = [...current.list]
+      list[current.index] = { ...list[current.index], tags: updatedTask.tags }
+      taskLists.set(current.stageId, list)
+    }
+
+    updateTagCounts(
+      oldTags.map((tag) => tag.id),
+      (updatedTask.tags ?? []).map((tag) => tag.id),
+    )
+  } catch {
+    showError('Retrait impossible', "Le tag n'a pas été retiré de la tâche.")
+  }
+}
+
 async function archiveTask(task: Task) {
   try {
     await taskStore.archiveTask(task.id)
@@ -314,10 +419,13 @@ async function archiveTask(task: Task) {
  * Save depuis dialog
  */
 function onTaskSaved(task: Task) {
+  const newTagIds = (task.tags ?? []).map((tag) => tag.id)
+
   if (creationMode.value) {
     // Nouvelle carte : ajoutée en fin de colonne (position = longueur à l'ouverture)
     const list = taskLists.get(task.stageId) ?? []
     taskLists.set(task.stageId, [...list, task])
+    updateTagCounts([], newTagIds)
     return
   }
 
@@ -327,9 +435,23 @@ function onTaskSaved(task: Task) {
   const location = findTaskLocation(task.id)
   if (!location) return
 
+  const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
   const list = [...location.list]
   list[location.index] = task
   taskLists.set(location.stageId, list)
+  updateTagCounts(oldTagIds, newTagIds)
+}
+
+/**
+ * Nombre de tâches des tags, mis à jour localement après l'enregistrement d'une
+ * tâche (les tags eux-mêmes sont déjà dans le cache : créés via POST /tags)
+ * @param oldTagIds Tags de la tâche avant l'enregistrement
+ * @param newTagIds Tags de la tâche enregistrée
+ */
+function updateTagCounts(oldTagIds: number[], newTagIds: number[]) {
+  const added = newTagIds.filter((id) => !oldTagIds.includes(id))
+  const removed = oldTagIds.filter((id) => !newTagIds.includes(id))
+  tagStore.adjustTaskCounts(added, removed)
 }
 
 /**
@@ -497,7 +619,41 @@ onMounted(() => {
   background-color: var(--p-surface-900);
 }
 
+/* Emplacement de dépôt d'une colonne : cadre en pointillés teinté, contenu masqué */
+.stages-container.dnd-ghost {
+  background-color: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -2px;
+}
+
+.stages-container.dnd-ghost > * {
+  visibility: hidden;
+}
+
+/* Colonne tenue : légèrement inclinée et soulevée */
+.stages-container.dnd-dragging {
+  rotate: 1deg;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.25);
+}
+
+.filter-empty {
+  @apply text-center pt-6;
+  color: var(--p-text-muted-color);
+}
+
 .stage-handle {
   user-select: none;
+}
+
+/* Seule touche de la couleur d'accent sur le tableau */
+.stage-count {
+  @apply rounded-full px-2 text-xs;
+  background-color: var(--p-primary-100);
+  color: var(--p-primary-700);
+}
+
+.app-dark .stage-count {
+  background-color: color-mix(in srgb, var(--p-primary-400) 18%, transparent);
+  color: var(--p-primary-400);
 }
 </style>

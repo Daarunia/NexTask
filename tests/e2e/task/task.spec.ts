@@ -6,7 +6,7 @@ import { test, expect } from '../../fixtures/test'
  * depuis le tableau Kanban.
  *
  * Isolation : la base de test est remise à zéro avant chaque test (voir le
- * beforeEach dans fixtures/test.ts). Chaque test part donc d'un tableau propre
+ * fixture automatique `cleanState` dans fixtures/test.ts). Chaque test part donc d'un tableau propre
  * avec uniquement les colonnes seedées — pas besoin de titres uniques ni de
  * nettoyage manuel.
  */
