@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('server', {
 contextBridge.exposeInMainWorld('settings', {
   getAll: () => ipcRenderer.invoke('settings:getAll'),
   set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
+  reset: () => ipcRenderer.invoke('settings:reset'),
 })
 
 // Export et import des données via les boîtes de dialogue natives (cf. system/dataTransfer)

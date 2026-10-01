@@ -43,6 +43,7 @@ export class SettingsPage {
   readonly autoBackupSwitch: Locator
   readonly openDataFolderButton: Locator
   readonly openLogsFolderButton: Locator
+  readonly resetButton: Locator
   readonly appVersion: Locator
   readonly openReleaseNotesButton: Locator
   readonly openNoticesButton: Locator
@@ -112,6 +113,9 @@ export class SettingsPage {
     // Section Organisation et données : ouverture des dossiers
     this.openDataFolderButton = this.root.getByTestId('btn-open-data-folder')
     this.openLogsFolderButton = this.root.getByTestId('btn-open-logs-folder')
+
+    // Section Organisation et données : réinitialisation des paramètres
+    this.resetButton = this.root.getByTestId('btn-settings-reset')
 
     // Section À propos : version et liens externes
     this.appVersion = this.root.getByTestId('settings-app-version')
@@ -272,6 +276,14 @@ export class SettingsPage {
    */
   async askImport() {
     await this.openPopupFrom(this.importButton)
+    await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ouvre la confirmation de réinitialisation des paramètres.
+   */
+  async askReset() {
+    await this.openPopupFrom(this.resetButton)
     await expect(this.confirmPopup).toBeVisible()
   }
 

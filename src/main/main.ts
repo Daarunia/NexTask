@@ -11,7 +11,7 @@ import { getRestorableWindowState, trackWindowState } from './system/windowState
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
-import { isSettingsKey, settingsStore } from './stores/settings.js'
+import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
@@ -230,6 +230,13 @@ ipcMain.handle('settings:set', (_, key: unknown, value: unknown) => {
 
   Logger.debug(`Écriture du paramètre : ${key} = ${value}`)
   settingsStore.set(key, value as AppSettings[typeof key])
+})
+
+// Remise des paramètres à leurs valeurs par défaut (confirmée côté renderer),
+// qui reçoit en retour les valeurs à appliquer
+ipcMain.handle('settings:reset', () => {
+  Logger.info('Paramètres remis à leurs valeurs par défaut')
+  return resetSettings()
 })
 
 // Export des données : boîte de dialogue d'enregistrement, données lues via
