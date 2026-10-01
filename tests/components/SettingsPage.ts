@@ -26,6 +26,15 @@ export class SettingsPage {
   readonly startupSwitch: Locator
   readonly minimizedSwitch: Locator
   readonly windowModeSelect: Locator
+  readonly tagList: Locator
+  readonly tagItems: Locator
+  readonly tagsEmpty: Locator
+  readonly tagNameInput: Locator
+  readonly tagError: Locator
+  readonly tagColors: Locator
+  readonly confirmPopup: Locator
+  readonly confirmAcceptButton: Locator
+  readonly confirmRejectButton: Locator
   readonly openArchivesButton: Locator
   readonly archivePurgeSwitch: Locator
   readonly archivePurgeDaysSelect: Locator
@@ -67,6 +76,20 @@ export class SettingsPage {
 
     // Section Démarrage : fenêtre maximisée ou à sa dernière taille
     this.windowModeSelect = this.root.getByTestId('settings-window-mode')
+
+    // Section Tags : liste des tags et leurs éditions
+    this.tagList = this.root.getByTestId('settings-tag-list')
+    this.tagItems = this.tagList.getByTestId('settings-tag')
+    this.tagsEmpty = this.tagList.getByTestId('settings-tags-empty')
+    this.tagNameInput = this.tagList.getByTestId('settings-tag-name-input')
+    this.tagError = this.tagList.getByTestId('settings-tag-error')
+    // Palette ouverte dans un popover, hors de la page
+    this.tagColors = page.getByTestId('settings-tag-colors')
+
+    // Bulle de confirmation (suppression d'un tag)
+    this.confirmPopup = page.getByTestId('confirm-popup')
+    this.confirmAcceptButton = page.getByTestId('btn-confirm-accept')
+    this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
 
     // Section Organisation et données : archives et purge automatique
     this.openArchivesButton = this.root.getByTestId('btn-open-archives')
@@ -145,6 +168,68 @@ export class SettingsPage {
    */
   notificationStyleOption(label: 'Persistante' | 'Temporaire'): Locator {
     return this.notificationStyleSelect.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Ligne d'un tag dans la liste des Paramètres.
+   * @param name Nom exact du tag
+   */
+  tag(name: string): Locator {
+    return this.tagList.locator(`[data-testid="settings-tag"][data-tag-name="${name}"]`)
+  }
+
+  /**
+   * Chip d'un tag dans la liste (attribut `data-tag-color` = couleur).
+   * @param name Nom exact du tag
+   */
+  tagChip(name: string): Locator {
+    return this.tag(name).locator('.tag-chip')
+  }
+
+  /**
+   * Noms des tags, dans l'ordre de la liste.
+   */
+  async tagNames(): Promise<string[]> {
+    return this.tagItems.evaluateAll((items) => items.map((item) => item.getAttribute('data-tag-name') ?? ''))
+  }
+
+  /**
+   * Ouvre le renommage d'un tag et saisit un nom, sans valider.
+   * @param name Nom actuel
+   * @param newName Nom saisi
+   */
+  async typeTagName(name: string, newName: string) {
+    await this.tag(name).getByTestId('btn-tag-rename').click()
+    await this.tagNameInput.fill(newName)
+  }
+
+  /**
+   * Renomme un tag (saisie puis Entrée).
+   * @param name Nom actuel
+   * @param newName Nouveau nom
+   */
+  async renameTag(name: string, newName: string) {
+    await this.typeTagName(name, newName)
+    await this.tagNameInput.press('Enter')
+  }
+
+  /**
+   * Change la couleur d'un tag via sa palette.
+   * @param name Nom du tag
+   * @param color Nom de la couleur (ex. « violet »)
+   */
+  async chooseTagColor(name: string, color: string) {
+    await this.tag(name).getByTestId('btn-tag-color').click()
+    await this.tagColors.locator(`[data-testid="tag-edit-color"][data-color="${color}"]`).click()
+  }
+
+  /**
+   * Ouvre la confirmation de suppression d'un tag.
+   * @param name Nom du tag
+   */
+  async askDeleteTag(name: string) {
+    await this.tag(name).getByTestId('btn-tag-delete').click()
+    await expect(this.confirmPopup).toBeVisible()
   }
 
   /**

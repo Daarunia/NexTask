@@ -79,6 +79,14 @@
         </SettingsRow>
       </SettingsSection>
 
+      <SettingsSection
+        title="Tags"
+        description="Renommer, recolorer ou supprimer un tag s'applique à toutes les tâches qui le portent, archives comprises."
+        testId="settings-tags"
+      >
+        <TagsSetting />
+      </SettingsSection>
+
       <SettingsSection title="Notifications" testId="settings-notifications">
         <SettingsRow
           label="Rappels de date de début"
@@ -219,6 +227,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import SettingsSection from '../components/settings/SettingsSection.vue'
 import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
+import TagsSetting from '../components/settings/TagsSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
