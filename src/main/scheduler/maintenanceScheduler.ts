@@ -1,9 +1,11 @@
 import { Cron } from 'croner'
 import Logger from 'electron-log'
 import { runArchivePurge } from './archivePurge.js'
+import { runDatabaseBackup } from './databaseBackup.js'
 
 /**
- * Planificateur de la maintenance quotidienne : purge des tâches archivées.
+ * Planificateur de la maintenance quotidienne : sauvegarde de la base, puis
+ * purge des tâches archivées (la sauvegarde garde ainsi les tâches purgées).
  *
  * Un passage au démarrage, puis un par jour (à minuit). Chaque tâche de
  * maintenance lit elle-même ses paramètres et ne fait rien s'ils la
@@ -18,6 +20,12 @@ let job: Cron | null = null
  * suivantes et ne remonte pas (journalisée seulement).
  */
 export async function runDailyMaintenance(): Promise<void> {
+  try {
+    await runDatabaseBackup()
+  } catch (err) {
+    Logger.error('[maintenance] Échec de la sauvegarde de la base :', err)
+  }
+
   try {
     await runArchivePurge()
   } catch (err) {

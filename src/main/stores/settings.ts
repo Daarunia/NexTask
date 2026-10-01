@@ -54,6 +54,10 @@ const schema = {
     enum: [...ARCHIVE_PURGE_DAYS],
     default: DEFAULT_SETTINGS.archivePurgeDays,
   },
+  autoBackupEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.autoBackupEnabled,
+  },
   rememberTagFilter: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.rememberTagFilter,

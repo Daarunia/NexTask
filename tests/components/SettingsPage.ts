@@ -38,6 +38,9 @@ export class SettingsPage {
   readonly openArchivesButton: Locator
   readonly archivePurgeSwitch: Locator
   readonly archivePurgeDaysSelect: Locator
+  readonly exportButton: Locator
+  readonly importButton: Locator
+  readonly autoBackupSwitch: Locator
 
   /**
    * Constructeur
@@ -95,6 +98,11 @@ export class SettingsPage {
     this.openArchivesButton = this.root.getByTestId('btn-open-archives')
     this.archivePurgeSwitch = this.root.getByRole('switch', { name: 'Purge automatique des archives' })
     this.archivePurgeDaysSelect = this.root.getByTestId('settings-archive-purge-days')
+
+    // Section Organisation et données : export, import et sauvegarde automatique
+    this.exportButton = this.root.getByTestId('btn-data-export')
+    this.importButton = this.root.getByTestId('btn-data-import')
+    this.autoBackupSwitch = this.root.getByRole('switch', { name: 'Sauvegarde automatique' })
   }
 
   /**

@@ -27,8 +27,16 @@ if (IS_TEST) {
   DB_FILE = 'dev.db'
 }
 
+// Dossier des données de l'app : base, sauvegardes (userData en prod, racine
+// du projet en dev et en test)
+export const DATA_PATH = CURRENT_PATH
+
 // Chemin vers la base de données
-export const DB_PATH = path.join(CURRENT_PATH, DB_FILE)
+export const DB_PATH = path.join(DATA_PATH, DB_FILE)
+
+// Sauvegardes automatiques de la base, dans un dossier à part en test pour ne
+// jamais toucher à celles du dev (le reset de test le vide)
+export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? 'backups-test' : 'backups')
 
 // Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
 // base en test et en dev pour ne jamais toucher aux paramètres réels
