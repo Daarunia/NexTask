@@ -1,5 +1,5 @@
 import type { Prisma, Tag } from '../../prisma/generated/prisma/client.js'
-import { TAG_COLORS, type TagColor } from '../../constants.js'
+import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import Logger from 'electron-log'
 
 /**

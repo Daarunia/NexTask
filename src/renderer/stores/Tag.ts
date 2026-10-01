@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { MINUTE } from '../constants/time.constants'
+import { CACHE_TTL } from '../constants/time.constants'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
 import { api } from '../utils/api.helper'
@@ -70,7 +70,7 @@ const deletedTagIds = new Set<number>()
 export const useTagStore = defineStore('tag', {
   state: (): BaseEntityState<Tag> => ({
     allEntities: null,
-    ttl: 5 * MINUTE, // 5 minutes avant de rafraichir
+    ttl: CACHE_TTL,
   }),
   getters: {
     /**

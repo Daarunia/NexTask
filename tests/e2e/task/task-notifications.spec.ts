@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du planificateur de notifications (§10 de la spec).
@@ -11,7 +12,6 @@ import type { APIRequestContext } from '@playwright/test'
  * donc on part d'un tableau propre avec seulement les colonnes seedées.
  */
 
-const API = 'http://localhost:3000'
 const DAY = 24 * 60 * 60 * 1000
 
 /** Récupère l'id d'une colonne seedée pour rattacher les tâches créées. */

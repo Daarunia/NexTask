@@ -1,13 +1,4 @@
-export {}
-
-/**
- * Paramètres persistés par electron-store. À garder aligné sur `AppSettings`
- * dans src/main/stores/settings.ts, qui fait référence côté main.
- */
-export interface AppSettings {
-  theme: 'light' | 'dark'
-  primaryColor: string
-}
+import type { AppSettings } from '../../main/shared/settings.constants'
 
 declare global {
   // Pont exposé par le preload

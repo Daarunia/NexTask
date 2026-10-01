@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import type { AppSettings } from '../types/global'
-import { DEFAULT_THEME, getAppTheme } from '../constants/theme.constants'
+import { type AppSettings, DEFAULT_SETTINGS } from '../../main/shared/settings.constants'
+import { getAppTheme } from '../constants/theme.constants'
 import { applyTheme } from '../utils/theme.helper'
 import { getLogger } from '../utils/logger'
 
@@ -13,10 +13,7 @@ import { getLogger } from '../utils/logger'
  * synchronisés quel que soit l'endroit où le réglage a été changé.
  */
 export const useSettingsStore = defineStore('settings', {
-  state: (): AppSettings => ({
-    theme: 'dark',
-    primaryColor: DEFAULT_THEME,
-  }),
+  state: (): AppSettings => ({ ...DEFAULT_SETTINGS }),
 
   getters: {
     isDark: (state) => state.theme === 'dark',

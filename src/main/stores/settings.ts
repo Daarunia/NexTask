@@ -1,14 +1,6 @@
 import Store from 'electron-store'
 import { SETTINGS_FILE } from '../constants.js'
-
-/**
- * Paramètres persistés. À garder aligné sur `AppSettings` dans
- * src/renderer/types/global.d.ts, côté renderer.
- */
-export interface AppSettings {
-  theme: 'light' | 'dark'
-  primaryColor: string
-}
+import { type AppSettings, DEFAULT_SETTINGS, THEME_MODES } from '../shared/settings.constants.js'
 
 /**
  * Schéma des paramètres : valeurs par défaut et validation à l'écriture
@@ -17,14 +9,14 @@ export interface AppSettings {
 const schema = {
   theme: {
     type: 'string',
-    enum: ['light', 'dark'],
-    default: 'dark',
+    enum: [...THEME_MODES],
+    default: DEFAULT_SETTINGS.theme,
   },
   primaryColor: {
     type: 'string',
-    default: 'violet',
+    default: DEFAULT_SETTINGS.primaryColor,
   },
-} as const
+}
 
 export type SettingsKeys = keyof AppSettings
 

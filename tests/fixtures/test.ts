@@ -6,6 +6,7 @@ import { TagPicker } from '../components/TagPicker'
 import { TagFilter } from '../components/TagFilter'
 import { SettingsPage } from '../components/SettingsPage'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
+import { API } from '../helpers/api.helper'
 
 type Fixtures = {
   cleanState: void
@@ -105,7 +106,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       let done = false
       for (let attempt = 0; attempt < 20 && !done; attempt++) {
         try {
-          const res = await page.request.post('http://localhost:3000/test/reset')
+          const res = await page.request.post(`${API}/test/reset`)
           if (res.ok()) {
             done = true
             break

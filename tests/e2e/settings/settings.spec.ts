@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de la page Paramètres : navigation depuis l'en-tête, synchronisation
@@ -69,7 +70,7 @@ test.describe('Page Paramètres', () => {
     await settingsPage.chooseMode('Clair')
     await settingsPage.chooseColor('Orange')
 
-    const res = await page.request.post('http://localhost:3000/test/reset')
+    const res = await page.request.post(`${API}/test/reset`)
     expect(res.ok()).toBeTruthy()
     await page.reload()
 

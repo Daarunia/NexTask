@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
-import { API, TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
+import { TAG_COLORS, createTaskViaApi, getTags, getTask, getTasks, tagNames } from '../../helpers/tag.helper'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du sélecteur de tags de l'écran de tâche : création immédiate
