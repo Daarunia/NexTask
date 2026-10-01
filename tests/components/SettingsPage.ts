@@ -18,6 +18,9 @@ export class SettingsPage {
   readonly versionAddButton: Locator
   readonly versionError: Locator
   readonly notificationsSwitch: Locator
+  readonly traySwitch: Locator
+  readonly startupSwitch: Locator
+  readonly minimizedSwitch: Locator
 
   /**
    * Constructeur
@@ -42,6 +45,9 @@ export class SettingsPage {
 
     // Interrupteurs (role switch porté par l'input interne du ToggleSwitch)
     this.notificationsSwitch = this.root.getByRole('switch', { name: 'Rappels de date de début' })
+    this.traySwitch = this.root.getByRole('switch', { name: 'Garder en arrière-plan' })
+    this.startupSwitch = this.root.getByRole('switch', { name: "Lancer à l'ouverture de session" })
+    this.minimizedSwitch = this.root.getByRole('switch', { name: 'Démarrer réduite' })
   }
 
   /**

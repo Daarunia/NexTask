@@ -53,6 +53,45 @@
           />
         </SettingsRow>
       </SettingsSection>
+
+      <SettingsSection
+        title="Démarrage et arrière-plan"
+        description="Pour recevoir les rappels, NexTask doit rester ouverte."
+        testId="settings-system"
+      >
+        <SettingsRow
+          label="Garder en arrière-plan"
+          description="Fermer la fenêtre laisse NexTask dans la zone de notification. « Quitter » depuis son icône la ferme vraiment."
+          testId="settings-row-tray"
+        >
+          <ToggleSwitch v-model="closeToTray" data-testid="settings-tray-toggle" ariaLabel="Garder en arrière-plan" />
+        </SettingsRow>
+
+        <SettingsRow
+          label="Lancer à l'ouverture de session"
+          description="NexTask démarre avec le système."
+          testId="settings-row-startup"
+        >
+          <ToggleSwitch
+            v-model="launchAtStartup"
+            data-testid="settings-startup-toggle"
+            ariaLabel="Lancer à l'ouverture de session"
+          />
+        </SettingsRow>
+
+        <SettingsRow
+          label="Démarrer réduite"
+          description="Au lancement avec le système, la fenêtre ne s'ouvre pas."
+          testId="settings-row-minimized"
+        >
+          <ToggleSwitch
+            v-model="startMinimized"
+            data-testid="settings-minimized-toggle"
+            ariaLabel="Démarrer réduite"
+            :disabled="!settings.launchAtStartup"
+          />
+        </SettingsRow>
+      </SettingsSection>
     </div>
   </div>
 </template>
@@ -95,4 +134,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 
 const theme = settingModel('theme')
 const notificationsEnabled = settingModel('notificationsEnabled')
+const closeToTray = settingModel('closeToTray')
+const launchAtStartup = settingModel('launchAtStartup')
+const startMinimized = settingModel('startMinimized')
 </script>

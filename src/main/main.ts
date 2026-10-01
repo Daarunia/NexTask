@@ -5,6 +5,7 @@ import { startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
@@ -21,6 +22,9 @@ const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'ico
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
+  // Lancement « réduit » à l'ouverture de session : la fenêtre ne s'affiche pas
+  const launchedHidden = wasLaunchedHidden()
+
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -32,11 +36,26 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    show: !IS_TEST,
+    show: !IS_TEST && !launchedHidden,
   })
 
-  // Plein écran fenêtré
-  mainWindow.maximize()
+  // Plein écran fenêtré. Lancée réduite, la fenêtre reste masquée si l'icône de
+  // la zone de notification permet de la rouvrir, sinon elle part dans la barre des tâches
+  if (!launchedHidden) {
+    mainWindow.maximize()
+  } else if (shouldHideOnClose()) {
+    mainWindow.once('show', () => mainWindow?.maximize())
+  } else {
+    mainWindow.minimize()
+    mainWindow.once('restore', () => mainWindow?.maximize())
+  }
+
+  // Fermeture avec « garder en arrière-plan » : la fenêtre est seulement masquée
+  mainWindow.on('close', (event) => {
+    if (!shouldHideOnClose()) return
+    event.preventDefault()
+    mainWindow?.hide()
+  })
 
   if (IS_DEV) {
     const rendererPort = process.argv[2]
@@ -55,17 +74,27 @@ function createWindow() {
   })
 }
 
+/**
+ * Ramène la fenêtre principale au premier plan (seconde instance, icône de la
+ * zone de notification), en la recréant si elle a été fermée.
+ */
+function showMainWindow() {
+  if (!app.isReady()) return
+  if (!mainWindow) {
+    createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) mainWindow.show()
+  mainWindow.focus()
+}
+
 // Verrou d'instance unique
 const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
 
 if (gotTheLock) {
   // Déclenché dans l'instance déjà en cours quand une seconde est lancée.
-  app.on('second-instance', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    if (!mainWindow.isVisible()) mainWindow.show()
-    mainWindow.focus()
-  })
+  app.on('second-instance', showMainWindow)
 } else {
   // Une instance tourne déjà ? On quitte, le processus existant sera notifié
   // via `second-instance` et ramènera sa fenêtre au premier plan.
@@ -113,6 +142,10 @@ app.whenReady().then(async () => {
   } catch (err) {
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
   }
+
+  // Icône de la zone de notification et lancement au démarrage, avant la
+  // fenêtre qui en dépend pour un lancement réduit
+  setupSystemIntegration(showMainWindow)
 
   createWindow()
 

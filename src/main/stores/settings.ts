@@ -36,6 +36,18 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,
   },
+  closeToTray: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.closeToTray,
+  },
+  launchAtStartup: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.launchAtStartup,
+  },
+  startMinimized: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.startMinimized,
+  },
 }
 
 export type SettingsKeys = keyof AppSettings

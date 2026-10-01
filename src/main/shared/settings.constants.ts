@@ -22,6 +22,9 @@ export interface AppSettings {
   taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
+  closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
+  launchAtStartup: boolean // lancement à l'ouverture de session
+  startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
 }
 
 /** Valeurs par défaut, reprises par le schéma electron-store et le store Pinia. */
@@ -31,4 +34,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
   defaultTaskVersion: '1.5.0',
   notificationsEnabled: true,
+  closeToTray: false,
+  launchAtStartup: false,
+  startMinimized: false,
 }
