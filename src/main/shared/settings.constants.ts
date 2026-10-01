@@ -27,6 +27,21 @@ export const NEW_TASK_POSITIONS = ['top', 'bottom'] as const
 /** Place d'une nouvelle tâche dans sa colonne. */
 export type NewTaskPosition = (typeof NEW_TASK_POSITIONS)[number]
 
+/** Fenêtre au démarrage : maximisée, ou à sa dernière taille et position. */
+export const WINDOW_MODES = ['maximized', 'last'] as const
+
+/** Mode d'ouverture de la fenêtre. */
+export type WindowMode = (typeof WINDOW_MODES)[number]
+
+/** Dernière taille et position de la fenêtre (hors maximisation), enregistrées par le main. */
+export interface WindowState {
+  x: number
+  y: number
+  width: number
+  height: number
+  maximized: boolean // fenêtre maximisée à sa fermeture, sur l'écran de ces coordonnées
+}
+
 /** Longueur maximale d'un numéro de version de tâche. */
 export const TASK_VERSION_MAX_LENGTH = 20
 
@@ -45,6 +60,8 @@ export interface AppSettings {
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
   launchAtStartup: boolean // lancement à l'ouverture de session
   startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
+  windowMode: WindowMode // fenêtre maximisée ou à sa dernière taille au démarrage
+  windowState: WindowState | null // dernière taille et position, tenue à jour par le main
 }
 
 /** Valeurs par défaut, reprises par le schéma electron-store et le store Pinia. */
@@ -62,4 +79,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   closeToTray: false,
   launchAtStartup: false,
   startMinimized: false,
+  windowMode: 'maximized',
+  windowState: null,
 }

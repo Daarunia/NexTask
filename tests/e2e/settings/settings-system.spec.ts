@@ -6,8 +6,9 @@ import { API } from '../../helpers/api.helper'
  * Tests E2E des réglages Notifications et Démarrage de la page Paramètres.
  *
  * L'icône de la zone de notification et l'inscription au démarrage de l'OS ne
- * sont jamais créées en mode test : seuls l'état des interrupteurs et leur
- * persistance sont vérifiés ici. Les rappels, eux, sont observés via le
+ * sont jamais créées en mode test, et la taille de la fenêtre n'y est ni
+ * enregistrée ni restaurée : seuls l'état des réglages et leur persistance
+ * sont vérifiés ici. Les rappels, eux, sont observés via le
  * passage manuel du planificateur (POST /test/run-notifications).
  */
 
@@ -111,6 +112,22 @@ test.describe('Démarrage et arrière-plan', () => {
 
     await settingsPage.startupSwitch.click()
     await expect(settingsPage.minimizedSwitch).toBeEnabled()
+  })
+
+  test("la fenêtre s'ouvre maximisée par défaut, le choix est conservé après un rechargement", async ({
+    page,
+    header,
+    settingsPage,
+  }) => {
+    await header.goSettings()
+    await expect(settingsPage.windowModeOption('Maximisée')).toHaveAttribute('aria-pressed', 'true')
+
+    await settingsPage.windowModeOption('Dernière taille').click()
+    await expect(settingsPage.windowModeOption('Dernière taille')).toHaveAttribute('aria-pressed', 'true')
+
+    await page.reload()
+
+    await expect(settingsPage.windowModeOption('Dernière taille')).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('les réglages sont conservés après un rechargement', async ({ page, header, settingsPage }) => {

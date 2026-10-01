@@ -7,6 +7,7 @@ import {
   NOTIFICATION_STYLES,
   TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
+  WINDOW_MODES,
 } from '../shared/settings.constants.js'
 
 /**
@@ -73,6 +74,23 @@ const schema = {
   startMinimized: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.startMinimized,
+  },
+  windowMode: {
+    type: 'string',
+    enum: [...WINDOW_MODES],
+    default: DEFAULT_SETTINGS.windowMode,
+  },
+  windowState: {
+    type: ['object', 'null'],
+    properties: {
+      x: { type: 'integer' },
+      y: { type: 'integer' },
+      width: { type: 'integer', minimum: 1 },
+      height: { type: 'integer', minimum: 1 },
+      maximized: { type: 'boolean' },
+    },
+    required: ['x', 'y', 'width', 'height', 'maximized'],
+    default: DEFAULT_SETTINGS.windowState,
   },
 }
 
