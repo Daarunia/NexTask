@@ -80,3 +80,42 @@ test.describe('Page Paramètres', () => {
     await expect(settingsPage.colorSwatch('Violet')).toHaveAttribute('aria-pressed', 'true')
   })
 })
+
+test.describe('Mode système', () => {
+  test("suit le réglage clair ou sombre de l'OS", async ({ page, header, settingsPage }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await header.goSettings()
+    await settingsPage.chooseMode('Système')
+
+    await expect(settingsPage.modeOption('Système')).toHaveAttribute('aria-pressed', 'true')
+    await header.expectDarkModeEnabled()
+
+    // L'OS passe en clair : l'app suit sans rechargement
+    await page.emulateMedia({ colorScheme: 'light' })
+    await header.expectDarkModeDisabled()
+    await expect(header.themeButton.locator('.pi-moon')).toBeVisible()
+  })
+
+  test("le bouton de l'en-tête quitte le mode système pour le mode inverse", async ({ page, header, settingsPage }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await header.goSettings()
+    await settingsPage.chooseMode('Système')
+    await header.expectDarkModeDisabled()
+
+    await header.toggleTheme()
+
+    await header.expectDarkModeEnabled()
+    await expect(settingsPage.modeOption('Sombre')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('est conservé après un rechargement', async ({ page, header, settingsPage }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await header.goSettings()
+    await settingsPage.chooseMode('Système')
+
+    await page.reload()
+
+    await expect(settingsPage.modeOption('Système')).toHaveAttribute('aria-pressed', 'true')
+    await header.expectDarkModeDisabled()
+  })
+})

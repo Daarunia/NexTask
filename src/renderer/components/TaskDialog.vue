@@ -103,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, PropType } from 'vue'
+import { ref, computed, watch, PropType } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
@@ -119,6 +119,7 @@ import { TagSelection } from '../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
+import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
@@ -157,7 +158,8 @@ const emit = defineEmits<{
   (e: 'task-saved', task: Task): void
 }>()
 
-const DEFAULT_VERSION = '1.5.0'
+// Paramètres : versions proposées et version par défaut
+const settings = useSettingsStore()
 
 // State
 const visible = ref(props.modelValue)
@@ -167,11 +169,16 @@ const position = ref(props.position)
 // Valeurs de départ du formulaire, relues par <Form> à chaque ouverture
 const initialValues = ref<TaskFormValues>(defaultValues())
 
-const versions = ref([
-  { label: '1.4.4', value: '1.4.4' },
-  { label: '1.4.5', value: '1.4.5' },
-  { label: '1.5.0', value: '1.5.0' },
-])
+/**
+ * Versions proposées : celles des paramètres, plus celle de la tâche éditée
+ * si elle n'y figure plus (retirée depuis), pour ne pas vider le champ.
+ */
+const versions = computed(() => {
+  const list = [...settings.taskVersions]
+  const current = props.editTask?.version
+  if (!props.creationMode && current && !list.includes(current)) list.push(current)
+  return list.map((version) => ({ label: version, value: version }))
+})
 
 const resolver = zodResolver(taskFormSchema)
 
@@ -217,7 +224,7 @@ function defaultValues(): TaskFormValues {
   return {
     title: '',
     description: '',
-    version: DEFAULT_VERSION,
+    version: settings.defaultTaskVersion,
     startDate: null,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
   }

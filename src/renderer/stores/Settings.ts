@@ -1,8 +1,12 @@
+import { toRaw } from 'vue'
 import { defineStore } from 'pinia'
 import { type AppSettings, DEFAULT_SETTINGS } from '../../main/shared/settings.constants'
 import { getAppTheme } from '../constants/theme.constants'
 import { applyTheme } from '../utils/theme.helper'
 import { getLogger } from '../utils/logger'
+
+// Préférence sombre de l'OS, suivie par le mode « système »
+const systemDarkQuery = globalThis.matchMedia('(prefers-color-scheme: dark)')
 
 /**
  * Paramètres de l'application, seule source de vérité côté renderer.
@@ -13,21 +17,25 @@ import { getLogger } from '../utils/logger'
  * synchronisés quel que soit l'endroit où le réglage a été changé.
  */
 export const useSettingsStore = defineStore('settings', {
-  state: (): AppSettings => ({ ...DEFAULT_SETTINGS }),
+  state: (): AppSettings & { systemDark: boolean } => ({
+    ...structuredClone(DEFAULT_SETTINGS),
+    systemDark: systemDarkQuery.matches, // non persisté, suivi en direct
+  }),
 
   getters: {
-    isDark: (state) => state.theme === 'dark',
+    // Mode sombre effectivement affiché, mode « système » résolu
+    isDark: (state) => (state.theme === 'system' ? state.systemDark : state.theme === 'dark'),
   },
 
   actions: {
     /**
-     * Charge tous les paramètres en un seul appel puis les applique.
+     * Charge tous les paramètres en un seul appel, les applique, puis suit la
+     * préférence de l'OS pour le mode « système ».
      */
     async load() {
       try {
         const values = await globalThis.settings.getAll()
-        this.theme = values.theme
-        this.primaryColor = values.primaryColor
+        this.$patch(values)
         getLogger().debug('[Settings] Paramètres chargés', values)
       } catch (error) {
         // On garde les valeurs par défaut : l'app reste utilisable
@@ -35,47 +43,47 @@ export const useSettingsStore = defineStore('settings', {
       }
 
       this.applyAll()
+
+      systemDarkQuery.addEventListener('change', (event) => {
+        this.systemDark = event.matches
+        this.applyMode()
+      })
     },
 
     /**
      * Applique les paramètres visuels à la page.
      */
     applyAll() {
-      document.documentElement.classList.toggle('app-dark', this.isDark)
+      this.applyMode()
       // Une ancienne couleur enregistrée est ramenée au thème le plus proche
       applyTheme(getAppTheme(this.primaryColor))
     },
 
-    /**
-     * Mode clair ou sombre : appliqué tout de suite, puis enregistré.
-     * @param value Mode choisi
-     */
-    async setTheme(value: AppSettings['theme']) {
-      this.theme = value
+    /** Applique le mode clair ou sombre effectif. */
+    applyMode() {
       document.documentElement.classList.toggle('app-dark', this.isDark)
-      await this.persist('theme', value)
     },
 
     /**
-     * Couleur d'accent : appliquée tout de suite, puis enregistrée.
-     * @param value Nom du thème de couleur
-     */
-    async setPrimaryColor(value: string) {
-      this.primaryColor = value
-      applyTheme(getAppTheme(value))
-      await this.persist('primaryColor', value)
-    },
-
-    /**
-     * Enregistre un paramètre via le pont du preload.
+     * Modifie un paramètre : appliqué tout de suite, puis enregistré. En cas
+     * d'échec de l'enregistrement, l'ancienne valeur est rétablie.
      * @param key Clé du paramètre
-     * @param value Valeur à enregistrer
+     * @param value Nouvelle valeur
      */
-    async persist<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+    async set<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+      const previous = this.$state[key]
+      // Seuls le mode et la couleur se voient : inutile de régénérer le preset sinon
+      const visual = key === 'theme' || key === 'primaryColor'
+      this.$patch({ [key]: value })
+      if (visual) this.applyAll()
+
       try {
-        await globalThis.settings.set(key, value)
+        // Copie brute : un tableau réactif ne passe pas le clonage de l'IPC
+        await globalThis.settings.set(key, structuredClone(toRaw(value)))
       } catch (error) {
         getLogger().error(`[Settings] Erreur lors de l'enregistrement de ${key}`, error)
+        this.$patch({ [key]: previous })
+        if (visual) this.applyAll()
         throw error
       }
     },
