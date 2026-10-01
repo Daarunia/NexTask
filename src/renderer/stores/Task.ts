@@ -66,6 +66,45 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Tâches archivées, de la plus récemment archivée à la plus ancienne.
+     * Lues à chaque appel, sans cache : elles ne s'affichent que sur la page
+     * des archives, et GET /stages (qui remplit le cache) ne les renvoie pas.
+     */
+    async loadArchivedTasks(): Promise<Task[]> {
+      try {
+        return await api.get<Task[]>(`/tasks`, { params: { isHistorized: true } })
+      } catch (error) {
+        getLogger().error('Erreur lors du chargement des tâches archivées :', error)
+        throw error
+      }
+    },
+
+    /**
+     * Restaure une tâche archivée en bas de la première colonne (place
+     * choisie par le serveur), puis l'ajoute au cache du tableau
+     * @param id ID de la tâche
+     * @returns La tâche restaurée, avec sa colonne et sa position
+     */
+    async restoreTask(id: number): Promise<Task> {
+      try {
+        const restored = await api.post<Task>(`/tasks/${id}/restore`)
+
+        // Archivée pendant la session, elle est encore dans le cache : on la
+        // remplace. Sinon on l'ajoute (sans cache chargé, le prochain chargement la ramènera).
+        if (this.allEntities?.data.some((task) => task.id === id)) {
+          this.patchCachedTask(id, restored)
+        } else {
+          this.allEntities?.data.push(restored)
+        }
+
+        return restored
+      } catch (error) {
+        getLogger().error(`Erreur lors de la restauration de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
+    /**
      * Historise dans le cache les tâches d'une colonne supprimée
      * (l'archivage est déjà fait côté serveur par DELETE /stages/:id)
      * @param stageId ID de la colonne supprimée

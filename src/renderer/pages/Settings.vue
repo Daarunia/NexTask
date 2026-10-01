@@ -162,12 +162,58 @@
           />
         </SettingsRow>
       </SettingsSection>
+
+      <SettingsSection title="Organisation et données" testId="settings-data">
+        <SettingsRow
+          label="Tâches archivées"
+          description="Revoir les tâches archivées, les restaurer sur le tableau ou les supprimer définitivement."
+          testId="settings-row-archives"
+        >
+          <Button
+            data-testid="btn-open-archives"
+            label="Voir les archives"
+            icon="pi pi-inbox"
+            severity="secondary"
+            @click="openArchives"
+          />
+        </SettingsRow>
+
+        <SettingsRow
+          label="Purge automatique des archives"
+          description="Les tâches archivées depuis plus longtemps que la durée choisie sont supprimées définitivement, au démarrage puis une fois par jour."
+          testId="settings-row-archive-purge"
+        >
+          <ToggleSwitch
+            v-model="archivePurgeEnabled"
+            data-testid="settings-archive-purge-toggle"
+            ariaLabel="Purge automatique des archives"
+          />
+        </SettingsRow>
+
+        <SettingsRow
+          label="Supprimer les archives de plus de"
+          description="Ancienneté d'archivage au-delà de laquelle une tâche est purgée."
+          testId="settings-row-archive-purge-days"
+        >
+          <SelectButton
+            v-model="archivePurgeDays"
+            data-testid="settings-archive-purge-days"
+            :options="ARCHIVE_PURGE_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+            :disabled="!settings.archivePurgeEnabled"
+          />
+        </SettingsRow>
+      </SettingsSection>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, type WritableComputedRef } from 'vue'
+import { useRouter } from 'vue-router'
+import Button from 'primevue/button'
 import SelectButton from 'primevue/selectbutton'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingsSection from '../components/settings/SettingsSection.vue'
@@ -178,6 +224,7 @@ import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
 import type {
   AppSettings,
+  ArchivePurgeDays,
   NewTaskPosition,
   NotificationStyle,
   ThemeMode,
@@ -186,6 +233,7 @@ import type {
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
+const router = useRouter()
 
 const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
@@ -206,6 +254,12 @@ const NEW_TASK_POSITION_OPTIONS: { label: string; value: NewTaskPosition }[] = [
 const NOTIFICATION_STYLE_OPTIONS: { label: string; value: NotificationStyle }[] = [
   { label: 'Persistante', value: 'reminder' },
   { label: 'Temporaire', value: 'default' },
+]
+
+const ARCHIVE_PURGE_OPTIONS: { label: string; value: ArchivePurgeDays }[] = [
+  { label: '30 jours', value: 30 },
+  { label: '90 jours', value: 90 },
+  { label: '1 an', value: 365 },
 ]
 
 /**
@@ -240,4 +294,11 @@ const closeToTray = settingModel('closeToTray')
 const launchAtStartup = settingModel('launchAtStartup')
 const startMinimized = settingModel('startMinimized')
 const windowMode = settingModel('windowMode')
+const archivePurgeEnabled = settingModel('archivePurgeEnabled')
+const archivePurgeDays = settingModel('archivePurgeDays')
+
+/** Ouvre la page des tâches archivées. */
+function openArchives() {
+  router.push({ name: 'Archives' })
+}
 </script>

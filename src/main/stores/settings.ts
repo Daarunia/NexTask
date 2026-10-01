@@ -2,6 +2,7 @@ import Store from 'electron-store'
 import { SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
+  ARCHIVE_PURGE_DAYS,
   DEFAULT_SETTINGS,
   NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
@@ -43,6 +44,15 @@ const schema = {
   confirmArchive: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.confirmArchive,
+  },
+  archivePurgeEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.archivePurgeEnabled,
+  },
+  archivePurgeDays: {
+    type: 'integer',
+    enum: [...ARCHIVE_PURGE_DAYS],
+    default: DEFAULT_SETTINGS.archivePurgeDays,
   },
   rememberTagFilter: {
     type: 'boolean',
