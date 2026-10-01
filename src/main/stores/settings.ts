@@ -3,6 +3,7 @@ import { SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
   DEFAULT_SETTINGS,
+  NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
   TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
@@ -32,6 +33,11 @@ const schema = {
   defaultTaskVersion: {
     type: 'string',
     default: DEFAULT_SETTINGS.defaultTaskVersion,
+  },
+  newTaskPosition: {
+    type: 'string',
+    enum: [...NEW_TASK_POSITIONS],
+    default: DEFAULT_SETTINGS.newTaskPosition,
   },
   confirmArchive: {
     type: 'boolean',

@@ -17,6 +17,7 @@ export class SettingsPage {
   readonly versionInput: Locator
   readonly versionAddButton: Locator
   readonly versionError: Locator
+  readonly newTaskPositionSelect: Locator
   readonly confirmArchiveSwitch: Locator
   readonly notificationsSwitch: Locator
   readonly notificationStyleSelect: Locator
@@ -44,6 +45,9 @@ export class SettingsPage {
     this.versionInput = this.versions.getByTestId('settings-version-input')
     this.versionAddButton = this.versions.getByTestId('btn-version-add')
     this.versionError = this.versions.getByTestId('settings-version-error')
+
+    // Section Tâches : position d'une nouvelle tâche
+    this.newTaskPositionSelect = this.root.getByTestId('settings-new-task-position')
 
     // Section Notifications : style des rappels
     this.notificationStyleSelect = this.root.getByTestId('settings-notification-style')
@@ -103,6 +107,14 @@ export class SettingsPage {
    */
   colorSwatch(label: string): Locator {
     return this.colorRow.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Option du sélecteur de position d'une nouvelle tâche.
+   * @param label Libellé exact (« En haut » ou « En bas »)
+   */
+  newTaskPositionOption(label: 'En haut' | 'En bas'): Locator {
+    return this.newTaskPositionSelect.getByRole('button', { name: label, exact: true })
   }
 
   /**
