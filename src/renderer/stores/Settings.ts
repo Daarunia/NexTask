@@ -8,6 +8,13 @@ import { getLogger } from '../utils/logger'
 // Préférence sombre de l'OS, suivie par le mode « système »
 const systemDarkQuery = globalThis.matchMedia('(prefers-color-scheme: dark)')
 
+// Résolue une fois les paramètres chargés (ou les valeurs par défaut gardées
+// après un échec). Les pages montées avant App, comme le tableau, l'attendent.
+let resolveLoaded: () => void = () => {}
+const loaded = new Promise<void>((resolve) => {
+  resolveLoaded = resolve
+})
+
 /**
  * Paramètres de l'application, seule source de vérité côté renderer.
  *
@@ -43,11 +50,31 @@ export const useSettingsStore = defineStore('settings', {
       }
 
       this.applyAll()
+      resolveLoaded()
 
       systemDarkQuery.addEventListener('change', (event) => {
         this.systemDark = event.matches
         this.applyMode()
       })
+    },
+
+    /**
+     * Attend le chargement des paramètres par `load`.
+     */
+    whenLoaded(): Promise<void> {
+      return loaded
+    },
+
+    /**
+     * Active ou désactive la mémorisation du filtre de tags. Désactivée, le
+     * filtre mémorisé est oublié pour ne pas ressurgir à la réactivation.
+     * @param enabled Nouvelle valeur du paramètre
+     */
+    async setRememberTagFilter(enabled: boolean) {
+      // Envoyés ensemble : un rechargement juste après ne coupe pas le second
+      const writes = [this.set('rememberTagFilter', enabled)]
+      if (!enabled) writes.push(this.set('tagFilterIds', []))
+      await Promise.all(writes)
     },
 
     /**

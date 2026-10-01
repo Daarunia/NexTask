@@ -55,6 +55,18 @@
         </SettingsRow>
 
         <SettingsRow
+          label="Mémoriser le filtre de tags"
+          description="Le filtre du tableau est retrouvé au prochain lancement."
+          testId="settings-row-remember-filter"
+        >
+          <ToggleSwitch
+            v-model="rememberTagFilter"
+            data-testid="settings-remember-filter-toggle"
+            ariaLabel="Mémoriser le filtre de tags"
+          />
+        </SettingsRow>
+
+        <SettingsRow
           label="Confirmer l'archivage"
           description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
           testId="settings-row-confirm-archive"
@@ -188,6 +200,14 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 const theme = settingModel('theme')
 const newTaskPosition = settingModel('newTaskPosition')
 const confirmArchive = settingModel('confirmArchive')
+
+// Désactiver la mémorisation oublie aussi le filtre enregistré
+const rememberTagFilter = computed({
+  get: () => settings.rememberTagFilter,
+  set: (value: boolean) => {
+    settings.setRememberTagFilter(value).catch(() => showError('Paramètre non enregistré'))
+  },
+})
 const notificationsEnabled = settingModel('notificationsEnabled')
 const notificationStyle = settingModel('notificationStyle')
 const closeToTray = settingModel('closeToTray')

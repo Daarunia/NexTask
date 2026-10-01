@@ -38,6 +38,8 @@ export interface AppSettings {
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
   newTaskPosition: NewTaskPosition // nouvelle tâche en haut ou en bas de sa colonne
   confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
+  rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
+  tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
@@ -53,6 +55,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultTaskVersion: '1.5.0',
   newTaskPosition: 'bottom',
   confirmArchive: false,
+  rememberTagFilter: false,
+  tagFilterIds: [],
   notificationsEnabled: true,
   notificationStyle: 'reminder',
   closeToTray: false,
