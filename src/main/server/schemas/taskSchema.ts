@@ -1,3 +1,5 @@
+import { tagSchema } from './tagSchema.js'
+
 export const taskSchema = {
   type: 'object',
   properties: {
@@ -14,5 +16,11 @@ export const taskSchema = {
     notifiedAt: { type: ['string', 'null'], format: 'date-time' },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
+    // Tags portés par la tâche, triés par nom. À déclarer ici, sinon Fastify
+    // les retire de toutes les réponses qui utilisent ce schéma.
+    tags: {
+      type: 'array',
+      items: tagSchema,
+    },
   },
 }

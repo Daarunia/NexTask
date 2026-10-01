@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import { MINUTE } from '../constants/time.constants'
-import { Task } from '../types/task.types'
+import { Task, TaskInput } from '../types/task.types'
+import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
+import { compareTagNames } from '../utils/tag.helper'
 
 /**
  * Cache des tâches.
@@ -98,9 +100,10 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Création d'une tâche
-     * @param task Tâche à créer
+     * @param task Tâche à créer (tags par nom)
+     * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus)
      */
-    async saveTask(task: Omit<Task, 'id'>): Promise<Task> {
+    async saveTask(task: TaskInput): Promise<Task> {
       try {
         const newTask = await api.post<Task>(`/tasks`, task)
 
@@ -116,16 +119,19 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Mise à jour complète d'une tâche à partir d'un objet Task
-     * @param task Objet Task avec un id existant
-     * @returns La tâche mise à jour ou une erreur si la mise à jour échoue
+     * Mise à jour complète d'une tâche
+     * @param task Tâche avec un id existant (tags par nom, absents = inchangés)
+     * @returns La tâche mise à jour, telle que renvoyée par le serveur (seule à
+     *   contenir les tags résolus), ou une erreur si la mise à jour échoue
      */
-    async updateTask(task: Task): Promise<Task> {
-      try {
-        await api.patch(`/tasks/${task.id}`, task)
-        this.patchCachedTask(task.id, task)
+    async updateTask(task: TaskInput & Pick<Task, 'id'>): Promise<Task> {
+      const { id, ...payload } = task
 
-        return { ...task }
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, payload)
+        this.patchCachedTask(id, updatedTask)
+
+        return updatedTask
       } catch (error) {
         getLogger().error('Erreur lors de la mise à jour de la tâche:', error)
         throw new Error(`Erreur de mise à jour pour la tâche ID ${task.id}: ${error}`)
@@ -133,10 +139,60 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Mise à jour partielle d'un ensemble de tâches
-     * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés)
+     * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
+     * @param tag Tag mis à jour
      */
-    async updateTaskBatch(tasks: Array<Pick<Task, 'id'> & Partial<Task>>): Promise<void> {
+    /**
+     * Remplace les tags d'une tâche (retrait direct depuis une carte)
+     * @param id Id de la tâche
+     * @param tagNames Noms des tags à garder
+     * @returns La tâche mise à jour, avec ses tags résolus
+     */
+    async updateTaskTags(id: number, tagNames: string[]): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { tags: tagNames })
+        this.patchCachedTask(id, { tags: updatedTask.tags })
+
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de la mise à jour des tags de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
+    patchTagInTasks(tag: Tag) {
+      if (!this.allEntities) return
+
+      // Le compteur de tâches n'a pas de sens dans les tags d'une tâche
+      const { taskCount: _taskCount, ...taskTag } = tag
+
+      this.allEntities.data = this.allEntities.data.map((task) => {
+        if (!task.tags?.some((t) => t.id === tag.id)) return task
+
+        const tags = task.tags.map((t) => (t.id === tag.id ? taskTag : t)).sort(compareTagNames)
+        return { ...task, tags }
+      })
+    },
+
+    /**
+     * Retire un tag supprimé des tâches du cache (le serveur l'a déjà retiré en base)
+     * @param tagId ID du tag supprimé
+     */
+    removeTagFromTasks(tagId: number) {
+      if (!this.allEntities) return
+
+      this.allEntities.data = this.allEntities.data.map((task) => {
+        if (!task.tags?.some((t) => t.id === tagId)) return task
+        return { ...task, tags: task.tags.filter((t) => t.id !== tagId) }
+      })
+    },
+
+    /**
+     * Mise à jour partielle d'un ensemble de tâches
+     * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés).
+     *   Les tags ne passent pas par ce batch : l'API les refuse.
+     */
+    async updateTaskBatch(tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags'>>>): Promise<void> {
       if (!tasks.length) return
 
       try {

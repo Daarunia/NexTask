@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import Kanban from '../components/Kanban.vue'
+import TagChip from '../components/TagChip.vue'
 import { useTaskStore } from '../stores/Task'
 import type { Task } from '../types/task.types'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
+import MultiSelect from 'primevue/multiselect'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
 import { useStageStore } from '../stores/Stage'
+import { useTagStore } from '../stores/Tag'
 import { Stage } from '../types/stage.types'
+import { Tag } from '../types/tag.types'
 
 // Logger
 const logger = getLogger()
@@ -17,21 +22,57 @@ const showError = useErrorToast()
 // Liste de stages et de tâches
 const stageStore = useStageStore()
 const taskStore = useTaskStore()
+const tagStore = useTagStore()
 const tasks = ref<Task[]>([])
 const stages = ref<Stage[]>([])
 
 // État du chargement du tableau
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
+// Ids des tags du filtre. État local à la page : remis à zéro au redémarrage
+const filterTagIds = ref<number[]>([])
+
 /**
- * Chargement des colonnes et des tâches.
+ * Tags proposés par le filtre : ceux portés par au moins une tâche active,
+ * lus dans le store (réactif) et non dans `tasks`, figé au chargement. Les tags
+ * déjà sélectionnés restent proposés même s'ils ne sont plus portés, pour
+ * garder leur chip et pouvoir les décocher. Nom et couleur viennent du store
+ * Tag, les tags supprimés sont écartés. Tri par nom sans tenir compte de la casse.
+ */
+const filterOptions = computed<Tag[]>(() => {
+  const ids = new Set<number>(filterTagIds.value)
+
+  for (const task of taskStore.getAllTasks) {
+    for (const tag of task.tags ?? []) ids.add(tag.id)
+  }
+
+  return [...ids]
+    .map((id) => tagStore.getTagById(id))
+    .filter((tag): tag is Tag => tag !== undefined)
+    .sort(compareTagNames)
+})
+
+// Un tag supprimé sort du filtre. Un tag qui n'est simplement plus porté reste sélectionné.
+watch(
+  () => filterTagIds.value.filter((id) => tagStore.getTagById(id) !== undefined),
+  (existingIds) => {
+    if (existingIds.length === filterTagIds.value.length) return
+
+    logger.debug('Tags supprimés retirés du filtre', { filterTagIds: filterTagIds.value, existingIds })
+    filterTagIds.value = existingIds
+  },
+)
+
+/**
+ * Chargement des colonnes et des tâches, et en parallèle des tags pour que les
+ * chips des cartes aient leur nom dès le premier affichage.
  * En cas d'échec, un toast prévient l'utilisateur et l'écran propose de réessayer.
  */
 async function loadBoard() {
   status.value = 'loading'
 
   try {
-    await stageStore.loadAllStages()
+    await Promise.all([stageStore.loadAllStages(), tagStore.loadAllTags()])
   } catch (error) {
     logger.error('Erreur lors du chargement du tableau :', error)
     showError('Chargement impossible', "Le tableau n'a pas pu être chargé.")
@@ -51,8 +92,40 @@ onMounted(loadBoard)
 </script>
 
 <template>
-  <div class="h-full">
-    <Kanban v-if="status === 'ready'" :stages="stages" :tasks="tasks" />
+  <div class="flex h-full flex-col">
+    <template v-if="status === 'ready'">
+      <!-- Filtre par tag (OU logique) -->
+      <div class="mx-8 mt-4 flex shrink-0 flex-wrap items-center gap-3">
+        <MultiSelect
+          v-model="filterTagIds"
+          data-testid="tag-filter"
+          :options="filterOptions"
+          optionLabel="name"
+          optionValue="id"
+          display="chip"
+          showClear
+          :showToggleAll="false"
+          placeholder="Filtrer par tag"
+          emptyMessage="Aucun tag sur le tableau"
+          class="max-w-xl min-w-60"
+        >
+          <template #chip="{ value }">
+            <TagChip :tagId="value" size="small" />
+          </template>
+          <template #option="{ option }">
+            <TagChip :tagId="option.id" size="small" />
+          </template>
+        </MultiSelect>
+
+        <span v-if="filterTagIds.length" data-testid="filter-dnd-hint" class="filter-hint text-sm">
+          Déplacement désactivé pendant le filtrage
+        </span>
+      </div>
+
+      <div class="min-h-0 flex-1">
+        <Kanban :stages="stages" :tasks="tasks" :filterTagIds="filterTagIds" />
+      </div>
+    </template>
     <div
       v-else-if="status === 'error'"
       data-testid="board-load-error"
@@ -66,3 +139,9 @@ onMounted(loadBoard)
     </div>
   </div>
 </template>
+
+<style scoped>
+.filter-hint {
+  color: var(--p-text-muted-color);
+}
+</style>

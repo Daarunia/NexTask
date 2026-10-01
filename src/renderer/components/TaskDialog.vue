@@ -39,6 +39,21 @@
         />
       </div>
 
+      <!-- Tags : valeur du formulaire = TagSelection[] -->
+      <div class="flex flex-col gap-2 w-full">
+        <span class="font-medium">Tags</span>
+        <FormField v-slot="$field" name="tags">
+          <TagSelect
+            ref="tagSelectRef"
+            :modelValue="$field.value ?? []"
+            @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
+          />
+        </FormField>
+        <Message v-if="$form.tags?.invalid" severity="error" size="small" variant="simple">
+          {{ $form.tags.error?.message }}
+        </Message>
+      </div>
+
       <!-- Version -->
       <div class="flex flex-col gap-2 w-full">
         <label for="version" class="font-medium">Version</label>
@@ -89,7 +104,7 @@
 
 <script setup lang="ts">
 import { ref, watch, PropType } from 'vue'
-import { Form, type FormSubmitEvent } from '@primevue/forms'
+import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -98,11 +113,15 @@ import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import { Task } from '../types/task.types'
+import TagSelect from './TagSelect.vue'
+import { Task, TaskInput } from '../types/task.types'
+import { TagSelection } from '../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import { useTaskStore } from '../stores/Task'
+import { useTagStore } from '../stores/Tag'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { compareTagNames } from '../utils/tag.helper'
 
 // Props
 const props = defineProps({
@@ -124,6 +143,11 @@ const props = defineProps({
   creationMode: {
     type: Boolean,
     required: true,
+  },
+  // Tags pré-remplis à la création
+  defaultTags: {
+    type: Array as PropType<TagSelection[]>,
+    default: () => [],
   },
 })
 
@@ -154,7 +178,11 @@ const resolver = zodResolver(taskFormSchema)
 // Logger & Store
 const logger = getLogger()
 const taskStore = useTaskStore()
+const tagStore = useTagStore()
 const showError = useErrorToast()
+
+// Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
+const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 
 // Sync ouverture / fermeture
 watch(
@@ -173,6 +201,7 @@ watch(
           version: props.editTask.version,
           // La date arrive en chaîne ISO via HTTP, on la reconvertit en Date pour le DatePicker
           startDate: props.editTask.startDate ? new Date(props.editTask.startDate) : null,
+          tags: toTagSelection(props.editTask),
         }
       }
     }
@@ -190,7 +219,40 @@ function defaultValues(): TaskFormValues {
     description: '',
     version: DEFAULT_VERSION,
     startDate: null,
+    tags: props.defaultTags.map((tag) => ({ ...tag })),
   }
+}
+
+/**
+ * Tags d'une tâche existante en valeur de formulaire, triés par nom actuel.
+ * Les tags supprimés depuis le chargement de la tâche sont écartés ; un tag que
+ * le cache ne connaît pas encore est gardé avec le nom porté par la tâche, pour
+ * ne pas le retirer en silence à l'enregistrement.
+ * @param task Tâche éditée
+ */
+function toTagSelection(task: Task): TagSelection[] {
+  return (task.tags ?? [])
+    .filter((t) => !tagStore.wasDeleted(t.id))
+    .map((t) => tagStore.getTagById(t.id) ?? t)
+    .sort(compareTagNames)
+    .map((tag) => ({ id: tag.id, name: tag.name }))
+}
+
+/**
+ * Noms des tags à envoyer au serveur. Un tag existant est converti en son nom
+ * actuel (il a pu être renommé depuis le menu d'édition, renvoyer l'ancien nom
+ * recréerait un tag) et un tag supprimé entre-temps est ignoré. Un tag sans id,
+ * que le sélecteur ne produit plus (création immédiate), ou inconnu du cache,
+ * garde le nom de la sélection.
+ * @param selection Valeur du champ tags
+ */
+function toTagNames(selection: TagSelection[]): string[] {
+  return selection.flatMap((selected) => {
+    if (selected.id === undefined) return [selected.name]
+    if (tagStore.wasDeleted(selected.id)) return []
+
+    return [tagStore.getTagById(selected.id)?.name ?? selected.name]
+  })
 }
 
 // Soumission, sachant que <Form> émet submit même si la validation échoue
@@ -213,10 +275,17 @@ async function saveTask(values: TaskFormValues) {
   })
 
   try {
+    // Une création, un renommage ou une suppression de tag peut être encore en
+    // vol (nom tapé puis clic direct sur Save) : le sélecteur termine tout et
+    // renvoie la sélection finale, les valeurs de soumission étant figées au clic.
+    // Un renommage refusé laisse le nom d'origine, avec lequel la tâche est enregistrée.
+    const selection = (await tagSelectRef.value?.settle()) ?? values.tags
+    const tagNames = toTagNames(selection)
+
     let savedTask: Task | undefined
 
     if (props.creationMode) {
-      const newTask: Omit<Task, 'id'> = {
+      const newTask: TaskInput = {
         stageId: stageId.value,
         title: values.title,
         version: values.version,
@@ -225,12 +294,13 @@ async function saveTask(values: TaskFormValues) {
         isHistorized: false,
         historizationDate: undefined,
         startDate: values.startDate,
+        tags: tagNames,
       }
 
       savedTask = await taskStore.saveTask(newTask)
       logger.info('Tâche créée avec succès', savedTask)
     } else if (props.editTask) {
-      const updatedTask: Task = {
+      const updatedTask: TaskInput & Pick<Task, 'id'> = {
         id: props.editTask.id,
         stageId: stageId.value,
         title: values.title,
@@ -240,6 +310,7 @@ async function saveTask(values: TaskFormValues) {
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
+        tags: tagNames,
       }
 
       savedTask = await taskStore.updateTask(updatedTask)
