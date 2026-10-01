@@ -21,25 +21,47 @@ test.describe('Page Paramètres', () => {
     await expect(page.getByTestId('stage-column').first()).toBeVisible()
   })
 
-  test("le mode choisi dans la page s'applique et met l'en-tête à jour", async ({ header, settingsPage }) => {
+  test("masque les raccourcis d'apparence de l'en-tête, en doublon de la page", async ({ header }) => {
+    await expect(header.themeButton).toBeVisible()
+    await expect(header.paletteButton).toBeVisible()
+
+    await header.goSettings()
+
+    await expect(header.themeButton).toHaveCount(0)
+    await expect(header.paletteButton).toHaveCount(0)
+
+    await header.goHome()
+
+    await expect(header.themeButton).toBeVisible()
+    await expect(header.paletteButton).toBeVisible()
+  })
+
+  test("le mode choisi dans la page s'applique et se retrouve dans l'en-tête", async ({ header, settingsPage }) => {
     await header.goSettings()
 
     await settingsPage.chooseMode('Clair')
     await header.expectDarkModeDisabled()
+
+    await header.goHome()
     await expect(header.themeButton.locator('.pi-moon')).toBeVisible()
 
+    await header.goSettings()
     await settingsPage.chooseMode('Sombre')
     await header.expectDarkModeEnabled()
+
+    await header.goHome()
     await expect(header.themeButton.locator('.pi-sun')).toBeVisible()
   })
 
   test("le bouton de l'en-tête met à jour le mode affiché dans la page", async ({ header, settingsPage }) => {
-    await header.goSettings()
     await header.ensureLightTheme()
-
+    await header.goSettings()
     await expect(settingsPage.modeOption('Clair')).toHaveAttribute('aria-pressed', 'true')
 
+    await header.goHome()
     await header.toggleTheme()
+
+    await header.goSettings()
     await expect(settingsPage.modeOption('Sombre')).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -49,6 +71,7 @@ test.describe('Page Paramètres', () => {
     await settingsPage.chooseColor('Sarcelle')
     await expect(settingsPage.colorSwatch('Sarcelle')).toHaveAttribute('aria-pressed', 'true')
 
+    await header.goHome()
     await header.openPalette()
     await expect(header.paletteSwatch('Sarcelle')).toHaveAttribute('aria-pressed', 'true')
   })
@@ -99,6 +122,8 @@ test.describe('Mode système', () => {
     // L'OS passe en clair : l'app suit sans rechargement
     await page.emulateMedia({ colorScheme: 'light' })
     await header.expectDarkModeDisabled()
+
+    await header.goHome()
     await expect(header.themeButton.locator('.pi-moon')).toBeVisible()
   })
 
@@ -108,9 +133,11 @@ test.describe('Mode système', () => {
     await settingsPage.chooseMode('Système')
     await header.expectDarkModeDisabled()
 
+    await header.goHome()
     await header.toggleTheme()
-
     await header.expectDarkModeEnabled()
+
+    await header.goSettings()
     await expect(settingsPage.modeOption('Sombre')).toHaveAttribute('aria-pressed', 'true')
   })
 
