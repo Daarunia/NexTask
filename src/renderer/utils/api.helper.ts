@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios'
-const baseUrl = import.meta.env.VITE_BASE_URL as string
+// URL du serveur Fastify, transmise par le main via le preload
+const baseUrl = globalThis.server.url
 
 /**
  * Erreur HTTP renvoyée par l'API, avec son code de statut.

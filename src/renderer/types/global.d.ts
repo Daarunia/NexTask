@@ -2,6 +2,11 @@ import type { AppSettings } from '../../main/shared/settings.constants'
 import type { DataTransferResult } from '../../main/shared/data.constants'
 
 declare global {
+  // Serveur Fastify local, port choisi au démarrage en prod
+  var server: {
+    url: string
+  }
+
   // Pont exposé par le preload
   var settings: {
     getAll: () => Promise<AppSettings>

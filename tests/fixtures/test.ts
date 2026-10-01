@@ -104,7 +104,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
    */
   cleanState: [
     async ({ page }, use) => {
-      // Garantit que l'app (et donc le serveur :3000) est démarrée
+      // Garantit que l'app (et donc son serveur) est démarrée
       await page.waitForLoadState('domcontentloaded')
 
       // 1) Reset de la base (avec retry pour couvrir le tout premier test)

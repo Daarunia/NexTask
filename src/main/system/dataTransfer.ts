@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { app, type BrowserWindow, dialog } from 'electron'
 import Logger from 'electron-log'
-import { API_URL } from '../shared/api.constants.js'
+import { getApiUrl } from '../server/index.js'
 import type { DataCounts, DataTransferResult } from '../shared/data.constants.js'
 
 /**
@@ -56,7 +56,7 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
     : await dialog.showSaveDialog(options)
   if (canceled || !filePath) return { status: 'canceled' }
 
-  const response = await fetch(`${API_URL}/data/export`)
+  const response = await fetch(`${getApiUrl()}/data/export`)
   if (!response.ok) throw new Error(`Export impossible : ${await errorMessage(response)}`)
 
   const data = (await response.json()) as { stages: unknown[]; tags: unknown[]; tasks: unknown[] }
@@ -97,7 +97,7 @@ export async function importDataFromFile(window: BrowserWindow | null): Promise<
     return { status: 'invalid', message: "Le fichier n'est pas un fichier JSON lisible" }
   }
 
-  const response = await fetch(`${API_URL}/data/import`, {
+  const response = await fetch(`${getApiUrl()}/data/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: content,

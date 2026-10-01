@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { startServer } from './server/index.js'
+import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
@@ -12,7 +12,7 @@ import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
-import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
+import { APP_ID, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -44,6 +44,9 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      // URL du serveur Fastify, exposée au renderer par le preload (sandboxé,
+      // il ne peut rien importer : même argument écrit des deux côtés)
+      additionalArguments: [`--api-url=${getApiUrl()}`],
     },
     show: !IS_TEST && !launchedHidden,
   })
@@ -75,9 +78,8 @@ function createWindow() {
     mainWindow?.hide()
   })
 
-  if (IS_DEV) {
-    const rendererPort = process.argv[2]
-    mainWindow.loadURL(`http://localhost:${rendererPort}`)
+  if (DEV_RENDERER_URL) {
+    mainWindow.loadURL(DEV_RENDERER_URL)
 
     // On ouvre la console que en dev, et pas en test playwright
     if (!IS_TEST) {
@@ -97,7 +99,8 @@ function createWindow() {
  * zone de notification), en la recréant si elle a été fermée.
  */
 function showMainWindow() {
-  if (!app.isReady()) return
+  // Serveur pas encore démarré : la fenêtre sera créée juste après (elle en a besoin)
+  if (!app.isReady() || !isServerStarted()) return
   if (!mainWindow) {
     createWindow()
     return
@@ -158,7 +161,14 @@ app.whenReady().then(async () => {
   try {
     await startServer()
   } catch (err) {
+    // Sans serveur, la fenêtre n'aurait aucune donnée (ou celles du logiciel
+    // qui occupe le port) : on n'ouvre pas l'app
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
+    if (!IS_TEST) {
+      dialog.showErrorBox('NexTask ne peut pas démarrer', `Le serveur local de l'app n'a pas pu démarrer.\n\n${err}`)
+    }
+    app.quit()
+    return
   }
 
   // Icône de la zone de notification et lancement au démarrage, avant la
