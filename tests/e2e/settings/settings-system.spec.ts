@@ -43,7 +43,7 @@ test.describe('Notifications', () => {
 
     const id = await createOverdueTask(page.request)
     const res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: false })
+    expect(await res.json()).toEqual({ count: 1, shown: false, style: null })
 
     // Marquée quand même : elle ne ressortira pas à la réactivation
     const task = (await (await page.request.get(`${API}/tasks/${id}`)).json()) as { notifiedAt: string | null }
@@ -58,6 +58,42 @@ test.describe('Notifications', () => {
     await page.reload()
 
     await expect(settingsPage.notificationsSwitch).not.toBeChecked()
+  })
+})
+
+test.describe('Style des rappels', () => {
+  test('persistante par défaut, désactivé avec les rappels', async ({ header, settingsPage }) => {
+    await header.goSettings()
+    await expect(settingsPage.notificationStyleOption('Persistante')).toHaveAttribute('aria-pressed', 'true')
+
+    await settingsPage.notificationsSwitch.click()
+    await expect(settingsPage.notificationStyleOption('Temporaire')).toBeDisabled()
+  })
+
+  test('la notification envoyée suit le style choisi', async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+
+    // Style par défaut : toast « reminder » qui reste à l'écran (Windows)
+    await createOverdueTask(page.request)
+    let res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
+    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'reminder' })
+
+    await settingsPage.notificationStyleOption('Temporaire').click()
+    await expect(settingsPage.notificationStyleOption('Temporaire')).toHaveAttribute('aria-pressed', 'true')
+
+    await createOverdueTask(page.request)
+    res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
+    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'default' })
+  })
+
+  test('le style est conservé après un rechargement', async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.notificationStyleOption('Temporaire').click()
+    await expect(settingsPage.notificationStyleOption('Temporaire')).toHaveAttribute('aria-pressed', 'true')
+
+    await page.reload()
+
+    await expect(settingsPage.notificationStyleOption('Temporaire')).toHaveAttribute('aria-pressed', 'true')
   })
 })
 

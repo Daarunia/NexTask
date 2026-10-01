@@ -3,6 +3,7 @@ import { SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
   DEFAULT_SETTINGS,
+  NOTIFICATION_STYLES,
   TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
 } from '../shared/settings.constants.js'
@@ -35,6 +36,11 @@ const schema = {
   notificationsEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,
+  },
+  notificationStyle: {
+    type: 'string',
+    enum: [...NOTIFICATION_STYLES],
+    default: DEFAULT_SETTINGS.notificationStyle,
   },
   closeToTray: {
     type: 'boolean',

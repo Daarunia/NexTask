@@ -52,6 +52,22 @@
             ariaLabel="Rappels de date de début"
           />
         </SettingsRow>
+
+        <SettingsRow
+          label="Style des rappels"
+          description="Windows uniquement. Persistante, la notification reste à l'écran jusqu'à sa fermeture. Temporaire, elle disparaît seule après quelques secondes."
+          testId="settings-row-notification-style"
+        >
+          <SelectButton
+            v-model="notificationStyle"
+            data-testid="settings-notification-style"
+            :options="NOTIFICATION_STYLE_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            :allowEmpty="false"
+            :disabled="!settings.notificationsEnabled"
+          />
+        </SettingsRow>
       </SettingsSection>
 
       <SettingsSection
@@ -106,7 +122,7 @@ import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
-import type { AppSettings, ThemeMode } from '../../main/shared/settings.constants'
+import type { AppSettings, NotificationStyle, ThemeMode } from '../../main/shared/settings.constants'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
@@ -115,6 +131,11 @@ const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
   { label: 'Sombre', value: 'dark' },
   { label: 'Système', value: 'system' },
+]
+
+const NOTIFICATION_STYLE_OPTIONS: { label: string; value: NotificationStyle }[] = [
+  { label: 'Persistante', value: 'reminder' },
+  { label: 'Temporaire', value: 'default' },
 ]
 
 /**
@@ -134,6 +155,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
 
 const theme = settingModel('theme')
 const notificationsEnabled = settingModel('notificationsEnabled')
+const notificationStyle = settingModel('notificationStyle')
 const closeToTray = settingModel('closeToTray')
 const launchAtStartup = settingModel('launchAtStartup')
 const startMinimized = settingModel('startMinimized')

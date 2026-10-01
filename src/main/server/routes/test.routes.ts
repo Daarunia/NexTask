@@ -104,7 +104,8 @@ export default async function testRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} [req.body] - Corps optionnel
    * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
-   * @returns {Promise<{count: number, shown: boolean}>} Nombre de tâches notifiées et envoi ou non de la notification OS
+   * @returns {Promise<{count: number, shown: boolean, style: string|null}>} Nombre de tâches notifiées, envoi ou non
+   *   de la notification OS et son style (`reminder` ou `default`, null sans envoi)
    */
   fastify.post(
     '/test/run-notifications',
@@ -119,7 +120,11 @@ export default async function testRoutes(fastify) {
         response: {
           200: {
             type: 'object',
-            properties: { count: { type: 'integer' }, shown: { type: 'boolean' } },
+            properties: {
+              count: { type: 'integer' },
+              shown: { type: 'boolean' },
+              style: { type: ['string', 'null'] },
+            },
           },
         },
       },
