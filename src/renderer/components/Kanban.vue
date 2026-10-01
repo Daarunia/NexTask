@@ -106,6 +106,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'v
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
+import { useConfirm } from 'primevue/useconfirm'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
@@ -138,6 +139,7 @@ const stageStore = useStageStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
 const showError = useErrorToast()
+const confirm = useConfirm()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -152,6 +154,7 @@ const stagesLocal = ref<Stage[]>([])
 const isAddingStage = ref(false)
 const newStageName = ref('')
 const stageMenu = ref()
+const stageMenuTrigger = ref<HTMLElement | null>(null) // bouton ⋮ du menu ouvert, cible de la confirmation
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
@@ -191,7 +194,7 @@ const stageMenuItems = [
   {
     label: 'Supprimer',
     icon: 'pi pi-trash',
-    command: () => deleteStage(),
+    command: () => askDeleteStage(),
     class: 'text-primary',
   },
 ]
@@ -529,9 +532,38 @@ function showAddStageInput() {
   })
 }
 
-async function deleteStage() {
-  if (!selectedStage.value) return
-  const stageId = selectedStage.value.id
+/**
+ * Choix de « Supprimer » dans le menu d'une colonne. Une colonne qui contient
+ * des tâches (filtrées comprises) n'est supprimée qu'après confirmation, dans
+ * une bulle ancrée sur son bouton de menu, puisque ses tâches seront archivées.
+ */
+function askDeleteStage() {
+  const stage = selectedStage.value
+  if (!stage) return
+
+  const count = taskLists.get(stage.id)?.length ?? 0
+  if (count === 0) {
+    deleteStage(stage)
+    return
+  }
+
+  const consequence = count === 1 ? 'Sa tâche sera archivée' : `Ses ${count} tâches seront archivées`
+  confirm.require({
+    target: stageMenuTrigger.value ?? undefined,
+    message: `Supprimer la liste « ${stage.name} » ? ${consequence}.`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
+    acceptProps: { label: 'Supprimer', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    accept: () => deleteStage(stage),
+  })
+}
+
+/**
+ * Supprime une colonne, ses tâches étant archivées par le serveur
+ * @param stage Colonne à supprimer
+ */
+async function deleteStage(stage: Stage) {
+  const stageId = stage.id
 
   try {
     await stageStore.deleteStage(stageId)
@@ -549,8 +581,6 @@ async function deleteStage() {
       error,
     })
     showError('Suppression impossible', "La liste n'a pas été supprimée.")
-  } finally {
-    selectedStage.value = null
   }
 }
 
@@ -591,6 +621,7 @@ function cancelEditingStage() {
 // Affichage du menu des stages
 const toggleStageMenu = (event: Event, stage: Stage) => {
   selectedStage.value = stage
+  stageMenuTrigger.value = event.currentTarget as HTMLElement
   stageMenu.value.toggle(event)
 }
 
