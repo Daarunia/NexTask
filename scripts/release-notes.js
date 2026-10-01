@@ -36,14 +36,17 @@ function listCommits(range) {
   })
 }
 
-// Dernier tag de version atteignable depuis ref, hors ref lui-même.
+// Tag de version précédent, choisi par numéro de version et pas par atteignabilité : le tag
+// d'une release immuable ne peut plus être déplacé et peut rester sur un commit hors branche.
 function previousTag(ref) {
   const current = git(['rev-parse', `${ref}^{commit}`])
-  const tags = git(['tag', '--merged', ref, '--sort=-v:refname'])
+  const tags = git(['tag', '--sort=-v:refname'])
     .split('\n')
     .filter((tag) => VERSION_TAG.test(tag))
 
-  return tags.find((tag) => git(['rev-parse', `${tag}^{commit}`]) !== current)
+  // Pour un tag de version, seules les versions inférieures comptent.
+  const candidates = VERSION_TAG.test(ref) ? tags.slice(tags.indexOf(ref) + 1) : tags
+  return candidates.find((tag) => git(['rev-parse', `${tag}^{commit}`]) !== current)
 }
 
 // Lien vers un commit si on connaît le dépôt GitHub (variables fournies par Actions).
