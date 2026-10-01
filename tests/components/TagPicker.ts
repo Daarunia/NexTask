@@ -128,9 +128,17 @@ export class TagPicker {
     await expect(this.search).toBeVisible()
   }
 
-  /** Referme le popover par un clic en dehors, dans le dialogue. */
+  /**
+   * Referme le popover par un clic en dehors, dans le dialogue. Le clic vise le bord
+   * droit du champ titre : sur un petit écran (runner CI), le popover s'ouvre au-dessus
+   * du champ Tags et recouvre le titre, mais plus étroit que le dialogue et aligné à
+   * gauche, il n'en atteint jamais le bord droit.
+   */
   async close() {
-    await this.outside.click()
+    const box = await this.outside.boundingBox()
+    if (!box) throw new Error('Champ titre introuvable pour refermer le popover')
+
+    await this.outside.click({ position: { x: box.width - 8, y: box.height / 2 } })
     await expect(this.panel).toBeHidden()
   }
 
