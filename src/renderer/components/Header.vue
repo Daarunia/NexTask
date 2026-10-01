@@ -55,9 +55,10 @@ const palettePopover = ref<InstanceType<typeof Popover> | null>(null)
 const router = useRouter()
 const route = useRoute()
 
+// Bascule vers le mode inverse de celui affiché (quitte le mode « système »)
 async function toggleTheme() {
   try {
-    await settings.setTheme(settings.isDark ? 'light' : 'dark')
+    await settings.set('theme', settings.isDark ? 'light' : 'dark')
   } catch {
     showError('Thème non enregistré')
   }

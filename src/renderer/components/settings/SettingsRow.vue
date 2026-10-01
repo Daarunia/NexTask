@@ -1,12 +1,12 @@
 <template>
-  <div :data-testid="testId" class="settings-row">
+  <div :data-testid="testId" :class="['settings-row', { stacked }]">
     <div class="min-w-0">
       <p class="font-medium">{{ label }}</p>
       <p v-if="description" class="settings-muted text-sm">{{ description }}</p>
     </div>
 
     <!-- Contrôle du réglage (bouton, sélecteur…) -->
-    <div class="shrink-0">
+    <div :class="stacked ? 'w-full' : 'shrink-0'">
       <slot />
     </div>
   </div>
@@ -17,6 +17,8 @@ defineProps<{
   label: string
   description?: string
   testId?: string
+  // Contrôle sous le libellé, sur toute la largeur (listes, formulaires)
+  stacked?: boolean
 }>()
 </script>
 
@@ -26,6 +28,10 @@ defineProps<{
 /* Libellé à gauche, contrôle à droite, passage à la ligne sur fenêtre étroite */
 .settings-row {
   @apply flex flex-wrap items-center justify-between gap-4 py-3;
+}
+
+.settings-row.stacked {
+  @apply flex-col items-stretch;
 }
 
 /* Séparateur discret entre deux réglages d'une même section */

@@ -1,6 +1,11 @@
 import Store from 'electron-store'
 import { SETTINGS_FILE } from '../constants.js'
-import { type AppSettings, DEFAULT_SETTINGS, THEME_MODES } from '../shared/settings.constants.js'
+import {
+  type AppSettings,
+  DEFAULT_SETTINGS,
+  TASK_VERSION_MAX_LENGTH,
+  THEME_MODES,
+} from '../shared/settings.constants.js'
 
 /**
  * Schéma des paramètres : valeurs par défaut et validation à l'écriture
@@ -15,6 +20,21 @@ const schema = {
   primaryColor: {
     type: 'string',
     default: DEFAULT_SETTINGS.primaryColor,
+  },
+  taskVersions: {
+    type: 'array',
+    items: { type: 'string', pattern: String.raw`\S`, maxLength: TASK_VERSION_MAX_LENGTH },
+    minItems: 1,
+    uniqueItems: true,
+    default: DEFAULT_SETTINGS.taskVersions,
+  },
+  defaultTaskVersion: {
+    type: 'string',
+    default: DEFAULT_SETTINGS.defaultTaskVersion,
+  },
+  notificationsEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.notificationsEnabled,
   },
 }
 

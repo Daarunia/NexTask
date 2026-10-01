@@ -40,7 +40,7 @@ const selectedLabel = computed(() => getAppTheme(settings.primaryColor).label)
  */
 async function selectTheme(theme: AppTheme) {
   try {
-    await settings.setPrimaryColor(theme.name)
+    await settings.set('primaryColor', theme.name)
   } catch {
     showError('Couleur non enregistrée')
   }

@@ -6,20 +6,29 @@
  * sans changer l'arborescence de build/main.
  */
 
-/** Modes d'affichage proposés. */
-export const THEME_MODES = ['light', 'dark'] as const
+/** Modes d'affichage proposés (`system` suit le réglage de l'OS). */
+export const THEME_MODES = ['light', 'dark', 'system'] as const
 
 /** Mode d'affichage. */
 export type ThemeMode = (typeof THEME_MODES)[number]
+
+/** Longueur maximale d'un numéro de version de tâche. */
+export const TASK_VERSION_MAX_LENGTH = 20
 
 /** Paramètres persistés par electron-store. */
 export interface AppSettings {
   theme: ThemeMode
   primaryColor: string // nom du thème de couleur (cf. APP_THEMES côté renderer)
+  taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
+  defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
+  notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
 }
 
 /** Valeurs par défaut, reprises par le schéma electron-store et le store Pinia. */
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   primaryColor: 'violet',
+  taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
+  defaultTaskVersion: '1.5.0',
+  notificationsEnabled: true,
 }
