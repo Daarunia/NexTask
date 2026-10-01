@@ -228,12 +228,25 @@ export class SettingsPage {
   }
 
   /**
+   * Ouvre une bulle (confirmation, palette) depuis son déclencheur, centré au
+   * préalable dans la page. Les bulles PrimeVue se ferment dès que la page
+   * défile : ouvertes près d'un bord, elles débordent de la fenêtre et
+   * Playwright ferait défiler la page pour atteindre leurs boutons.
+   * @param trigger Bouton qui ouvre la bulle
+   */
+  async openPopupFrom(trigger: Locator) {
+    await trigger.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+    await trigger.click()
+  }
+
+  /**
    * Change la couleur d'un tag via sa palette.
    * @param name Nom du tag
    * @param color Nom de la couleur (ex. « violet »)
    */
   async chooseTagColor(name: string, color: string) {
-    await this.tag(name).getByTestId('btn-tag-color').click()
+    await this.openPopupFrom(this.tag(name).getByTestId('btn-tag-color'))
+    await expect(this.tagColors).toBeVisible()
     await this.tagColors.locator(`[data-testid="tag-edit-color"][data-color="${color}"]`).click()
   }
 
@@ -242,7 +255,15 @@ export class SettingsPage {
    * @param name Nom du tag
    */
   async askDeleteTag(name: string) {
-    await this.tag(name).getByTestId('btn-tag-delete').click()
+    await this.openPopupFrom(this.tag(name).getByTestId('btn-tag-delete'))
+    await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ouvre la confirmation d'import des données.
+   */
+  async askImport() {
+    await this.openPopupFrom(this.importButton)
     await expect(this.confirmPopup).toBeVisible()
   }
 
