@@ -48,10 +48,7 @@ test.describe('Cache des colonnes et des tâches', () => {
     // 5 min 30 après le chargement, 2 min 30 après le renommage
     await setClockOffset(page, 5.5 * MINUTE)
 
-    // Le bouton Paramètres est masqué dans l'en-tête : navigation directe par le hash
-    await page.evaluate(() => {
-      window.location.hash = '#/settings'
-    })
+    await header.goSettings()
     await expect(header.homeButton).toBeVisible()
     await header.goHome()
 
