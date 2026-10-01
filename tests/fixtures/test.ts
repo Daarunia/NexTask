@@ -81,8 +81,8 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   },
 
   /**
-   * Isolation : remet la base de test à zéro avant chaque test via l'endpoint
-   * test-only POST /test/reset, puis recharge la page. Petite boucle de retry
+   * Isolation : remet la base et les paramètres de test à zéro avant chaque test
+   * via l'endpoint test-only POST /test/reset, puis recharge la page. Petite boucle de retry
    * pour couvrir le tout premier test (le serveur Fastify peut finir de démarrer).
    *
    * Fixture automatique plutôt qu'un test.beforeEach dans ce module : ce module
