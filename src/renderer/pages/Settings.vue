@@ -255,6 +255,8 @@
             @click="openLogsFolder"
           />
         </SettingsRow>
+
+        <ResetSettingsSetting />
       </SettingsSection>
 
       <AboutSection />
@@ -273,6 +275,7 @@ import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
+import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'

@@ -11,6 +11,7 @@ declare global {
   var settings: {
     getAll: () => Promise<AppSettings>
     set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>
+    reset: () => Promise<AppSettings> // valeurs par défaut, fenêtre conservée
   }
 
   // Export et import des données, fichier choisi dans une boîte de dialogue native

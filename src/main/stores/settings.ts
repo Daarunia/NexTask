@@ -123,3 +123,17 @@ export const settingsStore = new Store<AppSettings>({ schema, name: SETTINGS_FIL
 export function isSettingsKey(key: unknown): key is SettingsKeys {
   return SETTINGS_KEYS.includes(key as SettingsKeys)
 }
+
+/**
+ * Remet les paramètres à leurs valeurs par défaut, en une seule écriture. La
+ * dernière taille et position de la fenêtre, tenue par le main et non réglable,
+ * est conservée. Les écouteurs `onDidChange` (zone de notification, lancement
+ * au démarrage) suivent les clés modifiées.
+ *
+ * @returns Paramètres après la remise à zéro
+ */
+export function resetSettings(): AppSettings {
+  const defaults = structuredClone(DEFAULT_SETTINGS)
+  settingsStore.set({ ...defaults, windowState: settingsStore.get('windowState') })
+  return settingsStore.store
+}

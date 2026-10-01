@@ -78,6 +78,22 @@ export const useSettingsStore = defineStore('settings', {
     },
 
     /**
+     * Remet tous les paramètres à leurs valeurs par défaut (côté main, en une
+     * écriture), puis applique celles renvoyées.
+     */
+    async reset() {
+      try {
+        const values = await globalThis.settings.reset()
+        this.$patch(values)
+        this.applyAll()
+        getLogger().info('[Settings] Paramètres remis à leurs valeurs par défaut')
+      } catch (error) {
+        getLogger().error('[Settings] Erreur lors de la remise à zéro des paramètres', error)
+        throw error
+      }
+    },
+
+    /**
      * Applique les paramètres visuels à la page.
      */
     applyAll() {
