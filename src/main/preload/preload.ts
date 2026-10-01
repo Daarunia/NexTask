@@ -4,6 +4,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendMessage: (message: string) => ipcRenderer.send('message', message),
 })
 
+// URL du serveur Fastify local, passée par le main en argument de la fenêtre
+// (`additionalArguments`, port choisi au démarrage en prod)
+const API_URL_ARG = '--api-url='
+contextBridge.exposeInMainWorld('server', {
+  url: process.argv.find((arg: string) => arg.startsWith(API_URL_ARG))?.slice(API_URL_ARG.length),
+})
+
 contextBridge.exposeInMainWorld('settings', {
   getAll: () => ipcRenderer.invoke('settings:getAll'),
   set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),

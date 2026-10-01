@@ -8,8 +8,8 @@ import swagger from '@fastify/swagger'
 import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
-import { APP_VERSION, IS_DEV, IS_TEST, staticAsset } from '../constants.js'
-import { API_PORT } from '../shared/api.constants.js'
+import type { AddressInfo } from 'node:net'
+import { API_PORT, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from '../constants.js'
 import Logger from 'electron-log'
 import { readFileSync } from 'node:fs'
 
@@ -25,6 +25,30 @@ function readBrandAsset(name: string): Buffer | null {
   return filePath ? readFileSync(filePath) : null
 }
 
+// URL du serveur une fois à l'écoute (port choisi par le système en prod)
+let apiUrl: string | null = null
+
+/** Vrai une fois le serveur à l'écoute. */
+export function isServerStarted(): boolean {
+  return apiUrl !== null
+}
+
+/**
+ * URL du serveur Fastify, pour les appels faits depuis le main et pour le
+ * renderer (transmise par le preload).
+ *
+ * @throws Si le serveur n'a pas encore démarré
+ */
+export function getApiUrl(): string {
+  if (!apiUrl) throw new Error('Serveur Fastify pas encore démarré')
+  return apiUrl
+}
+
+/**
+ * Démarre le serveur Fastify sur le port de l'environnement (cf. API_PORT).
+ *
+ * @throws Si le serveur n'a pas pu démarrer (port déjà pris en dev ou en test)
+ */
 export async function startServer() {
   const fastify = Fastify({ logger: IS_DEV ? true : { level: 'error' } })
 
@@ -34,9 +58,9 @@ export async function startServer() {
   // Enregistrer le plugin CORS
   //
   // Origine restreinte au renderer de l'app (pas d'en-tête Origin en prod,
-  // le renderer étant chargé en file://; localhost:8080 en dev via Vite) afin
-  // qu'une page web tierce ne puisse pas interroger l'API locale.
-  const allowedOrigins = new Set(IS_DEV ? ['http://localhost:8080'] : [])
+  // le renderer étant chargé en file://; serveur Vite en dev) afin qu'une page
+  // web tierce ne puisse pas interroger l'API locale.
+  const allowedOrigins = new Set(DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [])
   fastify.register(fastifyCors, {
     origin: (origin, callback) => {
       callback(null, !origin || allowedOrigins.has(origin))
@@ -94,8 +118,10 @@ export async function startServer() {
 
   try {
     await fastify.listen({ port: API_PORT })
-    Logger.info(`Fastify API -> http://localhost:${API_PORT}`)
-    Logger.info(`Swagger UI -> http://localhost:${API_PORT}/docs`)
+    const { port } = fastify.server.address() as AddressInfo
+    apiUrl = `http://localhost:${port}`
+    Logger.info(`Fastify API -> ${apiUrl}`)
+    Logger.info(`Swagger UI -> ${apiUrl}/docs`)
   } catch (err) {
     fastify.log.error(err)
     throw err

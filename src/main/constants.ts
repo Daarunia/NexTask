@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
+import { DEV_API_PORT, TEST_API_PORT } from './shared/api.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
@@ -47,6 +48,20 @@ if (IS_TEST) {
   SETTINGS_NAME = 'config.dev'
 }
 export const SETTINGS_FILE = SETTINGS_NAME
+
+// Port du serveur Fastify : fixe en test et en dev, libre (0, choisi par le
+// système) en prod, cf. api.constants.ts
+let SERVER_PORT = 0
+if (IS_TEST) {
+  SERVER_PORT = TEST_API_PORT
+} else if (IS_DEV) {
+  SERVER_PORT = DEV_API_PORT
+}
+export const API_PORT = SERVER_PORT
+
+// Renderer servi par Vite en dev (et en test), sur le port passé par le script
+// de lancement. Null en prod, le renderer étant chargé en file://.
+export const DEV_RENDERER_URL = IS_DEV ? `http://localhost:${process.argv[2]}` : null
 
 // Chemin vers les ressources (process.resourcesPath en prod, current en dev)
 export const RESOURCES_PATH = IS_DEV ? CURRENT_PATH : process.resourcesPath
