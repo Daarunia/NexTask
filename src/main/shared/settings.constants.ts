@@ -42,6 +42,12 @@ export interface WindowState {
   maximized: boolean // fenêtre maximisée à sa fermeture, sur l'écran de ces coordonnées
 }
 
+/** Durées proposées pour la purge automatique des tâches archivées, en jours. */
+export const ARCHIVE_PURGE_DAYS = [30, 90, 365] as const
+
+/** Ancienneté d'archivage au-delà de laquelle une tâche est purgée, en jours. */
+export type ArchivePurgeDays = (typeof ARCHIVE_PURGE_DAYS)[number]
+
 /** Longueur maximale d'un numéro de version de tâche. */
 export const TASK_VERSION_MAX_LENGTH = 20
 
@@ -53,6 +59,8 @@ export interface AppSettings {
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
   newTaskPosition: NewTaskPosition // nouvelle tâche en haut ou en bas de sa colonne
   confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
+  archivePurgeEnabled: boolean // suppression automatique des tâches archivées depuis longtemps
+  archivePurgeDays: ArchivePurgeDays // ancienneté d'archivage au-delà de laquelle la purge supprime
   rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
@@ -72,6 +80,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultTaskVersion: '1.5.0',
   newTaskPosition: 'bottom',
   confirmArchive: false,
+  archivePurgeEnabled: false,
+  archivePurgeDays: 90,
   rememberTagFilter: false,
   tagFilterIds: [],
   notificationsEnabled: true,

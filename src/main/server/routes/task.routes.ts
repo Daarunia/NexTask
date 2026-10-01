@@ -30,6 +30,8 @@ type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & { tags?: s
  * - POST   /tasks       → Crée une nouvelle tâche
  * - PATCH  /tasks/:id   → Modifie une tâche existante
  * - DELETE /tasks/:id   → Supprime une tâche existante
+ * - PUT    /tasks/:id   → Archive (historise) une tâche
+ * - POST   /tasks/:id/restore → Restaure une tâche archivée en bas de la première colonne
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -37,8 +39,14 @@ export default async function taskRoutes(fastify) {
   /**
    * GET /tasks
    *
-   * Récupère la liste complète des tâches.
+   * Récupère la liste des tâches, toutes ou filtrées sur leur historisation.
+   * Les tâches sont triées par colonne puis par position, sauf les tâches
+   * archivées seules (`isHistorized=true`), triées de la plus récemment
+   * archivée à la plus ancienne.
    *
+   * @param {Object} request - Requête Fastify
+   * @param {Object} request.query - Paramètres de requête
+   * @param {boolean} [request.query.isHistorized] - Seulement les tâches archivées (true) ou actives (false)
    * @returns {Promise<Array<Object>>} Tableau d'objets Task
    */
   fastify.get(
@@ -62,11 +70,16 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (request) => {
+      // Même nom que dans le schéma `querystring`, sinon Fastify le retire
       const { isHistorized } = request.query as { isHistorized?: boolean }
+
+      const orderBy: Prisma.TaskOrderByWithRelationInput[] = isHistorized
+        ? [{ historizationDate: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
+        : [{ stageId: 'asc' }, { position: 'asc' }]
 
       return prisma.task.findMany({
         where: isHistorized === undefined ? undefined : { isHistorized },
-        orderBy: [{ stageId: 'asc' }, { position: 'asc' }],
+        orderBy,
         include: taskInclude,
       })
     },
@@ -331,6 +344,78 @@ export default async function taskRoutes(fastify) {
         reply.code(404)
         return { error: 'Tâche non trouvée' }
       }
+    },
+  )
+
+  /**
+   * POST /tasks/:id/restore
+   *
+   * Restaure une tâche archivée : elle quitte les archives et reprend place en
+   * bas de la première colonne du tableau (plus petite position). Ses tags
+   * sont conservés.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID de la tâche
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task restauré avec ses tags, 404 si la
+   *   tâche n'existe pas, 409 si elle n'est pas archivée ou s'il n'y a aucune colonne
+   */
+  fastify.post(
+    '/tasks/:id/restore',
+    {
+      schema: {
+        description: 'Restaure une tâche archivée en bas de la première colonne',
+        tags: ['Task'],
+        params: idParam,
+        response: {
+          200: taskSchema,
+          404: errorResponse,
+          409: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const id = Number(req.params.id)
+
+      // Transaction : la position calculée reste la dernière au moment de l'écriture
+      return prisma.$transaction(async (tx) => {
+        const task = await tx.task.findUnique({ where: { id } })
+        if (!task) {
+          reply.code(404)
+          return { error: 'Tâche non trouvée' }
+        }
+        if (!task.isHistorized) {
+          reply.code(409)
+          return { error: "La tâche n'est pas archivée" }
+        }
+
+        const firstStage = await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] })
+        if (!firstStage) {
+          reply.code(409)
+          return { error: 'Aucune colonne pour restaurer la tâche' }
+        }
+
+        // En bas de la colonne : après la plus grande position de ses tâches actives
+        const { _max } = await tx.task.aggregate({
+          where: { stageId: firstStage.id, isHistorized: false },
+          _max: { position: true },
+        })
+
+        const restored = await tx.task.update({
+          where: { id },
+          data: {
+            isHistorized: false,
+            historizationDate: null,
+            stageId: firstStage.id,
+            position: (_max.position ?? -1) + 1,
+          },
+          include: taskInclude,
+        })
+
+        Logger.info(`Tâche ${id} restaurée dans la colonne ${firstStage.id}`)
+        return restored
+      })
     },
   )
 

@@ -5,6 +5,7 @@ import { startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { isSettingsKey, settingsStore } from './stores/settings.js'
@@ -169,6 +170,10 @@ app.whenReady().then(async () => {
   // /test/run-notifications pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
 
+  // Maintenance quotidienne (purge des archives), au démarrage puis chaque
+  // jour. Désactivée en mode test, comme les notifications (/test/run-*).
+  if (!IS_TEST) startMaintenanceScheduler()
+
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -177,13 +182,17 @@ app.whenReady().then(async () => {
       } catch (err) {
         Logger.error('Erreur au redémarrage du serveur Fastify :', err)
       }
-      if (!IS_TEST) startNotificationScheduler()
+      if (!IS_TEST) {
+        startNotificationScheduler()
+        startMaintenanceScheduler()
+      }
     }
   })
 })
 
 app.on('window-all-closed', () => {
   stopNotificationScheduler()
+  stopMaintenanceScheduler()
   if (process.platform !== 'darwin') app.quit()
 })
 

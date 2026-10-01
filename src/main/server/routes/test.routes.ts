@@ -3,6 +3,7 @@ import path from 'node:path'
 import { prisma } from '../prismaClient.js'
 import { SEEDS_PATH } from '../../constants.js'
 import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
+import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
@@ -14,6 +15,7 @@ import Logger from 'electron-log'
  * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    et remet les paramètres à leurs valeurs par défaut
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
+ * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -133,6 +135,46 @@ export default async function testRoutes(fastify) {
       const body = (req.body ?? {}) as { now?: string }
       const now = body.now ? new Date(body.now) : new Date()
       return runNotificationCheck(now)
+    },
+  )
+
+  /**
+   * POST /test/run-archive-purge
+   *
+   * Déclenche manuellement un passage de la purge des tâches archivées
+   * (`runArchivePurge`), la maintenance quotidienne étant désactivée en mode
+   * `--test`.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} [req.body] - Corps optionnel
+   * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
+   * @returns {Promise<{enabled: boolean, count: number}>} Purge activée ou non, nombre de tâches supprimées
+   */
+  fastify.post(
+    '/test/run-archive-purge',
+    {
+      schema: {
+        description: 'Déclenche un passage de la purge des tâches archivées (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { now: { type: 'string', format: 'date-time' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              enabled: { type: 'boolean' },
+              count: { type: 'integer' },
+            },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const body = (req.body ?? {}) as { now?: string }
+      const now = body.now ? new Date(body.now) : new Date()
+      return runArchivePurge(now)
     },
   )
 }

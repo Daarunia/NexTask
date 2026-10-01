@@ -26,6 +26,9 @@ export class SettingsPage {
   readonly startupSwitch: Locator
   readonly minimizedSwitch: Locator
   readonly windowModeSelect: Locator
+  readonly openArchivesButton: Locator
+  readonly archivePurgeSwitch: Locator
+  readonly archivePurgeDaysSelect: Locator
 
   /**
    * Constructeur
@@ -64,6 +67,11 @@ export class SettingsPage {
 
     // Section Démarrage : fenêtre maximisée ou à sa dernière taille
     this.windowModeSelect = this.root.getByTestId('settings-window-mode')
+
+    // Section Organisation et données : archives et purge automatique
+    this.openArchivesButton = this.root.getByTestId('btn-open-archives')
+    this.archivePurgeSwitch = this.root.getByRole('switch', { name: 'Purge automatique des archives' })
+    this.archivePurgeDaysSelect = this.root.getByTestId('settings-archive-purge-days')
   }
 
   /**
@@ -137,6 +145,14 @@ export class SettingsPage {
    */
   notificationStyleOption(label: 'Persistante' | 'Temporaire'): Locator {
     return this.notificationStyleSelect.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Option du sélecteur d'ancienneté avant purge des archives.
+   * @param label Libellé exact (« 30 jours », « 90 jours » ou « 1 an »)
+   */
+  archivePurgeDaysOption(label: '30 jours' | '90 jours' | '1 an'): Locator {
+    return this.archivePurgeDaysSelect.getByRole('button', { name: label, exact: true })
   }
 
   async chooseMode(label: 'Clair' | 'Sombre' | 'Système') {

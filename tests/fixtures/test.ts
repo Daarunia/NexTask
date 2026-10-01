@@ -5,6 +5,7 @@ import { TaskBoard } from '../components/TaskBoard'
 import { TagPicker } from '../components/TagPicker'
 import { TagFilter } from '../components/TagFilter'
 import { SettingsPage } from '../components/SettingsPage'
+import { ArchivesPage } from '../components/ArchivesPage'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
 import { API } from '../helpers/api.helper'
 
@@ -17,6 +18,7 @@ type Fixtures = {
   tagPicker: TagPicker
   tagFilter: TagFilter
   settingsPage: SettingsPage
+  archivesPage: ArchivesPage
 }
 
 type WorkerFixtures = {
@@ -85,6 +87,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   settingsPage: async ({ page }, use) => {
     await use(new SettingsPage(page))
+  },
+
+  archivesPage: async ({ page }, use) => {
+    await use(new ArchivesPage(page))
   },
 
   /**
