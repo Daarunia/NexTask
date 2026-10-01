@@ -18,6 +18,7 @@ export class SettingsPage {
   readonly versionAddButton: Locator
   readonly versionError: Locator
   readonly notificationsSwitch: Locator
+  readonly notificationStyleSelect: Locator
   readonly traySwitch: Locator
   readonly startupSwitch: Locator
   readonly minimizedSwitch: Locator
@@ -42,6 +43,9 @@ export class SettingsPage {
     this.versionInput = this.versions.getByTestId('settings-version-input')
     this.versionAddButton = this.versions.getByTestId('btn-version-add')
     this.versionError = this.versions.getByTestId('settings-version-error')
+
+    // Section Notifications : style des rappels
+    this.notificationStyleSelect = this.root.getByTestId('settings-notification-style')
 
     // Interrupteurs (role switch porté par l'input interne du ToggleSwitch)
     this.notificationsSwitch = this.root.getByRole('switch', { name: 'Rappels de date de début' })
@@ -97,6 +101,14 @@ export class SettingsPage {
    */
   colorSwatch(label: string): Locator {
     return this.colorRow.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Option du sélecteur de style des rappels.
+   * @param label Libellé exact (« Persistante » ou « Temporaire »)
+   */
+  notificationStyleOption(label: 'Persistante' | 'Temporaire'): Locator {
+    return this.notificationStyleSelect.getByRole('button', { name: label, exact: true })
   }
 
   async chooseMode(label: 'Clair' | 'Sombre' | 'Système') {

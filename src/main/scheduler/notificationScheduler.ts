@@ -4,6 +4,7 @@ import Logger from 'electron-log'
 import { prisma } from '../server/prismaClient.js'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
+import type { NotificationStyle } from '../shared/settings.constants.js'
 
 /**
  * Planificateur de notifications.
@@ -35,8 +36,9 @@ function escapeXml(text: string): string {
  * Affiche une unique notification OS regroupant toutes les tâches échues.
  *
  * @param tasks Tâches échues à annoncer
+ * @param style Style choisi dans les paramètres (seul Windows en tient compte)
  */
-function notify(tasks: { id: number; title: string }[]): void {
+function notify(tasks: { id: number; title: string }[], style: NotificationStyle): void {
   const lines = tasks.slice(0, CAP).map((t) => `• ${t.title}`)
   if (tasks.length > CAP) {
     lines.push(`… et ${tasks.length - CAP} autre(s)`)
@@ -47,11 +49,12 @@ function notify(tasks: { id: number; title: string }[]): void {
 
   const notification = new Notification({ title, body, icon: ICON })
 
-  // Sur Windows, on remplace le toast par défaut (qui disparaît de l'écran
-  // après quelques secondes, même s'il reste dans le Centre de notifications)
-  // par un toast XML en scénario "reminder". Il reste affiché à l'écran tant
-  // que l'utilisateur ne l'a pas fermé ou n'a pas cliqué dessus.
-  if (process.platform === 'win32') {
+  // Sur Windows, style « reminder » : on remplace le toast par défaut (qui
+  // disparaît de l'écran après quelques secondes, même s'il reste dans le Centre
+  // de notifications) par un toast XML en scénario "reminder". Il reste affiché
+  // à l'écran tant que l'utilisateur ne l'a pas fermé ou n'a pas cliqué dessus.
+  // Style « default » : le toast classique est gardé tel quel.
+  if (process.platform === 'win32' && style === 'reminder') {
     const imageTag = ICON
       ? `<image placement="appLogoOverride" hint-crop="circle" src="file:///${ICON.replaceAll('\\', '/')}"/>`
       : ''
@@ -80,6 +83,7 @@ function notify(tasks: { id: number; title: string }[]): void {
 export interface NotificationCheckResult {
   count: number // tâches échues marquées comme notifiées
   shown: boolean // une notification OS a été envoyée
+  style: NotificationStyle | null // style de la notification envoyée, null sans envoi
 }
 
 /**
@@ -88,7 +92,7 @@ export interface NotificationCheckResult {
  * Extrait pour être testable.
  *
  * @param now Horodatage de référence (injectable pour les tests)
- * @returns Nombre de tâches traitées et envoi ou non de la notification
+ * @returns Nombre de tâches traitées, envoi ou non de la notification et son style
  */
 export async function runNotificationCheck(now: Date = new Date()): Promise<NotificationCheckResult> {
   const dueTasks = await prisma.task.findMany({
@@ -100,14 +104,14 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
     select: { id: true, title: true },
   })
 
-  if (dueTasks.length === 0) return { count: 0, shown: false }
+  if (dueTasks.length === 0) return { count: 0, shown: false, style: null }
 
-  let shown = false
+  let style: NotificationStyle | null = null
   if (!settingsStore.get('notificationsEnabled')) {
     Logger.info('[scheduler] Rappels désactivés, marquage sans affichage')
   } else if (Notification.isSupported()) {
-    notify(dueTasks)
-    shown = true
+    style = settingsStore.get('notificationStyle')
+    notify(dueTasks, style)
   } else {
     Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }
@@ -118,7 +122,7 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
   })
 
   Logger.info(`[scheduler] ${dueTasks.length} tâche(s) notifiée(s)`)
-  return { count: dueTasks.length, shown }
+  return { count: dueTasks.length, shown: style !== null, style }
 }
 
 /**
