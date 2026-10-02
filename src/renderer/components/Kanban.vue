@@ -194,7 +194,7 @@ const stageMenuItems = [
   {
     label: 'Supprimer',
     icon: 'pi pi-trash',
-    command: () => askDeleteStage(),
+    command: () => setTimeout(askDeleteStage),
     class: 'text-primary',
   },
 ]
