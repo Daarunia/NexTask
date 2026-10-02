@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
+import { MINUTE } from '../../../src/renderer/constants/time.constants'
 
 /**
  * Tests E2E du cache des stores (colonnes + tâches) côté renderer.
@@ -9,7 +10,6 @@ import { test, expect } from '../../fixtures/test'
  */
 
 const uid = () => Date.now().toString().slice(-6)
-const MINUTE = 60 * 1000
 
 /**
  * Décale l'horloge du renderer par rapport à l'heure réelle.
@@ -48,10 +48,7 @@ test.describe('Cache des colonnes et des tâches', () => {
     // 5 min 30 après le chargement, 2 min 30 après le renommage
     await setClockOffset(page, 5.5 * MINUTE)
 
-    // Le bouton Paramètres est masqué dans l'en-tête : navigation directe par le hash
-    await page.evaluate(() => {
-      window.location.hash = '#/settings'
-    })
+    await header.goSettings()
     await expect(header.homeButton).toBeVisible()
     await header.goHome()
 

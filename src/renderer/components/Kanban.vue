@@ -106,11 +106,13 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'v
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
+import { useConfirm } from 'primevue/useconfirm'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
 import { useStageStore } from '../stores/Stage'
 import { useTagStore } from '../stores/Tag'
+import { useSettingsStore } from '../stores/Settings'
 import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
 import { Tag, TagSelection } from '../types/tag.types'
@@ -135,7 +137,9 @@ const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
 const tagStore = useTagStore()
+const settings = useSettingsStore()
 const showError = useErrorToast()
+const confirm = useConfirm()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -150,6 +154,7 @@ const stagesLocal = ref<Stage[]>([])
 const isAddingStage = ref(false)
 const newStageName = ref('')
 const stageMenu = ref()
+const stageMenuTrigger = ref<HTMLElement | null>(null) // bouton ⋮ du menu ouvert, cible de la confirmation
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
@@ -189,7 +194,7 @@ const stageMenuItems = [
   {
     label: 'Supprimer',
     icon: 'pi pi-trash',
-    command: () => deleteStage(),
+    command: () => setTimeout(askDeleteStage),
     class: 'text-primary',
   },
 ]
@@ -225,8 +230,9 @@ function openCreateTaskDialog(stageId: number) {
   logger.debug('Ouverture création', { stageId })
 
   stageDialog.value = stageId
-  // Position calculée sur la colonne complète, pas sur la vue filtrée
-  positionDialog.value = taskLists.get(stageId)?.length ?? 0
+  // Position calculée sur la colonne complète, pas sur la vue filtrée : en
+  // haut, les autres cartes sont décalées une fois la tâche créée
+  positionDialog.value = settings.newTaskPosition === 'top' ? 0 : (taskLists.get(stageId)?.length ?? 0)
   defaultTagsDialog.value = filterTagSelection()
   editTask.value = null
   creationMode.value = true
@@ -267,21 +273,34 @@ function openEditTaskDialog(stageId: number, task: Task) {
  * Listener quand une tâche est drop dans une colonne
  */
 async function onTasksDrop() {
+  if (await saveTaskOrder()) return
+
+  restorePersistedTasks()
+  showError('Déplacement annulé')
+}
+
+/**
+ * Enregistre l'ordre affiché des cartes : chaque tâche dont la colonne ou la
+ * position diffère de l'état persisté est envoyée dans un seul batch.
+ * @param stageIds Colonnes à enregistrer (toutes par défaut)
+ * @returns Faux si l'enregistrement a échoué (rien n'a changé en base)
+ */
+async function saveTaskOrder(stageIds: number[] = stagesLocal.value.map((stage) => stage.id)): Promise<boolean> {
   // Comparaison avec le dernier état persisté, porté par les tâches de taskLists
   // (et non avec props.tasks, instantané figé au montage)
   const changes: { task: Task; position: number; stageId: number }[] = []
 
-  for (const stage of stagesLocal.value) {
-    const currentTasks = taskLists.get(stage.id) ?? []
+  for (const stageId of stageIds) {
+    const currentTasks = taskLists.get(stageId) ?? []
 
     currentTasks.forEach((task, index) => {
-      if (task.position !== index || task.stageId !== stage.id) {
-        changes.push({ task, position: index, stageId: stage.id })
+      if (task.position !== index || task.stageId !== stageId) {
+        changes.push({ task, position: index, stageId })
       }
     })
   }
 
-  if (!changes.length) return
+  if (!changes.length) return true
 
   // Seuls les champs du déplacement sont envoyés, car renvoyer la tâche entière ferait
   // échouer tout le batch si une ancienne tâche a un titre vide (refusé par l'API)
@@ -291,9 +310,7 @@ async function onTasksDrop() {
   try {
     await taskStore.updateTaskBatch(modifiedTasks)
   } catch {
-    restorePersistedTasks()
-    showError('Déplacement annulé')
-    return
+    return false
   }
 
   // Sauvegarde réussie : les tâches locales reflètent désormais l'état persisté
@@ -301,6 +318,7 @@ async function onTasksDrop() {
     task.position = position
     task.stageId = stageId
   }
+  return true
 }
 
 /**
@@ -418,14 +436,22 @@ async function archiveTask(task: Task) {
 /**
  * Save depuis dialog
  */
-function onTaskSaved(task: Task) {
+async function onTaskSaved(task: Task) {
   const newTagIds = (task.tags ?? []).map((tag) => tag.id)
 
   if (creationMode.value) {
-    // Nouvelle carte : ajoutée en fin de colonne (position = longueur à l'ouverture)
-    const list = taskLists.get(task.stageId) ?? []
-    taskLists.set(task.stageId, [...list, task])
+    // Nouvelle carte : insérée à sa position (fin de colonne ou tout en haut,
+    // selon le paramètre), sur la colonne complète même sous filtre
+    const list = [...(taskLists.get(task.stageId) ?? [])]
+    const index = Math.min(task.position, list.length)
+    list.splice(index, 0, { ...task })
+    taskLists.set(task.stageId, list)
     updateTagCounts([], newTagIds)
+
+    // Insérée avant d'autres cartes : celles-ci sont renumérotées en base
+    if (index < list.length - 1 && !(await saveTaskOrder([task.stageId]))) {
+      showError('Ordre non enregistré', "La tâche a été créée, mais l'ordre de la colonne n'a pas été enregistré.")
+    }
     return
   }
 
@@ -506,9 +532,38 @@ function showAddStageInput() {
   })
 }
 
-async function deleteStage() {
-  if (!selectedStage.value) return
-  const stageId = selectedStage.value.id
+/**
+ * Choix de « Supprimer » dans le menu d'une colonne. Une colonne qui contient
+ * des tâches (filtrées comprises) n'est supprimée qu'après confirmation, dans
+ * une bulle ancrée sur son bouton de menu, puisque ses tâches seront archivées.
+ */
+function askDeleteStage() {
+  const stage = selectedStage.value
+  if (!stage) return
+
+  const count = taskLists.get(stage.id)?.length ?? 0
+  if (count === 0) {
+    deleteStage(stage)
+    return
+  }
+
+  const consequence = count === 1 ? 'Sa tâche sera archivée' : `Ses ${count} tâches seront archivées`
+  confirm.require({
+    target: stageMenuTrigger.value ?? undefined,
+    message: `Supprimer la liste « ${stage.name} » ? ${consequence}.`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
+    acceptProps: { label: 'Supprimer', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    accept: () => deleteStage(stage),
+  })
+}
+
+/**
+ * Supprime une colonne, ses tâches étant archivées par le serveur
+ * @param stage Colonne à supprimer
+ */
+async function deleteStage(stage: Stage) {
+  const stageId = stage.id
 
   try {
     await stageStore.deleteStage(stageId)
@@ -526,8 +581,6 @@ async function deleteStage() {
       error,
     })
     showError('Suppression impossible', "La liste n'a pas été supprimée.")
-  } finally {
-    selectedStage.value = null
   }
 }
 
@@ -568,6 +621,7 @@ function cancelEditingStage() {
 // Affichage du menu des stages
 const toggleStageMenu = (event: Event, stage: Stage) => {
   selectedStage.value = stage
+  stageMenuTrigger.value = event.currentTarget as HTMLElement
   stageMenu.value.toggle(event)
 }
 

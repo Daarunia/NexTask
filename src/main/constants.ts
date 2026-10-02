@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
+import { DEV_API_PORT, TEST_API_PORT } from './shared/api.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
@@ -27,8 +28,40 @@ if (IS_TEST) {
   DB_FILE = 'dev.db'
 }
 
+// Dossier des données de l'app : base, sauvegardes (userData en prod, racine
+// du projet en dev et en test)
+export const DATA_PATH = CURRENT_PATH
+
 // Chemin vers la base de données
-export const DB_PATH = path.join(CURRENT_PATH, DB_FILE)
+export const DB_PATH = path.join(DATA_PATH, DB_FILE)
+
+// Sauvegardes automatiques de la base, dans un dossier à part en test pour ne
+// jamais toucher à celles du dev (le reset de test le vide)
+export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? 'backups-test' : 'backups')
+
+// Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
+// base en test et en dev pour ne jamais toucher aux paramètres réels
+let SETTINGS_NAME = 'config'
+if (IS_TEST) {
+  SETTINGS_NAME = 'config.test'
+} else if (IS_DEV) {
+  SETTINGS_NAME = 'config.dev'
+}
+export const SETTINGS_FILE = SETTINGS_NAME
+
+// Port du serveur Fastify : fixe en test et en dev, libre (0, choisi par le
+// système) en prod, cf. api.constants.ts
+let SERVER_PORT = 0
+if (IS_TEST) {
+  SERVER_PORT = TEST_API_PORT
+} else if (IS_DEV) {
+  SERVER_PORT = DEV_API_PORT
+}
+export const API_PORT = SERVER_PORT
+
+// Renderer servi par Vite en dev (et en test), sur le port passé par le script
+// de lancement. Null en prod, le renderer étant chargé en file://.
+export const DEV_RENDERER_URL = IS_DEV ? `http://localhost:${process.argv[2]}` : null
 
 // Chemin vers les ressources (process.resourcesPath en prod, current en dev)
 export const RESOURCES_PATH = IS_DEV ? CURRENT_PATH : process.resourcesPath
@@ -54,10 +87,3 @@ const STATIC_DIRS = [
 export function staticAsset(name: string): string | undefined {
   return STATIC_DIRS.map((directory) => path.join(directory, name)).find((filePath) => existsSync(filePath))
 }
-
-// Palette des tags, dans l'ordre de préférence d'attribution (cf. tag.helper).
-// À garder alignée sur `TAG_COLOR_STYLES` dans src/renderer/constants/tag.constants.ts.
-export const TAG_COLORS = ['sky', 'emerald', 'amber', 'rose', 'violet', 'teal', 'orange', 'slate'] as const
-
-/** Nom d'une couleur de la palette des tags. */
-export type TagColor = (typeof TAG_COLORS)[number]

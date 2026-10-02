@@ -9,6 +9,8 @@
  *   de pagination, un format d'erreur enrichi, etc.).
  */
 
+import { LABEL_MAX_LENGTH } from '../../shared/validation.constants.js'
+
 /** Paramètre de route `:id` (entier requis). */
 export const idParam = {
   type: 'object',
@@ -20,7 +22,7 @@ export const idParam = {
 export const requiredLabel = {
   type: 'string',
   pattern: String.raw`\S`,
-  maxLength: 255,
+  maxLength: LABEL_MAX_LENGTH,
 }
 
 /** Corps de réponse d'erreur simple : `{ error: string }`. */

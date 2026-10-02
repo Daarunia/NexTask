@@ -4,7 +4,7 @@ import { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagSchema, tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
 import { findTagByName, nextTagColor, tagKey } from '../helpers/tag.helper.js'
-import { TAG_COLORS, type TagColor } from '../../constants.js'
+import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 
 // Nombre de tâches (actives et historisées) qui portent le tag
 const taskCountInclude = { _count: { select: { tasks: true } } } as const

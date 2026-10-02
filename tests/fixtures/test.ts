@@ -4,7 +4,10 @@ import { Header } from '../components/Header'
 import { TaskBoard } from '../components/TaskBoard'
 import { TagPicker } from '../components/TagPicker'
 import { TagFilter } from '../components/TagFilter'
+import { SettingsPage } from '../components/SettingsPage'
+import { ArchivesPage } from '../components/ArchivesPage'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
+import { API } from '../helpers/api.helper'
 
 type Fixtures = {
   cleanState: void
@@ -14,6 +17,8 @@ type Fixtures = {
   taskBoard: TaskBoard
   tagPicker: TagPicker
   tagFilter: TagFilter
+  settingsPage: SettingsPage
+  archivesPage: ArchivesPage
 }
 
 type WorkerFixtures = {
@@ -80,9 +85,17 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     await use(new TagFilter(page))
   },
 
+  settingsPage: async ({ page }, use) => {
+    await use(new SettingsPage(page))
+  },
+
+  archivesPage: async ({ page }, use) => {
+    await use(new ArchivesPage(page))
+  },
+
   /**
-   * Isolation : remet la base de test à zéro avant chaque test via l'endpoint
-   * test-only POST /test/reset, puis recharge la page. Petite boucle de retry
+   * Isolation : remet la base et les paramètres de test à zéro avant chaque test
+   * via l'endpoint test-only POST /test/reset, puis recharge la page. Petite boucle de retry
    * pour couvrir le tout premier test (le serveur Fastify peut finir de démarrer).
    *
    * Fixture automatique plutôt qu'un test.beforeEach dans ce module : ce module
@@ -91,7 +104,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
    */
   cleanState: [
     async ({ page }, use) => {
-      // Garantit que l'app (et donc le serveur :3000) est démarrée
+      // Garantit que l'app (et donc son serveur) est démarrée
       await page.waitForLoadState('domcontentloaded')
 
       // 1) Reset de la base (avec retry pour couvrir le tout premier test)
@@ -99,7 +112,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       let done = false
       for (let attempt = 0; attempt < 20 && !done; attempt++) {
         try {
-          const res = await page.request.post('http://localhost:3000/test/reset')
+          const res = await page.request.post(`${API}/test/reset`)
           if (res.ok()) {
             done = true
             break
@@ -112,7 +125,11 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       }
       if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
 
-      // 2) Rechargement pour purger le cache Pinia, puis attente du tableau chargé
+      // 2) Retour au tableau (un test précédent a pu finir sur une autre page),
+      // rechargement pour purger le cache Pinia, puis attente du tableau chargé
+      await page.evaluate(() => {
+        window.location.hash = '#/'
+      })
       await page.reload()
       await page.waitForLoadState('domcontentloaded')
       await expect(page.getByTestId('stage-column').first()).toBeVisible()

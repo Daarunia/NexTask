@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import type { Page } from '@playwright/test'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du comportement en cas d'échec de l'API.
@@ -12,7 +13,6 @@ import type { Page } from '@playwright/test'
  * et les interceptions sont retirées après chaque test (la page est partagée).
  */
 
-const API = 'http://localhost:3000'
 const A_FAIRE = 'A faire'
 
 const uid = () => Date.now().toString().slice(-6)

@@ -1,10 +1,5 @@
 import { z } from 'zod'
-
-/** Longueur maximale d'un titre de tâche (alignée sur la validation de l'API). */
-export const TASK_TITLE_MAX_LENGTH = 255
-
-/** Longueur maximale d'un nom de tag (alignée sur la validation de l'API). */
-export const TAG_NAME_MAX_LENGTH = 30
+import { LABEL_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
 
 /**
  * Tags choisis dans le formulaire (cf. TagSelection). Le sélecteur crée les
@@ -37,7 +32,7 @@ export const taskFormSchema = z.object({
     .string()
     .trim()
     .min(1, 'Le titre est obligatoire')
-    .max(TASK_TITLE_MAX_LENGTH, `${TASK_TITLE_MAX_LENGTH} caractères maximum`),
+    .max(LABEL_MAX_LENGTH, `${LABEL_MAX_LENGTH} caractères maximum`),
   description: z.string(),
   version: z.string({ error: 'Sélectionne une version' }).min(1, 'Sélectionne une version'),
   startDate: z.date().nullable(),

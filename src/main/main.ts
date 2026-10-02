@@ -1,12 +1,20 @@
 import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { startServer } from './server/index.js'
+import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
-import { settingsStore } from './stores/settings.js'
-import { APP_ID, IS_DEV, IS_TEST, staticAsset } from './constants.js'
+import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
+import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
+import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
+import { trackInterfaceScale } from './system/interfaceScale.js'
+import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
+import { isFolderKind, openFolder } from './system/folders.js'
+import { isAboutLinkKind, openAboutLink } from './system/about.js'
+import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
+import type { AppSettings } from './shared/settings.constants.js'
+import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -20,9 +28,17 @@ const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'ico
 let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
+  // Lancement « réduit » à l'ouverture de session : la fenêtre ne s'affiche pas
+  const launchedHidden = wasLaunchedHidden()
+
+  // Dernière taille et position, si le paramètre le demande et qu'elles tombent sur un écran
+  const restored = getRestorableWindowState()
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: restored?.width ?? 800,
+    height: restored?.height ?? 600,
+    x: restored?.x,
+    y: restored?.y,
     icon: WINDOW_ICON,
     autoHideMenuBar: true,
     frame: true,
@@ -30,16 +46,45 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      // URL du serveur Fastify, exposée au renderer par le preload (sandboxé,
+      // il ne peut rien importer : même argument écrit des deux côtés)
+      additionalArguments: [`--api-url=${getApiUrl()}`],
     },
-    show: !IS_TEST,
+    show: !IS_TEST && !launchedHidden,
   })
 
-  // Plein écran fenêtré
-  mainWindow.maximize()
+  // Plein écran fenêtré, sauf dernière taille non maximisée à restaurer (déjà
+  // appliquée à la création)
+  const applyStartupSize = () => {
+    if (!restored || restored.maximized) mainWindow?.maximize()
+  }
 
-  if (IS_DEV) {
-    const rendererPort = process.argv[2]
-    mainWindow.loadURL(`http://localhost:${rendererPort}`)
+  // Lancée réduite, la fenêtre reste masquée si l'icône de la zone de
+  // notification permet de la rouvrir, sinon elle part dans la barre des tâches
+  if (!launchedHidden) {
+    applyStartupSize()
+  } else if (shouldHideOnClose()) {
+    mainWindow.once('show', applyStartupSize)
+  } else {
+    mainWindow.minimize()
+    mainWindow.once('restore', applyStartupSize)
+  }
+
+  // Taille et position enregistrées pour le prochain démarrage
+  trackWindowState(mainWindow)
+
+  // Taille de l'interface, suivie au fil des changements du paramètre
+  trackInterfaceScale(mainWindow)
+
+  // Fermeture avec « garder en arrière-plan » : la fenêtre est seulement masquée
+  mainWindow.on('close', (event) => {
+    if (!shouldHideOnClose()) return
+    event.preventDefault()
+    mainWindow?.hide()
+  })
+
+  if (DEV_RENDERER_URL) {
+    mainWindow.loadURL(DEV_RENDERER_URL)
 
     // On ouvre la console que en dev, et pas en test playwright
     if (!IS_TEST) {
@@ -54,17 +99,28 @@ function createWindow() {
   })
 }
 
+/**
+ * Ramène la fenêtre principale au premier plan (seconde instance, icône de la
+ * zone de notification), en la recréant si elle a été fermée.
+ */
+function showMainWindow() {
+  // Serveur pas encore démarré : la fenêtre sera créée juste après (elle en a besoin)
+  if (!app.isReady() || !isServerStarted()) return
+  if (!mainWindow) {
+    createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  if (!mainWindow.isVisible()) mainWindow.show()
+  mainWindow.focus()
+}
+
 // Verrou d'instance unique
 const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
 
 if (gotTheLock) {
   // Déclenché dans l'instance déjà en cours quand une seconde est lancée.
-  app.on('second-instance', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    if (!mainWindow.isVisible()) mainWindow.show()
-    mainWindow.focus()
-  })
+  app.on('second-instance', showMainWindow)
 } else {
   // Une instance tourne déjà ? On quitte, le processus existant sera notifié
   // via `second-instance` et ramènera sa fenêtre au premier plan.
@@ -110,8 +166,19 @@ app.whenReady().then(async () => {
   try {
     await startServer()
   } catch (err) {
+    // Sans serveur, la fenêtre n'aurait aucune donnée (ou celles du logiciel
+    // qui occupe le port) : on n'ouvre pas l'app
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
+    if (!IS_TEST) {
+      dialog.showErrorBox('NexTask ne peut pas démarrer', `Le serveur local de l'app n'a pas pu démarrer.\n\n${err}`)
+    }
+    app.quit()
+    return
   }
+
+  // Icône de la zone de notification et lancement au démarrage, avant la
+  // fenêtre qui en dépend pour un lancement réduit
+  setupSystemIntegration(showMainWindow)
 
   createWindow()
 
@@ -119,6 +186,10 @@ app.whenReady().then(async () => {
   // Désactivé en mode test : les tests le déclenchent manuellement via
   // /test/run-notifications pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
+
+  // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
+  // jour. Désactivée en mode test, comme les notifications (/test/run-*).
+  if (!IS_TEST) startMaintenanceScheduler()
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -128,13 +199,17 @@ app.whenReady().then(async () => {
       } catch (err) {
         Logger.error('Erreur au redémarrage du serveur Fastify :', err)
       }
-      if (!IS_TEST) startNotificationScheduler()
+      if (!IS_TEST) {
+        startNotificationScheduler()
+        startMaintenanceScheduler()
+      }
     }
   })
 })
 
 app.on('window-all-closed', () => {
   stopNotificationScheduler()
+  stopMaintenanceScheduler()
   if (process.platform !== 'darwin') app.quit()
 })
 
@@ -142,14 +217,61 @@ ipcMain.on('message', (event, message) => {
   Logger.debug(message)
 })
 
-// expose settings store
-ipcMain.handle('settings:get', (_, key) => {
-  let value = settingsStore.get(key)
-  Logger.debug(`Get parameter: ${key} = ${value}`)
-  return value
+// Pont des paramètres : lecture groupée en un seul aller-retour au démarrage
+ipcMain.handle('settings:getAll', () => {
+  const values = settingsStore.store
+  Logger.debug('Lecture des paramètres :', values)
+  return values
 })
 
-ipcMain.handle('settings:set', (_, key, value) => {
-  Logger.debug(`Set parameter: ${key} = ${value}`)
-  settingsStore.set(key, value)
+// Écriture d'un paramètre : clé limitée à la liste connue, valeur validée par
+// le schéma d'electron-store (qui lève une erreur, renvoyée au renderer)
+ipcMain.handle('settings:set', (_, key: unknown, value: unknown) => {
+  if (!isSettingsKey(key)) {
+    Logger.warn(`Paramètre inconnu refusé : ${String(key)}`)
+    throw new Error(`Paramètre inconnu : ${String(key)}`)
+  }
+
+  Logger.debug(`Écriture du paramètre : ${key} = ${value}`)
+  settingsStore.set(key, value as AppSettings[typeof key])
+})
+
+// Remise des paramètres à leurs valeurs par défaut (confirmée côté renderer),
+// qui reçoit en retour les valeurs à appliquer
+ipcMain.handle('settings:reset', () => {
+  Logger.info('Paramètres remis à leurs valeurs par défaut')
+  return resetSettings()
+})
+
+// Export des données : boîte de dialogue d'enregistrement, données lues via
+// GET /data/export. Une erreur est renvoyée au renderer.
+ipcMain.handle('data:export', (event) => exportDataToFile(BrowserWindow.fromWebContents(event.sender)))
+
+// Import des données (confirmé côté renderer) : boîte de dialogue d'ouverture,
+// données remplacées via POST /data/import
+ipcMain.handle('data:import', (event) => importDataFromFile(BrowserWindow.fromWebContents(event.sender)))
+
+// Ouverture du dossier des données ou des journaux dans l'explorateur de
+// fichiers. Dossier limité à la liste connue, échec renvoyé au renderer.
+ipcMain.handle('folders:open', (_, kind: unknown) => {
+  if (!isFolderKind(kind)) {
+    Logger.warn(`Dossier inconnu refusé : ${String(kind)}`)
+    throw new Error(`Dossier inconnu : ${String(kind)}`)
+  }
+
+  return openFolder(kind)
+})
+
+// Version de l'app, affichée dans la section « À propos » des Paramètres
+ipcMain.handle('about:version', () => APP_VERSION)
+
+// Ouverture d'un lien de la section « À propos » dans le navigateur par
+// défaut. Lien limité à la liste connue, échec renvoyé au renderer.
+ipcMain.handle('about:open', (_, kind: unknown) => {
+  if (!isAboutLinkKind(kind)) {
+    Logger.warn(`Lien inconnu refusé : ${String(kind)}`)
+    throw new Error(`Lien inconnu : ${String(kind)}`)
+  }
+
+  return openAboutLink(kind)
 })

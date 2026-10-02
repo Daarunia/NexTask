@@ -1,8 +1,7 @@
-/**
- * Nom d'une couleur de la palette des tags.
- * À garder aligné sur `TAG_COLORS` dans src/main/constants.ts.
- */
-export type TagColor = 'sky' | 'emerald' | 'amber' | 'rose' | 'violet' | 'teal' | 'orange' | 'slate'
+import type { TagColor } from '../../main/shared/tag.constants'
+
+// Nom d'une couleur de la palette des tags, défini avec la palette partagée
+export type { TagColor } from '../../main/shared/tag.constants'
 
 /**
  * Entité 'Étiquette'

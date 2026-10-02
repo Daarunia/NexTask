@@ -1,5 +1,5 @@
 // Préférence système « réduire les animations », lue au chargement de la page
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
  * Options SortableJS communes aux cartes et aux colonnes, passées à

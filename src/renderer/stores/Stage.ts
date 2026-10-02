@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { MINUTE } from '../constants/time.constants'
+import { CACHE_TTL } from '../constants/time.constants'
 import { Stage } from '../types/stage.types'
 import { BaseEntityState } from '../types/base-store.types'
 import { api } from '../utils/api.helper'
@@ -15,7 +15,7 @@ import { getLogger } from '../utils/logger'
 export const useStageStore = defineStore('stage', {
   state: (): BaseEntityState<Stage> => ({
     allEntities: null,
-    ttl: 5 * MINUTE, // 5 minutes avant de rafraichir
+    ttl: CACHE_TTL,
   }),
   getters: {
     /**

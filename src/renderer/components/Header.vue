@@ -7,60 +7,64 @@
     </h1>
 
     <div class="flex items-center gap-2" ref="menuWrapper">
-      <!-- Bouton Dark / Light -->
-      <Button data-testid="btn-theme" :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" text rounded @click="toggleTheme" />
+      <!-- Raccourcis d'apparence, masqués sur la page Paramètres qui propose les mêmes réglages -->
+      <template v-if="!isSettings">
+        <!-- Bouton Dark / Light -->
+        <Button
+          data-testid="btn-theme"
+          :icon="settings.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+          text
+          rounded
+          @click="toggleTheme"
+        />
 
-      <!-- Bouton Palette -->
-      <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
+        <!-- Bouton Palette -->
+        <Button data-testid="btn-palette" icon="pi pi-palette" text rounded @click="togglePalette" />
 
-      <!-- Panneau Palette -->
-      <Popover ref="palettePopover">
-        <PrimaryColorPicker />
-      </Popover>
+        <!-- Panneau Palette -->
+        <Popover ref="palettePopover">
+          <PrimaryColorPicker />
+        </Popover>
+      </template>
 
       <Button data-testid="btn-home" icon="pi pi-home" @click="goHome" v-if="!isHome" text rounded />
-      <!--<<Button data-testid="btn-settings" icon="pi pi-cog" @click="goSettings" v-if="!isSettings" text rounded />-->
+      <Button
+        data-testid="btn-settings"
+        icon="pi pi-cog"
+        aria-label="Paramètres"
+        @click="goSettings"
+        v-if="!isSettings"
+        text
+        rounded
+      />
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
 import { useSettingsStore } from '../stores/Settings.js'
-import { getLogger } from '../utils/logger.js'
-import { getAppTheme } from '../constants/theme.constants.js'
-import { applyTheme } from '../utils/theme.helper.js'
+import { useErrorToast } from '../utils/toast.helper.js'
 import { useRouter, useRoute } from 'vue-router'
 
+// Paramètres chargés et appliqués par App.vue, l'en-tête ne fait que les lire
 const settings = useSettingsStore()
-const isDark = ref(false)
+const showError = useErrorToast()
 const palettePopover = ref<InstanceType<typeof Popover> | null>(null)
 const router = useRouter()
 const route = useRoute()
 
-onMounted(async () => {
-  await settings.load() // Chargement des paramètres
-  isDark.value = settings.theme === 'dark'
-  getLogger().debug(`[Header] Theme loaded from store: ${settings.theme}`)
-
-  // Application du theme
-  document.documentElement.classList.toggle('app-dark', isDark.value)
-
-  // Application du thème de couleur (une ancienne couleur est ramenée au thème le plus proche)
-  getLogger().debug(`[Header] Couleur chargée depuis les paramètres : ${settings.primaryColor}`)
-  applyTheme(getAppTheme(settings.primaryColor))
-})
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('app-dark', isDark.value)
-
-  // persistance
-  settings.setTheme(isDark.value ? 'dark' : 'light')
+// Bascule vers le mode inverse de celui affiché (quitte le mode « système »)
+async function toggleTheme() {
+  try {
+    await settings.set('theme', settings.isDark ? 'light' : 'dark')
+  } catch {
+    showError('Thème non enregistré')
+  }
 }
 
 // Ouverture et fermeture de la palette (clic extérieur et Échap gérés par le Popover)

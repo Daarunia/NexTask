@@ -135,31 +135,16 @@
           <small v-if="editError" data-testid="tag-edit-error" class="tag-edit-error">{{ editError }}</small>
         </div>
 
-        <p data-testid="tag-edit-count" class="tag-panel-hint">{{ usageLabel(editedTag.taskCount ?? 0) }}</p>
+        <p data-testid="tag-edit-count" class="tag-panel-hint">{{ tagUsageLabel(editedTag.taskCount ?? 0) }}</p>
 
         <!-- Couleurs : un clic applique immédiatement -->
         <p class="tag-panel-hint">Couleurs</p>
-        <div class="grid grid-cols-2 gap-0.5">
-          <button
-            v-for="color in TAG_COLOR_STYLES"
-            :key="color.name"
-            type="button"
-            data-testid="tag-edit-color"
-            class="tag-color-option"
-            :data-color="color.name"
-            :data-selected="editedTag.color === color.name ? 'true' : undefined"
-            @click="applyColor(color.name)"
-          >
-            <span class="tag-color-swatch" :style="swatchVars(color)"></span>
-            <span class="flex-1 text-left text-sm">{{ color.label }}</span>
-            <i v-if="editedTag.color === color.name" class="pi pi-check text-xs"></i>
-          </button>
-        </div>
+        <TagColorOptions :selected="editedTag.color" @select="applyColor" />
 
         <!-- Suppression en bas, séparée des réglages : action destructive, confirmée sur place -->
         <div class="tag-edit-footer">
           <div v-if="confirmingDelete" class="tag-delete-box">
-            <p class="text-sm">{{ deleteQuestion(editedTag) }}</p>
+            <p class="text-sm">{{ tagDeleteQuestion(editedTag) }}</p>
             <div class="flex gap-2">
               <Button
                 data-testid="tag-delete-cancel"
@@ -202,13 +187,19 @@ import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import Popover from 'primevue/popover'
 import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
+import TagColorOptions from './TagColorOptions.vue'
 import { useTagStore } from '../stores/Tag'
 import { Tag, TagColor, TagSelection } from '../types/tag.types'
-import { TAG_COLOR_STYLES, TagColorStyle } from '../constants/tag.constants'
-import { TAG_NAME_MAX_LENGTH } from '../schemas/task.schema'
+import { TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
-import { httpStatus } from '../utils/api.helper'
+import {
+  renameRejection,
+  sameTagName as sameName,
+  tagDeleteQuestion,
+  tagUsageLabel,
+  validateTagName,
+} from '../utils/tag.helper'
 
 /**
  * Sélecteur de tags façon Notion, branché au formulaire de TaskDialog.
@@ -228,9 +219,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: TagSelection[]]
 }>()
-
-/** Message affiché quand le nom est déjà porté par un autre tag */
-const TAG_NAME_TAKEN = 'Un tag porte déjà ce nom'
 
 const logger = getLogger()
 const tagStore = useTagStore()
@@ -265,13 +253,6 @@ let renameInFlight: { tagId: number; name: string; promise: Promise<boolean> } |
 
 // Tag édité, lu dans le store (undefined une fois supprimé)
 const editedTag = computed(() => (editedTagId.value === null ? undefined : tagStore.getTagById(editedTagId.value)))
-
-/**
- * Compare deux noms de tag sans tenir compte de la casse
- */
-function sameName(a: string, b: string): boolean {
-  return a.toLowerCase() === b.toLowerCase()
-}
 
 // Sélection affichable : un tag supprimé entre-temps n'a plus de chip
 const visibleSelection = computed(() =>
@@ -548,31 +529,6 @@ function onPanelKeydown(event: KeyboardEvent) {
 }
 
 /**
- * Libellé du nombre de tâches qui portent un tag
- * @param count Nombre de tâches
- */
-function usageLabel(count: number): string {
-  return `Utilisé par ${count} ${count === 1 ? 'tâche' : 'tâches'}`
-}
-
-/**
- * Question de confirmation de la suppression d'un tag
- * @param tag Tag à supprimer
- */
-function deleteQuestion(tag: Tag): string {
-  const count = tag.taskCount ?? 0
-  return `Supprimer « ${tag.name} » ? Il sera retiré de ${count} ${count === 1 ? 'tâche' : 'tâches'}.`
-}
-
-/**
- * Teintes d'une pastille de couleur, claire et sombre
- * @param color Couleur de la palette
- */
-function swatchVars(color: TagColorStyle) {
-  return { '--swatch': color.swatch }
-}
-
-/**
  * Focus sur le panneau quand l'élément qui avait le focus disparaît
  * (sinon Échap partirait du document et fermerait le Dialog)
  */
@@ -619,20 +575,6 @@ watch(editedTag, (tag) => {
 })
 
 /**
- * Contrôle d'un nouveau nom : 1 à 30 caractères, unique sans tenir compte
- * de la casse parmi les autres tags (changer la casse de son propre nom est permis)
- * @param name Nom nettoyé
- * @param tagId Id du tag renommé
- * @returns Le message d'erreur, ou une chaîne vide si le nom est valide
- */
-function validateTagName(name: string, tagId: number): string {
-  if (!name) return 'Le nom du tag est obligatoire'
-  if (name.length > TAG_NAME_MAX_LENGTH) return `${TAG_NAME_MAX_LENGTH} caractères maximum`
-  if (tagStore.getAllTags.some((tag) => tag.id !== tagId && sameName(tag.name, name))) return TAG_NAME_TAKEN
-  return ''
-}
-
-/**
  * Refuse un renommage : le nom d'origine est rétabli et le message affiché sous
  * le champ, ou en toast si le popover est déjà fermé
  */
@@ -663,7 +605,7 @@ async function commitRename(inline: boolean): Promise<boolean> {
     return true
   }
 
-  const invalid = validateTagName(name, tag.id)
+  const invalid = validateTagName(name, tag.id, tagStore.getAllTags)
   if (invalid) return rejectRename(tag, invalid, inline)
 
   // Même renommage déjà en vol (Entrée puis Save, Save puis fermeture du popover) :
@@ -699,9 +641,8 @@ async function sendRename(tag: Tag, name: string, inline: boolean): Promise<bool
     return true
   } catch (error) {
     // Nom pris ou refusé par le serveur : même traitement qu'un refus local
-    const status = httpStatus(error)
-    if (status === 409) return rejectRename(tag, TAG_NAME_TAKEN, inline)
-    if (status === 400) return rejectRename(tag, 'Nom de tag invalide', inline)
+    const rejection = renameRejection(error)
+    if (rejection) return rejectRename(tag, rejection, inline)
 
     // Erreur réseau : retour à l'état d'avant
     if (editedTagId.value === tag.id) editName.value = tag.name
@@ -898,20 +839,6 @@ async function confirmDelete() {
 .tag-delete-box {
   @apply flex flex-col gap-2 p-2 rounded-md border;
   border-color: var(--p-content-border-color);
-}
-
-.tag-color-option {
-  @apply flex items-center gap-2 w-full px-2 py-1 rounded-md cursor-pointer;
-  color: var(--p-text-color);
-}
-
-.tag-color-option:hover {
-  background-color: var(--p-list-option-focus-background, var(--p-surface-100));
-}
-
-.tag-color-swatch {
-  @apply w-3.5 h-3.5 rounded-full shrink-0;
-  background-color: var(--swatch);
 }
 
 .tag-option-check {

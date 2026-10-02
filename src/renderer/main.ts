@@ -5,6 +5,7 @@ import './style.css'
 import { createLogger } from 'vue-logger-plugin'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
+import ConfirmationService from 'primevue/confirmationservice'
 import Aura from '@primeuix/themes/aura'
 import router from './router'
 
@@ -26,4 +27,5 @@ app.use(PrimeVue, {
   theme: { preset: Aura, options: { darkModeSelector: '.app-dark' } },
 })
 app.use(ToastService)
+app.use(ConfirmationService)
 app.mount('#app')

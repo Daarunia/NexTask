@@ -20,6 +20,11 @@ export class TaskBoard {
   readonly saveButton: Locator
   readonly cancelButton: Locator
 
+  // Bulle de confirmation (archivage avec le paramètre « confirmer l'archivage »)
+  readonly confirmPopup: Locator
+  readonly confirmAcceptButton: Locator
+  readonly confirmRejectButton: Locator
+
   /**
    * Constructeur
    * @param page Page courante
@@ -36,6 +41,10 @@ export class TaskBoard {
     this.startDateInput = page.getByTestId('task-startdate-input').locator('input')
     this.saveButton = page.getByTestId('task-save-btn')
     this.cancelButton = page.getByTestId('task-cancel-btn')
+
+    this.confirmPopup = page.getByTestId('confirm-popup')
+    this.confirmAcceptButton = page.getByTestId('btn-confirm-accept')
+    this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
   }
 
   /**

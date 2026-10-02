@@ -12,3 +12,5 @@ components.d.ts
 .claude
 .scannerwork
 test-results
+backups
+backups-test

@@ -1,3 +1,5 @@
+import { TAG_NAME_MAX_LENGTH } from '../../shared/validation.constants.js'
+
 /**
  * Schéma de réponse d'un tag.
  *
@@ -14,9 +16,6 @@ export const tagSchema = {
     taskCount: { type: 'integer' },
   },
 }
-
-/** Longueur maximale d'un nom de tag. */
-export const TAG_NAME_MAX_LENGTH = 30
 
 // Nom de tag saisi : au moins un caractère non blanc, 30 caractères maximum.
 // Fastify répond 400 sinon. Le trim est fait par les routes.
