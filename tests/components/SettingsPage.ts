@@ -26,6 +26,8 @@ export class SettingsPage {
   readonly traySwitch: Locator
   readonly startupSwitch: Locator
   readonly minimizedSwitch: Locator
+  readonly quickAddSwitch: Locator
+  readonly quickAddRow: Locator
   readonly windowModeSelect: Locator
   readonly tagList: Locator
   readonly tagItems: Locator
@@ -84,6 +86,8 @@ export class SettingsPage {
     this.traySwitch = this.root.getByRole('switch', { name: 'Garder en arrière-plan' })
     this.startupSwitch = this.root.getByRole('switch', { name: "Lancer à l'ouverture de session" })
     this.minimizedSwitch = this.root.getByRole('switch', { name: 'Démarrer réduite' })
+    this.quickAddSwitch = this.root.getByRole('switch', { name: 'Ajout rapide' })
+    this.quickAddRow = this.root.getByTestId('settings-row-quick-add')
 
     // Section Démarrage : fenêtre maximisée ou à sa dernière taille
     this.windowModeSelect = this.root.getByTestId('settings-window-mode')

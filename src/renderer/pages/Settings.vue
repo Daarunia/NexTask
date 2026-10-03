@@ -170,6 +170,10 @@
           />
         </SettingsRow>
 
+        <SettingsRow label="Ajout rapide" :description="quickAddDescription" testId="settings-row-quick-add">
+          <ToggleSwitch v-model="quickAddEnabled" data-testid="settings-quick-add-toggle" ariaLabel="Ajout rapide" />
+        </SettingsRow>
+
         <SettingsRow
           label="Fenêtre au démarrage"
           description="Maximisée, ou à la taille et à la position qu'elle avait à la fermeture."
@@ -280,7 +284,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type WritableComputedRef } from 'vue'
+import { computed, onMounted, ref, type WritableComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import SelectButton from 'primevue/selectbutton'
@@ -306,6 +310,7 @@ import {
   type ThemeMode,
   type WindowMode,
 } from '../../main/shared/settings.constants'
+import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
@@ -379,6 +384,39 @@ const windowMode = settingModel('windowMode')
 const archivePurgeEnabled = settingModel('archivePurgeEnabled')
 const archivePurgeDays = settingModel('archivePurgeDays')
 const autoBackupEnabled = settingModel('autoBackupEnabled')
+
+// État du raccourci d'ajout rapide (libellé selon l'OS, conflit avec une autre application)
+const quickAddStatus = ref<QuickAddStatus | null>(null)
+
+/** Relit l'état du raccourci, enregistré ou retiré par le main. */
+async function refreshQuickAddStatus() {
+  try {
+    quickAddStatus.value = await globalThis.quickAdd.getStatus()
+  } catch (error) {
+    getLogger().error("Erreur lors de la lecture de l'état de l'ajout rapide :", error)
+  }
+}
+
+onMounted(refreshQuickAddStatus)
+
+// État relu une fois le paramètre enregistré : le main a alors appliqué le raccourci
+const quickAddEnabled = computed({
+  get: () => settings.quickAddEnabled,
+  set: (value: boolean) => {
+    settings
+      .set('quickAddEnabled', value)
+      .then(refreshQuickAddStatus)
+      .catch(() => showError('Paramètre non enregistré'))
+  },
+})
+
+const quickAddDescription = computed(() => {
+  const shortcut = quickAddStatus.value?.shortcut ?? 'Ctrl+Alt+N'
+  const description = `${shortcut} ouvre une petite fenêtre pour noter une tâche, depuis n'importe quelle application.`
+  return settings.quickAddEnabled && quickAddStatus.value?.unavailable
+    ? `${description} Ce raccourci est déjà utilisé par une autre application.`
+    : description
+})
 
 /** Ouvre la page des tâches archivées. */
 function openArchives() {

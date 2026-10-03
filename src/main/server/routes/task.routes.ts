@@ -5,6 +5,7 @@ import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
 import { bottomPosition, makeRoomAt } from '../helpers/task.helper.js'
+import { settingsStore } from '../../stores/settings.js'
 import Logger from 'electron-log'
 
 // Relations renvoyées avec chaque tâche : ses tags, triés par nom.
@@ -33,6 +34,7 @@ type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & { tags?: s
  * - DELETE /tasks/:id   → Supprime une tâche existante
  * - PUT    /tasks/:id   → Archive (historise) une tâche
  * - POST   /tasks/:id/restore → Restaure une tâche archivée (à sa place ou en bas de la première colonne)
+ * - POST   /tasks/quick-add   → Crée une tâche depuis l'ajout rapide
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -440,6 +442,73 @@ export default async function taskRoutes(fastify) {
 
         Logger.info(`Tâche ${id} restaurée dans la colonne ${stageId}, position ${position}`)
         return restored
+      })
+    },
+  )
+
+  /**
+   * POST /tasks/quick-add
+   *
+   * Crée une tâche depuis la fenêtre d'ajout rapide, avec son seul titre. Le
+   * serveur complète le reste à partir des paramètres : version par défaut, et
+   * place en haut ou en bas de la colonne (les autres tâches descendent d'un
+   * cran pour une tâche ajoutée en haut).
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - Corps de la requête
+   * @param {string} req.body.title - Titre
+   * @param {number} [req.body.stageId] - Colonne (la première si absente ou supprimée)
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, 409 s'il n'y a aucune colonne
+   */
+  fastify.post(
+    '/tasks/quick-add',
+    {
+      schema: {
+        description: "Crée une tâche depuis l'ajout rapide (version et place tirées des paramètres)",
+        tags: ['Task'],
+        body: {
+          type: 'object',
+          properties: {
+            title: requiredLabel,
+            stageId: { type: 'integer' },
+          },
+          required: ['title'],
+        },
+        response: {
+          200: taskSchema,
+          409: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { title, stageId } = req.body as { title: string; stageId?: number }
+      const { newTaskPosition, defaultTaskVersion } = settingsStore.store
+
+      return prisma.$transaction(async (tx) => {
+        const stage =
+          (stageId === undefined ? null : await tx.stage.findUnique({ where: { id: stageId } })) ??
+          (await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] }))
+        if (!stage) {
+          reply.code(409)
+          return { error: 'Aucune colonne pour ajouter la tâche' }
+        }
+
+        let position: number
+        if (newTaskPosition === 'top') {
+          position = 0
+          await makeRoomAt(tx, stage.id, position)
+        } else {
+          position = await bottomPosition(tx, stage.id)
+        }
+
+        const task = await tx.task.create({
+          data: { title: title.trim(), version: defaultTaskVersion, description: '', stageId: stage.id, position },
+          include: taskInclude,
+        })
+
+        Logger.info(`Ajout rapide : tâche ${task.id} créée dans la colonne ${stage.id}`)
+        return task
       })
     },
   )

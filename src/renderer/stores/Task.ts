@@ -99,7 +99,8 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Ajoute au cache une tâche placée au tableau par le serveur (restauration). Comme côté serveur, les autres tâches actives de sa
+     * Ajoute au cache une tâche placée au tableau par le serveur (restauration,
+     * ajout rapide). Comme côté serveur, les autres tâches actives de sa
      * colonne, à sa position ou après, descendent d'un cran. Sans cache chargé,
      * rien à faire : le prochain chargement la ramènera.
      * @param inserted Tâche telle que renvoyée par le serveur
@@ -125,6 +126,24 @@ export const useTaskStore = defineStore('task', {
       }
 
       this.allEntities.data = data
+    },
+
+    /**
+     * Crée une tâche depuis la fenêtre d'ajout rapide : version et place
+     * (haut ou bas de la colonne) sont choisies par le serveur selon les paramètres
+     * @param title Titre de la tâche
+     * @param stageId Colonne (la première si elle n'existe plus)
+     * @returns La tâche créée
+     */
+    async quickAddTask(title: string, stageId?: number): Promise<Task> {
+      try {
+        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId })
+        this.insertCachedTask(task)
+        return task
+      } catch (error) {
+        getLogger().error("Erreur lors de l'ajout rapide d'une tâche :", error)
+        throw error
+      }
     },
 
     /**

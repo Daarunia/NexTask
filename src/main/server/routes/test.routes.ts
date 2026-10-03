@@ -8,6 +8,7 @@ import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system/about.js'
 import { settingsStore } from '../../stores/settings.js'
+import { closeQuickAdd, openQuickAdd } from '../../system/quickAdd.js'
 import Logger from 'electron-log'
 
 /**
@@ -16,13 +17,14 @@ import Logger from 'electron-log'
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
- *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes
- *                                    et oublie les dossiers et les liens ouverts
+ *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
+ *                                    oublie les dossiers et les liens ouverts, et ferme la fenêtre d'ajout rapide
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
+ * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -104,6 +106,9 @@ export default async function testRoutes(fastify) {
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
       clearOpenedLinks()
+
+      // Fenêtre d'ajout rapide laissée ouverte par un test précédent
+      closeQuickAdd()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -298,5 +303,33 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedLinks(),
+  )
+
+  /**
+   * POST /test/open-quick-add
+   *
+   * Ouvre la fenêtre d'ajout rapide, comme le raccourci global (jamais
+   * enregistré en mode test, il le serait pour toute la machine).
+   *
+   * @returns {Promise<{message: string}>} Confirmation de l'ouverture
+   */
+  fastify.post(
+    '/test/open-quick-add',
+    {
+      schema: {
+        description: "Ouvre la fenêtre d'ajout rapide (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'object',
+            properties: { message: { type: 'string' } },
+          },
+        },
+      },
+    },
+    async () => {
+      openQuickAdd()
+      return { message: "Fenêtre d'ajout rapide ouverte" }
+    },
   )
 }

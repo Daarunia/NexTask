@@ -455,8 +455,8 @@ async function undoArchive(taskId: number, place?: { stageId: number; position: 
 }
 
 /**
- * Insère une carte placée au tableau par le serveur (archivage annulé).
- * Comme côté serveur, les cartes de sa colonne à sa position ou après
+ * Insère une carte placée au tableau par le serveur (archivage annulé, ajout
+ * rapide). Comme côté serveur, les cartes de sa colonne à sa position ou après
  * descendent d'un cran : leur position locale reste celle enregistrée.
  * @param task Tâche telle que renvoyée par le serveur
  */
@@ -665,6 +665,10 @@ const toggleStageMenu = (event: Event, stage: Stage) => {
   stageMenuTrigger.value = event.currentTarget as HTMLElement
   stageMenu.value.toggle(event)
 }
+
+// Tâches créées depuis la fenêtre d'ajout rapide, insérées sans recharger le tableau
+const stopQuickAddListener = globalThis.quickAdd.onTaskCreated(insertTaskLocally)
+onBeforeUnmount(stopQuickAddListener)
 
 onMounted(() => {
   if (!scrollContainer.value) return
