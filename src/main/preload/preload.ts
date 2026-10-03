@@ -36,6 +36,16 @@ contextBridge.exposeInMainWorld('about', {
   openNotices: () => ipcRenderer.invoke('about:open', 'notices'),
 })
 
+// Tâches récurrentes (cf. scheduler/recurrenceGeneration) : fenêtre principale
+// avertie des occurrences créées par le main
+contextBridge.exposeInMainWorld('recurrence', {
+  onTasksCreated: (callback: (tasks: unknown[]) => void) => {
+    const listener = (_event: unknown, tasks: unknown[]) => callback(tasks)
+    ipcRenderer.on('tasks:created', listener)
+    return () => ipcRenderer.removeListener('tasks:created', listener)
+  },
+})
+
 // Ajout rapide (cf. system/quickAdd) : fenêtre ouverte par le raccourci global,
 // et fenêtre principale avertie des tâches qui y sont ajoutées
 contextBridge.exposeInMainWorld('quickAdd', {
