@@ -220,8 +220,12 @@ async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | nu
       return { task: null, skipped: 0, ended: false, waiting: true }
     }
 
-    for (const date of due.skipped) {
-      Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée (rattrapage)`)
+    // Une ligne pour tout le rattrapage : une app fermée longtemps saute des centaines de dates
+    if (due.skipped.length) {
+      const [first, last] = [due.skipped[0], due.skipped.at(-1) as Date].map((date) => date.toISOString())
+      Logger.info(
+        `[recurrence] Série ${id} : ${due.skipped.length} date(s) sautée(s) (rattrapage), du ${first} au ${last}`,
+      )
     }
     const { date } = due
 
@@ -248,19 +252,37 @@ async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | nu
   })
 }
 
+// Passage en cours (ou dernier passé) : les passages s'enchaînent sans se chevaucher
+let lastRun: Promise<unknown> = Promise.resolve()
+
 /**
  * Coeur métier : génère les occurrences de toutes les séries actives dont
  * l'heure de création de la prochaine date est passée, une transaction par
  * série (une série en échec n'empêche pas les autres). Extrait pour être testable.
  *
- * `nextRunAt` reste la date de l'occurrence : la requête, indexée sur (status,
- * nextRunAt), retient les séries dont la prochaine date tombe avant
- * maintenant + le délai maximal, puis le délai de chaque série est vérifié ici.
+ * Les passages sont enchaînés : celui du démarrage, ceux du tick et ceux des
+ * tests ne se chevauchent jamais (chaque série est de toute façon relue dans
+ * sa transaction, cf. generateSeries).
  *
  * @param now Horodatage de référence (injectable pour les tests)
  * @returns Nombre d'occurrences créées, de dates sautées, de séries terminées et en attente
  */
-export async function runRecurrenceGeneration(now: Date = new Date()): Promise<RecurrenceGenerationResult> {
+export function runRecurrenceGeneration(now: Date = new Date()): Promise<RecurrenceGenerationResult> {
+  const run = lastRun.then(() => generateDueSeries(now))
+  lastRun = run.catch(() => undefined)
+  return run
+}
+
+/**
+ * Un passage de la génération (cf. runRecurrenceGeneration).
+ *
+ * `nextRunAt` reste la date de l'occurrence : la requête, indexée sur (status,
+ * nextRunAt), retient les séries dont la prochaine date tombe avant
+ * maintenant + le délai maximal, puis le délai de chaque série est vérifié ici.
+ *
+ * @param now Horodatage de référence
+ */
+async function generateDueSeries(now: Date): Promise<RecurrenceGenerationResult> {
   const candidates = await prisma.recurrence.findMany({
     where: { status: 'active', nextRunAt: { lte: new Date(now.getTime() + LEAD_HORIZON_MS) } },
     select: { id: true, nextRunAt: true, leadDays: true, time: true },
