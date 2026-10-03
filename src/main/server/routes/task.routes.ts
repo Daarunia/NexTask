@@ -4,6 +4,7 @@ import { taskSchema } from '../schemas/taskSchema.js'
 import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
+import { bottomPosition, makeRoomAt } from '../helpers/task.helper.js'
 import Logger from 'electron-log'
 
 // Relations renvoyées avec chaque tâche : ses tags, triés par nom.
@@ -31,7 +32,7 @@ type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & { tags?: s
  * - PATCH  /tasks/:id   → Modifie une tâche existante
  * - DELETE /tasks/:id   → Supprime une tâche existante
  * - PUT    /tasks/:id   → Archive (historise) une tâche
- * - POST   /tasks/:id/restore → Restaure une tâche archivée en bas de la première colonne
+ * - POST   /tasks/:id/restore → Restaure une tâche archivée (à sa place ou en bas de la première colonne)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -350,13 +351,20 @@ export default async function taskRoutes(fastify) {
   /**
    * POST /tasks/:id/restore
    *
-   * Restaure une tâche archivée : elle quitte les archives et reprend place en
-   * bas de la première colonne du tableau (plus petite position). Ses tags
-   * sont conservés.
+   * Restaure une tâche archivée : elle quitte les archives et reprend place au
+   * tableau. Ses tags sont conservés.
+   *
+   * Sans paramètre, elle va en bas de la première colonne (plus petite
+   * position). Avec `stageId` et `position` (annulation d'un archivage), elle
+   * reprend cette place : les tâches qui l'occupent descendent d'un cran. Si
+   * cette colonne n'existe plus, la place par défaut est utilisée.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
+   * @param {Object} req.query - Paramètres de requête
+   * @param {number} [req.query.stageId] - Colonne où restaurer la tâche
+   * @param {number} [req.query.position] - Position dans cette colonne
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task restauré avec ses tags, 404 si la
    *   tâche n'existe pas, 409 si elle n'est pas archivée ou s'il n'y a aucune colonne
@@ -365,9 +373,19 @@ export default async function taskRoutes(fastify) {
     '/tasks/:id/restore',
     {
       schema: {
-        description: 'Restaure une tâche archivée en bas de la première colonne',
+        description: 'Restaure une tâche archivée, à la place indiquée ou en bas de la première colonne',
         tags: ['Task'],
         params: idParam,
+        // En query plutôt qu'en corps : la restauration depuis les archives n'envoie rien
+        querystring: {
+          type: 'object',
+          properties: {
+            stageId: { type: 'integer' },
+            position: { type: 'integer', minimum: 0 },
+          },
+          // L'un ne va pas sans l'autre
+          dependencies: { stageId: ['position'], position: ['stageId'] },
+        },
         response: {
           200: taskSchema,
           404: errorResponse,
@@ -377,8 +395,9 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
+      const place = req.query as { stageId?: number; position?: number }
 
-      // Transaction : la position calculée reste la dernière au moment de l'écriture
+      // Transaction : la position calculée reste valable au moment de l'écriture
       return prisma.$transaction(async (tx) => {
         const task = await tx.task.findUnique({ where: { id } })
         if (!task) {
@@ -390,30 +409,36 @@ export default async function taskRoutes(fastify) {
           return { error: "La tâche n'est pas archivée" }
         }
 
-        const firstStage = await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] })
-        if (!firstStage) {
-          reply.code(409)
-          return { error: 'Aucune colonne pour restaurer la tâche' }
-        }
+        // Place demandée, si sa colonne existe encore
+        const requestedStage =
+          place.stageId === undefined ? null : await tx.stage.findUnique({ where: { id: place.stageId } })
 
-        // En bas de la colonne : après la plus grande position de ses tâches actives
-        const { _max } = await tx.task.aggregate({
-          where: { stageId: firstStage.id, isHistorized: false },
-          _max: { position: true },
-        })
+        let stageId: number
+        let position: number
+
+        if (requestedStage && place.position !== undefined) {
+          stageId = requestedStage.id
+          position = place.position
+          await makeRoomAt(tx, stageId, position)
+        } else {
+          const firstStage = await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] })
+          if (!firstStage) {
+            reply.code(409)
+            return { error: 'Aucune colonne pour restaurer la tâche' }
+          }
+
+          // En bas de la colonne : après la plus grande position de ses tâches actives
+          stageId = firstStage.id
+          position = await bottomPosition(tx, stageId)
+        }
 
         const restored = await tx.task.update({
           where: { id },
-          data: {
-            isHistorized: false,
-            historizationDate: null,
-            stageId: firstStage.id,
-            position: (_max.position ?? -1) + 1,
-          },
+          data: { isHistorized: false, historizationDate: null, stageId, position },
           include: taskInclude,
         })
 
-        Logger.info(`Tâche ${id} restaurée dans la colonne ${firstStage.id}`)
+        Logger.info(`Tâche ${id} restaurée dans la colonne ${stageId}, position ${position}`)
         return restored
       })
     },

@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import Toast from 'primevue/toast'
 import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
+import UndoToast from './components/UndoToast.vue'
 import { useSettingsStore } from './stores/Settings'
 
 const settings = useSettingsStore()
@@ -22,6 +23,9 @@ onMounted(() => settings.load())
 
     <!-- Notifications d'erreur (cf. utils/toast.helper.ts) -->
     <Toast position="bottom-right" />
+
+    <!-- Annulation d'une action qui vient d'être faite (cf. useUndoToast) -->
+    <UndoToast />
 
     <!-- Confirmations ancrées sur leur bouton (cf. useConfirm) -->
     <ConfirmPopup data-testid="confirm-popup" />

@@ -118,7 +118,7 @@ import { Stage } from '../types/stage.types'
 import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
-import { useErrorToast } from '../utils/toast.helper'
+import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
@@ -139,6 +139,7 @@ const stageStore = useStageStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
 const showError = useErrorToast()
+const showUndo = useUndoToast()
 const confirm = useConfirm()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
@@ -431,6 +432,46 @@ async function archiveTask(task: Task) {
   }
 
   logger.debug('Tâche archivée', task)
+
+  // Place de la carte (position persistée), reprise si l'archivage est annulé
+  const place = location ? { stageId: location.stageId, position: location.list[location.index].position } : undefined
+  showUndo('Tâche archivée', { detail: task.title, undo: () => undoArchive(task.id, place) })
+}
+
+/**
+ * Annule un archivage : la tâche reprend sa place au tableau (ou va en bas
+ * de la première colonne si la sienne a été supprimée entre-temps)
+ * @param taskId Id de la tâche archivée
+ * @param place Colonne et position de la carte avant l'archivage
+ */
+async function undoArchive(taskId: number, place?: { stageId: number; position: number }) {
+  try {
+    const restored = await taskStore.restoreTask(taskId, place)
+    insertTaskLocally(restored)
+    logger.debug('Archivage annulé', restored)
+  } catch {
+    showError('Annulation impossible', "La tâche n'a pas été remise au tableau.")
+  }
+}
+
+/**
+ * Insère une carte placée au tableau par le serveur (archivage annulé).
+ * Comme côté serveur, les cartes de sa colonne à sa position ou après
+ * descendent d'un cran : leur position locale reste celle enregistrée.
+ * @param task Tâche telle que renvoyée par le serveur
+ */
+function insertTaskLocally(task: Task) {
+  const list = taskLists.get(task.stageId)
+  if (!list || findTaskLocation(task.id)) return
+
+  for (const t of list) {
+    if (t.position >= task.position) t.position += 1
+  }
+
+  const updated = [...list]
+  const index = updated.findIndex((t) => t.position > task.position)
+  updated.splice(index === -1 ? updated.length : index, 0, { ...task })
+  taskLists.set(task.stageId, updated)
 }
 
 /**

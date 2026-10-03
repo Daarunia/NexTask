@@ -6,7 +6,7 @@ import { getTags, type Task } from '../../helpers/tag.helper'
 /**
  * Tests E2E des tâches archivées : filtre d'historisation de GET /tasks,
  * restauration (POST /tasks/:id/restore), page des archives ouverte depuis les
- * Paramètres (liste, restauration, suppression définitive) et purge
+ * Paramètres (liste, restauration, suppression définitive annulable) et purge
  * automatique, déclenchée à la demande via POST /test/run-archive-purge (la
  * maintenance quotidienne ne tourne pas en mode test).
  *
@@ -131,6 +131,44 @@ test.describe('POST /tasks/:id/restore', () => {
     const res = await page.request.post(`${API}/tasks/${task.id}/restore`)
     expect(res.status()).toBe(409)
   })
+
+  test('avec stageId et position, reprend cette place et décale les tâches suivantes', async ({ page }) => {
+    const stageId = await firstStageId(page.request)
+    await createActive(page.request, 'A', 0)
+    const b = await createActive(page.request, 'B', 1)
+    const c = await createActive(page.request, 'C', 2)
+
+    // B archivé, puis C remonté à sa place : la position 1 est occupée
+    expect((await page.request.put(`${API}/tasks/${b.id}`)).ok()).toBeTruthy()
+    expect((await page.request.patch(`${API}/tasks/batch`, { data: [{ id: c.id, position: 1 }] })).ok()).toBeTruthy()
+
+    const res = await page.request.post(`${API}/tasks/${b.id}/restore?stageId=${stageId}&position=1`)
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect(await res.json()).toMatchObject({ id: b.id, isHistorized: false, stageId, position: 1 })
+
+    const active = (await (await page.request.get(`${API}/tasks?isHistorized=false`)).json()) as ArchivableTask[]
+    expect(active.map((t) => [t.title, t.position])).toEqual([
+      ['A', 0],
+      ['B', 1],
+      ['C', 2],
+    ])
+  })
+
+  test('colonne supprimée entre-temps : restaurée en bas de la première colonne', async ({ page }) => {
+    await createActive(page.request, 'A', 0)
+    const archived = await createArchived(page.request, 'Orpheline')
+
+    const res = await page.request.post(`${API}/tasks/${archived.id}/restore?stageId=999999&position=0`)
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect(await res.json()).toMatchObject({ stageId: await firstStageId(page.request), position: 1 })
+  })
+
+  test('400 pour une colonne sans position (ou une position sans colonne)', async ({ page }) => {
+    const archived = await createArchived(page.request, 'Archivée')
+
+    expect((await page.request.post(`${API}/tasks/${archived.id}/restore?stageId=1`)).status()).toBe(400)
+    expect((await page.request.post(`${API}/tasks/${archived.id}/restore?position=0`)).status()).toBe(400)
+  })
 })
 
 test.describe('Page des archives', () => {
@@ -224,27 +262,53 @@ test.describe('Page des archives', () => {
     await expect.poll(() => taskBoard.columnTaskTitles('En cours')).toEqual([])
   })
 
-  test('la suppression définitive demande une confirmation', async ({ page, header, settingsPage, archivesPage }) => {
+  test('la suppression définitive peut être annulée tant que le toast est affiché', async ({
+    page,
+    header,
+    settingsPage,
+    archivesPage,
+    undoToast,
+  }) => {
     const task = await createArchived(page.request, 'À supprimer', new Date(), ['bug'])
 
     await header.goSettings()
     await settingsPage.openArchivesButton.click()
 
-    // Annuler : la tâche reste
-    await archivesPage.askDelete('À supprimer')
-    await archivesPage.confirmRejectButton.click()
-    await expect(archivesPage.confirmPopup).toBeHidden()
-    await expect(archivesPage.item('À supprimer')).toBeVisible()
-    expect((await page.request.get(`${API}/tasks/${task.id}`)).ok()).toBeTruthy()
-
-    // Confirmer : la tâche disparaît de la liste et de la base
-    await archivesPage.askDelete('À supprimer')
-    await archivesPage.confirmAcceptButton.click()
+    // Masquée tout de suite, mais pas encore supprimée en base
+    await archivesPage.delete('À supprimer')
     await expect(archivesPage.item('À supprimer')).toHaveCount(0)
     await expect(archivesPage.empty).toBeVisible()
+    await expect(undoToast.toast('À supprimer')).toContainText('Tâche supprimée')
+    expect((await page.request.get(`${API}/tasks/${task.id}`)).ok()).toBeTruthy()
+
+    // Annuler : la tâche revient
+    await undoToast.undo('À supprimer')
+    await expect(undoToast.toast('À supprimer')).toHaveCount(0)
+    await expect(archivesPage.item('À supprimer')).toBeVisible()
+    await expect(archivesPage.count).toHaveText('1')
+    expect((await page.request.get(`${API}/tasks/${task.id}`)).ok()).toBeTruthy()
+  })
+
+  test('sans annulation, la tâche est supprimée à la fermeture du toast', async ({
+    page,
+    header,
+    settingsPage,
+    archivesPage,
+    undoToast,
+  }) => {
+    const task = await createArchived(page.request, 'À supprimer', new Date(), ['bug'])
+
+    await header.goSettings()
+    await settingsPage.openArchivesButton.click()
+    await archivesPage.delete('À supprimer')
+    await undoToast.waitForExpiry('À supprimer')
 
     await expect.poll(async () => (await page.request.get(`${API}/tasks/${task.id}`)).status()).toBe(404)
     expect(await getTags(page.request)).toEqual([expect.objectContaining({ name: 'bug', taskCount: 0 })])
+
+    // Toujours absente une fois la liste relue
+    await page.reload()
+    await expect(archivesPage.empty).toBeVisible()
   })
 })
 
