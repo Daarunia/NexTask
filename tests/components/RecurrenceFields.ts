@@ -3,9 +3,9 @@ import type { MonthlyMode } from '../../src/main/shared/recurrence.constants'
 
 /**
  * Objet du champ « Répéter » de l'écran de tâche (RecurrenceFields, dans
- * TaskDialog) : préréglages, bloc « Personnaliser… » (dont le jour du mois
- * en mensuel), résumé de la règle et prochaine date, case « Appliquer aux
- * prochaines occurrences ».
+ * TaskDialog) : préréglages, bloc « Personnaliser… » (point de départ des
+ * dates, jour du mois en mensuel), résumé de la règle et prochaine date, case
+ * « Appliquer aux prochaines occurrences ».
  */
 export class RecurrenceFields {
   readonly page: Page
@@ -21,6 +21,8 @@ export class RecurrenceFields {
 
   // Bloc « Personnaliser… »
   readonly custom: Locator
+  readonly anchorSchedule: Locator
+  readonly anchorCompletion: Locator
   readonly interval: Locator
   readonly unit: Locator
   readonly weekdays: Locator
@@ -54,6 +56,9 @@ export class RecurrenceFields {
     this.error = this.root.getByTestId('recurrence-error')
 
     this.custom = this.root.getByTestId('recurrence-custom')
+    // Point de départ : selon le calendrier, ou après l'archivage de la précédente
+    this.anchorSchedule = this.custom.getByTestId('recurrence-anchor-schedule').locator('input')
+    this.anchorCompletion = this.custom.getByTestId('recurrence-anchor-completion').locator('input')
     // Les composants PrimeVue exposent un <input> interne sous le data-testid
     this.interval = this.custom.getByTestId('recurrence-interval').locator('input')
     this.unit = this.custom.getByTestId('recurrence-unit')

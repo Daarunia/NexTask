@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test'
 import {
   dueOccurrence,
+  hasNextDate,
   monthlyWeekdayOf,
+  nextAfterCompletion,
   nextOccurrence,
   nextRunAfter,
   occurrenceCreationDate,
@@ -10,8 +12,8 @@ import {
 import { describeRecurrence, monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
 
 /**
- * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`)
- * et de leurs libellés, sans lancer l'app ni de navigateur (projet « unit » de
+ * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`,
+ * et `nextAfterCompletion` pour le mode « après archivage ») et de leurs libellés, sans lancer l'app ni de navigateur (projet « unit » de
  * playwright.config.ts).
  *
  * Fuseau Europe/Paris imposé pour tout le worker : les cas de changement d'heure
@@ -39,6 +41,7 @@ function local(year: number, month: number, day: number, hours = 9, minutes = 0)
 function rule(overrides: Partial<RecurrenceRule> = {}): RecurrenceRule {
   const startsAt = overrides.startsAt ?? local(2026, 10, 1)
   return {
+    anchor: 'schedule',
     frequency: 'daily',
     interval: 1,
     weekdays: [],
@@ -348,6 +351,7 @@ test.describe('Création anticipée', () => {
   test('le résumé indique le délai', () => {
     const summary = {
       id: 1,
+      anchor: 'schedule' as const,
       frequency: 'monthly' as const,
       interval: 1,
       weekdays: null,
@@ -369,5 +373,120 @@ test.describe('Création anticipée', () => {
       'Tous les mois le 3e jeudi à 09:00, 6 fois, créée 1 jour avant',
     )
     expect(describeRecurrence({ ...summary, leadDays: 0 })).toBe('Tous les mois le 3e jeudi à 09:00, 6 fois')
+  })
+})
+
+test.describe('Après archivage', () => {
+  /**
+   * Règle « après archivage », à 09:00, tous les jours par défaut.
+   * @param overrides Champs remplacés
+   */
+  function completion(overrides: Partial<RecurrenceRule> = {}): RecurrenceRule {
+    return rule({ anchor: 'completion', ...overrides })
+  }
+
+  test("jours : jour local de l'archivage plus l'intervalle, à l'heure de la série", () => {
+    expect(nextAfterCompletion(completion({ interval: 3 }), local(2026, 10, 10, 18, 30))).toEqual(local(2026, 10, 13))
+    // Archivage à 23:50 ou à 00:10 : c'est le jour local qui compte, pas un écart de 24 h
+    expect(nextAfterCompletion(completion(), local(2026, 10, 10, 23, 50))).toEqual(local(2026, 10, 11))
+    expect(nextAfterCompletion(completion(), local(2026, 10, 11, 0, 10))).toEqual(local(2026, 10, 12))
+    // Archivée avant l'heure de la série : le lendemain quand même
+    expect(nextAfterCompletion(completion(), local(2026, 10, 10, 7))).toEqual(local(2026, 10, 11))
+  })
+
+  test('semaines : 7 jours par semaine, jours de la semaine ignorés', () => {
+    const r = completion({ frequency: 'weekly', interval: 2, weekdays: [1, 3] })
+    // Samedi 10 octobre + 2 semaines = samedi 24 octobre
+    expect(nextAfterCompletion(r, local(2026, 10, 10, 12))).toEqual(local(2026, 10, 24))
+  })
+
+  test('mois : un jour absent tombe sur le dernier jour du mois, mode du mensuel ignoré', () => {
+    const r = completion({ frequency: 'monthly', monthlyMode: 'nthWeekday' })
+    expect(nextAfterCompletion(r, local(2027, 1, 31, 20))).toEqual(local(2027, 2, 28))
+    expect(nextAfterCompletion(r, local(2028, 1, 31, 20))).toEqual(local(2028, 2, 29))
+    expect(nextAfterCompletion(r, local(2026, 3, 31, 20))).toEqual(local(2026, 4, 30))
+    expect(nextAfterCompletion(completion({ frequency: 'monthly', interval: 3 }), local(2026, 11, 30))).toEqual(
+      local(2027, 2, 28),
+    )
+    // Changement d'année
+    expect(nextAfterCompletion(r, local(2026, 12, 15))).toEqual(local(2027, 1, 15))
+  })
+
+  test('années : 29 février ramené au 28 les années non bissextiles', () => {
+    const r = completion({ frequency: 'yearly' })
+    expect(nextAfterCompletion(r, local(2028, 2, 29, 18))).toEqual(local(2029, 2, 28))
+    expect(nextAfterCompletion(completion({ frequency: 'yearly', interval: 4 }), local(2028, 2, 29))).toEqual(
+      local(2032, 2, 29),
+    )
+    expect(nextAfterCompletion(r, local(2026, 10, 10))).toEqual(local(2027, 10, 10))
+  })
+
+  test("changement d'heure : même heure locale, heure inexistante décalée", () => {
+    // Archivée le samedi 24 octobre 2026 (UTC+2), prochaine le lundi 26 (UTC+1) à 09:00
+    const autumn = nextAfterCompletion(completion({ interval: 2 }), local(2026, 10, 24, 20))
+    expect(autumn?.toISOString()).toBe('2026-10-26T08:00:00.000Z')
+    // 02:30 n'existe pas le 28 mars 2027 (passage à l'heure d'été) : 03:30
+    const spring = nextAfterCompletion(completion({ time: '02:30' }), local(2027, 3, 27, 22))
+    expect([spring?.getDate(), spring?.getHours(), spring?.getMinutes()]).toEqual([28, 3, 30])
+  })
+
+  test('fin de la série : nombre atteint, date de fin dépassée (incluse jusqu’au soir)', () => {
+    const counted = (generatedCount: number) => completion({ endType: 'afterCount', maxCount: 3, generatedCount })
+    expect(nextAfterCompletion(counted(3), local(2026, 10, 10))).toBeNull()
+    expect(nextAfterCompletion(counted(2), local(2026, 10, 10))).toEqual(local(2026, 10, 11))
+
+    const endsOn = local(2026, 10, 12, 0, 0)
+    expect(nextAfterCompletion(completion({ interval: 2, endType: 'onDate', endsOn }), local(2026, 10, 10))).toEqual(
+      local(2026, 10, 12),
+    )
+    expect(nextAfterCompletion(completion({ interval: 3, endType: 'onDate', endsOn }), local(2026, 10, 10))).toBeNull()
+  })
+
+  test('création anticipée : N jours avant la date, sans rattrapage même longtemps après', () => {
+    const r = completion({ interval: 3, leadDays: 2 })
+    const next = nextAfterCompletion(r, local(2026, 10, 10, 18)) as Date
+    expect(next).toEqual(local(2026, 10, 13))
+    expect(occurrenceCreationDate(r, next)).toEqual(local(2026, 10, 11))
+
+    expect(dueOccurrence(r, next, local(2026, 10, 11, 8, 59))).toBeNull()
+    expect(dueOccurrence(r, next, local(2026, 10, 11, 9))).toEqual({ date: next, skipped: [] })
+    // Reprise bien après la date : une seule occurrence, à sa date
+    expect(dueOccurrence(r, next, local(2026, 12, 1))).toEqual({ date: next, skipped: [] })
+  })
+
+  test('série réactivable tant que sa fin le permet', () => {
+    expect(hasNextDate(completion(), local(2026, 10, 10))).toBe(true)
+    expect(hasNextDate(completion({ endType: 'afterCount', maxCount: 1 }), local(2026, 10, 10))).toBe(false)
+    expect(hasNextDate(completion({ endType: 'onDate', endsOn: local(2026, 10, 5) }), local(2026, 10, 10))).toBe(false)
+    expect(hasNextDate(rule(), local(2026, 10, 10))).toBe(true)
+  })
+
+  test('le résumé dit « après l’archivage de la précédente »', () => {
+    const summary = {
+      id: 1,
+      anchor: 'completion' as const,
+      frequency: 'daily' as const,
+      interval: 3,
+      weekdays: null,
+      monthlyMode: null,
+      time: '09:00',
+      startsAt: local(2026, 10, 15).toISOString(),
+      endType: 'never' as const,
+      endsOn: null,
+      maxCount: null,
+      generatedCount: 1,
+      skipIfPending: true,
+      leadDays: 0,
+      status: 'active' as const,
+      nextRunAt: null,
+    }
+    expect(describeRecurrence(summary)).toBe("3 jours après l'archivage de la précédente, à 09:00")
+    expect(describeRecurrence({ ...summary, frequency: 'weekly', interval: 1 })).toBe(
+      "1 semaine après l'archivage de la précédente, à 09:00",
+    )
+    const monthly = { ...summary, frequency: 'monthly' as const, interval: 2, endType: 'afterCount' as const }
+    expect(describeRecurrence({ ...monthly, maxCount: 5, leadDays: 1 })).toBe(
+      "2 mois après l'archivage de la précédente, à 09:00, 5 fois, créée 1 jour avant",
+    )
   })
 })
