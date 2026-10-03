@@ -490,3 +490,21 @@ test.describe('Après archivage', () => {
     )
   })
 })
+
+test.describe('Règle illisible', () => {
+  test('aucune date plutôt qu’une boucle sans fin', () => {
+    const after = local(2026, 10, 10)
+    for (const broken of [
+      rule({ time: '9h' }),
+      rule({ time: '24:00' }),
+      rule({ interval: 0 }),
+      rule({ interval: Number.NaN }),
+      rule({ startsAt: new Date(Number.NaN), time: '09:00' }),
+    ]) {
+      expect(nextOccurrence(broken, after)).toBeNull()
+      expect(nextAfterCompletion({ ...broken, anchor: 'completion' }, after)).toBeNull()
+    }
+    expect(nextOccurrence(rule(), new Date(Number.NaN))).toBeNull()
+    expect(dueOccurrence(rule(), local(2026, 10, 2), new Date(Number.NaN))).toBeNull()
+  })
+})

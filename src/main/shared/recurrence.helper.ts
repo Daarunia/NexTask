@@ -26,9 +26,15 @@
  * à l'heure de la série (cf. nextAfterCompletion). Seuls la fréquence et
  * l'intervalle comptent ; la fin, l'heure et la création anticipée
  * s'appliquent comme en mode calendrier.
+ *
+ * Une règle illisible (heure, début ou intervalle invalides, données
+ * importées par exemple) ne donne aucune date, plutôt qu'une boucle sans fin.
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
+
+// Heure locale "HH:mm" valable
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 // Dates candidates examinées au plus par recherche : quelques-unes suffisent
 // pour une règle valable (cf. firstAfter), la borne protège d'une boucle sans fin
@@ -229,6 +235,21 @@ export function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
+/** Vrai pour une date valable (ni `Invalid Date`, ni hors bornes). */
+function isValidDate(date: Date): boolean {
+  return Number.isFinite(date.getTime())
+}
+
+/**
+ * Vrai si la règle permet un calcul : heure "HH:mm", début valable, intervalle
+ * entier d'au moins 1. Sans cela, les recherches de date ne finiraient pas.
+ */
+function isComputable(rule: RecurrenceRule): boolean {
+  return (
+    TIME_PATTERN.test(rule.time) && isValidDate(rule.startsAt) && Number.isInteger(rule.interval) && rule.interval >= 1
+  )
+}
+
 /** Plus petit multiple de `step` supérieur ou égal à `value` (positif). */
 function ceilToMultiple(value: number, step: number): number {
   return Math.ceil(Math.max(0, value) / step) * step
@@ -330,14 +351,14 @@ function withinEnd(rule: RecurrenceRule, candidate: Date | null): Date | null {
 /**
  * Prochaine date d'une série calendaire : la première strictement après
  * `after`, ou null si la série est finie (date de fin dépassée, nombre
- * d'occurrences atteint).
+ * d'occurrences atteint) ou sa règle illisible.
  *
  * @param rule Règle de la série
  * @param after Date de référence (exclue)
  * @returns Date de l'occurrence, ou null
  */
 export function nextOccurrence(rule: RecurrenceRule, after: Date): Date | null {
-  if (countReached(rule)) return null
+  if (countReached(rule) || !isComputable(rule) || !isValidDate(after)) return null
 
   const search = NEXT_CANDIDATE[rule.frequency]
   return search ? withinEnd(rule, search(rule, after)) : null
@@ -361,15 +382,15 @@ export function nextRunAfter(rule: RecurrenceRule, now: Date): Date | null {
  * plus l'intervalle (jours, semaines, mois ou années), à l'heure de la série.
  * En mensuel et annuel, un jour absent du mois d'arrivée tombe sur son
  * dernier jour (31 janvier + 1 mois = 28 ou 29 février). Null si la série est
- * finie (nombre d'occurrences atteint, date de fin dépassée). Les jours de la
- * semaine et le mode du mensuel sont ignorés.
+ * finie (nombre d'occurrences atteint, date de fin dépassée) ou sa règle
+ * illisible. Les jours de la semaine et le mode du mensuel sont ignorés.
  *
  * @param rule Règle de la série
  * @param archivedAt Date de l'archivage de l'occurrence précédente
  * @returns Date de la prochaine occurrence, ou null
  */
 export function nextAfterCompletion(rule: RecurrenceRule, archivedAt: Date): Date | null {
-  if (countReached(rule)) return null
+  if (countReached(rule) || !isComputable(rule) || !isValidDate(archivedAt)) return null
 
   const day = localDay(archivedAt)
   let target: CalendarDay
@@ -433,7 +454,7 @@ export function dueOccurrence(
   nextRunAt: Date,
   now: Date,
 ): { date: Date; skipped: Date[] } | null {
-  if (occurrenceCreationDate(rule, nextRunAt) > now) return null
+  if (!(occurrenceCreationDate(rule, nextRunAt) <= now)) return null
   if (rule.anchor === 'completion') return { date: nextRunAt, skipped: [] }
 
   let date = nextRunAt
