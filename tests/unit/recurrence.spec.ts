@@ -1,9 +1,16 @@
 import { test, expect } from '@playwright/test'
-import { nextOccurrence, nextRunAfter, type RecurrenceRule } from '../../src/main/shared/recurrence.helper'
+import {
+  monthlyWeekdayOf,
+  nextOccurrence,
+  nextRunAfter,
+  type RecurrenceRule,
+} from '../../src/main/shared/recurrence.helper'
+import { monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
 
 /**
- * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`),
- * sans lancer l'app ni de navigateur (projet « unit » de playwright.config.ts).
+ * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`)
+ * et de leurs libellés, sans lancer l'app ni de navigateur (projet « unit » de
+ * playwright.config.ts).
  *
  * Fuseau Europe/Paris imposé pour tout le worker : les cas de changement d'heure
  * en dépendent. Node relit le fuseau à chaque affectation de `TZ`, et le module
@@ -158,6 +165,95 @@ test.describe('Mensuel', () => {
     expect(series(r, 3)).toEqual([local(2026, 3, 15), local(2026, 5, 15), local(2026, 7, 15)])
     // Depuis avril (mois sans occurrence), la suivante est en mai
     expect(nextOccurrence(r, local(2026, 4, 20))).toEqual(local(2026, 5, 15))
+  })
+})
+
+test.describe('Mensuel, Ne jour de la semaine', () => {
+  test('le 3e jeudi de chaque mois', () => {
+    // 15 octobre 2026 : 3e jeudi (1er octobre = jeudi)
+    const r = rule({ frequency: 'monthly', monthlyMode: 'nthWeekday', startsAt: local(2026, 10, 15) })
+    expect(monthlyWeekdayOf(r.startsAt)).toEqual({ rank: 3, weekday: 4 })
+    expect(series(r, 3)).toEqual([local(2026, 11, 19), local(2026, 12, 17), local(2027, 1, 21)])
+  })
+
+  test('un 5e jeudi devient le dernier jeudi du mois', () => {
+    // 29 octobre 2026 : 5e jeudi, absent de la plupart des mois
+    const r = rule({ frequency: 'monthly', monthlyMode: 'nthWeekday', startsAt: local(2026, 10, 29) })
+    expect(monthlyWeekdayOf(r.startsAt)).toEqual({ rank: -1, weekday: 4 })
+    // Novembre : 4 jeudis, le dernier le 26 ; décembre : 5 jeudis, le dernier le 31
+    expect(series(r, 3)).toEqual([local(2026, 11, 26), local(2026, 12, 31), local(2027, 1, 28)])
+  })
+
+  test('un 4e jeudi reste le 4e, même quand il est aussi le dernier', () => {
+    // 22 octobre 2026 : 4e jeudi ; décembre en a 5, le 4e est le 24
+    const r = rule({ frequency: 'monthly', monthlyMode: 'nthWeekday', startsAt: local(2026, 10, 22) })
+    expect(series(r, 2)).toEqual([local(2026, 11, 26), local(2026, 12, 24)])
+  })
+
+  test('tous les 2 mois, comptés depuis le mois de début', () => {
+    const r = rule({ frequency: 'monthly', interval: 2, monthlyMode: 'nthWeekday', startsAt: local(2026, 10, 15) })
+    expect(series(r, 2)).toEqual([local(2026, 12, 17), local(2027, 2, 18)])
+    // Depuis janvier (mois sans occurrence), la suivante est en février
+    expect(nextOccurrence(r, local(2027, 1, 25))).toEqual(local(2027, 2, 18))
+  })
+
+  test("garde l'heure locale : dernier dimanche à 02:30, décalé à 03:30 le jour du passage à l'heure d'été", () => {
+    // 29 novembre 2026 : 5e (donc dernier) dimanche, tous les 4 mois → 28 mars 2027
+    const r = rule({
+      frequency: 'monthly',
+      interval: 4,
+      monthlyMode: 'nthWeekday',
+      startsAt: local(2026, 11, 29, 2, 30),
+    })
+    const [march, july] = series(r, 2)
+    expect(march.toISOString()).toBe('2027-03-28T01:30:00.000Z')
+    expect([march.getDate(), march.getHours(), march.getMinutes()]).toEqual([28, 3, 30])
+    // Dernier dimanche de juillet 2027 : le 25, de nouveau à 02:30
+    expect(july).toEqual(local(2027, 7, 25, 2, 30))
+  })
+})
+
+test.describe('Mensuel, dernier jour du mois', () => {
+  test('février bissextile, mois de 30 et de 31 jours', () => {
+    const r = rule({ frequency: 'monthly', monthlyMode: 'lastDay', startsAt: local(2028, 1, 31) })
+    expect(series(r, 4)).toEqual([local(2028, 2, 29), local(2028, 3, 31), local(2028, 4, 30), local(2028, 5, 31)])
+  })
+
+  test('février non bissextile', () => {
+    const r = rule({ frequency: 'monthly', monthlyMode: 'lastDay', startsAt: local(2026, 1, 31) })
+    expect(nextOccurrence(r, r.startsAt)).toEqual(local(2026, 2, 28))
+  })
+
+  test('début en milieu de mois : première occurrence à la fin de ce mois', () => {
+    const r = rule({ frequency: 'monthly', monthlyMode: 'lastDay', startsAt: local(2026, 11, 10) })
+    expect(series(r, 2)).toEqual([local(2026, 11, 30), local(2026, 12, 31)])
+  })
+
+  test('tous les 2 mois', () => {
+    const r = rule({ frequency: 'monthly', interval: 2, monthlyMode: 'lastDay', startsAt: local(2026, 11, 30) })
+    expect(series(r, 2)).toEqual([local(2027, 1, 31), local(2027, 3, 31)])
+  })
+
+  test("garde l'heure locale de part et d'autre du passage à l'heure d'hiver", () => {
+    // 30 septembre (UTC+2) puis 31 octobre (UTC+1), toujours à 09:00 locale
+    const r = rule({ frequency: 'monthly', monthlyMode: 'lastDay', startsAt: local(2026, 9, 30) })
+    expect(nextOccurrence(r, r.startsAt)?.toISOString()).toBe('2026-10-31T08:00:00.000Z')
+    expect(r.startsAt.toISOString()).toBe('2026-09-30T07:00:00.000Z')
+  })
+})
+
+test.describe('Libellés du mensuel', () => {
+  test('rang en toutes lettres : 1er, puis 2e, 3e…', () => {
+    expect([1, 2, 3, 4].map(ordinalRank)).toEqual(['1er', '2e', '3e', '4e'])
+  })
+
+  test('jour du mois déduit de la date de début', () => {
+    expect(monthlyDayLabel('dayOfMonth', local(2026, 10, 15))).toBe('le 15')
+    expect(monthlyDayLabel('dayOfMonth', local(2026, 10, 1))).toBe('le 1er')
+    expect(monthlyDayLabel('nthWeekday', local(2026, 10, 1))).toBe('le 1er jeudi')
+    expect(monthlyDayLabel('nthWeekday', local(2026, 10, 15))).toBe('le 3e jeudi')
+    expect(monthlyDayLabel('nthWeekday', local(2026, 10, 29))).toBe('le dernier jeudi')
+    expect(monthlyDayLabel('lastDay', local(2026, 10, 15))).toBe('le dernier jour')
   })
 })
 

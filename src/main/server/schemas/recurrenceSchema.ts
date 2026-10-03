@@ -5,7 +5,6 @@ import {
   RECURRENCE_FREQUENCIES,
   RECURRENCE_INTERVAL_MAX,
   RECURRENCE_STATUSES,
-  SUPPORTED_MONTHLY_MODES,
 } from '../../shared/recurrence.constants.js'
 
 // Date optionnelle (null = absente)
@@ -61,8 +60,8 @@ const recurrenceInputProperties = {
     items: { type: 'integer', minimum: 1, maximum: 7 },
     uniqueItems: true,
   },
-  // Jour fixe du mois seulement pour l'instant
-  monthlyMode: { type: ['string', 'null'], enum: [...SUPPORTED_MONTHLY_MODES, null] },
+  // Mensuel : jour fixe (défaut), « Ne jour de la semaine » ou dernier jour du mois
+  monthlyMode: { type: ['string', 'null'], enum: [...MONTHLY_MODES, null] },
   endType: { type: 'string', enum: [...RECURRENCE_END_TYPES] },
   endsOn: nullableDate,
   maxCount: { type: ['integer', 'null'], minimum: 1, maximum: RECURRENCE_COUNT_MAX },

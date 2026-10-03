@@ -10,16 +10,16 @@ export const RECURRENCE_FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'] a
 export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number]
 
 /**
- * Modes du mensuel : jour fixe du mois, « 3e jeudi », dernier jour du mois.
- * Seul `dayOfMonth` est proposé pour l'instant (cf. SUPPORTED_MONTHLY_MODES).
+ * Modes du mensuel, tous déduits de la date de début de la série :
+ * - `dayOfMonth` : même jour du mois (« le 15 ») ;
+ * - `nthWeekday` : même rang du même jour de la semaine (« le 3e jeudi »), un
+ *   5e jour de la semaine devenant le dernier du mois (« le dernier jeudi ») ;
+ * - `lastDay` : dernier jour du mois.
  */
 export const MONTHLY_MODES = ['dayOfMonth', 'nthWeekday', 'lastDay'] as const
 
 /** Mode du mensuel. */
 export type MonthlyMode = (typeof MONTHLY_MODES)[number]
-
-/** Modes du mensuel acceptés par l'API. */
-export const SUPPORTED_MONTHLY_MODES = ['dayOfMonth'] as const
 
 /** Fins possibles d'une série : jamais, à une date (incluse), après N occurrences. */
 export const RECURRENCE_END_TYPES = ['never', 'onDate', 'afterCount'] as const
@@ -48,7 +48,7 @@ export interface RecurrenceInput {
   frequency: RecurrenceFrequency
   interval: number // 1 à RECURRENCE_INTERVAL_MAX
   weekdays?: number[] // jours ISO (lundi = 1), au moins un en hebdomadaire
-  monthlyMode?: MonthlyMode | null // `dayOfMonth` seulement, mensuel uniquement
+  monthlyMode?: MonthlyMode | null // mensuel uniquement, `dayOfMonth` par défaut
   endType: RecurrenceEndType
   endsOn?: string | null // date de fin (ISO), incluse jusqu'à la fin de sa journée locale
   maxCount?: number | null // nombre total d'occurrences, tâche d'origine comprise

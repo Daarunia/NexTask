@@ -77,7 +77,7 @@ function toRuleData(input: RecurrenceInput, startDate: Date): RuleData {
     frequency: input.frequency,
     interval: input.interval,
     weekdays: input.frequency === 'weekly' ? formatWeekdays(input.weekdays) : null,
-    monthlyMode: input.frequency === 'monthly' ? 'dayOfMonth' : null,
+    monthlyMode: input.frequency === 'monthly' ? (input.monthlyMode ?? 'dayOfMonth') : null,
     time: localTime(startDate),
     startsAt: startDate,
     endType: input.endType,

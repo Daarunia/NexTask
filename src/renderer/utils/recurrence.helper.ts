@@ -1,7 +1,8 @@
-import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type { MonthlyMode, RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import {
   isoWeekday,
   localTime,
+  monthlyWeekdayOf,
   nextRunAfter,
   parseWeekdays,
   type RecurrenceRule,
@@ -45,6 +46,7 @@ interface RecurrenceDescription {
   frequency: RecurrenceInput['frequency']
   interval: number
   weekdays: number[]
+  monthlyMode: MonthlyMode
   startsAt: Date // donne l'heure, le jour du mois et la date de l'année
   endType: RecurrenceInput['endType']
   endsOn: Date | null
@@ -57,6 +59,46 @@ interface RecurrenceDescription {
  */
 export function ordinalDay(day: number): string {
   return day === 1 ? '1er' : String(day)
+}
+
+/**
+ * Rang en toutes lettres : « 1er », puis « 2e », « 3e »…
+ * @param rank Rang (à partir de 1)
+ */
+export function ordinalRank(rank: number): string {
+  return rank === 1 ? '1er' : `${rank}e`
+}
+
+/**
+ * Jour du mois d'une série mensuelle, déduit de sa date de début : « le 15 »,
+ * « le 3e jeudi » (« le dernier jeudi » pour un 5e jeudi) ou « le dernier jour ».
+ * @param mode Mode du mensuel
+ * @param startDate Date de début de la série
+ */
+export function monthlyDayLabel(mode: MonthlyMode, startDate: Date): string {
+  switch (mode) {
+    case 'nthWeekday': {
+      const { rank, weekday } = monthlyWeekdayOf(startDate)
+      return `le ${rank === -1 ? 'dernier' : ordinalRank(rank)} ${WEEKDAYS[weekday - 1].name}`
+    }
+    case 'lastDay':
+      return 'le dernier jour'
+    default:
+      return `le ${ordinalDay(startDate.getDate())}`
+  }
+}
+
+/**
+ * Choix du jour du mois d'une règle mensuelle personnalisée, libellés depuis
+ * la date de début.
+ * @param startDate Date de début (aujourd'hui si absente)
+ */
+export function monthlyModeOptions(startDate: Date | null): { value: MonthlyMode; label: string }[] {
+  const date = startDate ?? new Date()
+  return (['dayOfMonth', 'nthWeekday', 'lastDay'] as const).map((value) => ({
+    value,
+    label: monthlyDayLabel(value, date),
+  }))
 }
 
 /**
@@ -104,7 +146,7 @@ function describeFrequency(rule: RecurrenceDescription): string {
       return `${n === 1 ? 'Toutes les semaines' : `Toutes les ${n} semaines`} ${days}`
     }
     case 'monthly':
-      return `${n === 1 ? 'Tous les mois' : `Tous les ${n} mois`} le ${ordinalDay(rule.startsAt.getDate())}`
+      return `${n === 1 ? 'Tous les mois' : `Tous les ${n} mois`} ${monthlyDayLabel(rule.monthlyMode, rule.startsAt)}`
     case 'yearly':
       return `${n === 1 ? 'Tous les ans' : `Tous les ${n} ans`} le ${withOrdinal(DAY_MONTH_FORMAT, rule.startsAt)}`
   }
@@ -132,6 +174,7 @@ export function describeRecurrence(summary: RecurrenceSummary): string {
     frequency: summary.frequency,
     interval: summary.interval,
     weekdays: parseWeekdays(summary.weekdays),
+    monthlyMode: summary.monthlyMode ?? 'dayOfMonth',
     startsAt: new Date(summary.startsAt),
     endType: summary.endType,
     endsOn: summary.endsOn ? new Date(summary.endsOn) : null,
@@ -149,6 +192,7 @@ export function describeRecurrenceInput(input: RecurrenceInput, startDate: Date)
     frequency: input.frequency,
     interval: input.interval,
     weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b),
+    monthlyMode: input.monthlyMode ?? 'dayOfMonth',
     startsAt: startDate,
     endType: input.endType,
     endsOn: input.endsOn ? new Date(input.endsOn) : null,
@@ -226,7 +270,7 @@ function normalizeInput(input: RecurrenceInput): RecurrenceInput {
     frequency: input.frequency,
     interval: input.interval,
     ...(input.frequency === 'weekly' && { weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b) }),
-    ...(input.frequency === 'monthly' && { monthlyMode: 'dayOfMonth' as const }),
+    ...(input.frequency === 'monthly' && { monthlyMode: input.monthlyMode ?? 'dayOfMonth' }),
     endType: input.endType,
     ...(input.endType === 'onDate' && { endsOn: input.endsOn ? new Date(input.endsOn).toISOString() : null }),
     ...(input.endType === 'afterCount' && { maxCount: input.maxCount ?? null }),
@@ -253,6 +297,7 @@ export function summaryToInput(summary: RecurrenceSummary): RecurrenceInput {
     frequency: summary.frequency,
     interval: summary.interval,
     weekdays: parseWeekdays(summary.weekdays),
+    monthlyMode: summary.monthlyMode,
     endType: summary.endType,
     endsOn: summary.endsOn,
     maxCount: summary.maxCount,
@@ -267,6 +312,7 @@ export function defaultRecurrenceValue(): RecurrenceFormValue {
     interval: 1,
     frequency: 'weekly',
     weekdays: [],
+    monthlyMode: 'dayOfMonth',
     endType: 'never',
     endsOn: null,
     maxCount: 10,
@@ -286,6 +332,7 @@ function withCustomFields(value: RecurrenceFormValue, input: RecurrenceInput): R
     interval: input.interval,
     frequency: input.frequency,
     weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b),
+    monthlyMode: input.monthlyMode ?? 'dayOfMonth',
     endType: input.endType,
     endsOn: input.endsOn ? new Date(input.endsOn) : null,
     maxCount: input.maxCount ?? value.maxCount,
@@ -343,6 +390,7 @@ export function toRecurrenceInput(value: RecurrenceFormValue, startDate: Date | 
     frequency: value.frequency,
     interval: value.interval ?? 1,
     weekdays: value.weekdays,
+    monthlyMode: value.monthlyMode,
     endType: value.endType,
     endsOn: value.endsOn ? value.endsOn.toISOString() : null,
     maxCount: value.maxCount,

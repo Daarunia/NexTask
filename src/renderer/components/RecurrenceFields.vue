@@ -76,6 +76,28 @@
         />
       </div>
 
+      <!-- Jour du mois, mensuel uniquement : libellés tirés de la date de début -->
+      <div
+        v-if="modelValue.frequency === 'monthly'"
+        class="flex flex-col gap-2"
+        role="radiogroup"
+        aria-label="Jour du mois"
+      >
+        <div v-for="option in monthlyOptions" :key="option.value" class="flex items-center gap-2">
+          <RadioButton
+            :inputId="`recurrence-monthly-${option.value}`"
+            data-testid="recurrence-monthly-mode"
+            :data-mode="option.value"
+            :value="option.value"
+            :modelValue="modelValue.monthlyMode"
+            @update:modelValue="(monthlyMode: MonthlyMode) => update({ monthlyMode })"
+          />
+          <label :for="`recurrence-monthly-${option.value}`" data-testid="recurrence-monthly-label">
+            {{ option.label }}
+          </label>
+        </div>
+      </div>
+
       <!-- Fin de la série -->
       <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-end-label">
         <span id="recurrence-end-label">Se termine</span>
@@ -163,6 +185,7 @@ import Message from 'primevue/message'
 import {
   RECURRENCE_COUNT_MAX,
   RECURRENCE_INTERVAL_MAX,
+  type MonthlyMode,
   type RecurrenceEndType,
   type RecurrenceFrequency,
   type RecurrenceSummary,
@@ -174,6 +197,7 @@ import {
   describeRecurrence,
   describeRecurrenceInput,
   formatNextRun,
+  monthlyModeOptions,
   previewNextRun,
   recurrencePresetOptions,
   sameRecurrenceInput,
@@ -215,6 +239,9 @@ const seriesLive = computed(() => !!props.series && props.series.status !== 'end
 
 // Libellés des préréglages, recalculés quand la date de début change
 const presetOptions = computed(() => recurrencePresetOptions(props.startDate))
+
+// Jours du mois proposés en mensuel (« le 15 », « le 3e jeudi », « le dernier jour »)
+const monthlyOptions = computed(() => monthlyModeOptions(props.startDate))
 
 // Unités de la règle personnalisée, au singulier pour un intervalle de 1
 const unitOptions = computed(() => {
@@ -260,13 +287,13 @@ const nextRun = computed<Date | null>(() => {
   return previewNextRun(input.value, props.startDate, props.series?.generatedCount ?? 1)
 })
 
-// Jours 29 à 31 en mensuel, 29 février en annuel : date ramenée en fin de mois
+// Jours 29 à 31 en mensuel (jour fixe), 29 février en annuel : date ramenée en fin de mois
 const monthEndHint = computed(() => {
   const date = props.startDate
   if (!input.value || !date) return ''
 
   const day = date.getDate()
-  if (input.value.frequency === 'monthly' && day >= 29) {
+  if (input.value.frequency === 'monthly' && input.value.monthlyMode === 'dayOfMonth' && day >= 29) {
     return `Les mois de moins de ${day} jours, l'occurrence tombe le dernier jour du mois.`
   }
   if (input.value.frequency === 'yearly' && date.getMonth() === 1 && day === 29) {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { LABEL_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
 import {
+  MONTHLY_MODES,
   RECURRENCE_COUNT_MAX,
   RECURRENCE_END_TYPES,
   RECURRENCE_FREQUENCIES,
@@ -26,6 +27,7 @@ const recurrenceFieldsSchema = z.object({
   interval: z.number().nullable(), // vide pendant la saisie
   frequency: z.enum(RECURRENCE_FREQUENCIES),
   weekdays: z.array(z.number()), // jours ISO (lundi = 1)
+  monthlyMode: z.enum(MONTHLY_MODES), // jour du mois en mensuel
   endType: z.enum(RECURRENCE_END_TYPES),
   endsOn: z.date().nullable(),
   maxCount: z.number().nullable(),
