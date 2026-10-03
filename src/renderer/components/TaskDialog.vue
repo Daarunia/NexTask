@@ -84,6 +84,34 @@
           dateFormat="dd/mm/yy"
           placeholder="Date de début de la tâche"
         />
+        <Message
+          v-if="$form.startDate?.invalid"
+          severity="error"
+          size="small"
+          variant="simple"
+          data-testid="task-startdate-error"
+        >
+          {{ $form.startDate.error?.message }}
+        </Message>
+      </div>
+
+      <!-- Répéter : valeur du formulaire = RecurrenceFormValue -->
+      <FormField v-slot="$field" name="recurrence">
+        <RecurrenceFields
+          :modelValue="$field.value ?? defaultRecurrenceValue()"
+          :startDate="$form.startDate?.value ?? null"
+          :series="series"
+          :error="$field.invalid ? $field.error?.message : undefined"
+          @update:modelValue="(value: RecurrenceFormValue) => $field.props.onChange({ value })"
+          @need-start-date="$form.setFieldValue('startDate', defaultStartDate())"
+        />
+      </FormField>
+
+      <!-- Contenu reporté sur les prochaines occurrences (modification d'une
+           occurrence). Masqué plutôt que retiré : le champ reste dans le formulaire. -->
+      <div v-show="seriesLive && $form.recurrence?.value?.preset !== 'none'" class="flex items-center gap-2">
+        <Checkbox inputId="applyToSeries" name="applyToSeries" binary data-testid="task-apply-to-series" />
+        <label for="applyToSeries">Appliquer aux prochaines occurrences</label>
       </div>
 
       <!-- Boutons -->
@@ -113,16 +141,26 @@ import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Checkbox from 'primevue/checkbox'
 import TagSelect from './TagSelect.vue'
+import RecurrenceFields from './RecurrenceFields.vue'
 import { Task, TaskInput } from '../types/task.types'
 import { TagSelection } from '../types/tag.types'
-import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
+import { RecurrenceFormValue, taskFormSchema, TaskFormValues } from '../schemas/task.schema'
+import type { RecurrenceInput } from '../../main/shared/recurrence.constants'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
-import { useErrorToast } from '../utils/toast.helper'
+import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
+import {
+  defaultRecurrenceValue,
+  sameRecurrenceInput,
+  summaryToInput,
+  toRecurrenceInput,
+  toRecurrenceValue,
+} from '../utils/recurrence.helper'
 
 // Props
 const props = defineProps({
@@ -187,6 +225,17 @@ const logger = getLogger()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
+const showUndo = useUndoToast()
+
+// Série de la tâche modifiée, dans son dernier état connu (absente à la création)
+const series = computed(() =>
+  props.creationMode || !props.editTask
+    ? null
+    : (taskStore.getRecurrence(props.editTask.recurrenceId) ?? props.editTask.recurrence ?? null),
+)
+
+// Série encore en cours (active ou en pause) : modifiable et arrêtable depuis la tâche
+const seriesLive = computed(() => !!series.value && series.value.status !== 'ended')
 
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
 const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
@@ -202,13 +251,16 @@ watch(
       if (props.creationMode) {
         initialValues.value = defaultValues()
       } else if (props.editTask) {
+        // La date arrive en chaîne ISO via HTTP, on la reconvertit en Date pour le DatePicker
+        const startDate = props.editTask.startDate ? new Date(props.editTask.startDate) : null
         initialValues.value = {
           title: props.editTask.title,
           description: props.editTask.description,
           version: props.editTask.version,
-          // La date arrive en chaîne ISO via HTTP, on la reconvertit en Date pour le DatePicker
-          startDate: props.editTask.startDate ? new Date(props.editTask.startDate) : null,
+          startDate,
           tags: toTagSelection(props.editTask),
+          recurrence: toRecurrenceValue(series.value, startDate),
+          applyToSeries: true,
         }
       }
     }
@@ -227,6 +279,40 @@ function defaultValues(): TaskFormValues {
     version: settings.defaultTaskVersion,
     startDate: null,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
+    recurrence: defaultRecurrenceValue(),
+    applyToSeries: true,
+  }
+}
+
+/** Date de début proposée quand une répétition est choisie sans date : aujourd'hui à 09:00. */
+function defaultStartDate(): Date {
+  const date = new Date()
+  date.setHours(9, 0, 0, 0)
+  return date
+}
+
+/**
+ * Répétition à envoyer à la modification d'une tâche : rien si la règle de
+ * sa série n'a pas changé (la série garde son calendrier), `null` pour arrêter
+ * une série en cours, sinon la nouvelle règle.
+ * @param input Règle choisie, null pour « Ne pas répéter »
+ */
+function recurrenceChange(input: RecurrenceInput | null): RecurrenceInput | null | undefined {
+  const current = seriesLive.value && series.value ? summaryToInput(series.value) : null
+  if (!input) return current ? null : undefined
+  return current && sameRecurrenceInput(input, current) ? undefined : input
+}
+
+/**
+ * Relance une série arrêtée depuis le formulaire (bouton « Annuler » du
+ * toast), sans rattrapage
+ * @param id Id de la série
+ */
+async function resumeSeries(id: number) {
+  try {
+    await taskStore.updateRecurrenceStatus(id, 'active')
+  } catch {
+    showError('Annulation impossible', "La série n'a pas été relancée.")
   }
 }
 
@@ -288,8 +374,10 @@ async function saveTask(values: TaskFormValues) {
     // Un renommage refusé laisse le nom d'origine, avec lequel la tâche est enregistrée.
     const selection = (await tagSelectRef.value?.settle()) ?? values.tags
     const tagNames = toTagNames(selection)
+    const recurrenceInput = toRecurrenceInput(values.recurrence, values.startDate)
 
     let savedTask: Task | undefined
+    let stoppedSeriesId: number | null = null
 
     if (props.creationMode) {
       const newTask: TaskInput = {
@@ -302,6 +390,7 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: undefined,
         startDate: values.startDate,
         tags: tagNames,
+        ...(recurrenceInput && { recurrence: recurrenceInput }),
       }
 
       savedTask = await taskStore.saveTask(newTask)
@@ -318,7 +407,10 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
         tags: tagNames,
+        recurrence: recurrenceChange(recurrenceInput),
+        applyToSeries: values.applyToSeries,
       }
+      if (updatedTask.recurrence === null) stoppedSeriesId = series.value?.id ?? null
 
       savedTask = await taskStore.updateTask(updatedTask)
       logger.info('Tâche mise à jour avec succès', savedTask)
@@ -329,6 +421,12 @@ async function saveTask(values: TaskFormValues) {
 
     if (savedTask) {
       emit('task-saved', savedTask)
+    }
+
+    // Série arrêtée : annulable quelques secondes, elle repart alors de maintenant
+    if (stoppedSeriesId !== null) {
+      const id = stoppedSeriesId
+      showUndo('Série arrêtée', { detail: savedTask?.title, undo: () => resumeSeries(id) })
     }
 
     emit('update:modelValue', false)

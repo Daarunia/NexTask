@@ -3,6 +3,7 @@ import { CACHE_TTL } from '../constants/time.constants'
 import { Task, TaskInput } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
+import type { RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
@@ -14,13 +15,26 @@ import { compareTagNames } from '../utils/tag.helper'
  * avec leurs colonnes). Le timestamp est celui du dernier chargement serveur :
  * les mutations mettent les données à jour sans le rafraîchir, le TTL ne sert
  * qu'à décider d'un rechargement.
+ *
+ * Les séries récurrentes sont gardées à part, par id, dans leur dernier état
+ * reçu : une série arrêtée depuis l'une de ses occurrences change ainsi
+ * l'affichage de toutes les autres (cf. getRecurrence).
  */
 export const useTaskStore = defineStore('task', {
-  state: (): BaseEntityState<Task> => ({
+  state: (): BaseEntityState<Task> & { recurrences: Record<number, RecurrenceSummary> } => ({
     allEntities: null,
     ttl: CACHE_TTL,
+    recurrences: {},
   }),
   getters: {
+    /**
+     * Dernier état connu d'une série, ou `undefined`
+     */
+    getRecurrence(state) {
+      return (id: number | null | undefined): RecurrenceSummary | undefined =>
+        id === null || id === undefined ? undefined : state.recurrences[id]
+    },
+
     /**
      * Getter pour récupérer toutes les tâches non historisées.
      * Pas de contrôle du TTL ici : l'app est seule à écrire dans sa base, le
@@ -33,6 +47,34 @@ export const useTaskStore = defineStore('task', {
   actions: {
     setAllTasksCache(data: Task[]) {
       this.allEntities = { data, timestamp: Date.now() }
+      this.rememberRecurrences(data)
+    },
+
+    /**
+     * Garde le résumé des séries de tâches reçues du serveur (dernier reçu = le plus récent)
+     * @param tasks Tâches reçues
+     */
+    rememberRecurrences(tasks: Task[]) {
+      for (const task of tasks) {
+        if (task.recurrence) this.recurrences[task.recurrence.id] = task.recurrence
+      }
+    },
+
+    /**
+     * Change l'état d'une série (arrêt, réactivation sans rattrapage)
+     * @param id Id de la série
+     * @param status Nouvel état
+     * @returns Le résumé de la série, à jour
+     */
+    async updateRecurrenceStatus(id: number, status: RecurrenceStatus): Promise<RecurrenceSummary> {
+      try {
+        const summary = await api.patch<RecurrenceSummary>(`/recurrences/${id}`, { status })
+        this.recurrences[id] = summary
+        return summary
+      } catch (error) {
+        getLogger().error(`Erreur lors du changement d'état de la série ${id} :`, error)
+        throw error
+      }
     },
 
     /**
@@ -72,7 +114,9 @@ export const useTaskStore = defineStore('task', {
      */
     async loadArchivedTasks(): Promise<Task[]> {
       try {
-        return await api.get<Task[]>(`/tasks`, { params: { isHistorized: true } })
+        const tasks = await api.get<Task[]>(`/tasks`, { params: { isHistorized: true } })
+        this.rememberRecurrences(tasks)
+        return tasks
       } catch (error) {
         getLogger().error('Erreur lors du chargement des tâches archivées :', error)
         throw error
@@ -100,12 +144,13 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Ajoute au cache une tâche placée au tableau par le serveur (restauration,
-     * ajout rapide). Comme côté serveur, les autres tâches actives de sa
-     * colonne, à sa position ou après, descendent d'un cran. Sans cache chargé,
-     * rien à faire : le prochain chargement la ramènera.
+     * ajout rapide, occurrence d'une tâche récurrente). Comme côté serveur, les
+     * autres tâches actives de sa colonne, à sa position ou après, descendent
+     * d'un cran. Sans cache chargé, rien à faire : le prochain chargement la ramènera.
      * @param inserted Tâche telle que renvoyée par le serveur
      */
     insertCachedTask(inserted: Task) {
+      this.rememberRecurrences([inserted])
       if (!this.allEntities) return
 
       const data = this.allEntities.data.map((task) =>
@@ -187,6 +232,7 @@ export const useTaskStore = defineStore('task', {
     async saveTask(task: TaskInput): Promise<Task> {
       try {
         const newTask = await api.post<Task>(`/tasks`, task)
+        this.rememberRecurrences([newTask])
 
         // Sans cache chargé, rien à compléter : le prochain chargement ramènera la tâche.
         // En créer un avec cette seule tâche le ferait passer pour la liste complète.
@@ -211,6 +257,7 @@ export const useTaskStore = defineStore('task', {
       try {
         const updatedTask = await api.patch<Task>(`/tasks/${id}`, payload)
         this.patchCachedTask(id, updatedTask)
+        this.rememberRecurrences([updatedTask])
 
         return updatedTask
       } catch (error) {
