@@ -15,11 +15,6 @@ export class ArchivesPage {
   readonly empty: Locator
   readonly backButton: Locator
 
-  // Bulle de confirmation de la suppression définitive
-  readonly confirmPopup: Locator
-  readonly confirmAcceptButton: Locator
-  readonly confirmRejectButton: Locator
-
   /**
    * Constructeur
    *
@@ -33,10 +28,6 @@ export class ArchivesPage {
     this.count = this.root.getByTestId('archives-count')
     this.empty = this.root.getByTestId('archives-empty')
     this.backButton = this.root.getByTestId('btn-archives-back')
-
-    this.confirmPopup = page.getByTestId('confirm-popup')
-    this.confirmAcceptButton = page.getByTestId('btn-confirm-accept')
-    this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
   }
 
   /**
@@ -79,12 +70,11 @@ export class ArchivesPage {
   }
 
   /**
-   * Ouvre la confirmation de suppression définitive d'une tâche.
+   * Supprime définitivement une tâche (annulable tant que le toast est affiché).
    * @param title Titre exact de la tâche
    */
-  async askDelete(title: string) {
+  async delete(title: string) {
     await this.item(title).getByTestId('btn-delete-task').click()
-    await expect(this.confirmPopup).toBeVisible()
   }
 
   async expectVisible() {

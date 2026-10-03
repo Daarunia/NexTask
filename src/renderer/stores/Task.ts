@@ -80,26 +80,68 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Restaure une tâche archivée en bas de la première colonne (place
-     * choisie par le serveur), puis l'ajoute au cache du tableau
+     * Restaure une tâche archivée, puis l'ajoute au cache du tableau
      * @param id ID de la tâche
+     * @param place Colonne et position à reprendre (annulation d'un archivage).
+     *   Sans place, ou si la colonne n'existe plus, le serveur la met en bas de
+     *   la première colonne.
      * @returns La tâche restaurée, avec sa colonne et sa position
      */
-    async restoreTask(id: number): Promise<Task> {
+    async restoreTask(id: number, place?: { stageId: number; position: number }): Promise<Task> {
       try {
-        const restored = await api.post<Task>(`/tasks/${id}/restore`)
-
-        // Archivée pendant la session, elle est encore dans le cache : on la
-        // remplace. Sinon on l'ajoute (sans cache chargé, le prochain chargement la ramènera).
-        if (this.allEntities?.data.some((task) => task.id === id)) {
-          this.patchCachedTask(id, restored)
-        } else {
-          this.allEntities?.data.push(restored)
-        }
-
+        const restored = await api.post<Task>(`/tasks/${id}/restore`, undefined, { params: place })
+        this.insertCachedTask(restored)
         return restored
       } catch (error) {
         getLogger().error(`Erreur lors de la restauration de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
+    /**
+     * Ajoute au cache une tâche placée au tableau par le serveur (restauration,
+     * ajout rapide). Comme côté serveur, les autres tâches actives de sa
+     * colonne, à sa position ou après, descendent d'un cran. Sans cache chargé,
+     * rien à faire : le prochain chargement la ramènera.
+     * @param inserted Tâche telle que renvoyée par le serveur
+     */
+    insertCachedTask(inserted: Task) {
+      if (!this.allEntities) return
+
+      const data = this.allEntities.data.map((task) =>
+        task.id !== inserted.id &&
+        task.stageId === inserted.stageId &&
+        !task.isHistorized &&
+        task.position >= inserted.position
+          ? { ...task, position: task.position + 1 }
+          : task,
+      )
+
+      // Archivée pendant la session, elle est encore dans le cache : on la remplace
+      const index = data.findIndex((task) => task.id === inserted.id)
+      if (index === -1) {
+        data.push(inserted)
+      } else {
+        data[index] = inserted
+      }
+
+      this.allEntities.data = data
+    },
+
+    /**
+     * Crée une tâche depuis la fenêtre d'ajout rapide : version et place
+     * (haut ou bas de la colonne) sont choisies par le serveur selon les paramètres
+     * @param title Titre de la tâche
+     * @param stageId Colonne (la première si elle n'existe plus)
+     * @returns La tâche créée
+     */
+    async quickAddTask(title: string, stageId?: number): Promise<Task> {
+      try {
+        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId })
+        this.insertCachedTask(task)
+        return task
+      } catch (error) {
+        getLogger().error("Erreur lors de l'ajout rapide d'une tâche :", error)
         throw error
       }
     },
