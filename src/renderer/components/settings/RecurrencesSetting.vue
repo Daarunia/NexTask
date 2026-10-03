@@ -100,8 +100,13 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useTaskStore } from '../../stores/Task'
 import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
-import { nextRunAfter, toRecurrenceRule } from '../../../main/shared/recurrence.helper'
-import { describeRecurrence, formatNextRun } from '../../utils/recurrence.helper'
+import { hasNextDate, toRecurrenceRule } from '../../../main/shared/recurrence.helper'
+import {
+  WAITING_FOR_ARCHIVE_LABEL,
+  describeRecurrence,
+  formatNextRun,
+  isWaitingForArchive,
+} from '../../utils/recurrence.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
 
@@ -155,11 +160,13 @@ async function load() {
 onMounted(load)
 
 /**
- * Colonne « Prochaine » : date de la prochaine occurrence, ou état de la série
+ * Colonne « Prochaine » : date de la prochaine occurrence, attente de
+ * l'archivage de l'occurrence au tableau (après archivage), ou état de la série
  * @param summary Série
  */
 function nextLabel(summary: RecurrenceSummary): string {
   if (summary.status === 'paused') return 'En pause'
+  if (isWaitingForArchive(summary)) return WAITING_FOR_ARCHIVE_LABEL
   if (summary.status === 'ended' || !summary.nextRunAt) return 'Terminée'
   return formatNextRun(new Date(summary.nextRunAt))
 }
@@ -171,7 +178,7 @@ function nextLabel(summary: RecurrenceSummary): string {
  * @param summary Série
  */
 function canReactivate(summary: RecurrenceSummary): boolean {
-  return summary.status === 'ended' && nextRunAfter(toRecurrenceRule(summary), new Date()) !== null
+  return summary.status === 'ended' && hasNextDate(toRecurrenceRule(summary), new Date())
 }
 
 /**

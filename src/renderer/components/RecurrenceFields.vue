@@ -27,6 +27,10 @@
     <!-- Résumé en clair et prochaine date -->
     <p v-if="summary" data-testid="recurrence-summary" class="recurrence-hint">{{ summary }}</p>
     <p v-if="nextRun" data-testid="recurrence-next" class="recurrence-hint">Prochaine : {{ formatNextRun(nextRun) }}</p>
+    <!-- Après archivage : pas de date tant que la tâche est au tableau -->
+    <p v-else-if="waitingForArchive" data-testid="recurrence-next" class="recurrence-hint">
+      Prochaine : {{ WAITING_FOR_ARCHIVE_LABEL.toLowerCase() }}
+    </p>
     <p v-if="seriesPaused" data-testid="recurrence-paused-hint" class="recurrence-hint">
       Série en pause : aucune occurrence n'est créée. Elle se reprend depuis les paramètres.
     </p>
@@ -37,8 +41,23 @@
 
     <!-- Règle personnalisée -->
     <div v-if="modelValue.preset === 'custom'" data-testid="recurrence-custom" class="recurrence-custom">
+      <!-- Point de départ des dates : calendrier, ou archivage de l'occurrence précédente -->
+      <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-anchor-label">
+        <span id="recurrence-anchor-label">Répéter</span>
+        <div v-for="option in ANCHOR_OPTIONS" :key="option.value" class="flex items-center gap-2">
+          <RadioButton
+            :inputId="`recurrence-anchor-${option.value}`"
+            :data-testid="`recurrence-anchor-${option.value}`"
+            :value="option.value"
+            :modelValue="modelValue.anchor"
+            @update:modelValue="onAnchorChange"
+          />
+          <label :for="`recurrence-anchor-${option.value}`">{{ option.label }}</label>
+        </div>
+      </div>
+
       <div class="flex items-center gap-2">
-        <span>{{ modelValue.frequency === 'weekly' ? 'Toutes les' : 'Tous les' }}</span>
+        <span v-if="calendar">{{ modelValue.frequency === 'weekly' ? 'Toutes les' : 'Tous les' }}</span>
         <InputNumber
           data-testid="recurrence-interval"
           :modelValue="modelValue.interval"
@@ -59,10 +78,16 @@
           class="flex-1"
           @update:modelValue="onUnitChange"
         />
+        <span v-if="!calendar" data-testid="recurrence-after-archive">après l'archivage</span>
       </div>
 
-      <!-- Jours de la semaine, hebdomadaire uniquement -->
-      <div v-if="modelValue.frequency === 'weekly'" class="flex gap-1" role="group" aria-label="Jours de la semaine">
+      <!-- Jours de la semaine, hebdomadaire selon le calendrier uniquement -->
+      <div
+        v-if="calendar && modelValue.frequency === 'weekly'"
+        class="flex gap-1"
+        role="group"
+        aria-label="Jours de la semaine"
+      >
         <Button
           v-for="day in WEEKDAYS"
           :key="day.value"
@@ -79,9 +104,9 @@
         />
       </div>
 
-      <!-- Jour du mois, mensuel uniquement : libellés tirés de la date de début -->
+      <!-- Jour du mois, mensuel selon le calendrier uniquement : libellés tirés de la date de début -->
       <div
-        v-if="modelValue.frequency === 'monthly'"
+        v-if="calendar && modelValue.frequency === 'monthly'"
         class="flex flex-col gap-2"
         role="radiogroup"
         aria-label="Jour du mois"
@@ -197,17 +222,23 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <Checkbox
-          inputId="recurrence-skip"
-          data-testid="recurrence-skip"
-          binary
-          :modelValue="modelValue.skipIfPending"
-          @update:modelValue="(skipIfPending: boolean) => update({ skipIfPending })"
-        />
-        <label for="recurrence-skip">Ne pas empiler les occurrences</label>
-      </div>
-      <p class="recurrence-hint">Pas de nouvelle occurrence tant que la précédente est au tableau.</p>
+      <!-- « Ne pas empiler » : sans objet après archivage (une seule occurrence à la fois) -->
+      <template v-if="calendar">
+        <div class="flex items-center gap-2">
+          <Checkbox
+            inputId="recurrence-skip"
+            data-testid="recurrence-skip"
+            binary
+            :modelValue="modelValue.skipIfPending"
+            @update:modelValue="(skipIfPending: boolean) => update({ skipIfPending })"
+          />
+          <label for="recurrence-skip">Ne pas empiler les occurrences</label>
+        </div>
+        <p class="recurrence-hint">Pas de nouvelle occurrence tant que la précédente est au tableau.</p>
+      </template>
+      <p v-else class="recurrence-hint">
+        La prochaine occurrence est créée une fois celle-ci archivée, à l'heure de sa date de début.
+      </p>
     </div>
 
     <Message v-if="error" severity="error" size="small" variant="simple" data-testid="recurrence-error">
@@ -230,6 +261,7 @@ import {
   RECURRENCE_INTERVAL_MAX,
   RECURRENCE_LEAD_DAYS_MAX,
   type MonthlyMode,
+  type RecurrenceAnchor,
   type RecurrenceEndType,
   type RecurrenceFrequency,
   type RecurrenceSummary,
@@ -240,7 +272,9 @@ import {
   WEEKDAYS,
   describeRecurrence,
   describeRecurrenceInput,
+  WAITING_FOR_ARCHIVE_LABEL,
   formatNextRun,
+  isWaitingForArchive,
   monthlyModeOptions,
   previewNextRun,
   recurrencePresetOptions,
@@ -252,8 +286,9 @@ import {
 
 /**
  * Champ « Répéter » du formulaire de tâche (cf. TaskDialog) : préréglages
- * calculés depuis la date de début, bloc « Personnaliser… », résumé en clair
- * de la règle et prochaine date.
+ * calculés depuis la date de début (selon le calendrier), bloc
+ * « Personnaliser… » (calendrier ou après l'archivage de la précédente),
+ * résumé en clair de la règle et prochaine date.
  *
  * La valeur est portée par le formulaire parent (FormField `recurrence`) ;
  * la date de début aussi, d'où l'événement `need-start-date` quand une
@@ -283,6 +318,15 @@ const seriesLive = computed(() => !!props.series && props.series.status !== 'end
 
 // Série en pause, tant qu'une répétition reste choisie : pas de prochaine date
 const seriesPaused = computed(() => props.series?.status === 'paused' && props.modelValue.preset !== 'none')
+
+// Points de départ proposés dans « Personnaliser… »
+const ANCHOR_OPTIONS: { value: RecurrenceAnchor; label: string }[] = [
+  { value: 'schedule', label: 'Selon le calendrier' },
+  { value: 'completion', label: "Après l'archivage de la précédente" },
+]
+
+// Règle personnalisée selon le calendrier : jours de la semaine, jour du mois et « Ne pas empiler » proposés
+const calendar = computed(() => props.modelValue.anchor !== 'completion')
 
 // Libellés des préréglages, recalculés quand la date de début change
 const presetOptions = computed(() => recurrencePresetOptions(props.startDate))
@@ -339,10 +383,17 @@ const nextRun = computed<Date | null>(() => {
   return previewNextRun(input.value, props.startDate, props.series?.generatedCount ?? 1)
 })
 
-// Jours 29 à 31 en mensuel (jour fixe), 29 février en annuel : date ramenée en fin de mois
+// Après archivage, sans date : la série attend l'archivage de cette tâche
+const waitingForArchive = computed(() => {
+  if (seriesPaused.value || !input.value) return false
+  if (unchangedSeries.value && props.series) return isWaitingForArchive(props.series)
+  return input.value.anchor === 'completion'
+})
+
+// Jours 29 à 31 en mensuel (jour fixe), 29 février en annuel : date ramenée en fin de mois (calendrier)
 const monthEndHint = computed(() => {
   const date = props.startDate
-  if (!input.value || !date) return ''
+  if (!input.value || !date || input.value.anchor === 'completion') return ''
 
   const day = date.getDate()
   if (input.value.frequency === 'monthly' && input.value.monthlyMode === 'dayOfMonth' && day >= 29) {
@@ -388,6 +439,22 @@ function onUnitChange(frequency: RecurrenceFrequency) {
       ? [isoWeekday(props.startDate)]
       : props.modelValue.weekdays
   update({ frequency, weekdays })
+}
+
+/**
+ * Point de départ des dates. En revenant au calendrier en hebdomadaire sans
+ * jour choisi, le jour de la date de début est proposé.
+ * @param anchor Point de départ choisi
+ */
+function onAnchorChange(anchor: RecurrenceAnchor) {
+  const weekdays =
+    anchor === 'schedule' &&
+    props.modelValue.frequency === 'weekly' &&
+    !props.modelValue.weekdays.length &&
+    props.startDate
+      ? [isoWeekday(props.startDate)]
+      : props.modelValue.weekdays
+  update({ anchor, weekdays })
 }
 
 /**

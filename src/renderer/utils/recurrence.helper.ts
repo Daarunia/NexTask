@@ -1,4 +1,9 @@
-import type { MonthlyMode, RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type {
+  MonthlyMode,
+  RecurrenceAnchor,
+  RecurrenceInput,
+  RecurrenceSummary,
+} from '../../main/shared/recurrence.constants'
 import {
   isoWeekday,
   localTime,
@@ -12,8 +17,9 @@ import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.sche
 /**
  * Libellés et conversions des tâches récurrentes côté renderer : préréglages
  * du champ « Répéter », résumé en clair d'une règle (« Toutes les 2 semaines
- * le jeudi à 14:00 »), prochaine date, et passage entre la valeur du
- * formulaire, la règle envoyée à l'API et le résumé reçu.
+ * le jeudi à 14:00 », « 3 jours après l'archivage de la précédente, à
+ * 09:00 »), prochaine date, et passage entre la valeur du formulaire, la
+ * règle envoyée à l'API et le résumé reçu.
  *
  * Le calcul des dates est celui du main (shared/recurrence.helper).
  */
@@ -41,8 +47,17 @@ const END_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month
 // « jeu. 22 oct. »
 const NEXT_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
 
+// Unités de l'intervalle d'une série « après archivage », au singulier et au pluriel
+const UNITS: Record<RecurrenceInput['frequency'], [string, string]> = {
+  daily: ['jour', 'jours'],
+  weekly: ['semaine', 'semaines'],
+  monthly: ['mois', 'mois'],
+  yearly: ['an', 'ans'],
+}
+
 /** Règle d'une série à décrire. */
 interface RecurrenceDescription {
+  anchor: RecurrenceAnchor
   frequency: RecurrenceInput['frequency']
   interval: number
   weekdays: number[]
@@ -132,6 +147,16 @@ function sameDays(a: number[], b: number[]): boolean {
 }
 
 /**
+ * Intervalle avec son unité : « 3 jours », « 1 semaine », « 2 mois ».
+ * @param frequency Fréquence
+ * @param interval Intervalle
+ */
+export function intervalLabel(frequency: RecurrenceInput['frequency'], interval: number): string {
+  const [singular, plural] = UNITS[frequency]
+  return `${interval} ${interval === 1 ? singular : plural}`
+}
+
+/**
  * Fréquence en toutes lettres, sans l'heure ni la fin.
  * @param rule Règle
  */
@@ -163,16 +188,21 @@ function describeLeadDays(days: number): string {
 
 /**
  * Résumé en clair d'une règle, ex. « Toutes les 2 semaines le jeudi à 14:00,
- * jusqu'au 31 déc. 2026 ».
+ * jusqu'au 31 déc. 2026 » ou « 3 jours après l'archivage de la précédente, à
+ * 09:00 ».
  * @param rule Règle
  */
-function describe(rule: RecurrenceDescription): string {
+function describeRule(rule: RecurrenceDescription): string {
   let end = ''
   if (rule.endType === 'onDate' && rule.endsOn) end = `, jusqu'au ${withOrdinal(END_DATE_FORMAT, rule.endsOn)}`
   if (rule.endType === 'afterCount' && rule.maxCount) end = `, ${rule.maxCount} fois`
   const lead = rule.leadDays > 0 ? `, ${describeLeadDays(rule.leadDays)}` : ''
+  const time = localTime(rule.startsAt)
 
-  return `${describeFrequency(rule)} à ${localTime(rule.startsAt)}${end}${lead}`
+  if (rule.anchor === 'completion') {
+    return `${intervalLabel(rule.frequency, rule.interval)} après l'archivage de la précédente, à ${time}${end}${lead}`
+  }
+  return `${describeFrequency(rule)} à ${time}${end}${lead}`
 }
 
 /**
@@ -180,7 +210,8 @@ function describe(rule: RecurrenceDescription): string {
  * @param summary Résumé de la série
  */
 export function describeRecurrence(summary: RecurrenceSummary): string {
-  return describe({
+  return describeRule({
+    anchor: summary.anchor ?? 'schedule',
     frequency: summary.frequency,
     interval: summary.interval,
     weekdays: parseWeekdays(summary.weekdays),
@@ -199,7 +230,8 @@ export function describeRecurrence(summary: RecurrenceSummary): string {
  * @param startDate Date de début de la tâche
  */
 export function describeRecurrenceInput(input: RecurrenceInput, startDate: Date): string {
-  return describe({
+  return describeRule({
+    anchor: input.anchor ?? 'schedule',
     frequency: input.frequency,
     interval: input.interval,
     weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b),
@@ -220,6 +252,18 @@ export function formatNextRun(date: Date): string {
   return `${withOrdinal(NEXT_DATE_FORMAT, date)} ${localTime(date)}`
 }
 
+/** Libellé d'une série en attente de l'archivage de son occurrence (mode « après archivage »). */
+export const WAITING_FOR_ARCHIVE_LABEL = 'Après archivage'
+
+/**
+ * Vrai pour une série « après archivage » qui attend l'archivage de son
+ * occurrence au tableau : active, sans prochaine date.
+ * @param summary Résumé de la série
+ */
+export function isWaitingForArchive(summary: RecurrenceSummary): boolean {
+  return summary.anchor === 'completion' && summary.status === 'active' && !summary.nextRunAt
+}
+
 /**
  * Infobulle de l'icône d'une tâche récurrente : résumé de la série, puis sa
  * prochaine date ou son état.
@@ -228,8 +272,10 @@ export function formatNextRun(date: Date): string {
 export function recurrenceTooltip(summary: RecurrenceSummary): string {
   let state = 'Série arrêtée'
   if (summary.status === 'paused') state = 'Série en pause'
-  if (summary.status === 'active' && summary.nextRunAt)
+  if (isWaitingForArchive(summary)) state = `Prochaine : ${WAITING_FOR_ARCHIVE_LABEL.toLowerCase()}`
+  if (summary.status === 'active' && summary.nextRunAt) {
     state = `Prochaine : ${formatNextRun(new Date(summary.nextRunAt))}`
+  }
 
   return `${describeRecurrence(summary)}\n${state}`
 }
@@ -252,12 +298,13 @@ export function recurrencePresetOptions(startDate: Date | null): { value: Recurr
 }
 
 /**
- * Règle d'un préréglage, sans fin, sans empiler les occurrences et créées le jour même.
+ * Règle d'un préréglage : selon le calendrier, sans fin, sans empiler les
+ * occurrences et créées le jour même.
  * @param preset Préréglage (ni `none`, ni `custom`)
  * @param startDate Date de début de la tâche
  */
 function presetInput(preset: Exclude<RecurrencePreset, 'none' | 'custom'>, startDate: Date): RecurrenceInput {
-  const base = { interval: 1, endType: 'never' as const, skipIfPending: true, leadDays: 0 }
+  const base = { anchor: 'schedule' as const, interval: 1, endType: 'never' as const, skipIfPending: true, leadDays: 0 }
   switch (preset) {
     case 'daily':
       return { ...base, frequency: 'daily' }
@@ -273,26 +320,31 @@ function presetInput(preset: Exclude<RecurrencePreset, 'none' | 'custom'>, start
 }
 
 /**
- * Règle sous une forme comparable : seuls les champs propres à la fréquence
- * et à la fin choisies, jours triés.
+ * Règle sous une forme comparable : seuls les champs propres au mode, à la
+ * fréquence et à la fin choisis, jours triés. En mode « après archivage »,
+ * jours de la semaine et mode du mensuel sont retirés, et « Ne pas empiler »
+ * prend sa valeur par défaut (comme côté serveur).
  * @param input Règle
  */
 function normalizeInput(input: RecurrenceInput): RecurrenceInput {
+  const anchor = input.anchor ?? 'schedule'
+  const calendar = anchor === 'schedule'
   return {
+    anchor,
     frequency: input.frequency,
     interval: input.interval,
-    ...(input.frequency === 'weekly' && { weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b) }),
-    ...(input.frequency === 'monthly' && { monthlyMode: input.monthlyMode ?? 'dayOfMonth' }),
+    ...(calendar && input.frequency === 'weekly' && { weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b) }),
+    ...(calendar && input.frequency === 'monthly' && { monthlyMode: input.monthlyMode ?? 'dayOfMonth' }),
     endType: input.endType,
     ...(input.endType === 'onDate' && { endsOn: input.endsOn ? new Date(input.endsOn).toISOString() : null }),
     ...(input.endType === 'afterCount' && { maxCount: input.maxCount ?? null }),
-    skipIfPending: input.skipIfPending,
+    skipIfPending: calendar ? input.skipIfPending : true,
     leadDays: input.leadDays ?? 0,
   }
 }
 
 /**
- * Vrai si deux règles sont identiques (même calendrier, même fin).
+ * Vrai si deux règles sont identiques (même mode, même calendrier, même fin).
  * @param a Première règle
  * @param b Seconde règle
  */
@@ -307,6 +359,7 @@ export function sameRecurrenceInput(a: RecurrenceInput | null, b: RecurrenceInpu
  */
 export function summaryToInput(summary: RecurrenceSummary): RecurrenceInput {
   return normalizeInput({
+    anchor: summary.anchor ?? 'schedule',
     frequency: summary.frequency,
     interval: summary.interval,
     weekdays: parseWeekdays(summary.weekdays),
@@ -323,6 +376,7 @@ export function summaryToInput(summary: RecurrenceSummary): RecurrenceInput {
 export function defaultRecurrenceValue(): RecurrenceFormValue {
   return {
     preset: 'none',
+    anchor: 'schedule',
     interval: 1,
     frequency: 'weekly',
     weekdays: [],
@@ -345,6 +399,7 @@ export function defaultRecurrenceValue(): RecurrenceFormValue {
 function withCustomFields(value: RecurrenceFormValue, input: RecurrenceInput): RecurrenceFormValue {
   return {
     ...value,
+    anchor: input.anchor ?? 'schedule',
     interval: input.interval,
     frequency: input.frequency,
     weekdays: [...(input.weekdays ?? [])].sort((a, b) => a - b),
@@ -405,6 +460,7 @@ export function toRecurrenceInput(value: RecurrenceFormValue, startDate: Date | 
   if (value.preset !== 'custom') return presetInput(value.preset, startDate)
 
   return normalizeInput({
+    anchor: value.anchor,
     frequency: value.frequency,
     interval: value.interval ?? 1,
     weekdays: value.weekdays,
@@ -420,12 +476,17 @@ export function toRecurrenceInput(value: RecurrenceFormValue, startDate: Date | 
 /**
  * Prochaine date qu'aurait une série créée maintenant avec cette règle (la
  * tâche elle-même étant la première occurrence), ou null si elle n'en a pas.
+ * Une série « après archivage » n'a pas de date d'avance : elle attend
+ * l'archivage de la tâche (null aussi).
  * @param input Règle
  * @param startDate Date de début de la tâche
  * @param generatedCount Occurrences déjà créées, tâche d'origine comprise
  */
 export function previewNextRun(input: RecurrenceInput, startDate: Date, generatedCount = 1): Date | null {
+  if (input.anchor === 'completion') return null
+
   const rule: RecurrenceRule = {
+    anchor: 'schedule',
     frequency: input.frequency,
     interval: input.interval,
     weekdays: input.weekdays ?? [],

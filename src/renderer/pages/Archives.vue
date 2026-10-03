@@ -213,7 +213,9 @@ function removeFromList(id: number) {
 }
 
 /**
- * Restaure une tâche en bas de la première colonne du tableau
+ * Restaure une tâche en bas de la première colonne du tableau. L'occurrence
+ * née de son archivage (série « après archivage »), si le serveur la retire,
+ * quitte le cache du tableau (cf. restoreTask)
  * @param task Tâche archivée
  */
 async function restore(task: Task) {
@@ -221,8 +223,15 @@ async function restore(task: Task) {
   busyIds.add(task.id)
 
   try {
-    await taskStore.restoreTask(task.id)
+    const { removed } = await taskStore.restoreTask(task.id)
     removeFromList(task.id)
+    // Occurrence née de son archivage, retirée avec la restauration : ses tags perdent une tâche
+    if (removed) {
+      tagStore.adjustTaskCounts(
+        [],
+        (removed.tags ?? []).map((tag) => tag.id),
+      )
+    }
   } catch (error) {
     if (httpStatus(error) === 409) {
       showError('Restauration impossible', 'Ajoute une colonne au tableau pour y restaurer la tâche.')

@@ -5,6 +5,7 @@ type TransactionClient = Prisma.TransactionClient
 /** Champs du résumé d'une série renvoyé avec ses occurrences (sans le modèle des occurrences). */
 export const recurrenceSummarySelect = {
   id: true,
+  anchor: true,
   frequency: true,
   interval: true,
   weekdays: true,

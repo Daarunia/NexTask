@@ -74,10 +74,12 @@ model Recurrence {
   maxCount       Int?
   generatedCount Int       @default(1) // la tâche d'origine compte
   skipIfPending  Boolean   @default(true)
+  // Point de départ des dates : calendrier (schedule) ou archivage de l'occurrence précédente (completion)
+  anchor         String    @default("schedule")
   // Création anticipée : occurrence créée N jours avant sa date, à la même heure (0 = le jour même)
   leadDays       Int       @default(0)
   status         String    @default("active") // active | paused | ended
-  nextRunAt      DateTime? // null une fois la série terminée
+  nextRunAt      DateTime? // null une fois la série terminée, ou en attente d'un archivage (completion)
   // Modèle des occurrences générées
   title          String
   description    String

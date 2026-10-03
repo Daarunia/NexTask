@@ -2,8 +2,17 @@ import Logger from 'electron-log'
 import { Prisma } from '../prisma/generated/prisma/client.js'
 import { prisma } from '../server/prismaClient.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.helper.js'
+import { occurrenceVersion } from '../server/helpers/recurrence.helper.js'
 import { settingsStore } from '../stores/settings.js'
-import { dueOccurrence, nextOccurrence, occurrenceCreationDate, toRecurrenceRule } from '../shared/recurrence.helper.js'
+import {
+  countReached,
+  dueOccurrence,
+  nextAfterCompletion,
+  nextOccurrence,
+  occurrenceCreationDate,
+  toRecurrenceRule,
+  type RecurrenceRule,
+} from '../shared/recurrence.helper.js'
 import { RECURRENCE_LEAD_DAYS_MAX } from '../shared/recurrence.constants.js'
 
 /**
@@ -12,15 +21,18 @@ import { RECURRENCE_LEAD_DAYS_MAX } from '../shared/recurrence.constants.js'
  * Appelée à chaque tick du planificateur de notifications, avant la recherche
  * des tâches échues (l'occurrence créée est ainsi rappelée dans la foulée),
  * et une fois au démarrage. Chaque série active dont l'heure de création de
- * la prochaine date est passée crée sa tâche, puis avance à la date suivante :
+ * la prochaine date est passée crée sa tâche, puis avance à la date suivante
+ * (calendrier) ou attend l'archivage de cette tâche (après archivage :
+ * `nextRunAt` reste null jusqu'à l'archivage, cf. server/helpers/recurrence.helper) :
  * - création anticipée (`leadDays`) : la tâche est créée N jours avant sa
  *   date, à l'heure de la série ; sa date de début reste celle de
  *   l'occurrence, son rappel part donc à cette date ;
  * - app fermée pendant plusieurs dates : seule la plus récente des dates dont
  *   l'heure de création est passée est créée, les autres sont sautées
  *   (journalisées, sans compter dans le nombre d'occurrences) ;
- * - « Ne pas empiler » : la date est sautée si une occurrence de la série est
- *   encore au tableau (non archivée) ;
+ * - « Ne pas empiler » (calendrier) : la date est sautée si une occurrence de
+ *   la série est encore au tableau (non archivée) ; après archivage, une
+ *   occurrence remise au tableau entre-temps fait de nouveau attendre la série ;
  * - occurrence déjà créée pour cette date (série reprise juste après une
  *   création anticipée) : la date est sautée, sans doublon ;
  * - aucune colonne au tableau : rien n'est créé et la série n'avance pas, elle
@@ -40,13 +52,16 @@ const DAY_MS = 24 * 60 * 60 * 1000
  */
 const LEAD_HORIZON_MS = (RECURRENCE_LEAD_DAYS_MAX + 1) * DAY_MS
 
+// Motifs journalisés d'une date sautée
+const BLOCKER_LABELS = { existing: 'occurrence déjà créée', pending: 'une occurrence est encore au tableau' } as const
+
 /** Tâche créée, telle que renvoyée par l'API (tags et résumé de la série). */
 export type GeneratedTask = Prisma.TaskGetPayload<{ include: typeof taskInclude }>
 
 /** Résultat d'un passage de la génération. */
 export interface RecurrenceGenerationResult {
   created: number // occurrences créées
-  skipped: number // dates sautées (rattrapage ou « Ne pas empiler »)
+  skipped: number // dates sautées (rattrapage, « Ne pas empiler », occurrence déjà là ou encore au tableau)
   ended: number // séries terminées par ce passage
   waiting: number // séries en attente d'une colonne (aucune au tableau)
 }
@@ -71,10 +86,119 @@ export function onOccurrencesCreated(listener: (tasks: GeneratedTask[]) => void)
   createdListener = listener
 }
 
+/** Série relue dans la transaction de sa génération, avec les tags de son modèle. */
+type SeriesWithTags = Prisma.RecurrenceGetPayload<{ include: { tags: { select: { id: true } } } }>
+
+/** Ce qui empêche de créer l'occurrence d'une date : elle existe déjà, ou une occurrence est encore au tableau. */
+type Blocker = 'existing' | 'pending' | null
+
+/**
+ * Colonne de l'occurrence : celle du modèle, ou la première si elle a été
+ * supprimée. Null s'il n'y a aucune colonne au tableau.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param series Série
+ */
+async function occurrenceStage(tx: Prisma.TransactionClient, series: SeriesWithTags) {
+  return (
+    (series.stageId === null ? null : await tx.stage.findUnique({ where: { id: series.stageId } })) ??
+    (await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] }))
+  )
+}
+
+/**
+ * Ce qui empêche de créer l'occurrence d'une date, ou null :
+ * - après archivage, une occurrence encore au tableau (restaurée entre le
+ *   calcul de la date et ce passage) : la série l'attend ;
+ * - une occurrence déjà créée pour cette date (série reprise juste après une
+ *   création anticipée) : la date est sautée, sans doublon ;
+ * - calendrier avec « Ne pas empiler », une occurrence encore au tableau : la
+ *   date est sautée.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param series Série
+ * @param date Date de l'occurrence
+ */
+async function occurrenceBlocker(tx: Prisma.TransactionClient, series: SeriesWithTags, date: Date): Promise<Blocker> {
+  const completion = series.anchor === 'completion'
+  const pending = async () => (await tx.task.count({ where: { recurrenceId: series.id, isHistorized: false } })) > 0
+
+  if (completion && (await pending())) return 'pending'
+  if (await tx.task.findFirst({ where: { recurrenceId: series.id, occurrenceDate: date }, select: { id: true } })) {
+    return 'existing'
+  }
+  if (!completion && series.skipIfPending && (await pending())) return 'pending'
+  return null
+}
+
+/**
+ * Crée l'occurrence d'une date avec le contenu du modèle, à la place et dans
+ * la version choisies comme pour l'ajout rapide (paramètres).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param series Série
+ * @param stageId Colonne de l'occurrence
+ * @param date Date de l'occurrence
+ * @returns Id de la tâche créée
+ */
+async function createOccurrence(
+  tx: Prisma.TransactionClient,
+  series: SeriesWithTags,
+  stageId: number,
+  date: Date,
+): Promise<number> {
+  let position: number
+  if (settingsStore.get('newTaskPosition') === 'top') {
+    position = 0
+    await makeRoomAt(tx, stageId, position)
+  } else {
+    position = await bottomPosition(tx, stageId)
+  }
+
+  const { id } = await tx.task.create({
+    data: {
+      title: series.title,
+      description: series.description,
+      version: occurrenceVersion(series.version),
+      stageId,
+      position,
+      startDate: date,
+      recurrenceId: series.id,
+      occurrenceDate: date,
+      tags: { connect: series.tags.map((tag) => ({ id: tag.id })) },
+    },
+    select: { id: true },
+  })
+  return id
+}
+
+/**
+ * Suite d'une série après le passage d'une date :
+ * - calendrier : la date suivante, l'occurrence ayant été créée ou non (sa
+ *   création est à venir), ou la fin de la série ;
+ * - après archivage : aucune date tant que l'occurrence créée (ou celle qui
+ *   bloque) est au tableau, la série l'attend ; une date déjà prise est
+ *   sautée, la suivante partant d'elle. Fin une fois N occurrences créées.
+ *
+ * @param rule Règle de la série, nombre d'occurrences à jour
+ * @param date Date passée
+ * @param blocker Ce qui a empêché la création, ou null si l'occurrence a été créée
+ */
+function seriesAfter(rule: RecurrenceRule, date: Date, blocker: Blocker): { nextRunAt: Date | null; ended: boolean } {
+  if (rule.anchor !== 'completion') {
+    const nextRunAt = nextOccurrence(rule, date)
+    return { nextRunAt, ended: !nextRunAt }
+  }
+  if (blocker !== 'existing') return { nextRunAt: null, ended: countReached(rule) }
+
+  const nextRunAt = nextAfterCompletion(rule, date)
+  return { nextRunAt, ended: !nextRunAt }
+}
+
 /**
  * Génère l'occurrence échue d'une série, dans une transaction : la série est
- * relue (un passage concurrent a pu la faire avancer), la tâche créée et la
- * série avancée ensemble.
+ * relue (un passage concurrent ou une route a pu la modifier entre-temps), la
+ * tâche créée et la série avancée ensemble.
  *
  * @param id Id de la série
  * @param now Horodatage de référence
@@ -83,17 +207,14 @@ export function onOccurrencesCreated(listener: (tasks: GeneratedTask[]) => void)
 async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | null> {
   return prisma.$transaction(async (tx) => {
     const series = await tx.recurrence.findUnique({ where: { id }, include: { tags: { select: { id: true } } } })
-    if (!series || series.status !== 'active' || !series.nextRunAt) return null
+    if (series?.status !== 'active' || !series.nextRunAt) return null
 
     // Rattrapage : seule la plus récente des dates dont l'heure de création est passée est gardée
     const rule = toRecurrenceRule(series)
     const due = dueOccurrence(rule, series.nextRunAt, now)
     if (!due) return null
 
-    // Colonne du modèle, ou la première si elle a été supprimée
-    const stage =
-      (series.stageId === null ? null : await tx.stage.findUnique({ where: { id: series.stageId } })) ??
-      (await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] }))
+    const stage = await occurrenceStage(tx, series)
     if (!stage) {
       Logger.warn(`[recurrence] Série ${id} : aucune colonne pour créer l'occurrence, nouvel essai au prochain passage`)
       return { task: null, skipped: 0, ended: false, waiting: true }
@@ -103,65 +224,27 @@ async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | nu
       Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée (rattrapage)`)
     }
     const { date } = due
-    let skipped = due.skipped.length
 
-    let createdId: number | null = null
-    const existing = await tx.task.findFirst({
-      where: { recurrenceId: id, occurrenceDate: date },
-      select: { id: true },
-    })
-    const pending =
-      !existing && series.skipIfPending ? await tx.task.count({ where: { recurrenceId: id, isHistorized: false } }) : 0
-
-    if (existing) {
-      Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée, occurrence déjà créée`)
-      skipped++
-    } else if (pending > 0) {
-      Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée, une occurrence est encore active`)
-      skipped++
-    } else {
-      // Place et version comme pour l'ajout rapide (paramètres)
-      const { newTaskPosition, taskVersions, defaultTaskVersion } = settingsStore.store
-      let position: number
-      if (newTaskPosition === 'top') {
-        position = 0
-        await makeRoomAt(tx, stage.id, position)
-      } else {
-        position = await bottomPosition(tx, stage.id)
-      }
-
-      const { id: taskId } = await tx.task.create({
-        data: {
-          title: series.title,
-          description: series.description,
-          version: taskVersions.includes(series.version) ? series.version : defaultTaskVersion,
-          stageId: stage.id,
-          position,
-          startDate: date,
-          recurrenceId: id,
-          occurrenceDate: date,
-          tags: { connect: series.tags.map((tag) => ({ id: tag.id })) },
-        },
-        select: { id: true },
-      })
-      createdId = taskId
+    const blocker = await occurrenceBlocker(tx, series, date)
+    if (blocker) {
+      Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée, ${BLOCKER_LABELS[blocker]}`)
     }
+    const createdId = blocker ? null : await createOccurrence(tx, series, stage.id, date)
 
-    // La série avance toujours : date suivante (dont la création est à venir), ou fin de série
     const generatedCount = series.generatedCount + (createdId === null ? 0 : 1)
-    const nextRunAt = nextOccurrence({ ...rule, generatedCount }, date)
+    const { nextRunAt, ended } = seriesAfter({ ...rule, generatedCount }, date, blocker)
     await tx.recurrence.update({
       where: { id },
-      data: { generatedCount, nextRunAt, ...(!nextRunAt && { status: 'ended' }) },
+      data: { generatedCount, nextRunAt, ...(ended && { status: 'ended' }) },
     })
 
     // Relue avec ses tags et le résumé de la série à jour
     const task =
       createdId === null ? null : await tx.task.findUniqueOrThrow({ where: { id: createdId }, include: taskInclude })
     if (task) Logger.info(`[recurrence] Série ${id} : tâche ${task.id} créée pour le ${date.toISOString()}`)
-    if (!nextRunAt) Logger.info(`[recurrence] Série ${id} terminée`)
+    if (ended) Logger.info(`[recurrence] Série ${id} terminée`)
 
-    return { task, skipped, ended: !nextRunAt, waiting: false }
+    return { task, skipped: due.skipped.length + (blocker ? 1 : 0), ended, waiting: false }
   })
 }
 

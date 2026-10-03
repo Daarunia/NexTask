@@ -4,6 +4,7 @@ import { tagKey } from '../helpers/tag.helper.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION } from '../../shared/data.constants.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
+import { normalizeImportedSeries } from '../helpers/recurrence.helper.js'
 
 // Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
 const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
@@ -140,6 +141,7 @@ interface DataImportBody {
     maxCount?: number | null
     generatedCount?: number
     skipIfPending?: boolean
+    anchor?: string
     leadDays?: number
     status: string
     nextRunAt?: string | null
@@ -304,7 +306,9 @@ export default async function dataRoutes(fastify) {
    * POST /data/import
    *
    * Remplace toutes les colonnes, tâches, tags et séries par ceux d'un export
-   * (sans clé `recurrences`, la base n'a plus aucune série). Le
+   * (sans clé `recurrences`, la base n'a plus aucune série ; sans `anchor`,
+   * une série suit le calendrier). La prochaine date et l'état des séries sont
+   * remis en cohérence avec leurs occurrences (cf. normalizeImportedSeries). Le
    * fichier est entièrement contrôlé avant toute écriture (structure, format,
    * version, cohérence des références), puis l'import se fait dans une seule
    * transaction : un fichier refusé ou une erreur en cours de route ne
@@ -379,6 +383,7 @@ export default async function dataRoutes(fastify) {
                   maxCount: recurrence.maxCount,
                   generatedCount: recurrence.generatedCount,
                   skipIfPending: recurrence.skipIfPending,
+                  anchor: recurrence.anchor ?? 'schedule',
                   leadDays: recurrence.leadDays ?? 0,
                   status: recurrence.status,
                   nextRunAt: recurrence.nextRunAt,
@@ -414,6 +419,9 @@ export default async function dataRoutes(fastify) {
                 },
               })
             }
+
+            // Prochaine date et état cohérents avec les occurrences importées
+            await normalizeImportedSeries(tx, new Date())
           },
           // Un gros fichier dépasse le délai par défaut (5 s) d'une transaction interactive
           { timeout: 120_000 },

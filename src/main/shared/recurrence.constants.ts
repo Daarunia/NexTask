@@ -21,6 +21,18 @@ export const MONTHLY_MODES = ['dayOfMonth', 'nthWeekday', 'lastDay'] as const
 /** Mode du mensuel. */
 export type MonthlyMode = (typeof MONTHLY_MODES)[number]
 
+/**
+ * Point de départ des dates d'une série :
+ * - `schedule` : selon le calendrier, depuis le début de la série ;
+ * - `completion` : après l'archivage de l'occurrence précédente (« arroser les
+ *   plantes 3 jours après la dernière fois »). Seuls la fréquence et
+ *   l'intervalle comptent ; la série attend tant qu'une occurrence est au tableau.
+ */
+export const RECURRENCE_ANCHORS = ['schedule', 'completion'] as const
+
+/** Point de départ des dates d'une série. */
+export type RecurrenceAnchor = (typeof RECURRENCE_ANCHORS)[number]
+
 /** Fins possibles d'une série : jamais, à une date (incluse), après N occurrences. */
 export const RECURRENCE_END_TYPES = ['never', 'onDate', 'afterCount'] as const
 
@@ -48,6 +60,7 @@ export const RECURRENCE_LEAD_DAYS_MAX = 30
  * la tâche, par le serveur.
  */
 export interface RecurrenceInput {
+  anchor?: RecurrenceAnchor // `schedule` par défaut ; `completion` ignore weekdays, monthlyMode et skipIfPending
   frequency: RecurrenceFrequency
   interval: number // 1 à RECURRENCE_INTERVAL_MAX
   weekdays?: number[] // jours ISO (lundi = 1), au moins un en hebdomadaire
@@ -66,6 +79,7 @@ export interface RecurrenceInput {
  */
 export interface RecurrenceSummary {
   id: number
+  anchor: RecurrenceAnchor
   frequency: RecurrenceFrequency
   interval: number
   weekdays: string | null // jours ISO séparés par des virgules ("1,4")
@@ -79,7 +93,9 @@ export interface RecurrenceSummary {
   skipIfPending: boolean
   leadDays: number // jours de création anticipée (0 = le jour même)
   status: RecurrenceStatus
-  nextRunAt: string | null // date de la prochaine occurrence (pas de sa création), null une fois la série terminée
+  // date de la prochaine occurrence (pas de sa création) ; null une fois la série terminée,
+  // ou en mode `completion` tant qu'une occurrence attend son archivage
+  nextRunAt: string | null
 }
 
 /**

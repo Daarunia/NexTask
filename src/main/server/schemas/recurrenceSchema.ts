@@ -1,5 +1,6 @@
 import {
   MONTHLY_MODES,
+  RECURRENCE_ANCHORS,
   RECURRENCE_COUNT_MAX,
   RECURRENCE_END_TYPES,
   RECURRENCE_FREQUENCIES,
@@ -17,6 +18,8 @@ const nullableDate = { type: ['string', 'null'], format: 'date-time' }
  */
 const recurrenceSummaryProperties = {
   id: { type: 'integer' },
+  // schedule (calendrier) | completion (après l'archivage de la précédente)
+  anchor: { type: 'string' },
   frequency: { type: 'string' },
   interval: { type: 'integer' },
   // jours ISO séparés par des virgules ("1,4"), hebdomadaire uniquement
@@ -33,7 +36,8 @@ const recurrenceSummaryProperties = {
   // jours de création anticipée (0 = le jour même)
   leadDays: { type: 'integer' },
   status: { type: 'string' },
-  // date de la prochaine occurrence (sa création peut être anticipée), null une fois la série terminée
+  // date de la prochaine occurrence (sa création peut être anticipée), null une fois la série
+  // terminée ou, après archivage, tant qu'une occurrence est au tableau
   nextRunAt: nullableDate,
 }
 
@@ -65,6 +69,8 @@ export const taskRecurrenceSchema = {
  * faits par les routes (cf. recurrenceInputProblem).
  */
 const recurrenceInputProperties = {
+  // Calendrier (défaut) ou après l'archivage de la précédente
+  anchor: { type: 'string', enum: [...RECURRENCE_ANCHORS] },
   frequency: { type: 'string', enum: [...RECURRENCE_FREQUENCIES] },
   interval: { type: 'integer', minimum: 1, maximum: RECURRENCE_INTERVAL_MAX },
   weekdays: {
@@ -121,6 +127,8 @@ export const exportedRecurrenceSchema = {
     maxCount: { type: ['integer', 'null'], minimum: 1 },
     generatedCount: { type: 'integer', minimum: 0 },
     skipIfPending: { type: 'boolean' },
+    // Absent des exports antérieurs au mode « après archivage » (calendrier à l'import)
+    anchor: { type: 'string', enum: [...RECURRENCE_ANCHORS] },
     // Absent des exports antérieurs à la création anticipée (0 à l'import)
     leadDays: { type: 'integer', minimum: 0, maximum: RECURRENCE_LEAD_DAYS_MAX },
     status: { type: 'string', enum: [...RECURRENCE_STATUSES] },

@@ -2,12 +2,14 @@ import { z } from 'zod'
 import { LABEL_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
 import {
   MONTHLY_MODES,
+  RECURRENCE_ANCHORS,
   RECURRENCE_COUNT_MAX,
   RECURRENCE_END_TYPES,
   RECURRENCE_FREQUENCIES,
   RECURRENCE_INTERVAL_MAX,
   RECURRENCE_LEAD_DAYS_MAX,
 } from '../../main/shared/recurrence.constants'
+import { startOfLocalDay } from '../../main/shared/recurrence.helper'
 
 /**
  * Choix du champ « Répéter » : ne pas répéter, un préréglage calculé depuis
@@ -25,6 +27,7 @@ export type RecurrencePreset = (typeof RECURRENCE_PRESETS)[number]
  */
 const recurrenceFieldsSchema = z.object({
   preset: z.enum(RECURRENCE_PRESETS),
+  anchor: z.enum(RECURRENCE_ANCHORS), // selon le calendrier, ou après l'archivage de la précédente
   interval: z.number().nullable(), // vide pendant la saisie
   frequency: z.enum(RECURRENCE_FREQUENCIES),
   weekdays: z.array(z.number()), // jours ISO (lundi = 1)
@@ -41,17 +44,9 @@ const recurrenceFieldsSchema = z.object({
 export type RecurrenceFormValue = z.infer<typeof recurrenceFieldsSchema>
 
 /**
- * Début de la journée locale d'une date (comparaison de jours).
- * @param date Date
- */
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-}
-
-/**
  * Contrôles de la répétition, qui croisent plusieurs champs : date de début
  * obligatoire, puis pour une règle personnalisée intervalle, jours de la
- * semaine, fin et création anticipée. Les erreurs de la règle sont rattachées
+ * semaine (selon le calendrier), fin et création anticipée. Les erreurs de la règle sont rattachées
  * au champ `recurrence`, celle de la date au champ `startDate`.
  * @param values Valeurs du formulaire
  * @param ctx Contexte zod
@@ -71,11 +66,15 @@ function checkRecurrence(values: { startDate: Date | null; recurrence: Recurrenc
 
   if (interval === null || !Number.isInteger(interval) || interval < 1 || interval > RECURRENCE_INTERVAL_MAX) {
     issue(`L'intervalle doit être compris entre 1 et ${RECURRENCE_INTERVAL_MAX}`)
-  } else if (recurrence.frequency === 'weekly' && !recurrence.weekdays.length) {
+  } else if (recurrence.anchor === 'schedule' && recurrence.frequency === 'weekly' && !recurrence.weekdays.length) {
     issue('Choisis au moins un jour de la semaine')
   } else if (recurrence.endType === 'onDate' && !recurrence.endsOn) {
     issue('Choisis la date de fin de la série')
-  } else if (recurrence.endType === 'onDate' && startDate && startOfDay(recurrence.endsOn!) < startOfDay(startDate)) {
+  } else if (
+    recurrence.endType === 'onDate' &&
+    startDate &&
+    startOfLocalDay(recurrence.endsOn!) < startOfLocalDay(startDate)
+  ) {
     issue('La date de fin doit suivre la date de début')
   } else if (
     recurrence.endType === 'afterCount' &&

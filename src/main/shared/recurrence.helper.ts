@@ -20,12 +20,23 @@
  * calendrier) avant sa date, à l'heure de la série. La prochaine date d'une
  * série (`nextRunAt`) reste celle de l'occurrence, sa date de création s'en
  * déduit (cf. occurrenceCreationDate).
+ *
+ * Mode « après archivage » (`anchor: 'completion'`) : la prochaine date part
+ * du jour local de l'archivage de l'occurrence précédente, plus l'intervalle,
+ * à l'heure de la série (cf. nextAfterCompletion). Seuls la fréquence et
+ * l'intervalle comptent ; la fin, l'heure et la création anticipée
+ * s'appliquent comme en mode calendrier.
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** Règle d'une série, telle que lue par `nextOccurrence`. */
+// Dates candidates examinées au plus par recherche : quelques-unes suffisent
+// pour une règle valable (cf. firstAfter), la borne protège d'une boucle sans fin
+const MAX_CANDIDATES = 1000
+
+/** Règle d'une série, telle que lue par `nextOccurrence` et `nextAfterCompletion`. */
 export interface RecurrenceRule {
+  anchor: 'schedule' | 'completion' // dates du calendrier, ou après l'archivage de la précédente
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
   interval: number
   weekdays: number[] // jours ISO (lundi = 1), hebdomadaire uniquement
@@ -41,6 +52,7 @@ export interface RecurrenceRule {
 
 /** Série telle que stockée en base (Prisma) ou reçue par HTTP (dates en chaînes). */
 export interface StoredRecurrenceRule {
+  anchor?: string // absent d'un résumé antérieur au mode « après archivage »
   frequency: string
   interval: number
   weekdays: string | null
@@ -130,6 +142,7 @@ export function monthlyWeekdayOf(date: Date): MonthlyWeekday {
  */
 export function toRecurrenceRule(stored: StoredRecurrenceRule): RecurrenceRule {
   return {
+    anchor: stored.anchor === 'completion' ? 'completion' : 'schedule',
     frequency: stored.frequency as RecurrenceRule['frequency'],
     interval: stored.interval,
     weekdays: parseWeekdays(stored.weekdays),
@@ -207,104 +220,133 @@ function atTime({ year, month, day }: CalendarDay, time: string): Date {
   return new Date(year, month, day, hours, minutes, 0, 0)
 }
 
+/**
+ * Début de la journée locale d'une date (comparaison de jours).
+ *
+ * @param date Date
+ */
+export function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
 /** Plus petit multiple de `step` supérieur ou égal à `value` (positif). */
 function ceilToMultiple(value: number, step: number): number {
   return Math.ceil(Math.max(0, value) / step) * step
 }
 
 /**
- * Première date candidate strictement après `after`, sans tenir compte de la
- * fin de la série.
+ * Première date strictement après `after` parmi les périodes `first`,
+ * `first + step`… (jours, semaines, mois ou années selon l'appelant), bornée
+ * à MAX_CANDIDATES périodes.
+ *
+ * @param after Date de référence (exclue)
+ * @param first Première période examinée
+ * @param step Intervalle entre deux périodes
+ * @param candidatesOf Dates d'une période, dans l'ordre (vide si aucune)
  */
-function nextCandidate(rule: RecurrenceRule, after: Date): Date | null {
-  const interval = Math.max(1, Math.trunc(rule.interval))
-  const start = localDay(rule.startsAt)
-  const startDay = dayNumber(start)
-  const afterDay = dayNumber(localDay(after))
-
-  switch (rule.frequency) {
-    case 'daily': {
-      // Au plus deux tours : le jour de `after` (heure déjà passée), puis le suivant
-      for (let offset = ceilToMultiple(afterDay - startDay, interval); ; offset += interval) {
-        const candidate = atTime(fromDayNumber(startDay + offset), rule.time)
-        if (candidate > after) return candidate
-      }
-    }
-
-    case 'weekly': {
-      if (!rule.weekdays.length) return null
-
-      // Semaines ISO comptées depuis le lundi de la semaine de début
-      const startMonday = startDay - (isoWeekday(rule.startsAt) - 1)
-      for (let week = ceilToMultiple(Math.floor((afterDay - startMonday) / 7), interval); ; week += interval) {
-        for (const weekday of rule.weekdays) {
-          const day = startMonday + week * 7 + weekday - 1
-          // Jours de la première semaine antérieurs au début : pas d'occurrence
-          if (day < startDay) continue
-          const candidate = atTime(fromDayNumber(day), rule.time)
-          if (candidate > after) return candidate
-        }
-      }
-    }
-
-    case 'monthly': {
-      // Mois comptés depuis celui du début, jour selon le mode (cf. monthlyDay)
-      const startMonth = start.year * 12 + start.month
-      const afterLocal = localDay(after)
-      for (
-        let offset = ceilToMultiple(afterLocal.year * 12 + afterLocal.month - startMonth, interval);
-        ;
-        offset += interval
-      ) {
-        const year = Math.floor((startMonth + offset) / 12)
-        const month = (startMonth + offset) % 12
-        const candidate = atTime({ year, month, day: monthlyDay(rule, year, month) }, rule.time)
-        if (candidate > after) return candidate
-      }
-    }
-
-    case 'yearly': {
-      for (let offset = ceilToMultiple(localDay(after).year - start.year, interval); ; offset += interval) {
-        const year = start.year + offset
-        const day = Math.min(start.day, daysInMonth(year, start.month))
-        const candidate = atTime({ year, month: start.month, day }, rule.time)
-        if (candidate > after) return candidate
-      }
-    }
-
-    default:
-      return null
+function firstAfter(after: Date, first: number, step: number, candidatesOf: (period: number) => Date[]): Date | null {
+  for (let i = 0, period = first; i < MAX_CANDIDATES; i++, period += step) {
+    const candidate = candidatesOf(period).find((date) => date > after)
+    if (candidate) return candidate
   }
+  return null
+}
+
+/** Quotidien : jours comptés depuis le jour de début. */
+function nextDaily(rule: RecurrenceRule, after: Date): Date | null {
+  const startDay = dayNumber(localDay(rule.startsAt))
+  const first = ceilToMultiple(dayNumber(localDay(after)) - startDay, rule.interval)
+  return firstAfter(after, first, rule.interval, (offset) => [atTime(fromDayNumber(startDay + offset), rule.time)])
+}
+
+/** Hebdomadaire : semaines ISO comptées depuis le lundi de la semaine de début. */
+function nextWeekly(rule: RecurrenceRule, after: Date): Date | null {
+  if (!rule.weekdays.length) return null
+
+  const startDay = dayNumber(localDay(rule.startsAt))
+  const startMonday = startDay - (isoWeekday(rule.startsAt) - 1)
+  const first = ceilToMultiple(Math.floor((dayNumber(localDay(after)) - startMonday) / 7), rule.interval)
+  return firstAfter(after, first, rule.interval, (week) =>
+    rule.weekdays
+      .map((weekday) => startMonday + week * 7 + weekday - 1)
+      // Jours de la première semaine antérieurs au début : pas d'occurrence
+      .filter((day) => day >= startDay)
+      .map((day) => atTime(fromDayNumber(day), rule.time)),
+  )
+}
+
+/** Mensuel : mois comptés depuis celui du début, jour selon le mode (cf. monthlyDay). */
+function nextMonthly(rule: RecurrenceRule, after: Date): Date | null {
+  const start = localDay(rule.startsAt)
+  const afterDay = localDay(after)
+  const startMonth = start.year * 12 + start.month
+  const first = ceilToMultiple(afterDay.year * 12 + afterDay.month - startMonth, rule.interval)
+  return firstAfter(after, first, rule.interval, (offset) => {
+    const year = Math.floor((startMonth + offset) / 12)
+    const month = (startMonth + offset) % 12
+    return [atTime({ year, month, day: monthlyDay(rule, year, month) }, rule.time)]
+  })
+}
+
+/** Annuel : années comptées depuis celle du début, 29 février ramené au 28. */
+function nextYearly(rule: RecurrenceRule, after: Date): Date | null {
+  const start = localDay(rule.startsAt)
+  const first = ceilToMultiple(localDay(after).year - start.year, rule.interval)
+  return firstAfter(after, first, rule.interval, (offset) => {
+    const year = start.year + offset
+    return [atTime({ year, month: start.month, day: Math.min(start.day, daysInMonth(year, start.month)) }, rule.time)]
+  })
+}
+
+/** Recherche de la prochaine date candidate d'une série calendaire, par fréquence. */
+const NEXT_CANDIDATE: Record<RecurrenceRule['frequency'], (rule: RecurrenceRule, after: Date) => Date | null> = {
+  daily: nextDaily,
+  weekly: nextWeekly,
+  monthly: nextMonthly,
+  yearly: nextYearly,
 }
 
 /**
- * Prochaine date d'une série : la première strictement après `after`, ou null
- * si la série est finie (date de fin dépassée, nombre d'occurrences atteint).
+ * Vrai si la série a atteint son nombre d'occurrences (fin « après N
+ * occurrences », tâche d'origine comprise).
+ *
+ * @param rule Fin et nombre d'occurrences de la série
+ */
+export function countReached(rule: Pick<RecurrenceRule, 'endType' | 'maxCount' | 'generatedCount'>): boolean {
+  return rule.endType === 'afterCount' && rule.maxCount !== null && rule.generatedCount >= rule.maxCount
+}
+
+/**
+ * La date si la série ne s'est pas terminée avant elle (date de fin incluse
+ * jusqu'à la fin de sa journée locale), null sinon.
+ */
+function withinEnd(rule: RecurrenceRule, candidate: Date | null): Date | null {
+  if (!candidate || rule.endType !== 'onDate' || !rule.endsOn) return candidate
+
+  const end = localDay(rule.endsOn)
+  return candidate < new Date(end.year, end.month, end.day + 1) ? candidate : null
+}
+
+/**
+ * Prochaine date d'une série calendaire : la première strictement après
+ * `after`, ou null si la série est finie (date de fin dépassée, nombre
+ * d'occurrences atteint).
  *
  * @param rule Règle de la série
  * @param after Date de référence (exclue)
  * @returns Date de l'occurrence, ou null
  */
 export function nextOccurrence(rule: RecurrenceRule, after: Date): Date | null {
-  if (rule.endType === 'afterCount' && rule.maxCount !== null && rule.generatedCount >= rule.maxCount) return null
+  if (countReached(rule)) return null
 
-  const candidate = nextCandidate(rule, after)
-  if (!candidate) return null
-
-  if (rule.endType === 'onDate' && rule.endsOn) {
-    // Date de fin incluse jusqu'à la fin de sa journée locale
-    const end = localDay(rule.endsOn)
-    const limit = new Date(end.year, end.month, end.day + 1)
-    if (candidate >= limit) return null
-  }
-
-  return candidate
+  const search = NEXT_CANDIDATE[rule.frequency]
+  return search ? withinEnd(rule, search(rule, after)) : null
 }
 
 /**
  * Prochaine date à générer à partir de maintenant, sans rattrapage : la
  * première après `now`, ou après le début de la série si celui-ci est à venir
- * (la tâche d'origine est la première occurrence).
+ * (la tâche d'origine est la première occurrence). Mode calendrier.
  *
  * @param rule Règle de la série
  * @param now Maintenant
@@ -312,6 +354,51 @@ export function nextOccurrence(rule: RecurrenceRule, after: Date): Date | null {
  */
 export function nextRunAfter(rule: RecurrenceRule, now: Date): Date | null {
   return nextOccurrence(rule, now > rule.startsAt ? now : rule.startsAt)
+}
+
+/**
+ * Prochaine date d'une série « après archivage » : jour local de l'archivage
+ * plus l'intervalle (jours, semaines, mois ou années), à l'heure de la série.
+ * En mensuel et annuel, un jour absent du mois d'arrivée tombe sur son
+ * dernier jour (31 janvier + 1 mois = 28 ou 29 février). Null si la série est
+ * finie (nombre d'occurrences atteint, date de fin dépassée). Les jours de la
+ * semaine et le mode du mensuel sont ignorés.
+ *
+ * @param rule Règle de la série
+ * @param archivedAt Date de l'archivage de l'occurrence précédente
+ * @returns Date de la prochaine occurrence, ou null
+ */
+export function nextAfterCompletion(rule: RecurrenceRule, archivedAt: Date): Date | null {
+  if (countReached(rule)) return null
+
+  const day = localDay(archivedAt)
+  let target: CalendarDay
+  if (rule.frequency === 'daily' || rule.frequency === 'weekly') {
+    const days = rule.interval * (rule.frequency === 'weekly' ? 7 : 1)
+    target = fromDayNumber(dayNumber(day) + days)
+  } else if (rule.frequency === 'monthly' || rule.frequency === 'yearly') {
+    const months = day.year * 12 + day.month + rule.interval * (rule.frequency === 'yearly' ? 12 : 1)
+    const year = Math.floor(months / 12)
+    const month = months % 12
+    target = { year, month, day: Math.min(day.day, daysInMonth(year, month)) }
+  } else {
+    return null
+  }
+
+  return withinEnd(rule, atTime(target, rule.time))
+}
+
+/**
+ * Vrai si la série peut encore donner une date à partir de maintenant : une
+ * série arrêtée par l'utilisateur est réactivable, pas une série arrivée à sa
+ * date de fin ou à son nombre d'occurrences.
+ *
+ * @param rule Règle de la série
+ * @param now Maintenant
+ */
+export function hasNextDate(rule: RecurrenceRule, now: Date): boolean {
+  const next = rule.anchor === 'completion' ? nextAfterCompletion(rule, now) : nextRunAfter(rule, now)
+  return next !== null
 }
 
 /**
@@ -332,7 +419,9 @@ export function occurrenceCreationDate(rule: Pick<RecurrenceRule, 'leadDays' | '
  * Occurrence à créer à `now`, à partir de la prochaine date d'une série : la
  * plus récente des dates dont l'heure de création est passée. Les dates
  * précédentes sont sautées (rattrapage d'une app restée fermée) et ne
- * comptent pas dans le nombre d'occurrences.
+ * comptent pas dans le nombre d'occurrences. En mode « après archivage », la
+ * série n'a qu'une date à la fois : elle est créée telle quelle, même passée
+ * (reprise sans rattrapage).
  *
  * @param rule Règle de la série
  * @param nextRunAt Prochaine date de la série
@@ -345,6 +434,7 @@ export function dueOccurrence(
   now: Date,
 ): { date: Date; skipped: Date[] } | null {
   if (occurrenceCreationDate(rule, nextRunAt) > now) return null
+  if (rule.anchor === 'completion') return { date: nextRunAt, skipped: [] }
 
   let date = nextRunAt
   const skipped: Date[] = []

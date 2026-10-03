@@ -440,14 +440,23 @@ async function archiveTask(task: Task) {
 
 /**
  * Annule un archivage : la tâche reprend sa place au tableau (ou va en bas
- * de la première colonne si la sienne a été supprimée entre-temps)
+ * de la première colonne si la sienne a été supprimée entre-temps). Une
+ * occurrence née de cet archivage (série « après archivage ») et retirée par
+ * le serveur quitte le tableau, ses tags perdent une tâche.
  * @param taskId Id de la tâche archivée
  * @param place Colonne et position de la carte avant l'archivage
  */
 async function undoArchive(taskId: number, place?: { stageId: number; position: number }) {
   try {
-    const restored = await taskStore.restoreTask(taskId, place)
+    const { task: restored, removed } = await taskStore.restoreTask(taskId, place)
     insertTaskLocally(restored)
+    if (removed) {
+      removeTaskLocally(removed.id)
+      updateTagCounts(
+        (removed.tags ?? []).map((tag) => tag.id),
+        [],
+      )
+    }
     logger.debug('Archivage annulé', restored)
   } catch {
     showError('Annulation impossible', "La tâche n'a pas été remise au tableau.")
@@ -472,6 +481,21 @@ function insertTaskLocally(task: Task) {
   const index = updated.findIndex((t) => t.position > task.position)
   updated.splice(index === -1 ? updated.length : index, 0, { ...task })
   taskLists.set(task.stageId, updated)
+}
+
+/**
+ * Retire une carte supprimée par le serveur (occurrence née d'un archivage
+ * annulé). Les positions des autres cartes ne changent pas, comme côté serveur.
+ * @param taskId Id de la tâche
+ */
+function removeTaskLocally(taskId: number) {
+  const location = findTaskLocation(taskId)
+  if (!location) return
+
+  taskLists.set(
+    location.stageId,
+    location.list.filter((t) => t.id !== taskId),
+  )
 }
 
 /**

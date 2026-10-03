@@ -10,6 +10,9 @@ import {
   applyToSeriesTemplate,
   createSeries,
   endSeries,
+  onArchiveStatesChanged,
+  onOccurrenceDeleted,
+  onOccurrenceRestored,
   recurrenceInputProblem,
   updateSeriesRule,
 } from '../helpers/recurrence.helper.js'
@@ -25,6 +28,35 @@ const taskTagsBody = {
 
 /** Corps de POST /tasks, une fois validé par Fastify. */
 type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[]; recurrence?: RecurrenceInput }
+
+/**
+ * Réponse de POST /tasks/:id/restore : la tâche restaurée, et l'id de
+ * l'occurrence retirée avec l'annulation de son archivage (série « après
+ * archivage », cf. onOccurrenceRestored), null sinon.
+ */
+const restoreResponse = {
+  ...taskSchema,
+  properties: { ...taskSchema.properties, removedOccurrenceId: { type: ['integer', 'null'] } },
+}
+
+/**
+ * Données d'une mise à jour qui archive la tâche (`isHistorized: true`) alors
+ * qu'elle ne l'était pas : sans date d'archivage fournie, c'est maintenant,
+ * comme pour PUT /tasks/:id (la purge des archives et les séries « après
+ * archivage » s'en servent).
+ *
+ * @param data Données de la mise à jour
+ * @param wasArchived Tâche déjà archivée avant la mise à jour
+ * @param now Maintenant
+ */
+function withArchiveDate<T extends { isHistorized?: unknown; historizationDate?: unknown }>(
+  data: T,
+  wasArchived: boolean,
+  now: Date,
+): T {
+  if (data.isHistorized !== true || wasArchived || data.historizationDate) return data
+  return { ...data, historizationDate: now }
+}
 
 /** Corps de PATCH /tasks/:id, une fois validé par Fastify. */
 type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & {
@@ -223,6 +255,11 @@ export default async function taskRoutes(fastify) {
    * version, tags, colonne) est aussi reporté sur le modèle des prochaines
    * occurrences. Les occurrences existantes ne changent pas.
    *
+   * Archivage (`isHistorized: true`, daté de maintenant sans
+   * `historizationDate`) et désarchivage d'une occurrence d'une série « après
+   * archivage » : la série calcule sa prochaine date ou se remet en attente
+   * (cf. onArchiveStatesChanged).
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
@@ -307,7 +344,7 @@ export default async function taskRoutes(fastify) {
           const task = await tx.task.update({
             where: { id },
             data: {
-              ...data,
+              ...withArchiveDate(data, current.isHistorized, now),
               ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
             },
           })
@@ -332,6 +369,8 @@ export default async function taskRoutes(fastify) {
             await applyToSeriesTemplate(tx, series.id, task, changed, tagIds)
           }
 
+          await onArchiveStatesChanged(tx, [{ wasArchived: current.isHistorized, task }], now)
+
           return tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
         })
       } catch (error) {
@@ -352,7 +391,8 @@ export default async function taskRoutes(fastify) {
   /**
    * DELETE /tasks/:id
    *
-   * Supprime une tâche par son ID.
+   * Supprime une tâche par son ID. Supprimer l'occurrence au tableau d'une
+   * série « après archivage » la libère comme un archivage (cf. onOccurrenceDeleted).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -376,7 +416,10 @@ export default async function taskRoutes(fastify) {
     async (req, reply) => {
       const id = Number(req.params.id)
       try {
-        await prisma.task.delete({ where: { id } })
+        await prisma.$transaction(async (tx) => {
+          const deleted = await tx.task.delete({ where: { id } })
+          await onOccurrenceDeleted(tx, deleted, new Date())
+        })
         Logger.info(`Tâche ${id} supprimée`)
         return { message: 'Tâche supprimée' }
       } catch (error) {
@@ -390,7 +433,9 @@ export default async function taskRoutes(fastify) {
   /**
    * PUT /tasks/:id
    *
-   * Met à jour une tâche en la marquant comme historisée.
+   * Met à jour une tâche en la marquant comme historisée. Archiver la dernière
+   * occurrence au tableau d'une série « après archivage » lui donne sa
+   * prochaine date (cf. onArchiveStatesChanged), dans la même transaction.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -413,15 +458,18 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
+      const now = new Date()
       try {
-        // Mise à jour de la tâche pour la marquer comme historisée
-        const updatedTask = await prisma.task.update({
-          where: { id },
-          data: {
-            isHistorized: true,
-            historizationDate: new Date(),
-            stageId: null,
-          },
+        const updatedTask = await prisma.$transaction(async (tx) => {
+          const current = await tx.task.findUniqueOrThrow({ where: { id }, select: { isHistorized: true } })
+
+          // Mise à jour de la tâche pour la marquer comme historisée
+          const task = await tx.task.update({
+            where: { id },
+            data: { isHistorized: true, historizationDate: now, stageId: null },
+          })
+          await onArchiveStatesChanged(tx, [{ wasArchived: current.isHistorized, task }], now)
+          return task
         })
 
         return { message: `Tâche ${updatedTask.id} marquée comme historisée` }
@@ -444,6 +492,11 @@ export default async function taskRoutes(fastify) {
    * reprend cette place : les tâches qui l'occupent descendent d'un cran. Si
    * cette colonne n'existe plus, la place par défaut est utilisée.
    *
+   * Occurrence d'une série « après archivage » : la série l'attend de
+   * nouveau, et l'occurrence née de son archivage est retirée si elle n'a pas
+   * été modifiée (cf. onOccurrenceRestored) ; son id est renvoyé dans
+   * `removedOccurrenceId`, pour que l'interface retire sa carte.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
@@ -451,8 +504,9 @@ export default async function taskRoutes(fastify) {
    * @param {number} [req.query.stageId] - Colonne où restaurer la tâche
    * @param {number} [req.query.position] - Position dans cette colonne
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task restauré avec ses tags, 404 si la
-   *   tâche n'existe pas, 409 si elle n'est pas archivée ou s'il n'y a aucune colonne
+   * @returns {Promise<Object|{error: string}>} Objet Task restauré avec ses tags (et
+   *   `removedOccurrenceId`), 404 si la tâche n'existe pas, 409 si elle n'est pas
+   *   archivée ou s'il n'y a aucune colonne
    */
   fastify.post(
     '/tasks/:id/restore',
@@ -472,7 +526,7 @@ export default async function taskRoutes(fastify) {
           dependencies: { stageId: ['position'], position: ['stageId'] },
         },
         response: {
-          200: taskSchema,
+          200: restoreResponse,
           404: errorResponse,
           409: errorResponse,
         },
@@ -517,14 +571,16 @@ export default async function taskRoutes(fastify) {
           position = await bottomPosition(tx, stageId)
         }
 
-        const restored = await tx.task.update({
+        await tx.task.update({
           where: { id },
           data: { isHistorized: false, historizationDate: null, stageId, position },
-          include: taskInclude,
         })
+        const removed = await onOccurrenceRestored(tx, task)
 
+        // Relue après la série : son résumé est à jour
+        const restored = await tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
         Logger.info(`Tâche ${id} restaurée dans la colonne ${stageId}, position ${position}`)
-        return restored
+        return { ...restored, removedOccurrenceId: removed?.id ?? null }
       })
     },
   )
@@ -599,7 +655,9 @@ export default async function taskRoutes(fastify) {
   /**
    * PATCH /tasks/batch
    *
-   * Met à jour plusieurs tâches en une seule requête.
+   * Met à jour plusieurs tâches en une seule requête, dans une transaction.
+   * Archivage et désarchivage comme pour PATCH /tasks/:id (date d'archivage,
+   * séries « après archivage »).
    *
    * @param {Object} req - Requête Fastify
    * @param {Array<Object>} req.body - Tableau des tâches à mettre à jour
@@ -666,22 +724,38 @@ export default async function taskRoutes(fastify) {
 
       try {
         // On fait un update pour chaque tâche, dans une transaction
-        const updatedTasks = await prisma.$transaction(
-          tasks.map((t) => {
-            const data = { ...t }
+        const updatedTasks = await prisma.$transaction(async (tx) => {
+          const archived = await tx.task.findMany({
+            where: { id: { in: tasks.map((t) => t.id) }, isHistorized: true },
+            select: { id: true },
+          })
+          const wasArchived = new Set(archived.map((task) => task.id))
+
+          const updated: Prisma.TaskGetPayload<{ include: typeof taskInclude }>[] = []
+          for (const t of tasks) {
+            const data = withArchiveDate({ ...t }, wasArchived.has(t.id), now)
 
             // startDate repoussée dans le futur → on réarme la notification.
             if (data.startDate && new Date(data.startDate) > now) {
               data.notifiedAt = null
             }
 
-            return prisma.task.update({
-              where: { id: t.id },
-              data,
-              include: taskInclude,
-            })
-          }),
-        )
+            updated.push(await tx.task.update({ where: { id: t.id }, data, include: taskInclude }))
+          }
+
+          await onArchiveStatesChanged(
+            tx,
+            updated.map((task) => ({ wasArchived: wasArchived.has(task.id), task })),
+            now,
+          )
+
+          // Relues dans l'ordre reçu : le résumé de leur série est à jour
+          const fresh = await tx.task.findMany({
+            where: { id: { in: updated.map((task) => task.id) } },
+            include: taskInclude,
+          })
+          return updated.map((task) => fresh.find((f) => f.id === task.id) ?? task)
+        })
 
         Logger.info(`Batch : ${updatedTasks.length} tâche(s) mise(s) à jour`)
         return updatedTasks

@@ -9,6 +9,17 @@ import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
 
 /**
+ * Restauration d'une tâche archivée : la tâche remise au tableau, et
+ * l'occurrence retirée avec l'annulation de son archivage (série « après
+ * archivage » dont l'occurrence suivante, née de cet archivage, n'avait pas
+ * été modifiée), avec ses tags tels qu'en cache.
+ */
+export interface RestoreResult {
+  task: Task
+  removed: Pick<Task, 'id' | 'tags'> | null
+}
+
+/**
  * Cache des tâches.
  *
  * Rempli par `useStageStore().loadAllStages()` (GET /stages renvoie les tâches
@@ -140,22 +151,43 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Restaure une tâche archivée, puis l'ajoute au cache du tableau
+     * Restaure une tâche archivée, puis l'ajoute au cache du tableau. L'occurrence
+     * née de son archivage, retirée par le serveur, quitte aussi le cache.
      * @param id ID de la tâche
      * @param place Colonne et position à reprendre (annulation d'un archivage).
      *   Sans place, ou si la colonne n'existe plus, le serveur la met en bas de
      *   la première colonne.
-     * @returns La tâche restaurée, avec sa colonne et sa position
+     * @returns La tâche restaurée (avec sa colonne et sa position), et l'occurrence retirée
      */
-    async restoreTask(id: number, place?: { stageId: number; position: number }): Promise<Task> {
+    async restoreTask(id: number, place?: { stageId: number; position: number }): Promise<RestoreResult> {
       try {
-        const restored = await api.post<Task>(`/tasks/${id}/restore`, undefined, { params: place })
+        const { removedOccurrenceId, ...restored } = await api.post<Task & { removedOccurrenceId?: number | null }>(
+          `/tasks/${id}/restore`,
+          undefined,
+          { params: place },
+        )
         this.insertCachedTask(restored)
-        return restored
+
+        let removed: RestoreResult['removed'] = null
+        if (removedOccurrenceId) removed = this.removeCachedTask(removedOccurrenceId) ?? { id: removedOccurrenceId }
+        return { task: restored, removed }
       } catch (error) {
         getLogger().error(`Erreur lors de la restauration de la tâche ${id} :`, error)
         throw error
       }
+    },
+
+    /**
+     * Retire une tâche du cache (supprimée côté serveur)
+     * @param id ID de la tâche
+     * @returns La tâche retirée, ou `undefined` si elle n'était pas en cache
+     */
+    removeCachedTask(id: number): Task | undefined {
+      if (!this.allEntities) return undefined
+
+      const removed = this.allEntities.data.find((task) => task.id === id)
+      this.allEntities.data = this.allEntities.data.filter((task) => task.id !== id)
+      return removed
     },
 
     /**
@@ -230,10 +262,7 @@ export const useTaskStore = defineStore('task', {
     async deleteTask(id: number): Promise<void> {
       try {
         await api.delete(`/tasks/${id}`)
-
-        if (this.allEntities) {
-          this.allEntities.data = this.allEntities.data.filter((task) => task.id !== id)
-        }
+        this.removeCachedTask(id)
       } catch (error) {
         getLogger().error(`Erreur lors de la suppression de la tâche ${id}:`, error)
         throw error
