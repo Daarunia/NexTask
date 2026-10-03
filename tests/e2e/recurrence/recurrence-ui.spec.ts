@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import type { APIRequestContext } from '@playwright/test'
 import type { TaskBoard } from '../../components/TaskBoard'
 import {
   DAILY,
@@ -9,6 +10,7 @@ import {
   plusMinutes,
   runRecurrences,
   seriesTasks,
+  stageIds,
 } from '../../helpers/recurrence.helper'
 
 /**
@@ -39,6 +41,27 @@ const WEEKDAY_NAMES = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samed
 function displayed(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/**
+ * Crée une tâche sans répétition, avec une date de début, via l'API.
+ * @param request Contexte de requête Playwright
+ * @param title Titre
+ * @param startDate Date de début
+ */
+async function createDatedTask(request: APIRequestContext, title: string, startDate: Date): Promise<{ id: number }> {
+  const res = await request.post(API_TASKS, {
+    data: {
+      stageId: (await stageIds(request))[COLUMN],
+      position: 0,
+      title,
+      version: '1.5.0',
+      description: '',
+      startDate: startDate.toISOString(),
+    },
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return res.json()
 }
 
 /**
@@ -184,6 +207,137 @@ test.describe('Champ « Répéter »', () => {
     await expect(recurrenceFields.monthEndHint).toHaveText(
       "Les mois de moins de 31 jours, l'occurrence tombe le dernier jour du mois.",
     )
+  })
+})
+
+test.describe('Mensuel personnalisé', () => {
+  test('les 3 jours du mois sont enregistrés puis relus à l’identique', async ({
+    page,
+    taskBoard,
+    recurrenceFields,
+  }) => {
+    // 15 octobre 2026 : un jeudi, le 3e du mois
+    const task = await createDatedTask(page.request, 'Mensuelle', new Date(2026, 9, 15, 9, 0))
+    await page.reload()
+
+    await taskBoard.openEditDialog('Mensuelle')
+    await recurrenceFields.choose('Personnaliser…')
+    await recurrenceFields.setEvery(1, 'mois')
+
+    // Libellés tirés de la date de début, jour fixe par défaut
+    await expect(recurrenceFields.monthlyLabel('dayOfMonth')).toHaveText('le 15')
+    await expect(recurrenceFields.monthlyLabel('nthWeekday')).toHaveText('le 3e jeudi')
+    await expect(recurrenceFields.monthlyLabel('lastDay')).toHaveText('le dernier jour')
+    await expect(recurrenceFields.monthlyMode('dayOfMonth')).toBeChecked()
+
+    const modes = [
+      { mode: 'nthWeekday', summary: 'Tous les mois le 3e jeudi à 09:00', select: 'Personnaliser…' },
+      { mode: 'lastDay', summary: 'Tous les mois le dernier jour à 09:00', select: 'Personnaliser…' },
+      // Jour fixe, sans fin et sans empiler : le préréglage mensuel
+      { mode: 'dayOfMonth', summary: 'Tous les mois le 15 à 09:00', select: 'Tous les mois le 15' },
+    ] as const
+
+    for (const [index, { mode, summary, select }] of modes.entries()) {
+      // Le mode précédent étant personnalisé, le bloc s'affiche à la réouverture
+      if (index > 0) await taskBoard.openEditDialog('Mensuelle')
+      await recurrenceFields.monthlyMode(mode).check()
+      await expect(recurrenceFields.summary).toHaveText(summary)
+      await taskBoard.saveButton.click()
+      await expect(taskBoard.dialog).toBeHidden()
+
+      expect((await getTask(page.request, task.id)).recurrence).toMatchObject({
+        frequency: 'monthly',
+        monthlyMode: mode,
+      })
+
+      // Réouverture : même choix, même résumé
+      await taskBoard.openEditDialog('Mensuelle')
+      await expect(recurrenceFields.select).toHaveText(select)
+      await expect(recurrenceFields.summary).toHaveText(summary)
+      if (select === 'Personnaliser…') await expect(recurrenceFields.monthlyMode(mode)).toBeChecked()
+      await taskBoard.cancelButton.click()
+      await expect(taskBoard.dialog).toBeHidden()
+    }
+  })
+
+  test('un 5e jeudi est proposé comme le dernier jeudi', async ({ page, taskBoard, recurrenceFields }) => {
+    // 29 octobre 2026 : 5e jeudi du mois
+    await createDatedTask(page.request, 'Fin octobre', new Date(2026, 9, 29, 9, 0))
+    await page.reload()
+
+    await taskBoard.openEditDialog('Fin octobre')
+    await recurrenceFields.choose('Personnaliser…')
+    await recurrenceFields.setEvery(2, 'mois')
+
+    await expect(recurrenceFields.monthlyLabel('nthWeekday')).toHaveText('le dernier jeudi')
+    await expect(recurrenceFields.monthEndHint).toBeVisible()
+
+    // L'indication des jours 29 à 31 ne concerne que le jour fixe
+    await recurrenceFields.monthlyMode('nthWeekday').check()
+    await expect(recurrenceFields.summary).toHaveText('Tous les 2 mois le dernier jeudi à 09:00')
+    await expect(recurrenceFields.monthEndHint).toBeHidden()
+  })
+})
+
+test.describe('Création anticipée', () => {
+  test('« N jours avant » enregistré, résumé, puis relu ; « le jour même » le retire', async ({
+    page,
+    taskBoard,
+    recurrenceFields,
+  }) => {
+    await taskBoard.openCreateDialog(COLUMN)
+    await taskBoard.titleInput.fill('Préparée')
+    await recurrenceFields.choose('Tous les jours')
+    await recurrenceFields.choose('Personnaliser…')
+    await expect(recurrenceFields.leadSameDay).toBeChecked()
+
+    await recurrenceFields.createDaysBefore(2)
+    await expect(recurrenceFields.leadBefore).toBeChecked()
+    await expect(recurrenceFields.summary).toHaveText('Tous les jours à 09:00, créée 2 jours avant')
+    await taskBoard.saveButton.click()
+    await expect(taskBoard.dialog).toBeHidden()
+
+    const [created] = (await (await page.request.get(API_TASKS)).json()) as { id: number }[]
+    expect((await getTask(page.request, created.id)).recurrence).toMatchObject({ frequency: 'daily', leadDays: 2 })
+    await expect(taskBoard.taskCard('Préparée').getByTestId('task-card-recurrence')).toHaveAttribute(
+      'title',
+      /^Tous les jours à 09:00, créée 2 jours avant\n/,
+    )
+
+    // Réouverture : règle personnalisée avec le même délai
+    await taskBoard.openEditDialog('Préparée')
+    await expect(recurrenceFields.select).toHaveText('Personnaliser…')
+    await expect(recurrenceFields.leadBefore).toBeChecked()
+    await expect(recurrenceFields.leadDays).toHaveValue('2')
+    await expect(recurrenceFields.summary).toHaveText('Tous les jours à 09:00, créée 2 jours avant')
+
+    // Le jour même : plus de délai, la règle redevient le préréglage
+    await recurrenceFields.leadSameDay.check()
+    await expect(recurrenceFields.summary).toHaveText('Tous les jours à 09:00')
+    await taskBoard.saveButton.click()
+    await expect(taskBoard.dialog).toBeHidden()
+    expect((await getTask(page.request, created.id)).recurrence).toMatchObject({ leadDays: 0 })
+
+    await taskBoard.openEditDialog('Préparée')
+    await expect(recurrenceFields.select).toHaveText('Tous les jours')
+  })
+
+  test('validation : de 1 à 30 jours', async ({ taskBoard, recurrenceFields }) => {
+    await taskBoard.openCreateDialog(COLUMN)
+    await taskBoard.titleInput.fill('Trop tôt')
+    await recurrenceFields.choose('Personnaliser…')
+    await recurrenceFields.leadBefore.check()
+    await recurrenceFields.leadDays.click()
+    await recurrenceFields.leadDays.press('ControlOrMeta+a')
+    await recurrenceFields.leadDays.press('Backspace')
+    await recurrenceFields.leadDays.press('Tab')
+
+    await taskBoard.saveButton.click()
+    await expect(recurrenceFields.error).toHaveText('Le nombre de jours doit être compris entre 1 et 30')
+    await expect(taskBoard.dialog).toBeVisible()
+
+    await recurrenceFields.typeNumber(recurrenceFields.leadDays, 3)
+    await expect(recurrenceFields.error).toBeHidden()
   })
 })
 

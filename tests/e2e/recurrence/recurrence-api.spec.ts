@@ -1,3 +1,4 @@
+import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
 import {
@@ -15,8 +16,9 @@ import {
  * Tests E2E de l'API des tâches récurrentes et de la génération des
  * occurrences : création d'une série depuis sa tâche (POST /tasks), passage
  * de la génération (POST /test/run-recurrences, le planificateur étant
- * désactivé en mode test), modification et arrêt d'une série (PATCH
- * /tasks/:id, PATCH /recurrences/:id), export et import.
+ * désactivé en mode test), création anticipée, pause et reprise,
+ * modification et arrêt d'une série (PATCH /tasks/:id, PATCH
+ * /recurrences/:id), export et import.
  *
  * Les dates partent de demain 09:00 en heure locale : la série créée a alors
  * pour prochaine date le surlendemain, et chaque passage injecte son « maintenant ».
@@ -59,6 +61,44 @@ test.describe('Création', () => {
     expect(monthly.recurrence).toMatchObject({ monthlyMode: 'dayOfMonth', weekdays: null, maxCount: 12 })
   })
 
+  test('mensuel : 3e jeudi et dernier jour du mois, jusqu’à la génération', async ({ page }) => {
+    // 17 janvier 2030 : 3e jeudi ; 31 janvier 2030 : dernier jour (et 5e jeudi)
+    const thirdThursday = await createRecurringTask(page.request, {
+      title: '3e jeudi',
+      startDate: new Date(2030, 0, 17, 9, 0),
+      recurrence: {
+        frequency: 'monthly',
+        interval: 1,
+        monthlyMode: 'nthWeekday',
+        endType: 'never',
+        skipIfPending: false,
+      },
+    })
+    expect(thirdThursday.recurrence).toMatchObject({
+      monthlyMode: 'nthWeekday',
+      nextRunAt: new Date(2030, 1, 21, 9, 0).toISOString(),
+    })
+
+    const lastDay = await createRecurringTask(page.request, {
+      title: 'Fin de mois',
+      startDate: new Date(2030, 0, 31, 9, 0),
+      recurrence: { frequency: 'monthly', interval: 1, monthlyMode: 'lastDay', endType: 'never', skipIfPending: false },
+    })
+    expect(lastDay.recurrence).toMatchObject({
+      monthlyMode: 'lastDay',
+      nextRunAt: new Date(2030, 1, 28, 9, 0).toISOString(),
+    })
+
+    // Le 28 février : le 3e jeudi (21 février) et la fin de mois sont échus
+    expect(await runRecurrences(page.request, new Date(2030, 1, 28, 9, 1))).toMatchObject({ created: 2 })
+    const [, thursday] = await seriesTasks(page.request, thirdThursday.recurrenceId!)
+    expect(thursday.startDate).toBe(new Date(2030, 1, 21, 9, 0).toISOString())
+    expect(thursday.recurrence?.nextRunAt).toBe(new Date(2030, 2, 21, 9, 0).toISOString())
+    const [, february] = await seriesTasks(page.request, lastDay.recurrenceId!)
+    expect(february.startDate).toBe(new Date(2030, 1, 28, 9, 0).toISOString())
+    expect(february.recurrence?.nextRunAt).toBe(new Date(2030, 2, 31, 9, 0).toISOString())
+  })
+
   test('400 pour une règle incohérente', async ({ page }) => {
     const { 'A faire': stageId } = await stageIds(page.request)
     const base = { stageId, position: 0, title: 'Refusée', version: '1.5.0', description: '' }
@@ -75,8 +115,11 @@ test.describe('Création', () => {
       { ...base, startDate, recurrence: { ...DAILY, interval: 0 } },
       { ...base, startDate, recurrence: { ...DAILY, interval: 100 } },
       { ...base, startDate, recurrence: { ...DAILY, endType: 'afterCount', maxCount: 1000 } },
-      // Mensuel « 3e jeudi » : pas encore proposé
-      { ...base, startDate, recurrence: { ...DAILY, frequency: 'monthly', monthlyMode: 'nthWeekday' } },
+      // Mode du mensuel inconnu
+      { ...base, startDate, recurrence: { ...DAILY, frequency: 'monthly', monthlyMode: 'firstDay' } },
+      // Création anticipée hors bornes
+      { ...base, startDate, recurrence: { ...DAILY, leadDays: 31 } },
+      { ...base, startDate, recurrence: { ...DAILY, leadDays: -1 } },
     ]
 
     for (const data of cases) {
@@ -273,6 +316,146 @@ test.describe('Génération', () => {
   })
 })
 
+/**
+ * Nombre de tâches rappelées par un passage du planificateur de notifications.
+ * @param request Contexte de requête Playwright
+ * @param now Horodatage de référence
+ */
+async function runNotifications(request: APIRequestContext, now: Date): Promise<number> {
+  const res = await request.post(`${API}/test/run-notifications`, { data: { now: now.toISOString() } })
+  expect(res.ok()).toBeTruthy()
+  return ((await res.json()) as { count: number }).count
+}
+
+test.describe('Création anticipée', () => {
+  test("tâche créée N jours avant, sa date de début restant celle de l'occurrence", async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'En avance',
+      startDate: localDate(1),
+      recurrence: { ...DAILY, leadDays: 2 },
+    })
+    // La prochaine date reste celle de l'occurrence (après-demain), créée aujourd'hui à 09:00
+    expect(origin.recurrence).toMatchObject({ leadDays: 2, nextRunAt: localDate(2).toISOString() })
+
+    expect(await runRecurrences(page.request, plusMinutes(localDate(0), -1))).toMatchObject({ created: 0 })
+    expect(await runRecurrences(page.request, plusMinutes(localDate(0), 1))).toMatchObject({ created: 1, skipped: 0 })
+
+    const [, occurrence] = await seriesTasks(page.request, origin.recurrenceId!)
+    expect(occurrence).toMatchObject({
+      startDate: localDate(2).toISOString(),
+      occurrenceDate: localDate(2).toISOString(),
+      notifiedAt: null,
+    })
+    expect(occurrence.recurrence).toMatchObject({ generatedCount: 2, nextRunAt: localDate(3).toISOString() })
+
+    // Le rappel part à la date de l'occurrence, pas à sa création
+    expect(await runNotifications(page.request, plusMinutes(localDate(0), 1))).toBe(0)
+
+    // Le lendemain à 09:00, l'occurrence du jour 3 est créée à son tour
+    expect(await runRecurrences(page.request, plusMinutes(localDate(1), 1))).toMatchObject({ created: 1 })
+    expect((await seriesTasks(page.request, origin.recurrenceId!)).map((task) => task.startDate)).toEqual([
+      localDate(1).toISOString(),
+      localDate(2).toISOString(),
+      localDate(3).toISOString(),
+    ])
+    // Au jour 2, la tâche d'origine et l'occurrence du jour 2 sont rappelées, pas celle du jour 3
+    expect(await runNotifications(page.request, plusMinutes(localDate(2), 1))).toBe(2)
+  })
+
+  test('rattrapage : seule la plus récente des dates dont la création est passée', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Rattrapage anticipé',
+      startDate: localDate(1),
+      recurrence: { ...DAILY, leadDays: 2 },
+    })
+
+    // Au jour 5 à 10:00, les créations des jours 2 à 7 sont passées (celle du 7 au jour 5 à 09:00)
+    expect(await runRecurrences(page.request, plusMinutes(localDate(5), 60))).toMatchObject({ created: 1, skipped: 5 })
+
+    const tasks = await seriesTasks(page.request, origin.recurrenceId!)
+    expect(tasks.map((task) => task.startDate)).toEqual([localDate(1).toISOString(), localDate(7).toISOString()])
+    expect(tasks[1].recurrence).toMatchObject({ generatedCount: 2, nextRunAt: localDate(8).toISOString() })
+  })
+
+  test("« Ne pas empiler » compte l'occurrence créée en avance", async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Sans pile anticipée',
+      startDate: localDate(1),
+      recurrence: { ...DAILY, skipIfPending: true, leadDays: 1 },
+    })
+    expect((await page.request.put(`${API}/tasks/${origin.id}`)).ok()).toBeTruthy()
+
+    // Jour 1 : l'occurrence du jour 2 est créée ; jour 2 : celle du jour 3 est sautée, la précédente étant au tableau
+    expect(await runRecurrences(page.request, plusMinutes(localDate(1), 1))).toMatchObject({ created: 1 })
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 0, skipped: 1 })
+  })
+
+  test('reprise juste après une création anticipée : pas de doublon', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Reprise anticipée',
+      startDate: localDate(1),
+      recurrence: { ...DAILY, leadDays: 2 },
+    })
+    expect(await runRecurrences(page.request, plusMinutes(localDate(0), 1))).toMatchObject({ created: 1 })
+
+    await page.request.patch(`${API}/recurrences/${origin.recurrenceId}`, { data: { status: 'paused' } })
+    const res = await page.request.patch(`${API}/recurrences/${origin.recurrenceId}`, { data: { status: 'active' } })
+    // L'occurrence du jour 2 existe déjà : la série reprend au jour 3
+    expect((await res.json()).nextRunAt).toBe(localDate(3).toISOString())
+
+    expect(await runRecurrences(page.request, plusMinutes(localDate(1), 1))).toMatchObject({ created: 1 })
+    expect(await seriesTasks(page.request, origin.recurrenceId!)).toHaveLength(3)
+  })
+
+  test('modifier le délai seul garde la prochaine date', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Délai',
+      startDate: localDate(1),
+      recurrence: DAILY,
+    })
+
+    const res = await page.request.patch(`${API}/tasks/${origin.id}`, {
+      data: { recurrence: { ...DAILY, leadDays: 5 } },
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect((await res.json()).recurrence).toMatchObject({
+      leadDays: 5,
+      status: 'active',
+      startsAt: localDate(1).toISOString(),
+      nextRunAt: localDate(2).toISOString(),
+    })
+  })
+})
+
+test.describe('Pause et reprise', () => {
+  test('en pause, aucun passage ne crée de tâche ; reprise sans rattrapage', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'En pause',
+      startDate: localDate(-5),
+      recurrence: DAILY,
+    })
+    const before = origin.recurrence!.nextRunAt
+    const setStatus = async (status: string) =>
+      (await page.request.patch(`${API}/recurrences/${origin.recurrenceId}`, { data: { status } })).json()
+
+    // La prochaine date est gardée, mais rien n'est généré
+    expect(await setStatus('paused')).toMatchObject({ status: 'paused', nextRunAt: before })
+    expect(await runRecurrences(page.request, localDate(3))).toMatchObject({ created: 0, skipped: 0 })
+
+    // Modifier la règle d'une série en pause ne la relance pas
+    const edited = await page.request.patch(`${API}/tasks/${origin.id}`, {
+      data: { recurrence: { ...DAILY, interval: 2 } },
+    })
+    expect((await edited.json()).recurrence).toMatchObject({ status: 'paused', interval: 2 })
+    expect(await runRecurrences(page.request, localDate(5))).toMatchObject({ created: 0 })
+
+    // Reprise : jours -5, -3, -1, 1… la première date après maintenant, sans rattrapage
+    expect(await setStatus('active')).toMatchObject({ status: 'active', nextRunAt: localDate(1).toISOString() })
+    expect(await runRecurrences(page.request, plusMinutes(new Date(), 1))).toMatchObject({ created: 0, skipped: 0 })
+    expect(await seriesTasks(page.request, origin.recurrenceId!)).toHaveLength(1)
+  })
+})
+
 test.describe('Modification et arrêt', () => {
   test('nouvelle règle : prochaine date recalculée depuis maintenant, sans rattrapage', async ({ page }) => {
     const origin = await createRecurringTask(page.request, {
@@ -393,6 +576,30 @@ test.describe('Export et import', () => {
       exported.recurrences.map(({ updatedAt: _u, ...r }) => r),
     )
     expect(await seriesTasks(page.request, origin.recurrenceId!)).toHaveLength(2)
+  })
+
+  test('la création anticipée est exportée, un export qui ne la connaît pas reste importable', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Anticipée',
+      startDate: localDate(1),
+      recurrence: { ...DAILY, leadDays: 3 },
+    })
+
+    const exported = await (await page.request.get(`${API}/data/export`)).json()
+    expect(exported.recurrences[0]).toMatchObject({ id: origin.recurrenceId, leadDays: 3 })
+
+    // Aller-retour : le délai est restitué
+    expect((await page.request.post(`${API}/data/import`, { data: exported })).ok()).toBeTruthy()
+    expect((await getTask(page.request, origin.id)).recurrence).toMatchObject({ leadDays: 3 })
+
+    // Fichier antérieur à la création anticipée : séries créées le jour même
+    const legacy = {
+      ...exported,
+      recurrences: exported.recurrences.map(({ leadDays: _l, ...recurrence }: { leadDays: number }) => recurrence),
+    }
+    const res = await page.request.post(`${API}/data/import`, { data: legacy })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect((await getTask(page.request, origin.id)).recurrence).toMatchObject({ leadDays: 0 })
   })
 
   test('un export sans séries reste importable', async ({ page }) => {

@@ -1,9 +1,11 @@
 import { Page, Locator, expect } from '@playwright/test'
+import type { MonthlyMode } from '../../src/main/shared/recurrence.constants'
 
 /**
  * Objet du champ « Répéter » de l'écran de tâche (RecurrenceFields, dans
- * TaskDialog) : préréglages, bloc « Personnaliser… », résumé de la règle et
- * prochaine date, case « Appliquer aux prochaines occurrences ».
+ * TaskDialog) : préréglages, bloc « Personnaliser… » (dont le jour du mois
+ * en mensuel), résumé de la règle et prochaine date, case « Appliquer aux
+ * prochaines occurrences ».
  */
 export class RecurrenceFields {
   readonly page: Page
@@ -14,6 +16,7 @@ export class RecurrenceFields {
   readonly monthEndHint: Locator
   readonly stopLink: Locator
   readonly stopHint: Locator
+  readonly pausedHint: Locator
   readonly error: Locator
 
   // Bloc « Personnaliser… »
@@ -27,6 +30,9 @@ export class RecurrenceFields {
   readonly endDate: Locator
   readonly endCount: Locator
   readonly skipIfPending: Locator
+  readonly leadSameDay: Locator
+  readonly leadBefore: Locator
+  readonly leadDays: Locator
 
   // Case de l'écran de tâche, hors du champ
   readonly applyToSeries: Locator
@@ -44,6 +50,7 @@ export class RecurrenceFields {
     this.monthEndHint = this.root.getByTestId('recurrence-month-end-hint')
     this.stopLink = this.root.getByTestId('recurrence-stop')
     this.stopHint = this.root.getByTestId('recurrence-stop-hint')
+    this.pausedHint = this.root.getByTestId('recurrence-paused-hint')
     this.error = this.root.getByTestId('recurrence-error')
 
     this.custom = this.root.getByTestId('recurrence-custom')
@@ -57,6 +64,9 @@ export class RecurrenceFields {
     this.endDate = this.custom.getByTestId('recurrence-end-date').locator('input')
     this.endCount = this.custom.getByTestId('recurrence-end-count').locator('input')
     this.skipIfPending = this.custom.getByTestId('recurrence-skip').locator('input')
+    this.leadSameDay = this.custom.getByTestId('recurrence-lead-same-day').locator('input')
+    this.leadBefore = this.custom.getByTestId('recurrence-lead-before').locator('input')
+    this.leadDays = this.custom.getByTestId('recurrence-lead-days').locator('input')
 
     this.applyToSeries = page.getByTestId('task-apply-to-series').locator('input')
   }
@@ -69,6 +79,22 @@ export class RecurrenceFields {
     await this.select.click()
     await this.page.getByRole('option', { name: label, exact: true }).click()
     await expect(this.select).toHaveText(label)
+  }
+
+  /**
+   * Bouton radio d'un mode du mensuel (bloc personnalisé).
+   * @param mode `dayOfMonth`, `nthWeekday` ou `lastDay`
+   */
+  monthlyMode(mode: MonthlyMode): Locator {
+    return this.custom.locator(`[data-testid="recurrence-monthly-mode"][data-mode="${mode}"]`).locator('input')
+  }
+
+  /**
+   * Libellé d'un mode du mensuel, tiré de la date de début (ex. « le 3e jeudi »).
+   * @param mode `dayOfMonth`, `nthWeekday` ou `lastDay`
+   */
+  monthlyLabel(mode: MonthlyMode): Locator {
+    return this.custom.locator(`label[for="recurrence-monthly-${mode}"]`)
   }
 
   /**
@@ -128,6 +154,15 @@ export class RecurrenceFields {
     await this.unit.click()
     await this.page.getByRole('option', { name: unit, exact: true }).click()
     await expect(this.unit).toHaveText(unit)
+  }
+
+  /**
+   * Création anticipée « N jours avant ».
+   * @param days Nombre de jours (1 à 30)
+   */
+  async createDaysBefore(days: number) {
+    await this.leadBefore.check()
+    await this.typeNumber(this.leadDays, days)
   }
 
   /**

@@ -35,6 +35,9 @@ export class SettingsPage {
   readonly tagNameInput: Locator
   readonly tagError: Locator
   readonly tagColors: Locator
+  readonly recurrenceList: Locator
+  readonly recurrenceItems: Locator
+  readonly recurrencesEmpty: Locator
   readonly confirmPopup: Locator
   readonly confirmAcceptButton: Locator
   readonly confirmRejectButton: Locator
@@ -100,6 +103,11 @@ export class SettingsPage {
     this.tagError = this.tagList.getByTestId('settings-tag-error')
     // Palette ouverte dans un popover, hors de la page
     this.tagColors = page.getByTestId('settings-tag-colors')
+
+    // Section Tâches récurrentes : liste des séries et leurs actions
+    this.recurrenceList = this.root.getByTestId('settings-recurrence-list')
+    this.recurrenceItems = this.recurrenceList.getByTestId('settings-recurrence')
+    this.recurrencesEmpty = this.recurrenceList.getByTestId('settings-recurrences-empty')
 
     // Bulle de confirmation (suppression d'un tag)
     this.confirmPopup = page.getByTestId('confirm-popup')
@@ -283,6 +291,22 @@ export class SettingsPage {
   async askDeleteTag(name: string) {
     await this.openPopupFrom(this.tag(name).getByTestId('btn-tag-delete'))
     await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ligne d'une série dans la liste des tâches récurrentes (attribut
+   * `data-status` = état de la série).
+   * @param title Titre exact du modèle de la série
+   */
+  recurrence(title: string): Locator {
+    return this.recurrenceList.locator(`[data-testid="settings-recurrence"][data-title="${title}"]`)
+  }
+
+  /**
+   * Titres des séries, dans l'ordre de la liste.
+   */
+  async recurrenceTitles(): Promise<string[]> {
+    return this.recurrenceItems.evaluateAll((items) => items.map((item) => item.getAttribute('data-title') ?? ''))
   }
 
   /**
