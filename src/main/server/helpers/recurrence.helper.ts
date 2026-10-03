@@ -168,8 +168,9 @@ export async function createSeries(
  * Modifie la règle d'une série depuis l'une de ses occurrences. Un calendrier
  * modifié est recalé sur la date de début de cette occurrence, et une série
  * arrêtée est relancée. Dans les deux cas, la prochaine date est recalculée
- * depuis maintenant, sans rattrapage. Une règle inchangée sur une série active
- * ne modifie rien.
+ * depuis maintenant, sans rattrapage. Une série en pause le reste (sa reprise
+ * recalculera de nouveau sa prochaine date). Une règle inchangée sur une série
+ * en cours ne modifie rien.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param series Série actuelle
@@ -188,19 +189,17 @@ export async function updateSeriesRule(
   const rescheduled = scheduleChanged(series, rule)
   const skipChanged = series.skipIfPending !== rule.skipIfPending
 
-  if (!rescheduled && !skipChanged && series.status === 'active') return
+  if (!rescheduled && !skipChanged && series.status !== 'ended') return
 
   // Sans changement de calendrier, la série garde son début (et son jour du mois)
   const nextRule: RuleData = rescheduled ? rule : { ...ruleOf(series), skipIfPending: rule.skipIfPending }
-  const restart = rescheduled || series.status !== 'active'
+  const restart = rescheduled || series.status === 'ended'
+  const restarted = restart ? restartFields({ ...nextRule, generatedCount: series.generatedCount }, now) : null
 
-  await tx.recurrence.update({
-    where: { id: series.id },
-    data: {
-      ...nextRule,
-      ...(restart && restartFields({ ...nextRule, generatedCount: series.generatedCount }, now)),
-    },
-  })
+  // Une série en pause n'est pas relancée par une modification de sa règle
+  if (restarted && series.status === 'paused' && restarted.status === 'active') restarted.status = 'paused'
+
+  await tx.recurrence.update({ where: { id: series.id }, data: { ...nextRule, ...restarted } })
 
   Logger.info(`[recurrence] Règle de la série ${series.id} modifiée${restart ? ', prochaine date recalculée' : ''}`)
 }

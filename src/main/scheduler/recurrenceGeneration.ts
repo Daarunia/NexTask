@@ -19,6 +19,9 @@ import { nextOccurrence, toRecurrenceRule } from '../shared/recurrence.helper.js
  * - aucune colonne au tableau : rien n'est créé et la série n'avance pas, elle
  *   reprendra au prochain passage.
  *
+ * Les séries en pause ou terminées ne génèrent rien. Une série reprise repart
+ * de maintenant, sans rattrapage (cf. setSeriesStatus).
+ *
  * Les tâches créées sont transmises à la fenêtre principale (cf. main.ts).
  */
 

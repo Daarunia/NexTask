@@ -147,7 +147,7 @@ import RecurrenceFields from './RecurrenceFields.vue'
 import { Task, TaskInput } from '../types/task.types'
 import { TagSelection } from '../types/tag.types'
 import { RecurrenceFormValue, taskFormSchema, TaskFormValues } from '../schemas/task.schema'
-import type { RecurrenceInput } from '../../main/shared/recurrence.constants'
+import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
@@ -304,13 +304,15 @@ function recurrenceChange(input: RecurrenceInput | null): RecurrenceInput | null
 }
 
 /**
- * Relance une série arrêtée depuis le formulaire (bouton « Annuler » du
- * toast), sans rattrapage
+ * Rend à une série arrêtée depuis le formulaire son état d'avant (bouton
+ * « Annuler » du toast) : active, elle repart de maintenant sans rattrapage ;
+ * en pause, elle y reste
  * @param id Id de la série
+ * @param status État de la série avant l'arrêt
  */
-async function resumeSeries(id: number) {
+async function resumeSeries(id: number, status: RecurrenceStatus) {
   try {
-    await taskStore.updateRecurrenceStatus(id, 'active')
+    await taskStore.updateRecurrenceStatus(id, status)
   } catch {
     showError('Annulation impossible', "La série n'a pas été relancée.")
   }
@@ -377,7 +379,7 @@ async function saveTask(values: TaskFormValues) {
     const recurrenceInput = toRecurrenceInput(values.recurrence, values.startDate)
 
     let savedTask: Task | undefined
-    let stoppedSeriesId: number | null = null
+    let stopped: Pick<RecurrenceSummary, 'id' | 'status'> | null = null
 
     if (props.creationMode) {
       const newTask: TaskInput = {
@@ -410,7 +412,9 @@ async function saveTask(values: TaskFormValues) {
         recurrence: recurrenceChange(recurrenceInput),
         applyToSeries: values.applyToSeries,
       }
-      if (updatedTask.recurrence === null) stoppedSeriesId = series.value?.id ?? null
+      if (updatedTask.recurrence === null && series.value) {
+        stopped = { id: series.value.id, status: series.value.status }
+      }
 
       savedTask = await taskStore.updateTask(updatedTask)
       logger.info('Tâche mise à jour avec succès', savedTask)
@@ -423,10 +427,10 @@ async function saveTask(values: TaskFormValues) {
       emit('task-saved', savedTask)
     }
 
-    // Série arrêtée : annulable quelques secondes, elle repart alors de maintenant
-    if (stoppedSeriesId !== null) {
-      const id = stoppedSeriesId
-      showUndo('Série arrêtée', { detail: savedTask?.title, undo: () => resumeSeries(id) })
+    // Série arrêtée : annulable quelques secondes, elle retrouve alors son état
+    if (stopped) {
+      const { id, status } = stopped
+      showUndo('Série arrêtée', { detail: savedTask?.title, undo: () => resumeSeries(id, status) })
     }
 
     emit('update:modelValue', false)

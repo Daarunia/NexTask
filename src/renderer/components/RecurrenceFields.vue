@@ -27,6 +27,9 @@
     <!-- Résumé en clair et prochaine date -->
     <p v-if="summary" data-testid="recurrence-summary" class="recurrence-hint">{{ summary }}</p>
     <p v-if="nextRun" data-testid="recurrence-next" class="recurrence-hint">Prochaine : {{ formatNextRun(nextRun) }}</p>
+    <p v-if="seriesPaused" data-testid="recurrence-paused-hint" class="recurrence-hint">
+      Série en pause : aucune occurrence n'est créée. Elle se reprend depuis les paramètres.
+    </p>
     <p v-if="monthEndHint" data-testid="recurrence-month-end-hint" class="recurrence-hint">{{ monthEndHint }}</p>
     <p v-if="seriesLive && modelValue.preset === 'none'" data-testid="recurrence-stop-hint" class="recurrence-hint">
       La série s'arrêtera à l'enregistrement. Les occurrences déjà créées sont conservées.
@@ -237,6 +240,9 @@ provide('$pcFormField', undefined)
 // Série de la tâche encore en cours (active ou en pause) : elle peut être arrêtée
 const seriesLive = computed(() => !!props.series && props.series.status !== 'ended')
 
+// Série en pause, tant qu'une répétition reste choisie : pas de prochaine date
+const seriesPaused = computed(() => props.series?.status === 'paused' && props.modelValue.preset !== 'none')
+
 // Libellés des préréglages, recalculés quand la date de début change
 const presetOptions = computed(() => recurrencePresetOptions(props.startDate))
 
@@ -280,6 +286,7 @@ const summary = computed(() => {
 })
 
 const nextRun = computed<Date | null>(() => {
+  if (seriesPaused.value) return null
   if (unchangedSeries.value && props.series?.status === 'active') {
     return props.series.nextRunAt ? new Date(props.series.nextRunAt) : null
   }
