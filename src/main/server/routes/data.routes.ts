@@ -140,6 +140,7 @@ interface DataImportBody {
     maxCount?: number | null
     generatedCount?: number
     skipIfPending?: boolean
+    leadDays?: number
     status: string
     nextRunAt?: string | null
     title: string
@@ -378,6 +379,7 @@ export default async function dataRoutes(fastify) {
                   maxCount: recurrence.maxCount,
                   generatedCount: recurrence.generatedCount,
                   skipIfPending: recurrence.skipIfPending,
+                  leadDays: recurrence.leadDays ?? 0,
                   status: recurrence.status,
                   nextRunAt: recurrence.nextRunAt,
                   title: recurrence.title,

@@ -27,7 +27,12 @@ type RuleData = Pick<
   | 'endsOn'
   | 'maxCount'
   | 'skipIfPending'
+  | 'leadDays'
 >
+
+// Options d'une série qui ne touchent pas à son calendrier : modifiées seules,
+// la série garde son début et sa prochaine date
+const OPTION_FIELDS = ['skipIfPending', 'leadDays'] as const
 
 // Champs du calendrier d'une série : les modifier recale la série sur la tâche modifiée
 const SCHEDULE_FIELDS = ['frequency', 'interval', 'weekdays', 'monthlyMode', 'endType', 'maxCount'] as const
@@ -84,6 +89,7 @@ function toRuleData(input: RecurrenceInput, startDate: Date): RuleData {
     endsOn: input.endType === 'onDate' && input.endsOn ? startOfLocalDay(new Date(input.endsOn)) : null,
     maxCount: input.endType === 'afterCount' ? (input.maxCount ?? null) : null,
     skipIfPending: input.skipIfPending ?? true,
+    leadDays: input.leadDays ?? 0,
   }
 }
 
@@ -93,9 +99,32 @@ function toRuleData(input: RecurrenceInput, startDate: Date): RuleData {
  * @param series Série
  */
 function ruleOf(series: Recurrence): RuleData {
-  const { frequency, interval, weekdays, monthlyMode, time, startsAt, endType, endsOn, maxCount, skipIfPending } =
-    series
-  return { frequency, interval, weekdays, monthlyMode, time, startsAt, endType, endsOn, maxCount, skipIfPending }
+  const {
+    frequency,
+    interval,
+    weekdays,
+    monthlyMode,
+    time,
+    startsAt,
+    endType,
+    endsOn,
+    maxCount,
+    skipIfPending,
+    leadDays,
+  } = series
+  return {
+    frequency,
+    interval,
+    weekdays,
+    monthlyMode,
+    time,
+    startsAt,
+    endType,
+    endsOn,
+    maxCount,
+    skipIfPending,
+    leadDays,
+  }
 }
 
 /**
@@ -113,14 +142,33 @@ function scheduleChanged(series: Recurrence, rule: RuleData): boolean {
 }
 
 /**
+ * Date de la dernière occurrence d'une série, créée peut-être en avance
+ * (création anticipée), ou null si elle n'en a plus aucune.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param seriesId Id de la série
+ */
+async function latestOccurrenceDate(tx: TransactionClient, seriesId: number): Promise<Date | null> {
+  const latest = await tx.task.findFirst({
+    where: { recurrenceId: seriesId, occurrenceDate: { not: null } },
+    orderBy: { occurrenceDate: 'desc' },
+    select: { occurrenceDate: true },
+  })
+  return latest?.occurrenceDate ?? null
+}
+
+/**
  * Prochaine date et état d'une série qui (re)démarre maintenant, sans
- * rattrapage : terminée si sa règle ne donne plus aucune date.
+ * rattrapage : terminée si sa règle ne donne plus aucune date. Une occurrence
+ * déjà créée en avance (création anticipée) n'est pas recréée : la prochaine
+ * date la suit.
  *
  * @param series Règle de la série (et nombre d'occurrences déjà créées)
  * @param now Maintenant
+ * @param latest Date de la dernière occurrence existante de la série
  */
-function restartFields(series: RuleData & Pick<Recurrence, 'generatedCount'>, now: Date) {
-  const nextRunAt = nextRunAfter(toRecurrenceRule(series), now)
+function restartFields(series: RuleData & Pick<Recurrence, 'generatedCount'>, now: Date, latest: Date | null = null) {
+  const nextRunAt = nextRunAfter(toRecurrenceRule(series), latest && latest > now ? latest : now)
   return { nextRunAt, status: nextRunAt ? 'active' : 'ended' }
 }
 
@@ -187,14 +235,22 @@ export async function updateSeriesRule(
 ): Promise<void> {
   const rule = toRuleData(input, startDate)
   const rescheduled = scheduleChanged(series, rule)
-  const skipChanged = series.skipIfPending !== rule.skipIfPending
+  const optionsChanged = OPTION_FIELDS.some((field) => series[field] !== rule[field])
 
-  if (!rescheduled && !skipChanged && series.status !== 'ended') return
+  if (!rescheduled && !optionsChanged && series.status !== 'ended') return
 
   // Sans changement de calendrier, la série garde son début (et son jour du mois)
-  const nextRule: RuleData = rescheduled ? rule : { ...ruleOf(series), skipIfPending: rule.skipIfPending }
+  const nextRule: RuleData = rescheduled
+    ? rule
+    : { ...ruleOf(series), skipIfPending: rule.skipIfPending, leadDays: rule.leadDays }
   const restart = rescheduled || series.status === 'ended'
-  const restarted = restart ? restartFields({ ...nextRule, generatedCount: series.generatedCount }, now) : null
+  const restarted = restart
+    ? restartFields(
+        { ...nextRule, generatedCount: series.generatedCount },
+        now,
+        await latestOccurrenceDate(tx, series.id),
+      )
+    : null
 
   // Une série en pause n'est pas relancée par une modification de sa règle
   if (restarted && series.status === 'paused' && restarted.status === 'active') restarted.status = 'paused'
@@ -253,8 +309,9 @@ export async function endSeries(tx: TransactionClient, series: Recurrence): Prom
 
 /**
  * Change l'état d'une série. Une série réactivée repart de maintenant, sans
- * rattrapage ; une série mise en pause garde sa prochaine date ; une série
- * arrêtée n'en a plus.
+ * rattrapage (après sa dernière occurrence si elle a été créée en avance) ;
+ * une série mise en pause garde sa prochaine date ; une série arrêtée n'en a
+ * plus.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param series Série actuelle
@@ -272,7 +329,7 @@ export async function setSeriesStatus(
 
   let data: Prisma.RecurrenceUpdateInput
   if (status === 'active') {
-    data = restartFields(series, now)
+    data = restartFields(series, now, await latestOccurrenceDate(tx, series.id))
   } else if (status === 'ended') {
     data = { status, nextRunAt: null }
   } else {

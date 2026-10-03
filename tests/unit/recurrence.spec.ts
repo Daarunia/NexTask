@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test'
 import {
+  dueOccurrence,
   monthlyWeekdayOf,
   nextOccurrence,
   nextRunAfter,
+  occurrenceCreationDate,
   type RecurrenceRule,
 } from '../../src/main/shared/recurrence.helper'
-import { monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
+import { describeRecurrence, monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
 
 /**
  * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`)
@@ -46,6 +48,7 @@ function rule(overrides: Partial<RecurrenceRule> = {}): RecurrenceRule {
     endsOn: null,
     maxCount: null,
     generatedCount: 1,
+    leadDays: 0,
     ...overrides,
     startsAt,
   }
@@ -293,5 +296,78 @@ test.describe('Prochaine date à générer', () => {
 
   test('début passé : la première date après maintenant, sans rattrapage', () => {
     expect(nextRunAfter(rule(), local(2026, 10, 20, 10))).toEqual(local(2026, 10, 21))
+  })
+})
+
+test.describe('Création anticipée', () => {
+  test('N jours du calendrier avant la date, à la même heure locale', () => {
+    const r = rule({ leadDays: 2 })
+    expect(occurrenceCreationDate(r, local(2026, 10, 10))).toEqual(local(2026, 10, 8))
+    // Mensuel, dernier jour : le 31 octobre est créé le 28
+    const monthly = rule({ frequency: 'monthly', monthlyMode: 'lastDay', leadDays: 3 })
+    expect(occurrenceCreationDate(monthly, local(2026, 10, 31))).toEqual(local(2026, 10, 28))
+  })
+
+  test('le jour même sans délai', () => {
+    const date = local(2026, 10, 10)
+    expect(occurrenceCreationDate(rule(), date)).toBe(date)
+  })
+
+  test("même heure locale de part et d'autre d'un changement d'heure", () => {
+    // Occurrence le lundi 26 octobre (UTC+1), créée le samedi 24 (UTC+2), toutes deux à 09:00
+    const created = occurrenceCreationDate(rule({ leadDays: 2 }), local(2026, 10, 26))
+    expect(created.toISOString()).toBe('2026-10-24T07:00:00.000Z')
+    expect([created.getHours(), created.getMinutes()]).toEqual([9, 0])
+  })
+
+  test("occurrence à créer : rien avant l'heure de création, puis la date de l'occurrence", () => {
+    const r = rule({ leadDays: 2 })
+    expect(dueOccurrence(r, local(2026, 10, 10), local(2026, 10, 8, 8, 59))).toBeNull()
+    expect(dueOccurrence(r, local(2026, 10, 10), local(2026, 10, 8, 9))).toEqual({
+      date: local(2026, 10, 10),
+      skipped: [],
+    })
+  })
+
+  test('rattrapage : la plus récente des dates dont la création est passée', () => {
+    // Le 12 à 10:00, les créations des 10 à 14 sont passées (celle du 14 le 12 à 09:00), pas celle du 15
+    const r = rule({ leadDays: 2 })
+    expect(dueOccurrence(r, local(2026, 10, 10), local(2026, 10, 12, 10))).toEqual({
+      date: local(2026, 10, 14),
+      skipped: [local(2026, 10, 10), local(2026, 10, 11), local(2026, 10, 12), local(2026, 10, 13)],
+    })
+  })
+
+  test('sans délai, le rattrapage du lot 1 est inchangé', () => {
+    expect(dueOccurrence(rule(), local(2026, 10, 10), local(2026, 10, 12, 10))).toEqual({
+      date: local(2026, 10, 12),
+      skipped: [local(2026, 10, 10), local(2026, 10, 11)],
+    })
+  })
+
+  test('le résumé indique le délai', () => {
+    const summary = {
+      id: 1,
+      frequency: 'monthly' as const,
+      interval: 1,
+      weekdays: null,
+      monthlyMode: 'nthWeekday' as const,
+      time: '09:00',
+      startsAt: local(2026, 10, 15).toISOString(),
+      endType: 'afterCount' as const,
+      endsOn: null,
+      maxCount: 6,
+      generatedCount: 1,
+      skipIfPending: true,
+      status: 'active' as const,
+      nextRunAt: null,
+    }
+    expect(describeRecurrence({ ...summary, leadDays: 2 })).toBe(
+      'Tous les mois le 3e jeudi à 09:00, 6 fois, créée 2 jours avant',
+    )
+    expect(describeRecurrence({ ...summary, leadDays: 1 })).toBe(
+      'Tous les mois le 3e jeudi à 09:00, 6 fois, créée 1 jour avant',
+    )
+    expect(describeRecurrence({ ...summary, leadDays: 0 })).toBe('Tous les mois le 3e jeudi à 09:00, 6 fois')
   })
 })

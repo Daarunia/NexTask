@@ -51,6 +51,7 @@ interface RecurrenceDescription {
   endType: RecurrenceInput['endType']
   endsOn: Date | null
   maxCount: number | null
+  leadDays: number
 }
 
 /**
@@ -153,6 +154,14 @@ function describeFrequency(rule: RecurrenceDescription): string {
 }
 
 /**
+ * Création anticipée en toutes lettres : « créée 2 jours avant ».
+ * @param days Jours d'avance (au moins 1)
+ */
+function describeLeadDays(days: number): string {
+  return `créée ${days} ${days === 1 ? 'jour' : 'jours'} avant`
+}
+
+/**
  * Résumé en clair d'une règle, ex. « Toutes les 2 semaines le jeudi à 14:00,
  * jusqu'au 31 déc. 2026 ».
  * @param rule Règle
@@ -161,8 +170,9 @@ function describe(rule: RecurrenceDescription): string {
   let end = ''
   if (rule.endType === 'onDate' && rule.endsOn) end = `, jusqu'au ${withOrdinal(END_DATE_FORMAT, rule.endsOn)}`
   if (rule.endType === 'afterCount' && rule.maxCount) end = `, ${rule.maxCount} fois`
+  const lead = rule.leadDays > 0 ? `, ${describeLeadDays(rule.leadDays)}` : ''
 
-  return `${describeFrequency(rule)} à ${localTime(rule.startsAt)}${end}`
+  return `${describeFrequency(rule)} à ${localTime(rule.startsAt)}${end}${lead}`
 }
 
 /**
@@ -179,6 +189,7 @@ export function describeRecurrence(summary: RecurrenceSummary): string {
     endType: summary.endType,
     endsOn: summary.endsOn ? new Date(summary.endsOn) : null,
     maxCount: summary.maxCount,
+    leadDays: summary.leadDays ?? 0,
   })
 }
 
@@ -197,6 +208,7 @@ export function describeRecurrenceInput(input: RecurrenceInput, startDate: Date)
     endType: input.endType,
     endsOn: input.endsOn ? new Date(input.endsOn) : null,
     maxCount: input.maxCount ?? null,
+    leadDays: input.leadDays ?? 0,
   })
 }
 
@@ -240,12 +252,12 @@ export function recurrencePresetOptions(startDate: Date | null): { value: Recurr
 }
 
 /**
- * Règle d'un préréglage, sans fin et sans empiler les occurrences.
+ * Règle d'un préréglage, sans fin, sans empiler les occurrences et créées le jour même.
  * @param preset Préréglage (ni `none`, ni `custom`)
  * @param startDate Date de début de la tâche
  */
 function presetInput(preset: Exclude<RecurrencePreset, 'none' | 'custom'>, startDate: Date): RecurrenceInput {
-  const base = { interval: 1, endType: 'never' as const, skipIfPending: true }
+  const base = { interval: 1, endType: 'never' as const, skipIfPending: true, leadDays: 0 }
   switch (preset) {
     case 'daily':
       return { ...base, frequency: 'daily' }
@@ -275,6 +287,7 @@ function normalizeInput(input: RecurrenceInput): RecurrenceInput {
     ...(input.endType === 'onDate' && { endsOn: input.endsOn ? new Date(input.endsOn).toISOString() : null }),
     ...(input.endType === 'afterCount' && { maxCount: input.maxCount ?? null }),
     skipIfPending: input.skipIfPending,
+    leadDays: input.leadDays ?? 0,
   }
 }
 
@@ -302,6 +315,7 @@ export function summaryToInput(summary: RecurrenceSummary): RecurrenceInput {
     endsOn: summary.endsOn,
     maxCount: summary.maxCount,
     skipIfPending: summary.skipIfPending,
+    leadDays: summary.leadDays ?? 0,
   })
 }
 
@@ -317,6 +331,8 @@ export function defaultRecurrenceValue(): RecurrenceFormValue {
     endsOn: null,
     maxCount: 10,
     skipIfPending: true,
+    createEarly: false,
+    leadDays: 1,
   }
 }
 
@@ -337,6 +353,8 @@ function withCustomFields(value: RecurrenceFormValue, input: RecurrenceInput): R
     endsOn: input.endsOn ? new Date(input.endsOn) : null,
     maxCount: input.maxCount ?? value.maxCount,
     skipIfPending: input.skipIfPending,
+    createEarly: (input.leadDays ?? 0) > 0,
+    leadDays: input.leadDays || value.leadDays,
   }
 }
 
@@ -395,6 +413,7 @@ export function toRecurrenceInput(value: RecurrenceFormValue, startDate: Date | 
     endsOn: value.endsOn ? value.endsOn.toISOString() : null,
     maxCount: value.maxCount,
     skipIfPending: value.skipIfPending,
+    leadDays: value.createEarly ? (value.leadDays ?? 0) : 0,
   })
 }
 
@@ -417,6 +436,7 @@ export function previewNextRun(input: RecurrenceInput, startDate: Date, generate
     endsOn: input.endsOn ? new Date(input.endsOn) : null,
     maxCount: input.maxCount ?? null,
     generatedCount,
+    leadDays: input.leadDays ?? 0,
   }
   return nextRunAfter(rule, new Date())
 }

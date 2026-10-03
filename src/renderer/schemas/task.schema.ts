@@ -6,6 +6,7 @@ import {
   RECURRENCE_END_TYPES,
   RECURRENCE_FREQUENCIES,
   RECURRENCE_INTERVAL_MAX,
+  RECURRENCE_LEAD_DAYS_MAX,
 } from '../../main/shared/recurrence.constants'
 
 /**
@@ -32,6 +33,8 @@ const recurrenceFieldsSchema = z.object({
   endsOn: z.date().nullable(),
   maxCount: z.number().nullable(),
   skipIfPending: z.boolean(),
+  createEarly: z.boolean(), // « Créer la tâche N jours avant » plutôt que le jour même
+  leadDays: z.number().nullable(), // N, gardé si « le jour même » est choisi ; vide pendant la saisie
 })
 
 /** Valeur du champ « Répéter ». */
@@ -48,8 +51,8 @@ function startOfDay(date: Date): number {
 /**
  * Contrôles de la répétition, qui croisent plusieurs champs : date de début
  * obligatoire, puis pour une règle personnalisée intervalle, jours de la
- * semaine et fin. Les erreurs de la règle sont rattachées au champ
- * `recurrence`, celle de la date au champ `startDate`.
+ * semaine, fin et création anticipée. Les erreurs de la règle sont rattachées
+ * au champ `recurrence`, celle de la date au champ `startDate`.
  * @param values Valeurs du formulaire
  * @param ctx Contexte zod
  */
@@ -64,7 +67,7 @@ function checkRecurrence(values: { startDate: Date | null; recurrence: Recurrenc
   if (recurrence.preset !== 'custom') return
 
   const issue = (message: string) => ctx.addIssue({ code: 'custom', path: ['recurrence'], message })
-  const { interval, maxCount } = recurrence
+  const { interval, maxCount, leadDays } = recurrence
 
   if (interval === null || !Number.isInteger(interval) || interval < 1 || interval > RECURRENCE_INTERVAL_MAX) {
     issue(`L'intervalle doit être compris entre 1 et ${RECURRENCE_INTERVAL_MAX}`)
@@ -79,6 +82,11 @@ function checkRecurrence(values: { startDate: Date | null; recurrence: Recurrenc
     (maxCount === null || !Number.isInteger(maxCount) || maxCount < 1 || maxCount > RECURRENCE_COUNT_MAX)
   ) {
     issue(`Le nombre d'occurrences doit être compris entre 1 et ${RECURRENCE_COUNT_MAX}`)
+  } else if (
+    recurrence.createEarly &&
+    (leadDays === null || !Number.isInteger(leadDays) || leadDays < 1 || leadDays > RECURRENCE_LEAD_DAYS_MAX)
+  ) {
+    issue(`Le nombre de jours doit être compris entre 1 et ${RECURRENCE_LEAD_DAYS_MAX}`)
   }
 }
 

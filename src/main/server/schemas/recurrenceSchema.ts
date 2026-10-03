@@ -4,6 +4,7 @@ import {
   RECURRENCE_END_TYPES,
   RECURRENCE_FREQUENCIES,
   RECURRENCE_INTERVAL_MAX,
+  RECURRENCE_LEAD_DAYS_MAX,
   RECURRENCE_STATUSES,
 } from '../../shared/recurrence.constants.js'
 
@@ -29,8 +30,10 @@ const recurrenceSummaryProperties = {
   maxCount: { type: ['integer', 'null'] },
   generatedCount: { type: 'integer' },
   skipIfPending: { type: 'boolean' },
+  // jours de création anticipée (0 = le jour même)
+  leadDays: { type: 'integer' },
   status: { type: 'string' },
-  // null une fois la série terminée
+  // date de la prochaine occurrence (sa création peut être anticipée), null une fois la série terminée
   nextRunAt: nullableDate,
 }
 
@@ -75,6 +78,8 @@ const recurrenceInputProperties = {
   endsOn: nullableDate,
   maxCount: { type: ['integer', 'null'], minimum: 1, maximum: RECURRENCE_COUNT_MAX },
   skipIfPending: { type: 'boolean' },
+  // Création anticipée, en jours (0 = le jour même, par défaut)
+  leadDays: { type: 'integer', minimum: 0, maximum: RECURRENCE_LEAD_DAYS_MAX },
 }
 
 /** Règle saisie à la création d'une tâche (POST /tasks). */
@@ -116,6 +121,8 @@ export const exportedRecurrenceSchema = {
     maxCount: { type: ['integer', 'null'], minimum: 1 },
     generatedCount: { type: 'integer', minimum: 0 },
     skipIfPending: { type: 'boolean' },
+    // Absent des exports antérieurs à la création anticipée (0 à l'import)
+    leadDays: { type: 'integer', minimum: 0, maximum: RECURRENCE_LEAD_DAYS_MAX },
     status: { type: 'string', enum: [...RECURRENCE_STATUSES] },
     nextRunAt: nullableDate,
     title: { type: 'string' },

@@ -16,6 +16,7 @@ export const recurrenceSummarySelect = {
   maxCount: true,
   generatedCount: true,
   skipIfPending: true,
+  leadDays: true,
   status: true,
   nextRunAt: true,
 } as const

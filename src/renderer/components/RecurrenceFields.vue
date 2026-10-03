@@ -157,6 +157,46 @@
         </div>
       </div>
 
+      <!-- Création anticipée : la tâche arrive au tableau avant sa date, son rappel reste à sa date -->
+      <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-lead-label">
+        <span id="recurrence-lead-label">Créer la tâche</span>
+
+        <div class="flex items-center gap-2">
+          <RadioButton
+            inputId="recurrence-lead-same-day"
+            data-testid="recurrence-lead-same-day"
+            :value="false"
+            :modelValue="modelValue.createEarly"
+            @update:modelValue="(createEarly: boolean) => update({ createEarly })"
+          />
+          <label for="recurrence-lead-same-day">Le jour même</label>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <RadioButton
+            inputId="recurrence-lead-before"
+            data-testid="recurrence-lead-before"
+            :value="true"
+            :modelValue="modelValue.createEarly"
+            @update:modelValue="(createEarly: boolean) => update({ createEarly })"
+          />
+          <InputNumber
+            data-testid="recurrence-lead-days"
+            :modelValue="modelValue.leadDays"
+            :min="1"
+            :max="RECURRENCE_LEAD_DAYS_MAX"
+            :useGrouping="false"
+            inputClass="w-16"
+            aria-label="Nombre de jours d'avance"
+            @update:modelValue="(leadDays: number | null) => update({ leadDays, createEarly: true })"
+          />
+          <label for="recurrence-lead-before">{{ modelValue.leadDays === 1 ? 'jour avant' : 'jours avant' }}</label>
+        </div>
+        <p v-if="modelValue.createEarly" class="recurrence-hint">
+          À l'heure de l'occurrence. Le rappel reste à sa date.
+        </p>
+      </div>
+
       <div class="flex items-center gap-2">
         <Checkbox
           inputId="recurrence-skip"
@@ -188,6 +228,7 @@ import Message from 'primevue/message'
 import {
   RECURRENCE_COUNT_MAX,
   RECURRENCE_INTERVAL_MAX,
+  RECURRENCE_LEAD_DAYS_MAX,
   type MonthlyMode,
   type RecurrenceEndType,
   type RecurrenceFrequency,
@@ -261,14 +302,18 @@ const unitOptions = computed(() => {
 })
 
 /**
- * Règle actuelle, si elle est complète (date de début, intervalle valable et
- * au moins un jour en hebdomadaire) : sert au résumé et à la prochaine date.
+ * Règle actuelle, si elle est complète (date de début, intervalle valable,
+ * au moins un jour en hebdomadaire, jours d'avance valables) : sert au résumé
+ * et à la prochaine date.
  */
 const input = computed(() => {
   const value = props.modelValue
   if (value.preset === 'custom') {
     if (value.interval === null || value.interval < 1 || value.interval > RECURRENCE_INTERVAL_MAX) return null
     if (value.frequency === 'weekly' && !value.weekdays.length) return null
+    if (value.createEarly && !(value.leadDays && value.leadDays >= 1 && value.leadDays <= RECURRENCE_LEAD_DAYS_MAX)) {
+      return null
+    }
   }
   return toRecurrenceInput(value, props.startDate)
 })

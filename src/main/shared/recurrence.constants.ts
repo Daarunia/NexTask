@@ -39,6 +39,9 @@ export const RECURRENCE_INTERVAL_MAX = 99
 /** Nombre maximal d'occurrences d'une série qui se termine « après N occurrences ». */
 export const RECURRENCE_COUNT_MAX = 999
 
+/** Création anticipée maximale : occurrence créée au plus 30 jours avant sa date. */
+export const RECURRENCE_LEAD_DAYS_MAX = 30
+
 /**
  * Règle saisie dans le formulaire de tâche, envoyée à l'API (POST et PATCH
  * /tasks). L'heure et le début de la série sont tirés de la date de début de
@@ -53,6 +56,7 @@ export interface RecurrenceInput {
   endsOn?: string | null // date de fin (ISO), incluse jusqu'à la fin de sa journée locale
   maxCount?: number | null // nombre total d'occurrences, tâche d'origine comprise
   skipIfPending: boolean // « Ne pas empiler » : date sautée si une occurrence est encore active
+  leadDays?: number // création anticipée : 0 (le jour même, défaut) à RECURRENCE_LEAD_DAYS_MAX jours avant
 }
 
 /**
@@ -73,8 +77,9 @@ export interface RecurrenceSummary {
   maxCount: number | null
   generatedCount: number
   skipIfPending: boolean
+  leadDays: number // jours de création anticipée (0 = le jour même)
   status: RecurrenceStatus
-  nextRunAt: string | null // null une fois la série terminée
+  nextRunAt: string | null // date de la prochaine occurrence (pas de sa création), null une fois la série terminée
 }
 
 /**

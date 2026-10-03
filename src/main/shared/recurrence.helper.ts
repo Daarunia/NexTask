@@ -15,6 +15,11 @@
  *   d'autant (03:30), une heure ambiguë (retour à l'heure d'hiver) est la
  *   première des deux : c'est le comportement du constructeur `Date` en heure
  *   locale, imposé par la norme ECMAScript.
+ *
+ * Création anticipée : une occurrence est créée `leadDays` jours (du
+ * calendrier) avant sa date, à l'heure de la série. La prochaine date d'une
+ * série (`nextRunAt`) reste celle de l'occurrence, sa date de création s'en
+ * déduit (cf. occurrenceCreationDate).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -31,6 +36,7 @@ export interface RecurrenceRule {
   endsOn: Date | null // incluse jusqu'à la fin de sa journée locale
   maxCount: number | null // nombre total d'occurrences, tâche d'origine comprise
   generatedCount: number // occurrences déjà créées, tâche d'origine comprise
+  leadDays: number // création anticipée, en jours (0 = le jour même)
 }
 
 /** Série telle que stockée en base (Prisma) ou reçue par HTTP (dates en chaînes). */
@@ -45,6 +51,7 @@ export interface StoredRecurrenceRule {
   endsOn: Date | string | null
   maxCount: number | null
   generatedCount: number
+  leadDays?: number // absent d'un résumé antérieur à la création anticipée
 }
 
 /**
@@ -133,6 +140,7 @@ export function toRecurrenceRule(stored: StoredRecurrenceRule): RecurrenceRule {
     endsOn: stored.endsOn ? new Date(stored.endsOn) : null,
     maxCount: stored.maxCount,
     generatedCount: stored.generatedCount,
+    leadDays: stored.leadDays ?? 0,
   }
 }
 
@@ -304,4 +312,50 @@ export function nextOccurrence(rule: RecurrenceRule, after: Date): Date | null {
  */
 export function nextRunAfter(rule: RecurrenceRule, now: Date): Date | null {
   return nextOccurrence(rule, now > rule.startsAt ? now : rule.startsAt)
+}
+
+/**
+ * Date de création d'une occurrence : `leadDays` jours du calendrier avant sa
+ * date, à l'heure de la série (heure locale, changements d'heure compris), ou
+ * sa date elle-même sans création anticipée.
+ *
+ * @param rule Délai et heure de la série
+ * @param date Date de l'occurrence
+ */
+export function occurrenceCreationDate(rule: Pick<RecurrenceRule, 'leadDays' | 'time'>, date: Date): Date {
+  if (!rule.leadDays) return date
+  const day = localDay(date)
+  return atTime({ ...day, day: day.day - rule.leadDays }, rule.time)
+}
+
+/**
+ * Occurrence à créer à `now`, à partir de la prochaine date d'une série : la
+ * plus récente des dates dont l'heure de création est passée. Les dates
+ * précédentes sont sautées (rattrapage d'une app restée fermée) et ne
+ * comptent pas dans le nombre d'occurrences.
+ *
+ * @param rule Règle de la série
+ * @param nextRunAt Prochaine date de la série
+ * @param now Maintenant
+ * @returns Date à créer et dates sautées, ou null si sa création n'est pas encore venue
+ */
+export function dueOccurrence(
+  rule: RecurrenceRule,
+  nextRunAt: Date,
+  now: Date,
+): { date: Date; skipped: Date[] } | null {
+  if (occurrenceCreationDate(rule, nextRunAt) > now) return null
+
+  let date = nextRunAt
+  const skipped: Date[] = []
+  for (
+    let next = nextOccurrence(rule, date);
+    next && occurrenceCreationDate(rule, next) <= now;
+    next = nextOccurrence(rule, date)
+  ) {
+    skipped.push(date)
+    date = next
+  }
+
+  return { date, skipped }
 }
