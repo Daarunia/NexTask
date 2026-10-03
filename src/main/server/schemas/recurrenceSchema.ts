@@ -12,7 +12,7 @@ const nullableDate = { type: ['string', 'null'], format: 'date-time' }
 
 /**
  * Propriétés du résumé d'une série, renvoyé avec chaque tâche qui en est une
- * occurrence et par PATCH /recurrences/:id (sans le modèle des occurrences).
+ * occurrence et par les routes /recurrences (sans le modèle des occurrences).
  */
 const recurrenceSummaryProperties = {
   id: { type: 'integer' },
@@ -38,6 +38,15 @@ const recurrenceSummaryProperties = {
 export const recurrenceSummarySchema = {
   type: 'object',
   properties: recurrenceSummaryProperties,
+}
+
+/** Série de la liste des Paramètres (GET /recurrences) : résumé et titre du modèle. */
+export const recurrenceListItemSchema = {
+  type: 'object',
+  properties: {
+    ...recurrenceSummaryProperties,
+    title: { type: 'string' },
+  },
 }
 
 /** Résumé d'une série inclus dans une tâche : null hors série. */

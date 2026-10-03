@@ -3,7 +3,7 @@ import { CACHE_TTL } from '../constants/time.constants'
 import { Task, TaskInput } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
-import type { RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
@@ -61,7 +61,23 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Change l'état d'une série (arrêt, réactivation sans rattrapage)
+     * Charge toutes les séries (liste des Paramètres), et garde leur résumé :
+     * les cartes et la liste lisent ensuite le même état (cf. getRecurrence)
+     * @returns Les séries, en cours puis terminées, avec le titre de leur modèle
+     */
+    async loadRecurrences(): Promise<RecurrenceListItem[]> {
+      try {
+        const series = await api.get<RecurrenceListItem[]>('/recurrences')
+        for (const { title: _title, ...summary } of series) this.recurrences[summary.id] = summary
+        return series
+      } catch (error) {
+        getLogger().error('Erreur lors du chargement des séries récurrentes :', error)
+        throw error
+      }
+    },
+
+    /**
+     * Change l'état d'une série (pause, reprise ou réactivation sans rattrapage, arrêt)
      * @param id Id de la série
      * @param status Nouvel état
      * @returns Le résumé de la série, à jour

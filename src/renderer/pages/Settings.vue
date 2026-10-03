@@ -102,6 +102,14 @@
         <TagsSetting />
       </SettingsSection>
 
+      <SettingsSection
+        title="Tâches récurrentes"
+        description="Séries créées depuis le champ « Répéter » d'une tâche. En pause, une série ne crée plus d'occurrence ; reprise, elle repart de sa prochaine date sans rattraper les dates passées."
+        testId="settings-recurrences"
+      >
+        <RecurrencesSetting />
+      </SettingsSection>
+
       <SettingsSection title="Notifications" testId="settings-notifications">
         <SettingsRow
           label="Rappels de date de début"
@@ -293,6 +301,7 @@ import SettingsSection from '../components/settings/SettingsSection.vue'
 import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
+import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'

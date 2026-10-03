@@ -76,3 +76,11 @@ export interface RecurrenceSummary {
   status: RecurrenceStatus
   nextRunAt: string | null // null une fois la série terminée
 }
+
+/**
+ * Série de la liste des Paramètres (GET /recurrences) : son résumé et le
+ * titre du modèle de ses occurrences.
+ */
+export interface RecurrenceListItem extends RecurrenceSummary {
+  title: string
+}
