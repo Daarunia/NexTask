@@ -3,13 +3,19 @@ import { Prisma, type Task as PrismaTask } from '../../prisma/generated/prisma/c
 import { taskSchema } from '../schemas/taskSchema.js'
 import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
+import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas/recurrenceSchema.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
-import { bottomPosition, makeRoomAt } from '../helpers/task.helper.js'
+import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
+import {
+  applyToSeriesTemplate,
+  createSeries,
+  endSeries,
+  recurrenceInputProblem,
+  updateSeriesRule,
+} from '../helpers/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
+import type { RecurrenceInput } from '../../shared/recurrence.constants.js'
 import Logger from 'electron-log'
-
-// Relations renvoyées avec chaque tâche : ses tags, triés par nom.
-const taskInclude = { tags: { orderBy: { name: 'asc' } } } as const
 
 // Noms des tags d'une tâche, rapprochés ou créés par le serveur (cf. tag.helper)
 const taskTagsBody = {
@@ -18,10 +24,14 @@ const taskTagsBody = {
 }
 
 /** Corps de POST /tasks, une fois validé par Fastify. */
-type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[] }
+type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[]; recurrence?: RecurrenceInput }
 
 /** Corps de PATCH /tasks/:id, une fois validé par Fastify. */
-type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & { tags?: string[] }
+type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & {
+  tags?: string[]
+  recurrence?: RecurrenceInput | null
+  applyToSeries?: boolean
+}
 
 /**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
@@ -129,8 +139,9 @@ export default async function taskRoutes(fastify) {
    * Crée une nouvelle tâche avec les données fournies.
    *
    * Les tags sont transmis par leur nom : les noms connus (sans tenir compte
-   * de la casse) sont réutilisés, les autres créés. Tags et tâche sont écrits
-   * dans une même transaction.
+   * de la casse) sont réutilisés, les autres créés. Avec `recurrence`, la
+   * tâche est la première occurrence d'une nouvelle série (date de début
+   * obligatoire). Tags, tâche et série sont écrits dans une même transaction.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
@@ -141,7 +152,10 @@ export default async function taskRoutes(fastify) {
    * @param {number} req.body.position - Position dans la colonne
    * @param {string|null} [req.body.startDate] - Date de début
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche
-   * @returns {Promise<Object>} Objet Task créé, avec ses tags
+   * @param {Object} [req.body.recurrence] - Règle de répétition (cf. RecurrenceInput)
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags et sa série,
+   *   400 si la règle de répétition est incohérente
    */
   fastify.post(
     '/tasks',
@@ -159,21 +173,33 @@ export default async function taskRoutes(fastify) {
             title: requiredLabel,
             startDate: { type: ['string', 'null'], format: 'date-time' },
             tags: taskTagsBody,
+            recurrence: recurrenceInputSchema,
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
-        response: { 200: taskSchema },
+        response: { 200: taskSchema, 400: errorResponse },
       },
     },
-    async (req) => {
-      const { tags, ...data } = req.body as TaskCreateBody
+    async (req, reply) => {
+      const { tags, recurrence, ...data } = req.body as TaskCreateBody
+
+      if (recurrence) {
+        const problem = recurrenceInputProblem(recurrence, data.startDate ? new Date(data.startDate) : null)
+        if (problem) {
+          reply.code(400)
+          return { error: problem }
+        }
+      }
 
       return prisma.$transaction(async (tx) => {
         const tagIds = tags ? await resolveTagIds(tx, tags) : []
-        return tx.task.create({
+        const task = await tx.task.create({
           data: { ...data, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
-          include: taskInclude,
         })
+
+        if (recurrence) await createSeries(tx, task, recurrence, tagIds, new Date())
+
+        return tx.task.findUniqueOrThrow({ where: { id: task.id }, include: taskInclude })
       })
     },
   )
@@ -187,14 +213,27 @@ export default async function taskRoutes(fastify) {
    * Sinon la tâche porte exactement les tags nommés, rapprochés ou créés
    * comme pour POST /tasks, dans la même transaction que la mise à jour.
    *
+   * Répétition :
+   * - `recurrence` absent laisse la série inchangée ;
+   * - un objet crée une série dont la tâche est la première occurrence, ou
+   *   modifie la règle de sa série (prochaine date recalculée depuis
+   *   maintenant, sans rattrapage) ;
+   * - `null` arrête sa série, dont les occurrences sont conservées.
+   * Avec `applyToSeries` (par défaut), le contenu modifié (titre, description,
+   * version, tags, colonne) est aussi reporté sur le modèle des prochaines
+   * occurrences. Les occurrences existantes ne changent pas.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
    * @param {Object} req.body - Données à mettre à jour
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche (remplacent les actuels)
+   * @param {Object|null} [req.body.recurrence] - Règle de répétition, null pour arrêter la série
+   * @param {boolean} [req.body.applyToSeries] - Reporter le contenu sur le modèle de la série (défaut : true)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags,
-   *   404 si la tâche n'existe pas, 500 pour toute autre erreur
+   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags et sa série,
+   *   400 si la règle de répétition est incohérente, 404 si la tâche n'existe pas,
+   *   500 pour toute autre erreur
    */
   fastify.patch(
     '/tasks/:id',
@@ -219,10 +258,13 @@ export default async function taskRoutes(fastify) {
             startDate: { type: ['string', 'null'], format: 'date-time' },
             notifiedAt: { type: ['string', 'null'], format: 'date-time' },
             tags: taskTagsBody,
+            recurrence: nullableRecurrenceInputSchema,
+            applyToSeries: { type: 'boolean' },
           },
         },
         response: {
           200: taskSchema,
+          400: errorResponse,
           404: errorResponse,
           500: errorResponse,
         },
@@ -230,26 +272,67 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
-      const { tags, ...data } = req.body as TaskUpdateBody
+      const { tags, recurrence, applyToSeries = true, ...data } = req.body as TaskUpdateBody
+      const now = new Date()
 
       // Si la startDate est repoussée dans le futur, on réarme la notification.
-      if (data.startDate && new Date(data.startDate as string) > new Date()) {
+      if (data.startDate && new Date(data.startDate as string) > now) {
         data.notifiedAt = null
       }
 
       try {
-        // Transaction : si la tâche n'existe pas, aucun tag n'est créé
+        // Transaction : si la tâche n'existe pas ou si la règle est refusée, rien n'est écrit
         return await prisma.$transaction(async (tx) => {
+          const current = await tx.task.findUnique({ where: { id }, include: { recurrence: true, tags: true } })
+          if (!current) {
+            Logger.warn(`Mise à jour de la tâche ${id} impossible, tâche introuvable`)
+            reply.code(404)
+            return { error: 'Tâche non trouvée' }
+          }
+
+          // Date de début une fois la modification appliquée
+          let startDate = current.startDate
+          if (data.startDate !== undefined) startDate = data.startDate ? new Date(data.startDate as string) : null
+
+          if (recurrence) {
+            const problem = recurrenceInputProblem(recurrence, startDate)
+            if (problem) {
+              reply.code(400)
+              return { error: problem }
+            }
+          }
+
           const tagIds = tags === undefined ? undefined : await resolveTagIds(tx, tags)
 
-          return tx.task.update({
+          const task = await tx.task.update({
             where: { id },
             data: {
               ...data,
               ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
             },
-            include: taskInclude,
           })
+
+          const series = current.recurrence
+          if (recurrence === null) {
+            if (series) await endSeries(tx, series)
+          } else if (recurrence && series) {
+            await updateSeriesRule(tx, series, recurrence, startDate as Date, now)
+          } else if (recurrence) {
+            await createSeries(tx, task, recurrence, tagIds ?? current.tags.map((tag) => tag.id), now)
+          }
+
+          // Contenu reporté sur le modèle d'une série existante (une série créée l'a déjà repris)
+          if (series && applyToSeries) {
+            const changed = {
+              title: data.title !== undefined,
+              description: data.description !== undefined,
+              version: data.version !== undefined,
+              previousStageId: current.stageId,
+            }
+            await applyToSeriesTemplate(tx, series.id, task, changed, tagIds)
+          }
+
+          return tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
         })
       } catch (error) {
         // P2025 : enregistrement à mettre à jour introuvable

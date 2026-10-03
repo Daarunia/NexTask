@@ -3,6 +3,7 @@ import { prisma } from '../prismaClient.js'
 import { tagKey } from '../helpers/tag.helper.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION } from '../../shared/data.constants.js'
+import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 
 // Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
 const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
@@ -52,6 +53,9 @@ const exportedTaskSchema = {
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
     tagIds: { type: 'array', items: { type: 'integer' } },
+    // Série dont la tâche est une occurrence (absente des exports antérieurs aux séries)
+    recurrenceId: { type: ['integer', 'null'] },
+    occurrenceDate: nullableDate,
   },
   required: ['id', 'title', 'description', 'version', 'position', 'isHistorized', 'stageId', 'tagIds'],
 }
@@ -70,6 +74,8 @@ const exportSchema = {
     stages: { type: 'array', items: exportedStageSchema },
     tags: { type: 'array', items: exportedTagSchema },
     tasks: { type: 'array', items: exportedTaskSchema },
+    // Séries récurrentes, facultatives : un export antérieur aux séries reste importable
+    recurrences: { type: 'array', items: exportedRecurrenceSchema },
   },
   required: ['format', 'version', 'stages', 'tags', 'tasks'],
 }
@@ -118,6 +124,31 @@ interface DataImportBody {
     createdAt?: string
     updatedAt?: string
     tagIds: number[]
+    recurrenceId?: number | null
+    occurrenceDate?: string | null
+  }[]
+  recurrences?: {
+    id: number
+    frequency: string
+    interval: number
+    weekdays?: string | null
+    monthlyMode?: string | null
+    time: string
+    startsAt: string
+    endType: string
+    endsOn?: string | null
+    maxCount?: number | null
+    generatedCount?: number
+    skipIfPending?: boolean
+    status: string
+    nextRunAt?: string | null
+    title: string
+    description: string
+    version: string
+    stageId?: number | null
+    createdAt?: string
+    updatedAt?: string
+    tagIds?: number[]
   }[]
 }
 
@@ -138,7 +169,8 @@ function firstDuplicate<T>(keys: T[]): T | undefined {
 /**
  * Contrôle du fichier au-delà de sa structure (déjà validée par le schéma) :
  * format, version, ids uniques, noms de tags uniques sans tenir compte de la
- * casse, et références des tâches vers des colonnes et des tags du fichier.
+ * casse, références des tâches et des séries vers des colonnes, des tags et
+ * des séries du fichier, et une seule occurrence par date dans chaque série.
  *
  * @param data Fichier reçu
  * @returns Le motif du refus, ou `null` si le fichier est importable
@@ -161,14 +193,40 @@ function findImportProblem(data: DataImportBody): string | null {
   const duplicateTask = firstDuplicate(data.tasks.map((task) => task.id))
   if (duplicateTask !== undefined) return `Tâche ${duplicateTask} présente plusieurs fois`
 
+  const recurrences = data.recurrences ?? []
+  const duplicateRecurrence = firstDuplicate(recurrences.map((recurrence) => recurrence.id))
+  if (duplicateRecurrence !== undefined) return `Série ${duplicateRecurrence} présente plusieurs fois`
+
   const stageIds = new Set(data.stages.map((stage) => stage.id))
   const tagIds = new Set(data.tags.map((tag) => tag.id))
+  const recurrenceIds = new Set(recurrences.map((recurrence) => recurrence.id))
+
+  for (const recurrence of recurrences) {
+    if (recurrence.stageId != null && !stageIds.has(recurrence.stageId)) {
+      return `La série ${recurrence.id} référence une colonne absente du fichier (${recurrence.stageId})`
+    }
+    const unknownTag = (recurrence.tagIds ?? []).find((id) => !tagIds.has(id))
+    if (unknownTag !== undefined) return `La série ${recurrence.id} référence un tag absent du fichier (${unknownTag})`
+  }
+
   for (const task of data.tasks) {
     if (task.stageId !== null && !stageIds.has(task.stageId)) {
       return `La tâche ${task.id} référence une colonne absente du fichier (${task.stageId})`
     }
     const unknownTag = task.tagIds.find((id) => !tagIds.has(id))
     if (unknownTag !== undefined) return `La tâche ${task.id} référence un tag absent du fichier (${unknownTag})`
+    if (task.recurrenceId != null && !recurrenceIds.has(task.recurrenceId)) {
+      return `La tâche ${task.id} référence une série absente du fichier (${task.recurrenceId})`
+    }
+  }
+
+  // Une seule occurrence par date dans chaque série (contrainte d'unicité en base)
+  const occurrences = data.tasks
+    .filter((task) => task.recurrenceId != null && task.occurrenceDate)
+    .map((task) => `${task.recurrenceId}|${new Date(task.occurrenceDate as string).getTime()}`)
+  const duplicateOccurrence = firstDuplicate(occurrences)
+  if (duplicateOccurrence !== undefined) {
+    return `Plusieurs tâches de la série ${duplicateOccurrence.split('|')[0]} sont prévues à la même date`
   }
 
   return null
@@ -176,8 +234,8 @@ function findImportProblem(data: DataImportBody): string | null {
 
 /**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
- * (colonnes, tâches archivées comprises, tags). Les paramètres de l'app n'en
- * font pas partie.
+ * (colonnes, tâches archivées comprises, tags, séries récurrentes). Les
+ * paramètres de l'app n'en font pas partie.
  *
  * Appelées par le main (boîtes de dialogue d'enregistrement et d'ouverture,
  * cf. system/dataTransfer) et directement par les tests E2E :
@@ -190,9 +248,10 @@ export default async function dataRoutes(fastify) {
   /**
    * GET /data/export
    *
-   * Renvoie toutes les colonnes, tous les tags et toutes les tâches (archivées
-   * comprises, tags désignés par leur id), avec l'identifiant et la version du
-   * format. Les ids sont conservés, l'import les reprend tels quels.
+   * Renvoie toutes les colonnes, tous les tags, toutes les tâches (archivées
+   * comprises, tags désignés par leur id) et toutes les séries récurrentes
+   * (règle, état et modèle des occurrences), avec l'identifiant et la version
+   * du format. Les ids sont conservés, l'import les reprend tels quels.
    *
    * @returns {Promise<Object>} Données au format d'export
    */
@@ -200,23 +259,26 @@ export default async function dataRoutes(fastify) {
     '/data/export',
     {
       schema: {
-        description: 'Exporte toutes les colonnes, tâches (archivées comprises) et tags',
+        description: 'Exporte toutes les colonnes, tâches (archivées comprises), tags et séries récurrentes',
         tags: ['Data'],
         response: { 200: exportSchema },
       },
     },
     async () => {
-      // Lecture groupée : un instantané cohérent des trois tables
-      const [stages, tags, tasks] = await prisma.$transaction([
+      // Lecture groupée : un instantané cohérent des quatre tables
+      const [stages, tags, tasks, recurrences] = await prisma.$transaction([
         prisma.stage.findMany({
           select: { id: true, name: true, position: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
         prisma.task.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
+        prisma.recurrence.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
       ])
 
-      Logger.info(`Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s)`)
+      Logger.info(
+        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s)`,
+      )
 
       return {
         format: EXPORT_FORMAT,
@@ -229,6 +291,10 @@ export default async function dataRoutes(fastify) {
           ...task,
           tagIds: taskTags.map((tag) => tag.id).sort((a, b) => a - b),
         })),
+        recurrences: recurrences.map(({ tags: recurrenceTags, ...recurrence }) => ({
+          ...recurrence,
+          tagIds: recurrenceTags.map((tag) => tag.id).sort((a, b) => a - b),
+        })),
       }
     },
   )
@@ -236,7 +302,8 @@ export default async function dataRoutes(fastify) {
   /**
    * POST /data/import
    *
-   * Remplace toutes les colonnes, tâches et tags par ceux d'un export. Le
+   * Remplace toutes les colonnes, tâches, tags et séries par ceux d'un export
+   * (sans clé `recurrences`, la base n'a plus aucune série). Le
    * fichier est entièrement contrôlé avant toute écriture (structure, format,
    * version, cohérence des références), puis l'import se fait dans une seule
    * transaction : un fichier refusé ou une erreur en cours de route ne
@@ -253,7 +320,7 @@ export default async function dataRoutes(fastify) {
     {
       bodyLimit: IMPORT_BODY_LIMIT,
       schema: {
-        description: 'Remplace toutes les données par celles d’un export (colonnes, tâches, tags)',
+        description: 'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries)',
         tags: ['Data'],
         body: exportSchema,
         response: {
@@ -274,11 +341,13 @@ export default async function dataRoutes(fastify) {
       }
 
       try {
-        // Ordre des suppressions : les tâches référencent les colonnes (clé
-        // étrangère), leurs liens avec les tags partent en cascade
+        // Ordre des suppressions : les tâches référencent les séries et les
+        // colonnes, les séries les colonnes (clés étrangères), leurs liens avec
+        // les tags partent en cascade
         await prisma.$transaction(
           async (tx) => {
             await tx.task.deleteMany()
+            await tx.recurrence.deleteMany()
             await tx.tag.deleteMany()
             await tx.stage.deleteMany()
 
@@ -292,6 +361,35 @@ export default async function dataRoutes(fastify) {
                 return { id: tag.id, name, nameKey: tagKey(name), color: tag.color, createdAt: tag.createdAt }
               }),
             })
+
+            // Séries avant les tâches, qui les référencent
+            for (const recurrence of data.recurrences ?? []) {
+              await tx.recurrence.create({
+                data: {
+                  id: recurrence.id,
+                  frequency: recurrence.frequency,
+                  interval: recurrence.interval,
+                  weekdays: recurrence.weekdays,
+                  monthlyMode: recurrence.monthlyMode,
+                  time: recurrence.time,
+                  startsAt: recurrence.startsAt,
+                  endType: recurrence.endType,
+                  endsOn: recurrence.endsOn,
+                  maxCount: recurrence.maxCount,
+                  generatedCount: recurrence.generatedCount,
+                  skipIfPending: recurrence.skipIfPending,
+                  status: recurrence.status,
+                  nextRunAt: recurrence.nextRunAt,
+                  title: recurrence.title,
+                  description: recurrence.description,
+                  version: recurrence.version,
+                  stageId: recurrence.stageId,
+                  createdAt: recurrence.createdAt,
+                  updatedAt: recurrence.updatedAt,
+                  tags: { connect: (recurrence.tagIds ?? []).map((id) => ({ id })) },
+                },
+              })
+            }
 
             for (const task of data.tasks) {
               await tx.task.create({
@@ -308,6 +406,8 @@ export default async function dataRoutes(fastify) {
                   notifiedAt: task.notifiedAt,
                   createdAt: task.createdAt,
                   updatedAt: task.updatedAt,
+                  recurrenceId: task.recurrenceId,
+                  occurrenceDate: task.occurrenceDate,
                   tags: { connect: task.tagIds.map((id) => ({ id })) },
                 },
               })

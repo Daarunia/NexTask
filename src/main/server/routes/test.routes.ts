@@ -16,7 +16,7 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
+ * - POST /test/reset              → vide les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, et ferme la fenêtre d'ajout rapide
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
@@ -66,8 +66,10 @@ export default async function testRoutes(fastify) {
     async (req) => {
       const { seedTags } = req.query as { seedTags?: boolean }
 
-      // Ordre important : les tâches référencent les colonnes (clé étrangère)
+      // Ordre important : les tâches référencent les séries et les colonnes,
+      // les séries les colonnes (clés étrangères)
       await prisma.task.deleteMany()
+      await prisma.recurrence.deleteMany()
       // Les liens tâche-tag sont déjà partis en cascade avec les tâches
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()

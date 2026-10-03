@@ -2,6 +2,7 @@ import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { stageSchema } from '../schemas/stageSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
+import { taskInclude } from '../helpers/task.helper.js'
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -35,8 +36,8 @@ export default async function stagesRoutes(fastify) {
     async () => {
       return prisma.stage.findMany({
         include: {
-          // Tâches avec leurs tags triés par nom (même forme que les routes /tasks)
-          tasks: { include: { tags: { orderBy: { name: 'asc' } } } },
+          // Tâches avec leurs tags et leur série (même forme que les routes /tasks)
+          tasks: { include: taskInclude },
         },
         orderBy: [{ position: 'asc' }, { id: 'asc' }],
       })

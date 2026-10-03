@@ -8,8 +8,9 @@ import type { DataCounts, DataTransferResult } from '../shared/data.constants.js
 /**
  * Export et import des données vers et depuis un fichier, à la demande du
  * renderer (IPC). Le main ne s'occupe que du système : boîtes de dialogue
- * natives et lecture ou écriture du fichier. Les données passent par les
- * routes /data du serveur, seules à les lire, les valider et les écrire.
+ * natives et lecture ou écriture du fichier. Les données (colonnes, tâches,
+ * tags, séries récurrentes) passent par les routes /data du serveur, seules à
+ * les lire, les valider et les écrire : le fichier est transmis tel quel.
  */
 
 // Filtre des boîtes de dialogue
