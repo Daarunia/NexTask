@@ -16,39 +16,78 @@ datasource db {
 
 // entity "Tâches"
 model Task {
-  id                Int       @id @default(autoincrement())
+  id                Int         @id @default(autoincrement())
   version           String
   description       String
   position          Int
   title             String
-  isHistorized      Boolean   @default(false)
+  isHistorized      Boolean     @default(false)
   historizationDate DateTime?
   stageId           Int?
-  stage             Stage?     @relation(fields: [stageId], references: [id])
+  stage             Stage?      @relation(fields: [stageId], references: [id])
   startDate         DateTime?
   notifiedAt        DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
   tags              Tag[]
+  // Série dont la tâche est une occurrence (null hors série ou série supprimée)
+  recurrenceId      Int?
+  recurrence        Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
+  // Date prévue de l'occurrence dans sa série (contre les doublons de génération)
+  occurrenceDate    DateTime?
+
+  @@unique([recurrenceId, occurrenceDate])
 }
 
 // entity "Étiquette"
 model Tag {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
   // Nom en minuscules : unicité et recherche sans tenir compte de la casse
-  nameKey   String   @unique
-  color     String // nom de couleur de la palette (ex. "sky"), pas un hexa
-  createdAt DateTime @default(now())
-  tasks     Task[]
+  nameKey     String       @unique
+  color       String // nom de couleur de la palette (ex. "sky"), pas un hexa
+  createdAt   DateTime     @default(now())
+  tasks       Task[]
+  recurrences Recurrence[]
 }
 
 //  entity "Colonne"
 model Stage {
-  id       Int    @id @default(autoincrement())
-  name     String
-  position Int
-  tasks    Task[]
+  id          Int          @id @default(autoincrement())
+  name        String
+  position    Int
+  tasks       Task[]
+  recurrences Recurrence[]
+}
+
+// entity "Récurrence" : règle et modèle des occurrences d'une série
+model Recurrence {
+  id             Int       @id @default(autoincrement())
+  frequency      String // daily | weekly | monthly | yearly
+  interval       Int       @default(1)
+  weekdays       String? // jours ISO séparés par des virgules ("1,4"), weekly uniquement
+  monthlyMode    String? // dayOfMonth | nthWeekday | lastDay, monthly uniquement
+  time           String // heure locale "HH:mm"
+  startsAt       DateTime // première occurrence = startDate de la tâche d'origine
+  endType        String    @default("never") // never | onDate | afterCount
+  endsOn         DateTime?
+  maxCount       Int?
+  generatedCount Int       @default(1) // la tâche d'origine compte
+  skipIfPending  Boolean   @default(true)
+  status         String    @default("active") // active | paused | ended
+  nextRunAt      DateTime? // null une fois la série terminée
+  // Modèle des occurrences générées
+  title          String
+  description    String
+  version        String
+  stageId        Int?
+  stage          Stage?    @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  tags           Tag[]
+  tasks          Task[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, nextRunAt])
 }
 
 // Seed
