@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, session, type WebPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getApiUrl, isServerStarted, startServer } from './server/index.js'
@@ -20,7 +20,7 @@ import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
-import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
+import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, TEST_INDEX, staticAsset } from './constants.js'
 import Logger from 'electron-log'
 import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
 
@@ -33,6 +33,26 @@ const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'ico
 
 // Référence à la fenêtre principale
 let mainWindow: BrowserWindow | null = null
+
+// Décalage entre les fenêtres des instances de test lancées en parallèle
+const TEST_WINDOW_OFFSET = 24
+// Instances décalées avant de revenir au coin de l'écran
+const TEST_WINDOW_SLOTS = 8
+
+/**
+ * Fenêtre d'une instance de test : presque tout l'écran, décalée en cascade selon
+ * l'index du worker. Maximisées, les fenêtres des workers se recouvraient
+ * entièrement, et Windows bridait les processus des fenêtres cachées en les
+ * confinant sur les cœurs basse consommation : les tests en parallèle n'allaient
+ * guère plus vite qu'un seul worker. Un bord visible suffit à l'éviter.
+ */
+function applyTestBounds(win: BrowserWindow) {
+  const area = screen.getPrimaryDisplay().workArea
+  const shift = (TEST_INDEX % TEST_WINDOW_SLOTS) * TEST_WINDOW_OFFSET
+  const margin = (TEST_WINDOW_SLOTS - 1) * TEST_WINDOW_OFFSET
+  win.setBounds({ x: area.x + shift, y: area.y + shift, width: area.width - margin, height: area.height - margin })
+  win.show()
+}
 
 /**
  * Préférences web communes aux fenêtres de l'app (principale, ajout rapide).
@@ -83,9 +103,11 @@ function createWindow() {
   })
 
   // Plein écran fenêtré, sauf dernière taille non maximisée à restaurer (déjà
-  // appliquée à la création)
+  // appliquée à la création), ou cascade des instances en test
   const applyStartupSize = () => {
-    if (!restored || restored.maximized) mainWindow?.maximize()
+    if (!mainWindow) return
+    if (IS_TEST) applyTestBounds(mainWindow)
+    else if (!restored || restored.maximized) mainWindow.maximize()
   }
 
   // Lancée réduite, la fenêtre reste masquée si l'icône de la zone de

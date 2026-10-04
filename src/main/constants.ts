@@ -14,10 +14,10 @@ export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_TEST = process.argv.includes('--test')
 
 // Index du worker Playwright qui a lancé l'app (`--test-index=N`, 0 par défaut) :
-// les instances de test lancées en parallèle ont chacune leurs fichiers et leur
-// port, cf. test.constants.ts
+// les instances de test lancées en parallèle ont chacune leurs fichiers, leur
+// port et leur place à l'écran, cf. test.constants.ts
 const testIndexArg = process.argv.find((arg) => arg.startsWith(TEST_INDEX_ARG))
-const TEST_INDEX = testIndexArg ? Number(testIndexArg.slice(TEST_INDEX_ARG.length)) : 0
+export const TEST_INDEX = testIndexArg ? Number(testIndexArg.slice(TEST_INDEX_ARG.length)) : 0
 const TEST_SUFFIX = testFileSuffix(TEST_INDEX)
 
 // Version de l'app.
