@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
-import { DEV_API_PORT, TEST_API_PORT } from './shared/api.constants.js'
+import { DEV_API_PORT, testApiPort } from './shared/api.constants.js'
+import { TEST_INDEX_ARG, testFileSuffix } from './shared/test.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
@@ -11,6 +12,13 @@ export const APP_ID = 'com.daarunia.nextask'
 // En dev ?
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_TEST = process.argv.includes('--test')
+
+// Index du worker Playwright qui a lancé l'app (`--test-index=N`, 0 par défaut) :
+// les instances de test lancées en parallèle ont chacune leurs fichiers et leur
+// port, cf. test.constants.ts
+const testIndexArg = process.argv.find((arg) => arg.startsWith(TEST_INDEX_ARG))
+const TEST_INDEX = testIndexArg ? Number(testIndexArg.slice(TEST_INDEX_ARG.length)) : 0
+const TEST_SUFFIX = testFileSuffix(TEST_INDEX)
 
 // Version de l'app.
 export const APP_VERSION: string = app.isPackaged
@@ -23,7 +31,7 @@ export const CURRENT_PATH = IS_DEV ? process.cwd() : app.getPath('userData')
 // Nom du fichier de base selon l'environnement (test.db isolée en mode test)
 let DB_FILE = 'app.db'
 if (IS_TEST) {
-  DB_FILE = 'test.db'
+  DB_FILE = `test${TEST_SUFFIX}.db`
 } else if (IS_DEV) {
   DB_FILE = 'dev.db'
 }
@@ -37,13 +45,13 @@ export const DB_PATH = path.join(DATA_PATH, DB_FILE)
 
 // Sauvegardes automatiques de la base, dans un dossier à part en test pour ne
 // jamais toucher à celles du dev (le reset de test le vide)
-export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? 'backups-test' : 'backups')
+export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? `backups-test${TEST_SUFFIX}` : 'backups')
 
 // Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
 // base en test et en dev pour ne jamais toucher aux paramètres réels
 let SETTINGS_NAME = 'config'
 if (IS_TEST) {
-  SETTINGS_NAME = 'config.test'
+  SETTINGS_NAME = `config.test${TEST_SUFFIX}`
 } else if (IS_DEV) {
   SETTINGS_NAME = 'config.dev'
 }
@@ -53,7 +61,7 @@ export const SETTINGS_FILE = SETTINGS_NAME
 // système) en prod, cf. api.constants.ts
 let SERVER_PORT = 0
 if (IS_TEST) {
-  SERVER_PORT = TEST_API_PORT
+  SERVER_PORT = testApiPort(TEST_INDEX)
 } else if (IS_DEV) {
   SERVER_PORT = DEV_API_PORT
 }

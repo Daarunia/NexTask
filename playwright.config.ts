@@ -1,7 +1,27 @@
+import os from 'node:os'
 import { defineConfig } from '@playwright/test'
 import { TEST_RENDERER_PORT } from './tests/helpers/renderer.helper'
 
 const isCI = !!process.env.CI
+
+// Ressources d'un worker : le processus Playwright et une app Electron (main,
+// renderer, GPU), ~0,9 Go au pic mesuré, arrondi à 1 Go, et deux processus actifs
+// à la fois. Le serveur Vite, commun à tous, prend ~0,5 Go en plus, et une marge
+// reste libre pour le reste de la machine : à court de mémoire, un worker plante.
+const CORES_PER_WORKER = 2
+const MEMORY_PER_WORKER = 1024 ** 3
+const SHARED_VITE_MEMORY = 0.5 * 1024 ** 3
+const SYSTEM_MEMORY_MARGIN = 1024 ** 3
+
+/**
+ * Nombre de workers que la machine peut porter : limité par les cœurs et par la
+ * mémoire libre au lancement, au moins un. Ajustable avec `--workers=N`.
+ */
+function machineWorkers(): number {
+  const byCores = Math.floor(os.availableParallelism() / CORES_PER_WORKER)
+  const byMemory = Math.floor((os.freemem() - SHARED_VITE_MEMORY - SYSTEM_MEMORY_MARGIN) / MEMORY_PER_WORKER)
+  return Math.max(1, Math.min(byCores, byMemory))
+}
 
 export default defineConfig({
   // En CI, un test bloqué échoue vite (le plus long prend ~7 s en local). Le lancement
@@ -19,7 +39,9 @@ export default defineConfig({
     headless: true,
   },
   retries: 1,
-  workers: 1,
+  // Une app Electron par worker, chacune avec sa base, ses paramètres et son port
+  // (cf. src/main/shared/test.constants.ts)
+  workers: machineWorkers(),
   // Un seul serveur Vite pour le renderer de toutes les instances, démarré avant
   // les tests et arrêté après. Jamais celui du dev : les tests n'en dépendent pas.
   webServer: {

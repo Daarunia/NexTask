@@ -9,8 +9,9 @@ import { ArchivesPage } from '../components/ArchivesPage'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
 import { electronArgs } from '../../scripts/server-utils.js'
-import { API } from '../helpers/api.helper'
+import { API, TEST_INDEX } from '../helpers/api.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
+import { TEST_INDEX_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
 
 type Fixtures = {
   cleanState: void
@@ -33,8 +34,14 @@ export const test = base.extend<Fixtures>({
   electronApp: [
     async ({}, use) => {
       const app = await electron.launch({
-        // Renderer servi par le serveur Vite commun à tous les workers (cf. playwright.config.ts)
-        args: electronArgs(TEST_RENDERER_PORT, ['--test']),
+        // Instance propre au worker : base, paramètres et port à part (cf. test.constants.ts).
+        // Renderer servi par le serveur Vite commun à tous les workers (cf. playwright.config.ts).
+        // Le PID du worker permet à l'app de s'arrêter si le worker plante (cf. main.ts).
+        args: electronArgs(TEST_RENDERER_PORT, [
+          '--test',
+          `${TEST_INDEX_ARG}${TEST_INDEX}`,
+          `${TEST_WORKER_PID_ARG}${process.pid}`,
+        ]),
         // Mode dev explicite (renderer servi par Vite, base dans le projet) : Vite
         // ne tourne plus dans le worker pour le poser dans l'environnement hérité
         env: { ...process.env, NODE_ENV: 'development' } as Record<string, string>,

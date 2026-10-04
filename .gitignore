@@ -13,5 +13,5 @@ components.d.ts
 .scannerwork
 test-results
 backups
-backups-test
+backups-test*
 coverage

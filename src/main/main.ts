@@ -22,6 +22,7 @@ import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.j
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
 import Logger from 'electron-log'
+import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -161,6 +162,27 @@ function openNotifiedTasks(taskIds: number[]) {
   }
 }
 
+/**
+ * En test, arrête l'app quand le worker Playwright qui l'a lancée disparaît. Un
+ * worker qui plante laisserait sinon une instance orpheline, qui garderait son
+ * port et sa base et ferait échouer toutes les instances relancées après elle.
+ */
+function quitWithTestWorker() {
+  const arg = process.argv.find((a) => a.startsWith(TEST_WORKER_PID_ARG))
+  if (!arg) return
+  const workerPid = Number(arg.slice(TEST_WORKER_PID_ARG.length))
+
+  setInterval(() => {
+    try {
+      // Signal 0 : vérifie seulement que le processus existe
+      process.kill(workerPid, 0)
+    } catch {
+      Logger.warn(`Worker de test ${workerPid} disparu, arrêt de l'instance`)
+      app.exit(0)
+    }
+  }, 1000).unref()
+}
+
 // Verrou d'instance unique
 const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
 
@@ -257,6 +279,8 @@ app.whenReady().then(async () => {
   // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
   // jour. Désactivée en mode test, comme les notifications (/test/run-*).
   if (!IS_TEST) startMaintenanceScheduler()
+
+  if (IS_TEST) quitWithTestWorker()
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
