@@ -100,6 +100,8 @@ test('annuler après un déplacement de cartes garde un ordre cohérent', async 
 
   // A archivée, puis C remontée en tête : la place de A (0) est reprise par C
   await taskBoard.archiveTask('A')
+  // Carte A retirée avant le drag : sinon B et C remontent sous le pointeur
+  await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['B', 'C'])
   await taskBoard.dragTaskOntoCard('C', 'B', 'before')
   await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['C', 'B'])
 
