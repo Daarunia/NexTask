@@ -29,7 +29,8 @@ export default defineConfig({
   timeout: isCI ? 30000 : 100000,
   // Une ligne par test (le reporter « dot » par défaut en CI n'affiche rien avant la fin
   // dans les logs GitHub), plus les échecs en annotations sur le résumé du run.
-  reporter: isCI ? [['list'], ['github']] : 'list',
+  // En local, seuls les tests réussis sont listés, puis le récapitulatif des problèmes.
+  reporter: isCI ? [['list'], ['github']] : './tests/reporters/passed-reporter.ts',
   // Arrête la CI après une série d'échecs plutôt que d'aller au timeout du job
   maxFailures: isCI ? 10 : 0,
   use: {
