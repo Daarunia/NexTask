@@ -186,3 +186,34 @@ test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", asyn
   await expect(taskBoard.taskCard('Groupée 2')).toBeVisible()
   await expect(taskBoard.dialog).toBeHidden()
 })
+
+test('rappels désactivés : les tâches échues sont marquées sans notification, sans rafale à la réactivation', async ({
+  page,
+}) => {
+  const { request } = page
+  const stageId = await firstStageId(request)
+  const task = await createTask(request, stageId, { title: 'Muette', startDate: pastDate() })
+
+  await page.evaluate(() => (globalThis as any).settings.set('notificationsEnabled', false))
+
+  const res = await request.post(`${API}/test/run-notifications`, { data: {} })
+  expect(res.ok()).toBeTruthy()
+  expect(await res.json()).toEqual({ count: 1, shown: false, style: null })
+  expect((await getTask(request, task.id)).notifiedAt).toBeTruthy()
+
+  // Réactivés : la tâche déjà marquée ne ressort pas
+  await page.evaluate(() => (globalThis as any).settings.set('notificationsEnabled', true))
+  expect(await runNotifications(request)).toBe(0)
+})
+
+test('repousser startDate dans le futur par le batch réarme notifiedAt', async ({ page }) => {
+  const { request } = page
+  const stageId = await firstStageId(request)
+  const task = await createTask(request, stageId, { title: 'Replanifiée en batch', startDate: pastDate() })
+
+  expect(await runNotifications(request)).toBe(1)
+
+  const res = await request.patch(`${API}/tasks/batch`, { data: [{ id: task.id, startDate: futureDate() }] })
+  expect(res.ok()).toBeTruthy()
+  expect((await getTask(request, task.id)).notifiedAt).toBeFalsy()
+})

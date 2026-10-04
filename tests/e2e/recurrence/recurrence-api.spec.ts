@@ -4,6 +4,7 @@ import { API } from '../../helpers/api.helper'
 import {
   DAILY,
   createRecurringTask,
+  getSeries,
   getTask,
   localDate,
   plusMinutes,
@@ -111,6 +112,9 @@ test.describe('Création', () => {
       { ...base, startDate, recurrence: { ...DAILY, frequency: 'weekly', weekdays: [] } },
       // Fin avant le début
       { ...base, startDate, recurrence: { ...DAILY, endType: 'onDate', endsOn: localDate(-1).toISOString() } },
+      // Date ou nombre de fin manquants
+      { ...base, startDate, recurrence: { ...DAILY, endType: 'onDate' } },
+      { ...base, startDate, recurrence: { ...DAILY, endType: 'afterCount' } },
       // Intervalle et nombre hors bornes
       { ...base, startDate, recurrence: { ...DAILY, interval: 0 } },
       { ...base, startDate, recurrence: { ...DAILY, interval: 100 } },
@@ -129,6 +133,24 @@ test.describe('Création', () => {
 
     // Aucune tâche créée
     expect(await (await page.request.get(`${API}/tasks`)).json()).toEqual([])
+  })
+
+  test('400 à la modification : ni la tâche ni sa série ne sont écrites', async ({ page }) => {
+    const { 'A faire': stageId } = await stageIds(page.request)
+    const created = await page.request.post(`${API}/tasks`, {
+      data: { stageId, position: 0, title: 'Sans date', version: '1.5.0', description: '' },
+    })
+    expect(created.ok()).toBeTruthy()
+    const task = (await created.json()) as { id: number }
+
+    // Répétition demandée sur une tâche sans date de début, avec un nouveau titre
+    const res = await page.request.patch(`${API}/tasks/${task.id}`, {
+      data: { title: 'Renommée', recurrence: DAILY },
+    })
+    expect(res.status()).toBe(400)
+
+    expect(await getTask(page.request, task.id)).toMatchObject({ title: 'Sans date', recurrenceId: null })
+    expect(await (await page.request.get(`${API}/recurrences`)).json()).toEqual([])
   })
 })
 
@@ -600,6 +622,25 @@ test.describe('Export et import', () => {
     const res = await page.request.post(`${API}/data/import`, { data: legacy })
     expect(res.ok(), await res.text()).toBeTruthy()
     expect((await getTask(page.request, origin.id)).recurrence).toMatchObject({ leadDays: 0 })
+  })
+
+  test('une série terminée importée avec une prochaine date la perd', async ({ page }) => {
+    const origin = await createRecurringTask(page.request, {
+      title: 'Terminée',
+      startDate: localDate(1),
+      recurrence: DAILY,
+    })
+    const exported = await (await page.request.get(`${API}/data/export`)).json()
+    expect(exported.recurrences[0].nextRunAt).toBeTruthy()
+
+    // Fichier incohérent : terminée, mais avec une prochaine date
+    exported.recurrences[0].status = 'ended'
+    const res = await page.request.post(`${API}/data/import`, { data: exported })
+    expect(res.ok(), await res.text()).toBeTruthy()
+
+    expect(await getSeries(page.request, origin.recurrenceId!)).toMatchObject({ status: 'ended', nextRunAt: null })
+    // Aucun passage ne la relance
+    expect((await runRecurrences(page.request, localDate(5))).created).toBe(0)
   })
 
   test('un export sans séries reste importable', async ({ page }) => {

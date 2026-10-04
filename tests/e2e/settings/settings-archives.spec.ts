@@ -132,6 +132,16 @@ test.describe('POST /tasks/:id/restore', () => {
     expect(res.status()).toBe(409)
   })
 
+  test('409 sans aucune colonne pour la restaurer : la tâche reste archivée', async ({ page }) => {
+    const archived = await createArchived(page.request, 'Sans colonne', new Date())
+    const stages = (await (await page.request.get(`${API}/stages`)).json()) as { id: number }[]
+    for (const { id } of stages) expect((await page.request.delete(`${API}/stages/${id}`)).ok()).toBeTruthy()
+
+    const res = await page.request.post(`${API}/tasks/${archived.id}/restore`)
+    expect(res.status()).toBe(409)
+    expect(await (await page.request.get(`${API}/tasks/${archived.id}`)).json()).toMatchObject({ isHistorized: true })
+  })
+
   test('avec stageId et position, reprend cette place et décale les tâches suivantes', async ({ page }) => {
     const stageId = await firstStageId(page.request)
     await createActive(page.request, 'A', 0)

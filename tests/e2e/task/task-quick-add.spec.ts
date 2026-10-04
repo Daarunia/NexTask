@@ -108,6 +108,16 @@ test.describe('POST /tasks/quick-add', () => {
     })
   })
 
+  test('409 sans aucune colonne au tableau', async ({ page }) => {
+    for (const stageId of Object.values(await stageIds(page.request))) {
+      expect((await page.request.delete(`${API}/stages/${stageId}`)).ok()).toBeTruthy()
+    }
+
+    const res = await page.request.post(`${API}/tasks/quick-add`, { data: { title: 'Sans colonne' } })
+    expect(res.status()).toBe(409)
+    expect(await (await page.request.get(`${API}/tasks`)).json()).toEqual([])
+  })
+
   test('400 pour un titre vide', async ({ page }) => {
     const res = await page.request.post(`${API}/tasks/quick-add`, { data: { title: '   ' } })
     expect(res.status()).toBe(400)
