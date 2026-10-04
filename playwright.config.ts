@@ -6,11 +6,10 @@ const isCI = !!process.env.CI
 
 // Ressources d'un worker : le processus Playwright et une app Electron (main,
 // renderer, GPU), ~0,9 Go au pic mesuré, arrondi à 1 Go, et deux processus actifs
-// à la fois. Le serveur Vite, commun à tous, prend ~0,5 Go en plus, et une marge
-// reste libre pour le reste de la machine : à court de mémoire, un worker plante.
+// à la fois. Une marge reste libre pour le reste de la machine : à court de
+// mémoire, un worker plante.
 const CORES_PER_WORKER = 2
 const MEMORY_PER_WORKER = 1024 ** 3
-const SHARED_VITE_MEMORY = 0.5 * 1024 ** 3
 const SYSTEM_MEMORY_MARGIN = 1024 ** 3
 
 /**
@@ -19,13 +18,13 @@ const SYSTEM_MEMORY_MARGIN = 1024 ** 3
  */
 function machineWorkers(): number {
   const byCores = Math.floor(os.availableParallelism() / CORES_PER_WORKER)
-  const byMemory = Math.floor((os.freemem() - SHARED_VITE_MEMORY - SYSTEM_MEMORY_MARGIN) / MEMORY_PER_WORKER)
+  const byMemory = Math.floor((os.freemem() - SYSTEM_MEMORY_MARGIN) / MEMORY_PER_WORKER)
   return Math.max(1, Math.min(byCores, byMemory))
 }
 
 export default defineConfig({
   // En CI, un test bloqué échoue vite (le plus long prend ~7 s en local). Le lancement
-  // d'Electron a son propre timeout dans sa fixture worker, celui de Vite dans webServer.
+  // d'Electron a son propre timeout dans sa fixture worker.
   timeout: isCI ? 30000 : 100000,
   // Une ligne par test (le reporter « dot » par défaut en CI n'affiche rien avant la fin
   // dans les logs GitHub), plus les échecs en annotations sur le résumé du run.
@@ -46,14 +45,13 @@ export default defineConfig({
   // Une app Electron par worker, chacune avec sa base, ses paramètres et son port
   // (cf. src/main/shared/test.constants.ts)
   workers: machineWorkers(),
-  // Un seul serveur Vite pour le renderer de toutes les instances, démarré avant
-  // les tests et arrêté après. Jamais celui du dev : les tests n'en dépendent pas.
+  // Un seul serveur pour le renderer de toutes les instances, démarré avant les
+  // tests et arrêté après. Il sert le renderer construit par le projet « setup »
+  // (cf. scripts/test-renderer.js), jamais le serveur Vite du dev.
   webServer: {
     command: `node scripts/test-renderer.js ${TEST_RENDERER_PORT}`,
-    url: `http://localhost:${TEST_RENDERER_PORT}`,
+    url: `http://localhost:${TEST_RENDERER_PORT}/__ready`,
     reuseExistingServer: false,
-    // Démarrage à froid plus long sur un runner CI
-    timeout: 100000,
   },
   projects: [
     // Compilation du main avant les tests E2E

@@ -49,8 +49,8 @@ function rendererWebPreferences(): WebPreferences {
 }
 
 /**
- * Charge le renderer dans une fenêtre : serveur Vite en dev (et en test),
- * fichier construit en prod.
+ * Charge le renderer dans une fenêtre : serveur Vite en dev, serveur statique
+ * des tests en test, fichier construit en prod.
  *
  * @param win Fenêtre à charger
  * @param route Route du renderer (historique en hash), la page d'accueil par défaut

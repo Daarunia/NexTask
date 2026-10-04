@@ -67,8 +67,9 @@ if (IS_TEST) {
 }
 export const API_PORT = SERVER_PORT
 
-// Renderer servi par Vite en dev (et en test), sur le port passé par le script
-// de lancement. Null en prod, le renderer étant chargé en file://.
+// Renderer chargé depuis un serveur en dev (Vite) et en test (serveur statique des
+// tests), sur le port passé par le script de lancement. Null en prod, le renderer
+// étant chargé en file://.
 export const DEV_RENDERER_URL = IS_DEV ? `http://localhost:${process.argv[2]}` : null
 
 // Chemin vers les ressources (process.resourcesPath en prod, current en dev)

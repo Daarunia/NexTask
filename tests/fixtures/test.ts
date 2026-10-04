@@ -43,15 +43,15 @@ export const test = base.extend<Fixtures>({
     async ({}, use) => {
       const app = await electron.launch({
         // Instance propre au worker : base, paramètres et port à part (cf. test.constants.ts).
-        // Renderer servi par le serveur Vite commun à tous les workers (cf. playwright.config.ts).
+        // Renderer construit, servi par le serveur commun à tous les workers (cf. playwright.config.ts).
         // Le PID du worker permet à l'app de s'arrêter si le worker plante (cf. main.ts).
         args: electronArgs(TEST_RENDERER_PORT, [
           '--test',
           `${TEST_INDEX_ARG}${TEST_INDEX}`,
           `${TEST_WORKER_PID_ARG}${process.pid}`,
         ]),
-        // Mode dev explicite (renderer servi par Vite, base dans le projet) : Vite
-        // ne tourne plus dans le worker pour le poser dans l'environnement hérité
+        // Mode dev explicite (renderer chargé depuis un serveur, base dans le projet) :
+        // rien ne le pose dans l'environnement hérité du worker
         env: { ...process.env, NODE_ENV: 'development' } as Record<string, string>,
       })
 
