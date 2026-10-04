@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { describe, expect, test } from 'vitest'
 import {
   dueOccurrence,
   hasNextDate,
@@ -13,14 +13,12 @@ import { describeRecurrence, monthlyDayLabel, ordinalRank } from '../../src/rend
 
 /**
  * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`,
- * et `nextAfterCompletion` pour le mode « après archivage ») et de leurs libellés, sans lancer l'app ni de navigateur (projet « unit » de
- * playwright.config.ts).
+ * et `nextAfterCompletion` pour le mode « après archivage ») et de leurs
+ * libellés, sans lancer l'app ni de navigateur (Vitest, cf. vitest.config.ts).
  *
- * Fuseau Europe/Paris imposé pour tout le worker : les cas de changement d'heure
- * en dépendent. Node relit le fuseau à chaque affectation de `TZ`, et le module
- * testé ne calcule aucune date à son chargement.
+ * Les cas de changement d'heure dépendent du fuseau Europe/Paris, imposé à
+ * tous les tests unitaires par vitest.config.ts.
  */
-process.env.TZ = 'Europe/Paris'
 
 /**
  * Date en heure locale (Europe/Paris), mois de 1 à 12.
@@ -78,7 +76,7 @@ test('le fuseau du worker est Europe/Paris', () => {
   expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe('Europe/Paris')
 })
 
-test.describe('Quotidien', () => {
+describe('Quotidien', () => {
   test('tous les jours à la même heure', () => {
     expect(series(rule(), 3)).toEqual([local(2026, 10, 2), local(2026, 10, 3), local(2026, 10, 4)])
   })
@@ -111,7 +109,7 @@ test.describe('Quotidien', () => {
   })
 })
 
-test.describe('Changement d’heure', () => {
+describe('Changement d’heure', () => {
   test('heure inexistante (passage à l’heure d’été) : 02:30 devient 03:30', () => {
     const r = rule({ startsAt: local(2026, 3, 28, 2, 30) })
     const [gap, after] = series(r, 2)
@@ -129,7 +127,7 @@ test.describe('Changement d’heure', () => {
   })
 })
 
-test.describe('Hebdomadaire', () => {
+describe('Hebdomadaire', () => {
   test('jours ouvrés : du lundi au vendredi, sans le week-end', () => {
     // 1er octobre 2026 : un jeudi
     const r = rule({ frequency: 'weekly', weekdays: [1, 2, 3, 4, 5] })
@@ -155,7 +153,7 @@ test.describe('Hebdomadaire', () => {
   })
 })
 
-test.describe('Mensuel', () => {
+describe('Mensuel', () => {
   test('le 31 tombe sur le dernier jour des mois plus courts, puis revient au 31', () => {
     const r = rule({ frequency: 'monthly', monthlyMode: 'dayOfMonth', startsAt: local(2026, 1, 31) })
     expect(series(r, 4)).toEqual([local(2026, 2, 28), local(2026, 3, 31), local(2026, 4, 30), local(2026, 5, 31)])
@@ -174,7 +172,7 @@ test.describe('Mensuel', () => {
   })
 })
 
-test.describe('Mensuel, Ne jour de la semaine', () => {
+describe('Mensuel, Ne jour de la semaine', () => {
   test('le 3e jeudi de chaque mois', () => {
     // 15 octobre 2026 : 3e jeudi (1er octobre = jeudi)
     const r = rule({ frequency: 'monthly', monthlyMode: 'nthWeekday', startsAt: local(2026, 10, 15) })
@@ -219,7 +217,7 @@ test.describe('Mensuel, Ne jour de la semaine', () => {
   })
 })
 
-test.describe('Mensuel, dernier jour du mois', () => {
+describe('Mensuel, dernier jour du mois', () => {
   test('février bissextile, mois de 30 et de 31 jours', () => {
     const r = rule({ frequency: 'monthly', monthlyMode: 'lastDay', startsAt: local(2028, 1, 31) })
     expect(series(r, 4)).toEqual([local(2028, 2, 29), local(2028, 3, 31), local(2028, 4, 30), local(2028, 5, 31)])
@@ -248,7 +246,7 @@ test.describe('Mensuel, dernier jour du mois', () => {
   })
 })
 
-test.describe('Libellés du mensuel', () => {
+describe('Libellés du mensuel', () => {
   test('rang en toutes lettres : 1er, puis 2e, 3e…', () => {
     expect([1, 2, 3, 4].map(ordinalRank)).toEqual(['1er', '2e', '3e', '4e'])
   })
@@ -263,7 +261,7 @@ test.describe('Libellés du mensuel', () => {
   })
 })
 
-test.describe('Annuel', () => {
+describe('Annuel', () => {
   test('le 29 février tombe le 28 les années non bissextiles', () => {
     const r = rule({ frequency: 'yearly', startsAt: local(2028, 2, 29) })
     expect(series(r, 4)).toEqual([local(2029, 2, 28), local(2030, 2, 28), local(2031, 2, 28), local(2032, 2, 29)])
@@ -275,7 +273,7 @@ test.describe('Annuel', () => {
   })
 })
 
-test.describe('Fin de série', () => {
+describe('Fin de série', () => {
   test('date de fin incluse jusqu’à la fin de sa journée locale', () => {
     const r = rule({ startsAt: local(2026, 10, 1, 23, 30), endType: 'onDate', endsOn: local(2026, 10, 3, 0, 0) })
     expect(series(r, 5)).toEqual([local(2026, 10, 2, 23, 30), local(2026, 10, 3, 23, 30)])
@@ -292,7 +290,7 @@ test.describe('Fin de série', () => {
   })
 })
 
-test.describe('Prochaine date à générer', () => {
+describe('Prochaine date à générer', () => {
   test('début à venir : la date qui suit le début (la tâche d’origine est la première)', () => {
     expect(nextRunAfter(rule(), local(2026, 9, 15))).toEqual(local(2026, 10, 2))
   })
@@ -302,7 +300,7 @@ test.describe('Prochaine date à générer', () => {
   })
 })
 
-test.describe('Création anticipée', () => {
+describe('Création anticipée', () => {
   test('N jours du calendrier avant la date, à la même heure locale', () => {
     const r = rule({ leadDays: 2 })
     expect(occurrenceCreationDate(r, local(2026, 10, 10))).toEqual(local(2026, 10, 8))
@@ -376,7 +374,7 @@ test.describe('Création anticipée', () => {
   })
 })
 
-test.describe('Après archivage', () => {
+describe('Après archivage', () => {
   /**
    * Règle « après archivage », à 09:00, tous les jours par défaut.
    * @param overrides Champs remplacés
@@ -491,7 +489,7 @@ test.describe('Après archivage', () => {
   })
 })
 
-test.describe('Règle illisible', () => {
+describe('Règle illisible', () => {
   test('aucune date plutôt qu’une boucle sans fin', () => {
     const after = local(2026, 10, 10)
     for (const broken of [

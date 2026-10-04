@@ -20,12 +20,10 @@ export default defineConfig({
   retries: 1,
   workers: 1,
   projects: [
-    // Compilation du main avant les tests E2E (projet de setup plutôt qu'un
-    // globalSetup : les tests unitaires s'en passent, `--project=unit`)
+    // Compilation du main avant les tests E2E
     { name: 'setup', testDir: './tests', testMatch: 'global-setup.ts' },
-    // Tests E2E : l'app Electron est lancée par les fixtures (cf. tests/fixtures)
+    // Tests E2E : l'app Electron est lancée par les fixtures (cf. tests/fixtures).
+    // Les tests unitaires passent par Vitest (cf. vitest.config.ts).
     { name: 'e2e', testDir: './tests/e2e', dependencies: ['setup'] },
-    // Tests unitaires des fonctions pures partagées, sans app ni navigateur
-    { name: 'unit', testDir: './tests/unit' },
   ],
 })
