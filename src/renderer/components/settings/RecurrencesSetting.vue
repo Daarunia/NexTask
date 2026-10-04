@@ -12,7 +12,9 @@
             <th scope="col">Tâche</th>
             <th scope="col">Règle</th>
             <th scope="col">Prochaine</th>
-            <th scope="col"><span class="sr-only">Actions</span></th>
+            <!-- relative : le libellé masqué (sr-only, en absolu) reste dans le défilement de la page,
+              sinon il agrandit toute la fenêtre et fait apparaître une seconde barre de défilement -->
+            <th scope="col" class="relative"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
