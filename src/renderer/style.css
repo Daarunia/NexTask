@@ -8,6 +8,34 @@ body {
   color: var(--p-primary-color);
 }
 
+/* Barres de défilement fines et discrètes, teintées par le thème (Chromium) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Bordure transparente : pouce de 6px détaché du bord, élargi au survol */
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--p-text-muted-color) 35%, transparent);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border-width: 1px;
+  background-color: color-mix(in srgb, var(--p-text-muted-color) 60%, transparent);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
 /* Drag en cours (carte ou colonne) : main fermée partout, même hors des éléments déplaçables */
 .is-dragging,
 .is-dragging * {

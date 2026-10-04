@@ -1,0 +1,107 @@
+/**
+ * Tâches récurrentes, partagées entre le main, le renderer et les tests.
+ * Fichier sans import, cf. settings.constants.ts.
+ */
+
+/** Fréquences d'une série. */
+export const RECURRENCE_FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'] as const
+
+/** Fréquence d'une série. */
+export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number]
+
+/**
+ * Modes du mensuel, tous déduits de la date de début de la série :
+ * - `dayOfMonth` : même jour du mois (« le 15 ») ;
+ * - `nthWeekday` : même rang du même jour de la semaine (« le 3e jeudi »), un
+ *   5e jour de la semaine devenant le dernier du mois (« le dernier jeudi ») ;
+ * - `lastDay` : dernier jour du mois.
+ */
+export const MONTHLY_MODES = ['dayOfMonth', 'nthWeekday', 'lastDay'] as const
+
+/** Mode du mensuel. */
+export type MonthlyMode = (typeof MONTHLY_MODES)[number]
+
+/**
+ * Point de départ des dates d'une série :
+ * - `schedule` : selon le calendrier, depuis le début de la série ;
+ * - `completion` : après l'archivage de l'occurrence précédente (« arroser les
+ *   plantes 3 jours après la dernière fois »). Seuls la fréquence et
+ *   l'intervalle comptent ; la série attend tant qu'une occurrence est au tableau.
+ */
+export const RECURRENCE_ANCHORS = ['schedule', 'completion'] as const
+
+/** Point de départ des dates d'une série. */
+export type RecurrenceAnchor = (typeof RECURRENCE_ANCHORS)[number]
+
+/** Fins possibles d'une série : jamais, à une date (incluse), après N occurrences. */
+export const RECURRENCE_END_TYPES = ['never', 'onDate', 'afterCount'] as const
+
+/** Fin d'une série. */
+export type RecurrenceEndType = (typeof RECURRENCE_END_TYPES)[number]
+
+/** États d'une série : seules les séries actives génèrent des occurrences. */
+export const RECURRENCE_STATUSES = ['active', 'paused', 'ended'] as const
+
+/** État d'une série. */
+export type RecurrenceStatus = (typeof RECURRENCE_STATUSES)[number]
+
+/** Intervalle maximal (« tous les 99 jours »). */
+export const RECURRENCE_INTERVAL_MAX = 99
+
+/** Nombre maximal d'occurrences d'une série qui se termine « après N occurrences ». */
+export const RECURRENCE_COUNT_MAX = 999
+
+/** Création anticipée maximale : occurrence créée au plus 30 jours avant sa date. */
+export const RECURRENCE_LEAD_DAYS_MAX = 30
+
+/**
+ * Règle saisie dans le formulaire de tâche, envoyée à l'API (POST et PATCH
+ * /tasks). L'heure et le début de la série sont tirés de la date de début de
+ * la tâche, par le serveur.
+ */
+export interface RecurrenceInput {
+  anchor?: RecurrenceAnchor // `schedule` par défaut ; `completion` ignore weekdays, monthlyMode et skipIfPending
+  frequency: RecurrenceFrequency
+  interval: number // 1 à RECURRENCE_INTERVAL_MAX
+  weekdays?: number[] // jours ISO (lundi = 1), au moins un en hebdomadaire
+  monthlyMode?: MonthlyMode | null // mensuel uniquement, `dayOfMonth` par défaut
+  endType: RecurrenceEndType
+  endsOn?: string | null // date de fin (ISO), incluse jusqu'à la fin de sa journée locale
+  maxCount?: number | null // nombre total d'occurrences, tâche d'origine comprise
+  skipIfPending: boolean // « Ne pas empiler » : date sautée si une occurrence est encore active
+  leadDays?: number // création anticipée : 0 (le jour même, défaut) à RECURRENCE_LEAD_DAYS_MAX jours avant
+}
+
+/**
+ * Résumé d'une série, renvoyé avec chaque tâche qui en est une occurrence
+ * (sans le modèle des occurrences). Dates en chaînes ISO, telles que reçues
+ * par HTTP.
+ */
+export interface RecurrenceSummary {
+  id: number
+  anchor: RecurrenceAnchor
+  frequency: RecurrenceFrequency
+  interval: number
+  weekdays: string | null // jours ISO séparés par des virgules ("1,4")
+  monthlyMode: MonthlyMode | null
+  time: string // heure locale "HH:mm"
+  startsAt: string
+  endType: RecurrenceEndType
+  endsOn: string | null
+  maxCount: number | null
+  generatedCount: number
+  skipIfPending: boolean
+  leadDays: number // jours de création anticipée (0 = le jour même)
+  status: RecurrenceStatus
+  // date de la prochaine occurrence (pas de sa création) ; null une fois la série terminée,
+  // ou en mode `completion` tant qu'une occurrence attend son archivage
+  nextRunAt: string | null
+}
+
+/**
+ * Série de la liste des Paramètres (GET /recurrences) : son résumé et le
+ * titre du modèle de ses occurrences.
+ */
+export interface RecurrenceListItem extends RecurrenceSummary {
+  title: string
+}

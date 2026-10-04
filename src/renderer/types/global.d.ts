@@ -1,5 +1,7 @@
 import type { AppSettings } from '../../main/shared/settings.constants'
 import type { DataTransferResult } from '../../main/shared/data.constants'
+import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
+import type { Task } from './task.types'
 
 declare global {
   // Serveur Fastify local, port choisi au démarrage en prod
@@ -31,5 +33,20 @@ declare global {
     getVersion: () => Promise<string>
     openReleaseNotes: () => Promise<void>
     openNotices: () => Promise<void>
+  }
+
+  // Tâches récurrentes : fenêtre principale avertie des occurrences créées par le main
+  var recurrence: {
+    onTasksCreated: (callback: (tasks: Task[]) => void) => () => void // renvoie le désabonnement
+  }
+
+  // Ajout rapide : fenêtre ouverte par le raccourci global, et fenêtre
+  // principale avertie des tâches qui y sont ajoutées
+  var quickAdd: {
+    getStatus: () => Promise<QuickAddStatus>
+    close: () => void // ferme la fenêtre d'ajout rapide
+    resize: (height: number) => void // hauteur du contenu, en pixels CSS
+    notifyCreated: (task: Task) => void
+    onTaskCreated: (callback: (task: Task) => void) => () => void // renvoie le désabonnement
   }
 }

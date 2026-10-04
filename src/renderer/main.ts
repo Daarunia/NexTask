@@ -28,4 +28,7 @@ app.use(PrimeVue, {
 })
 app.use(ToastService)
 app.use(ConfirmationService)
-app.mount('#app')
+
+// Route résolue avant le montage : la fenêtre d'ajout rapide s'affiche sans
+// l'en-tête de l'app, même au premier rendu
+router.isReady().then(() => app.mount('#app'))

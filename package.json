@@ -1,6 +1,6 @@
 {
   "name": "nextask",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "NexTask — a modern cross-platform desktop todo app built with Electron, Vue 3, Prisma and TailwindCSS.",
   "main": "main/main.js",
   "type": "module",

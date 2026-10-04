@@ -12,23 +12,37 @@
           @click="goSettings"
         />
         <h1 class="text-2xl">Tâches archivées</h1>
-        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{ tasks.length }}</span>
+        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{
+          visibleTasks.length
+        }}</span>
       </div>
 
       <template v-if="status === 'ready'">
-        <p v-if="!tasks.length" data-testid="archives-empty" class="archives-muted">Aucune tâche archivée.</p>
+        <p v-if="!visibleTasks.length" data-testid="archives-empty" class="archives-muted">Aucune tâche archivée.</p>
 
         <!-- De la plus récemment archivée à la plus ancienne (ordre du serveur) -->
         <ul v-else class="flex flex-col gap-2">
           <li
-            v-for="task in tasks"
+            v-for="task in visibleTasks"
             :key="task.id"
             data-testid="archived-task"
             :data-task-id="task.id"
             class="archived-task"
           >
             <div class="flex min-w-0 flex-1 flex-col gap-1">
-              <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+              <div class="flex min-w-0 items-center gap-2">
+                <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+
+                <!-- Occurrence d'une tâche récurrente, comme sur les cartes du tableau -->
+                <i
+                  v-if="recurrenceOf(task)"
+                  data-testid="archived-task-recurrence"
+                  :data-status="recurrenceOf(task)!.status"
+                  :class="['pi pi-sync recurrence-icon', { inactive: recurrenceOf(task)!.status !== 'active' }]"
+                  :title="recurrenceTooltip(recurrenceOf(task)!)"
+                  aria-label="Tâche récurrente"
+                ></i>
+              </div>
               <time data-testid="archived-task-date" :datetime="isoDate(task)" class="archives-muted text-sm">
                 {{ archivedLabel(task) }}
               </time>
@@ -68,7 +82,7 @@
                 text
                 rounded
                 :disabled="busyIds.has(task.id)"
-                @click="askDelete($event, task)"
+                @click="deleteWithUndo(task)"
               />
             </div>
           </li>
@@ -87,30 +101,43 @@
   </div>
 </template>
 
+<script lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { Task } from '../types/task.types'
+
+// Tâches archivées chargées, et ids de celles dont la suppression définitive
+// attend la fermeture de son toast « Annuler » (masquées en attendant). Hors du
+// setup : la suppression peut aboutir ou être annulée après avoir quitté la page,
+// et la liste rechargée en revenant doit en tenir compte.
+const tasks = ref<Task[]>([])
+const pendingDeletions = reactive(new Set<number>())
+</script>
+
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
-import { useConfirm } from 'primevue/useconfirm'
 import TagChip from '../components/TagChip.vue'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
-import type { Task } from '../types/task.types'
 import type { Tag } from '../types/tag.types'
 import { compareTagNames } from '../utils/tag.helper'
+import { recurrenceTooltip } from '../utils/recurrence.helper'
+import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'
-import { useErrorToast } from '../utils/toast.helper'
+import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 
 const logger = getLogger()
 const router = useRouter()
-const confirm = useConfirm()
 const showError = useErrorToast()
+const showUndo = useUndoToast()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
 
-const tasks = ref<Task[]>([])
+// Tâches affichées : sans celles dont la suppression est en attente
+const visibleTasks = computed(() => tasks.value.filter((task) => !pendingDeletions.has(task.id)))
+
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
 // Tâches dont la restauration ou la suppression est en cours
@@ -170,6 +197,14 @@ function visibleTags(task: Task): Pick<Tag, 'id' | 'name'>[] {
 }
 
 /**
+ * Série d'une tâche archivée, dans son dernier état connu
+ * @param task Tâche archivée
+ */
+function recurrenceOf(task: Task): RecurrenceSummary | undefined {
+  return taskStore.getRecurrence(task.recurrenceId) ?? task.recurrence ?? undefined
+}
+
+/**
  * Retire une tâche de la liste affichée
  * @param id Id de la tâche
  */
@@ -178,7 +213,9 @@ function removeFromList(id: number) {
 }
 
 /**
- * Restaure une tâche en bas de la première colonne du tableau
+ * Restaure une tâche en bas de la première colonne du tableau. L'occurrence
+ * née de son archivage (série « après archivage »), si le serveur la retire,
+ * quitte le cache du tableau (cf. restoreTask)
  * @param task Tâche archivée
  */
 async function restore(task: Task) {
@@ -186,8 +223,15 @@ async function restore(task: Task) {
   busyIds.add(task.id)
 
   try {
-    await taskStore.restoreTask(task.id)
+    const { removed } = await taskStore.restoreTask(task.id)
     removeFromList(task.id)
+    // Occurrence née de son archivage, retirée avec la restauration : ses tags perdent une tâche
+    if (removed) {
+      tagStore.adjustTaskCounts(
+        [],
+        (removed.tags ?? []).map((tag) => tag.id),
+      )
+    }
   } catch (error) {
     if (httpStatus(error) === 409) {
       showError('Restauration impossible', 'Ajoute une colonne au tableau pour y restaurer la tâche.')
@@ -200,30 +244,28 @@ async function restore(task: Task) {
 }
 
 /**
- * Demande confirmation avant la suppression définitive, dans une bulle
- * ancrée sur le bouton
- * @param event Clic sur le bouton
+ * Suppression définitive annulable : la tâche disparaît de la liste tout de
+ * suite, mais n'est supprimée qu'une fois son toast « Annuler » refermé. Si
+ * l'app est quittée entre-temps, elle reste simplement archivée.
  * @param task Tâche archivée
  */
-function askDelete(event: MouseEvent, task: Task) {
-  confirm.require({
-    target: event.currentTarget as HTMLElement,
-    message: 'Supprimer définitivement cette tâche ?',
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
-    acceptProps: { label: 'Supprimer', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
-    accept: () => deletePermanently(task),
+function deleteWithUndo(task: Task) {
+  if (busyIds.has(task.id) || pendingDeletions.has(task.id)) return
+  pendingDeletions.add(task.id)
+
+  showUndo('Tâche supprimée', {
+    detail: task.title,
+    undo: () => pendingDeletions.delete(task.id),
+    commit: () => deletePermanently(task),
   })
 }
 
 /**
  * Supprime définitivement une tâche archivée. Ses tags perdent une tâche.
+ * En cas d'échec, elle réapparaît dans la liste.
  * @param task Tâche archivée
  */
 async function deletePermanently(task: Task) {
-  if (busyIds.has(task.id)) return
-  busyIds.add(task.id)
-
   try {
     await taskStore.deleteTask(task.id)
     removeFromList(task.id)
@@ -234,7 +276,7 @@ async function deletePermanently(task: Task) {
   } catch {
     showError('Suppression impossible', "La tâche n'a pas été supprimée.")
   } finally {
-    busyIds.delete(task.id)
+    pendingDeletions.delete(task.id)
   }
 }
 </script>
@@ -253,6 +295,17 @@ async function deletePermanently(task: Task) {
 
 .archives-muted {
   color: var(--p-text-muted-color);
+}
+
+.recurrence-icon {
+  @apply shrink-0 text-xs;
+  color: var(--p-primary-color);
+}
+
+/* Série arrêtée ou en pause : icône grisée */
+.recurrence-icon.inactive {
+  color: var(--p-text-muted-color);
+  opacity: 0.6;
 }
 
 .archives-count {

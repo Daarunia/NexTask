@@ -76,6 +76,7 @@ export interface AppSettings {
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
   launchAtStartup: boolean // lancement à l'ouverture de session
   startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
+  quickAddEnabled: boolean // raccourci global qui ouvre la fenêtre d'ajout rapide
   windowMode: WindowMode // fenêtre maximisée ou à sa dernière taille au démarrage
   windowState: WindowState | null // dernière taille et position, tenue à jour par le main
 }
@@ -99,6 +100,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   closeToTray: false,
   launchAtStartup: false,
   startMinimized: false,
+  quickAddEnabled: true,
   windowMode: 'maximized',
   windowState: null,
 }

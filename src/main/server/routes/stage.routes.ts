@@ -2,6 +2,8 @@ import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { stageSchema } from '../schemas/stageSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
+import { taskInclude } from '../helpers/task.helper.js'
+import { onArchiveStatesChanged } from '../helpers/recurrence.helper.js'
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -35,8 +37,8 @@ export default async function stagesRoutes(fastify) {
     async () => {
       return prisma.stage.findMany({
         include: {
-          // Tâches avec leurs tags triés par nom (même forme que les routes /tasks)
-          tasks: { include: { tags: { orderBy: { name: 'asc' } } } },
+          // Tâches avec leurs tags et leur série (même forme que les routes /tasks)
+          tasks: { include: taskInclude },
         },
         orderBy: [{ position: 'asc' }, { id: 'asc' }],
       })
@@ -129,7 +131,9 @@ export default async function stagesRoutes(fastify) {
    * DELETE /stages/:id
    *
    * Supprime une stage par son ID et historise ses tâches, dans une même
-   * transaction : si la suppression échoue, aucune tâche n'est archivée.
+   * transaction : si la suppression échoue, aucune tâche n'est archivée. Les
+   * séries « après archivage » dont l'occurrence est ainsi archivée calculent
+   * leur prochaine date (cf. onArchiveStatesChanged).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -153,15 +157,31 @@ export default async function stagesRoutes(fastify) {
     async (req, reply) => {
       const id = Number(req.params.id)
       try {
-        const [archived] = await prisma.$transaction([
-          prisma.task.updateMany({
+        const now = new Date()
+        const archived = await prisma.$transaction(async (tx) => {
+          const tasks = await tx.task.findMany({
             where: { stageId: id },
-            data: { isHistorized: true, historizationDate: new Date(), stageId: null },
-          }),
-          prisma.stage.delete({ where: { id } }),
-        ])
+            select: { id: true, recurrenceId: true, isHistorized: true },
+          })
+          await tx.task.updateMany({
+            where: { stageId: id },
+            data: { isHistorized: true, historizationDate: now, stageId: null },
+          })
+          await tx.stage.delete({ where: { id } })
 
-        Logger.info(`Stage ${id} supprimée, ${archived.count} tâche(s) historisée(s)`)
+          // Occurrences archivées avec leur colonne : séries « après archivage » libérées
+          await onArchiveStatesChanged(
+            tx,
+            tasks.map((task) => ({
+              wasArchived: task.isHistorized,
+              task: { recurrenceId: task.recurrenceId, isHistorized: true, historizationDate: now },
+            })),
+            now,
+          )
+          return tasks.length
+        })
+
+        Logger.info(`Stage ${id} supprimée, ${archived} tâche(s) historisée(s)`)
         return { message: 'Stage supprimée' }
       } catch (error) {
         Logger.warn(`Échec de la suppression de la stage ${id} (traitée comme introuvable) :`, error)

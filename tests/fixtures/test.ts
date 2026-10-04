@@ -6,6 +6,8 @@ import { TagPicker } from '../components/TagPicker'
 import { TagFilter } from '../components/TagFilter'
 import { SettingsPage } from '../components/SettingsPage'
 import { ArchivesPage } from '../components/ArchivesPage'
+import { UndoToast } from '../components/UndoToast'
+import { RecurrenceFields } from '../components/RecurrenceFields'
 import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
 import { API } from '../helpers/api.helper'
 
@@ -19,6 +21,8 @@ type Fixtures = {
   tagFilter: TagFilter
   settingsPage: SettingsPage
   archivesPage: ArchivesPage
+  undoToast: UndoToast
+  recurrenceFields: RecurrenceFields
 }
 
 type WorkerFixtures = {
@@ -91,6 +95,14 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   archivesPage: async ({ page }, use) => {
     await use(new ArchivesPage(page))
+  },
+
+  undoToast: async ({ page }, use) => {
+    await use(new UndoToast(page))
+  },
+
+  recurrenceFields: async ({ page }, use) => {
+    await use(new RecurrenceFields(page))
   },
 
   /**

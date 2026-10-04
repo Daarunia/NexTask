@@ -9,6 +9,7 @@ export class SettingsPage {
    */
   readonly page: Page
   readonly root: Locator
+  readonly nav: Locator
   readonly appearanceSection: Locator
   readonly modeSelect: Locator
   readonly colorRow: Locator
@@ -26,6 +27,8 @@ export class SettingsPage {
   readonly traySwitch: Locator
   readonly startupSwitch: Locator
   readonly minimizedSwitch: Locator
+  readonly quickAddSwitch: Locator
+  readonly quickAddRow: Locator
   readonly windowModeSelect: Locator
   readonly tagList: Locator
   readonly tagItems: Locator
@@ -33,6 +36,9 @@ export class SettingsPage {
   readonly tagNameInput: Locator
   readonly tagError: Locator
   readonly tagColors: Locator
+  readonly recurrenceList: Locator
+  readonly recurrenceItems: Locator
+  readonly recurrencesEmpty: Locator
   readonly confirmPopup: Locator
   readonly confirmAcceptButton: Locator
   readonly confirmRejectButton: Locator
@@ -57,6 +63,9 @@ export class SettingsPage {
   constructor(page: Page) {
     this.page = page
     this.root = page.getByTestId('settings-page')
+
+    // Sommaire des sections, à gauche de la page
+    this.nav = this.root.getByTestId('settings-nav')
 
     // Section Apparence
     this.appearanceSection = this.root.getByTestId('settings-appearance')
@@ -84,6 +93,8 @@ export class SettingsPage {
     this.traySwitch = this.root.getByRole('switch', { name: 'Garder en arrière-plan' })
     this.startupSwitch = this.root.getByRole('switch', { name: "Lancer à l'ouverture de session" })
     this.minimizedSwitch = this.root.getByRole('switch', { name: 'Démarrer réduite' })
+    this.quickAddSwitch = this.root.getByRole('switch', { name: 'Ajout rapide' })
+    this.quickAddRow = this.root.getByTestId('settings-row-quick-add')
 
     // Section Démarrage : fenêtre maximisée ou à sa dernière taille
     this.windowModeSelect = this.root.getByTestId('settings-window-mode')
@@ -96,6 +107,11 @@ export class SettingsPage {
     this.tagError = this.tagList.getByTestId('settings-tag-error')
     // Palette ouverte dans un popover, hors de la page
     this.tagColors = page.getByTestId('settings-tag-colors')
+
+    // Section Tâches récurrentes : liste des séries et leurs actions
+    this.recurrenceList = this.root.getByTestId('settings-recurrence-list')
+    this.recurrenceItems = this.recurrenceList.getByTestId('settings-recurrence')
+    this.recurrencesEmpty = this.recurrenceList.getByTestId('settings-recurrences-empty')
 
     // Bulle de confirmation (suppression d'un tag)
     this.confirmPopup = page.getByTestId('confirm-popup')
@@ -123,6 +139,14 @@ export class SettingsPage {
     this.appVersion = this.root.getByTestId('settings-app-version')
     this.openReleaseNotesButton = this.root.getByTestId('btn-open-release-notes')
     this.openNoticesButton = this.root.getByTestId('btn-open-notices')
+  }
+
+  /**
+   * Entrée du sommaire (attribut `aria-current` sur la section affichée).
+   * @param label Libellé exact de la section (ex. « Notifications »)
+   */
+  navItem(label: string): Locator {
+    return this.nav.getByRole('button', { name: label, exact: true })
   }
 
   /**
@@ -279,6 +303,22 @@ export class SettingsPage {
   async askDeleteTag(name: string) {
     await this.openPopupFrom(this.tag(name).getByTestId('btn-tag-delete'))
     await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ligne d'une série dans la liste des tâches récurrentes (attribut
+   * `data-status` = état de la série).
+   * @param title Titre exact du modèle de la série
+   */
+  recurrence(title: string): Locator {
+    return this.recurrenceList.locator(`[data-testid="settings-recurrence"][data-title="${title}"]`)
+  }
+
+  /**
+   * Titres des séries, dans l'ordre de la liste.
+   */
+  async recurrenceTitles(): Promise<string[]> {
+    return this.recurrenceItems.evaluateAll((items) => items.map((item) => item.getAttribute('data-title') ?? ''))
   }
 
   /**

@@ -5,6 +5,7 @@ import { prisma } from '../server/prismaClient.js'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import type { NotificationStyle } from '../shared/settings.constants.js'
+import { runRecurrenceGeneration } from './recurrenceGeneration.js'
 
 /**
  * Planificateur de notifications.
@@ -16,6 +17,10 @@ import type { NotificationStyle } from '../shared/settings.constants.js'
  *
  * Rappels désactivés dans les paramètres : les tâches échues sont marquées sans
  * notification, pour ne pas toutes ressortir d'un coup à la réactivation.
+ *
+ * Chaque tick commence par générer les occurrences des séries récurrentes
+ * (cf. recurrenceGeneration), rappelées dans la foulée. La génération a aussi
+ * un passage au démarrage du planificateur.
  */
 
 let job: Cron | null = null
@@ -126,15 +131,33 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
 }
 
 /**
- * Démarre le planificateur (un tick toutes les minutes). Idempotent : un
+ * Génère les occurrences des séries récurrentes échues. Un échec est
+ * journalisé sans empêcher la suite du tick.
+ */
+async function generateRecurrences(): Promise<void> {
+  try {
+    await runRecurrenceGeneration()
+  } catch (err) {
+    Logger.error('[scheduler] Échec de la génération des tâches récurrentes :', err)
+  }
+}
+
+/**
+ * Démarre le planificateur (un tick toutes les minutes), avec un premier
+ * passage immédiat de la génération des tâches récurrentes. Idempotent : un
  * éventuel job précédent est arrêté avant d'en créer un nouveau.
  */
 export function startNotificationScheduler(): void {
   stopNotificationScheduler()
 
+  // Occurrences échues pendant que l'app était fermée
+  void generateRecurrences()
+
   // `protect: true` empêche deux ticks de se chevaucher si l'un est lent.
-  job = new Cron('* * * * *', { protect: true }, () => {
-    runNotificationCheck().catch((err) => Logger.error('[scheduler] Échec du tick de notification :', err))
+  // Génération d'abord : ses occurrences échues sont rappelées dans le même tick.
+  job = new Cron('* * * * *', { protect: true }, async () => {
+    await generateRecurrences()
+    await runNotificationCheck().catch((err) => Logger.error('[scheduler] Échec du tick de notification :', err))
   })
 
   Logger.info('[scheduler] démarré — tick toutes les minutes')

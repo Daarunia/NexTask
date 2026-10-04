@@ -2,6 +2,7 @@ import { app, Menu, nativeImage, Tray } from 'electron'
 import Logger from 'electron-log'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
+import { QUICK_ADD_ACCELERATOR } from './quickAdd.js'
 
 /**
  * Intégration système pilotée par les paramètres : icône dans la zone de
@@ -48,8 +49,9 @@ export function shouldHideOnClose(): boolean {
  *
  * @param enabled Paramètre « garder en arrière-plan »
  * @param showWindow Réaffiche la fenêtre principale
+ * @param openQuickAdd Ouvre la fenêtre d'ajout rapide
  */
-function syncTray(enabled: boolean, showWindow: () => void): void {
+function syncTray(enabled: boolean, showWindow: () => void, openQuickAdd: () => void): void {
   if (IS_TEST) return
 
   if (!enabled) {
@@ -66,6 +68,8 @@ function syncTray(enabled: boolean, showWindow: () => void): void {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Ouvrir NexTask', click: showWindow },
+      // Raccourci affiché pour mémoire, enregistré à part (cf. quickAdd)
+      { label: 'Ajout rapide…', click: openQuickAdd, accelerator: QUICK_ADD_ACCELERATOR, registerAccelerator: false },
       { type: 'separator' },
       { label: 'Quitter', click: () => app.quit() },
     ]),
@@ -100,17 +104,18 @@ function syncLoginItem(): void {
  * Applique les paramètres système au démarrage puis suit leurs changements.
  *
  * @param showWindow Réaffiche la fenêtre principale (menu et clic sur l'icône)
+ * @param openQuickAdd Ouvre la fenêtre d'ajout rapide (menu de l'icône)
  */
-export function setupSystemIntegration(showWindow: () => void): void {
+export function setupSystemIntegration(showWindow: () => void, openQuickAdd: () => void): void {
   // Un vrai « Quitter » (menu de l'icône, fin de session…) ferme la fenêtre pour de bon
   app.on('before-quit', () => {
     quitting = true
   })
 
-  syncTray(settingsStore.get('closeToTray'), showWindow)
+  syncTray(settingsStore.get('closeToTray'), showWindow, openQuickAdd)
   syncLoginItem()
 
-  settingsStore.onDidChange('closeToTray', (enabled) => syncTray(enabled ?? false, showWindow))
+  settingsStore.onDidChange('closeToTray', (enabled) => syncTray(enabled ?? false, showWindow, openQuickAdd))
   settingsStore.onDidChange('launchAtStartup', syncLoginItem)
   settingsStore.onDidChange('startMinimized', syncLoginItem)
 }

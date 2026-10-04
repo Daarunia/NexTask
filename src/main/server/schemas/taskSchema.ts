@@ -1,4 +1,5 @@
 import { tagSchema } from './tagSchema.js'
+import { taskRecurrenceSchema } from './recurrenceSchema.js'
 
 export const taskSchema = {
   type: 'object',
@@ -22,5 +23,10 @@ export const taskSchema = {
       type: 'array',
       items: tagSchema,
     },
+    // Série dont la tâche est une occurrence, avec la date prévue de celle-ci
+    // (null hors série), et le résumé de la série. À déclarer ici, comme les tags.
+    recurrenceId: { type: ['integer', 'null'] },
+    occurrenceDate: { type: ['string', 'null'], format: 'date-time' },
+    recurrence: taskRecurrenceSchema,
   },
 }

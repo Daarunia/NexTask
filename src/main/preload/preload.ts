@@ -35,3 +35,28 @@ contextBridge.exposeInMainWorld('about', {
   openReleaseNotes: () => ipcRenderer.invoke('about:open', 'releases'),
   openNotices: () => ipcRenderer.invoke('about:open', 'notices'),
 })
+
+// Tâches récurrentes (cf. scheduler/recurrenceGeneration) : fenêtre principale
+// avertie des occurrences créées par le main
+contextBridge.exposeInMainWorld('recurrence', {
+  onTasksCreated: (callback: (tasks: unknown[]) => void) => {
+    // Tâches reçues en JSON (cf. main.ts) : mêmes dates en chaînes que l'API
+    const listener = (_event: unknown, json: string) => callback(JSON.parse(json) as unknown[])
+    ipcRenderer.on('tasks:created', listener)
+    return () => ipcRenderer.removeListener('tasks:created', listener)
+  },
+})
+
+// Ajout rapide (cf. system/quickAdd) : fenêtre ouverte par le raccourci global,
+// et fenêtre principale avertie des tâches qui y sont ajoutées
+contextBridge.exposeInMainWorld('quickAdd', {
+  getStatus: () => ipcRenderer.invoke('quick-add:status'),
+  close: () => ipcRenderer.send('quick-add:close'),
+  resize: (height: number) => ipcRenderer.send('quick-add:resize', height),
+  notifyCreated: (task: unknown) => ipcRenderer.send('quick-add:created', task),
+  onTaskCreated: (callback: (task: unknown) => void) => {
+    const listener = (_event: unknown, task: unknown) => callback(task)
+    ipcRenderer.on('quick-add:created', listener)
+    return () => ipcRenderer.removeListener('quick-add:created', listener)
+  },
+})

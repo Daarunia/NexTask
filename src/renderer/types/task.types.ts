@@ -1,4 +1,5 @@
 import { Tag } from './tag.types'
+import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 
 /**
  * Entité 'Tâches'
@@ -19,6 +20,11 @@ export interface Task {
   // Tags portés, triés par nom (absent d'un cache antérieur aux tags).
   // Ne sert qu'à connaître les ids : nom et couleur s'affichent via le store Tag.
   tags?: Tag[]
+  // Série dont la tâche est une occurrence (null hors série), et date prévue de celle-ci
+  recurrenceId?: number | null
+  occurrenceDate?: Date | string | null
+  // Résumé de la série. L'état le plus récent est dans le store Task (cf. getRecurrence).
+  recurrence?: RecurrenceSummary | null
 }
 
 /**
@@ -26,7 +32,13 @@ export interface Task {
  * Les tags sont transmis par leur nom : le serveur réutilise les tags existants
  * (sans tenir compte de la casse) et crée les autres. Sans `tags`, une mise à
  * jour laisse les tags inchangés.
+ *
+ * Répétition : `recurrence` absent laisse la série inchangée, un objet la crée
+ * ou modifie sa règle, `null` l'arrête. `applyToSeries` reporte le contenu
+ * modifié sur les prochaines occurrences (mise à jour seulement, vrai par défaut).
  */
-export type TaskInput = Omit<Task, 'id' | 'tags'> & {
+export type TaskInput = Omit<Task, 'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence'> & {
   tags?: string[]
+  recurrence?: RecurrenceInput | null
+  applyToSeries?: boolean
 }

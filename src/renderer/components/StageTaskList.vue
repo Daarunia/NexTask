@@ -14,7 +14,22 @@
       <template #item="{ element }">
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <div class="flex justify-between items-center gap-2">
-            <strong>{{ element.title }}</strong>
+            <div class="flex items-center gap-2 min-w-0">
+              <strong>{{ element.title }}</strong>
+
+              <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
+              <i
+                v-if="cardRecurrences.get(element.id)"
+                data-testid="task-card-recurrence"
+                :data-status="cardRecurrences.get(element.id)!.status"
+                :class="[
+                  'pi pi-sync recurrence-icon',
+                  { inactive: cardRecurrences.get(element.id)!.status !== 'active' },
+                ]"
+                :title="recurrenceTooltip(cardRecurrences.get(element.id)!)"
+                aria-label="Tâche récurrente"
+              ></i>
+            </div>
 
             <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2 shrink-0">
               <Button
@@ -74,6 +89,9 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
+import { recurrenceTooltip } from '../utils/recurrence.helper'
+import { useTaskStore } from '../stores/Task'
+import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { isDragging, setDragging } from '../utils/dnd.helper'
 
@@ -96,8 +114,24 @@ function onDragEnd() {
 }
 
 const tagStore = useTagStore()
+const taskStore = useTaskStore()
 const settings = useSettingsStore()
 const confirm = useConfirm()
+
+/**
+ * Série de chaque carte récurrente, dans son dernier état connu (store Task) :
+ * une série arrêtée depuis une autre occurrence grise aussi cette carte.
+ */
+const cardRecurrences = computed(() => {
+  const map = new Map<number, RecurrenceSummary>()
+
+  for (const task of props.tasks) {
+    const recurrence = taskStore.getRecurrence(task.recurrenceId) ?? task.recurrence
+    if (recurrence) map.set(task.id, recurrence)
+  }
+
+  return map
+})
 
 /**
  * Clic sur la corbeille d'une carte : archivage direct, ou après confirmation
@@ -194,5 +228,16 @@ const cardTags = computed(() => {
 
 .draggable-button {
   @apply w-6 cursor-pointer transition-opacity duration-200;
+}
+
+.recurrence-icon {
+  @apply shrink-0 text-xs;
+  color: var(--p-primary-color);
+}
+
+/* Série arrêtée ou en pause : icône grisée */
+.recurrence-icon.inactive {
+  color: var(--p-text-muted-color);
+  opacity: 0.6;
 }
 </style>

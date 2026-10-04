@@ -26,6 +26,8 @@ defineProps<{
 .settings-section {
   @apply rounded-lg p-4;
   background-color: var(--p-surface-200);
+  /* Marge gardée au-dessus d'une section atteinte depuis le sommaire */
+  scroll-margin-top: 1.5rem;
 }
 
 .app-dark .settings-section {

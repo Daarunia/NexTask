@@ -95,6 +95,10 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.startMinimized,
   },
+  quickAddEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.quickAddEnabled,
+  },
   windowMode: {
     type: 'string',
     enum: [...WINDOW_MODES],

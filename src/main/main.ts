@@ -1,10 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
@@ -12,6 +13,7 @@ import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
+import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
@@ -26,6 +28,35 @@ const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'ico
 
 // Référence à la fenêtre principale
 let mainWindow: BrowserWindow | null = null
+
+/**
+ * Préférences web communes aux fenêtres de l'app (principale, ajout rapide).
+ */
+function rendererWebPreferences(): WebPreferences {
+  return {
+    preload: join(__dirname, 'preload.js'),
+    nodeIntegration: false,
+    contextIsolation: true,
+    // URL du serveur Fastify, exposée au renderer par le preload (sandboxé,
+    // il ne peut rien importer : même argument écrit des deux côtés)
+    additionalArguments: [`--api-url=${getApiUrl()}`],
+  }
+}
+
+/**
+ * Charge le renderer dans une fenêtre : serveur Vite en dev (et en test),
+ * fichier construit en prod.
+ *
+ * @param win Fenêtre à charger
+ * @param route Route du renderer (historique en hash), la page d'accueil par défaut
+ */
+function loadRenderer(win: BrowserWindow, route = '/') {
+  if (DEV_RENDERER_URL) {
+    win.loadURL(`${DEV_RENDERER_URL}#${route}`)
+  } else {
+    win.loadFile(join(app.getAppPath(), 'renderer', 'index.html'), { hash: route })
+  }
+}
 
 function createWindow() {
   // Lancement « réduit » à l'ouverture de session : la fenêtre ne s'affiche pas
@@ -42,14 +73,7 @@ function createWindow() {
     icon: WINDOW_ICON,
     autoHideMenuBar: true,
     frame: true,
-    webPreferences: {
-      preload: join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      // URL du serveur Fastify, exposée au renderer par le preload (sandboxé,
-      // il ne peut rien importer : même argument écrit des deux côtés)
-      additionalArguments: [`--api-url=${getApiUrl()}`],
-    },
+    webPreferences: rendererWebPreferences(),
     show: !IS_TEST && !launchedHidden,
   })
 
@@ -83,15 +107,11 @@ function createWindow() {
     mainWindow?.hide()
   })
 
-  if (DEV_RENDERER_URL) {
-    mainWindow.loadURL(DEV_RENDERER_URL)
+  loadRenderer(mainWindow)
 
-    // On ouvre la console que en dev, et pas en test playwright
-    if (!IS_TEST) {
-      mainWindow.webContents.openDevTools()
-    }
-  } else {
-    mainWindow.loadFile(join(app.getAppPath(), 'renderer', 'index.html'))
+  // On ouvre la console que en dev, et pas en test playwright
+  if (DEV_RENDERER_URL && !IS_TEST) {
+    mainWindow.webContents.openDevTools()
   }
 
   mainWindow.on('closed', () => {
@@ -178,13 +198,31 @@ app.whenReady().then(async () => {
 
   // Icône de la zone de notification et lancement au démarrage, avant la
   // fenêtre qui en dépend pour un lancement réduit
-  setupSystemIntegration(showMainWindow)
+  setupSystemIntegration(showMainWindow, openQuickAdd)
+
+  // Raccourci global d'ajout rapide et pont avec la fenêtre principale
+  setupQuickAdd({
+    webPreferences: rendererWebPreferences,
+    loadRoute: loadRenderer,
+    getMainWindow: () => mainWindow,
+  })
+
+  // Occurrences des tâches récurrentes : transmises à la fenêtre principale,
+  // qui les ajoute au tableau sans recharger (aussi en test, via /test/run-recurrences).
+  // Envoyées en JSON (décodé par le preload) pour arriver dans la même forme
+  // que les réponses de l'API : dates en chaînes ISO, pas en objets Date.
+  onOccurrencesCreated((tasks) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
+    }
+  })
 
   createWindow()
 
-  // Planificateur de notifications (tâches dont la startDate est dépassée).
+  // Planificateur de notifications (tâches dont la startDate est dépassée),
+  // précédé à chaque tick de la génération des tâches récurrentes.
   // Désactivé en mode test : les tests le déclenchent manuellement via
-  // /test/run-notifications pour un comportement déterministe.
+  // /test/run-notifications et /test/run-recurrences pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
 
   // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
