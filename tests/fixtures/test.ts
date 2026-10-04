@@ -8,8 +8,9 @@ import { SettingsPage } from '../components/SettingsPage'
 import { ArchivesPage } from '../components/ArchivesPage'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
-import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
+import { electronArgs } from '../../scripts/server-utils.js'
 import { API } from '../helpers/api.helper'
+import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
 
 type Fixtures = {
   cleanState: void
@@ -25,32 +26,18 @@ type Fixtures = {
   recurrenceFields: RecurrenceFields
 }
 
-type WorkerFixtures = {
-  vitePort: number
-}
-
 /**
  * Base du lancement d'un test
  */
-export const test = base.extend<Fixtures, WorkerFixtures>({
-  vitePort: [
-    async ({}, use) => {
-      const vite = await startRenderer()
-
-      try {
-        await use(vite.config.server.port)
-      } finally {
-        await vite.close()
-      }
-    },
-    // Démarrage plus long que les tests eux-mêmes, surtout sur un runner CI à froid
-    { scope: 'worker', timeout: 100000 },
-  ],
-
+export const test = base.extend<Fixtures>({
   electronApp: [
-    async ({ vitePort }, use) => {
+    async ({}, use) => {
       const app = await electron.launch({
-        args: electronArgs(vitePort, ['--test']),
+        // Renderer servi par le serveur Vite commun à tous les workers (cf. playwright.config.ts)
+        args: electronArgs(TEST_RENDERER_PORT, ['--test']),
+        // Mode dev explicite (renderer servi par Vite, base dans le projet) : Vite
+        // ne tourne plus dans le worker pour le poser dans l'environnement hérité
+        env: { ...process.env, NODE_ENV: 'development' } as Record<string, string>,
       })
 
       try {
