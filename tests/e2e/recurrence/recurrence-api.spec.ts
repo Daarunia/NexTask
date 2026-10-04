@@ -27,6 +27,9 @@ import {
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
+// API pure : pas de rechargement de la page après le reset
+test.use({ ui: false })
+
 test.describe('Création', () => {
   test('la tâche est la première occurrence de sa série', async ({ page }) => {
     const start = localDate(1)

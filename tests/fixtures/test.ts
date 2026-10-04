@@ -14,6 +14,7 @@ import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
 import { TEST_INDEX_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
 
 type Fixtures = {
+  ui: boolean
   cleanState: void
   electronApp: ElectronApplication
   page: Page
@@ -31,6 +32,13 @@ type Fixtures = {
  * Base du lancement d'un test
  */
 export const test = base.extend<Fixtures>({
+  /**
+   * Le test passe par l'interface : `cleanState` recharge alors la page après le reset.
+   * Les tests d'API pure le désactivent avec `test.use({ ui: false })` et
+   * s'épargnent ce rechargement, la plus grande part de leur durée.
+   */
+  ui: [true, { option: true }],
+
   electronApp: [
     async ({}, use) => {
       const app = await electron.launch({
@@ -101,7 +109,7 @@ export const test = base.extend<Fixtures>({
 
   /**
    * Isolation : remet la base et les paramètres de test à zéro avant chaque test
-   * via l'endpoint test-only POST /test/reset, puis recharge la page. Petite boucle de retry
+   * via l'endpoint test-only POST /test/reset, puis recharge la page (sauf `ui: false`). Petite boucle de retry
    * pour couvrir le tout premier test (le serveur Fastify peut finir de démarrer).
    *
    * Fixture automatique plutôt qu'un test.beforeEach dans ce module : ce module
@@ -109,7 +117,7 @@ export const test = base.extend<Fixtures>({
    * qu'au premier fichier de tests chargé.
    */
   cleanState: [
-    async ({ page }, use) => {
+    async ({ page, ui }, use) => {
       // Garantit que l'app (et donc son serveur) est démarrée
       await page.waitForLoadState('domcontentloaded')
 
@@ -130,6 +138,12 @@ export const test = base.extend<Fixtures>({
         await new Promise((r) => setTimeout(r, 250))
       }
       if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
+
+      // Test d'API pure : la page n'est pas lue, inutile de la recharger
+      if (!ui) {
+        await use()
+        return
+      }
 
       // 2) Retour au tableau (un test précédent a pu finir sur une autre page),
       // rechargement pour purger le cache Pinia, puis attente du tableau chargé

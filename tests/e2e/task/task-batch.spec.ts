@@ -13,6 +13,9 @@ import { API } from '../../helpers/api.helper'
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`).
  */
 
+// API pure : pas de rechargement de la page après le reset
+test.use({ ui: false })
+
 /** Récupère les ids des colonnes seedées, triées par position. */
 async function stageIds(request: APIRequestContext): Promise<number[]> {
   const res = await request.get(`${API}/stages`)

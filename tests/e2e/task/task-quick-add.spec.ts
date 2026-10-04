@@ -66,6 +66,8 @@ async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promi
 }
 
 test.describe('POST /tasks/quick-add', () => {
+  test.use({ ui: false })
+
   test('crée la tâche en bas de la première colonne, avec la version par défaut', async ({ page }) => {
     const ids = await stageIds(page.request)
     await createTask(page.request, ids[FIRST_COLUMN], 'Existante', 0)

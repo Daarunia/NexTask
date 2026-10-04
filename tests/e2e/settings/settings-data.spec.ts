@@ -85,6 +85,8 @@ function importData(request: APIRequestContext, data: unknown) {
 }
 
 test.describe('GET /data/export', () => {
+  test.use({ ui: false })
+
   test('exporte colonnes, tags et tâches (archives comprises) avec format et version', async ({ page }) => {
     await seedData(page.request)
 
@@ -105,6 +107,8 @@ test.describe('GET /data/export', () => {
 })
 
 test.describe('POST /data/import', () => {
+  test.use({ ui: false })
+
   test("l'aller-retour export → import restitue les mêmes données", async ({ page }) => {
     await seedData(page.request)
     const original = await exportData(page.request)

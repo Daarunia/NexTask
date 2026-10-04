@@ -77,6 +77,8 @@ async function listTitles(request: APIRequestContext, query = ''): Promise<strin
 }
 
 test.describe("GET /tasks : filtre d'historisation", () => {
+  test.use({ ui: false })
+
   test('isHistorized=true ne renvoie que les tâches archivées, la plus récente en tête', async ({ page }) => {
     await createActive(page.request, 'Active')
     await createArchived(page.request, 'Ancienne', new Date(Date.now() - 3 * DAY))
@@ -102,6 +104,8 @@ test.describe("GET /tasks : filtre d'historisation", () => {
 })
 
 test.describe('POST /tasks/:id/restore', () => {
+  test.use({ ui: false })
+
   test('restaure la tâche en bas de la première colonne, avec ses tags', async ({ page }) => {
     await createActive(page.request, 'A', 0)
     await createActive(page.request, 'B', 1)
