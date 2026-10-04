@@ -37,10 +37,10 @@ if (!reportOnly) {
   fs.mkdirSync(RAW_DIR, { recursive: true })
 
   console.log(pc.blue('Tests E2E avec mesure de la couverture du main…'))
-  const run = spawnSync('npx', ['playwright', 'test', '--project=e2e', ...playwrightArgs], {
+  const cli = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js')
+  const run = spawnSync(process.execPath, [cli, 'test', '--project=e2e', ...playwrightArgs], {
     cwd: ROOT,
     stdio: 'inherit',
-    shell: true,
     env: { ...process.env, NODE_V8_COVERAGE: RAW_DIR },
   })
   if (run.status !== 0) {
