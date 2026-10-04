@@ -34,6 +34,7 @@
     "test:e2e": "playwright test",
     "test:ui": "playwright test --ui",
     "coverage": "vitest run --coverage",
+    "coverage:e2e": "node scripts/coverage-e2e.js",
     "prepare": "husky",
     "postinstall": "electron-rebuild"
   },
