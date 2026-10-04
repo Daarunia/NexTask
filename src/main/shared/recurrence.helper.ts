@@ -454,7 +454,9 @@ export function dueOccurrence(
   nextRunAt: Date,
   now: Date,
 ): { date: Date; skipped: Date[] } | null {
-  if (!(occurrenceCreationDate(rule, nextRunAt) <= now)) return null
+  // Date invalide (règle illisible ou `now` invalide) : rien à créer
+  const creation = occurrenceCreationDate(rule, nextRunAt).getTime()
+  if (Number.isNaN(creation) || Number.isNaN(now.getTime()) || creation > now.getTime()) return null
   if (rule.anchor === 'completion') return { date: nextRunAt, skipped: [] }
 
   let date = nextRunAt

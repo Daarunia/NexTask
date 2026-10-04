@@ -169,12 +169,17 @@ function describeFrequency(rule: RecurrenceDescription): string {
     case 'weekly': {
       if (n === 1 && sameDays(rule.weekdays, WORKING_DAYS)) return 'Tous les jours ouvrés'
       const days = enumerate(rule.weekdays.map((day) => `le ${WEEKDAYS[day - 1].name}`))
-      return `${n === 1 ? 'Toutes les semaines' : `Toutes les ${n} semaines`} ${days}`
+      const every = n === 1 ? 'Toutes les semaines' : `Toutes les ${n} semaines`
+      return `${every} ${days}`
     }
-    case 'monthly':
-      return `${n === 1 ? 'Tous les mois' : `Tous les ${n} mois`} ${monthlyDayLabel(rule.monthlyMode, rule.startsAt)}`
-    case 'yearly':
-      return `${n === 1 ? 'Tous les ans' : `Tous les ${n} ans`} le ${withOrdinal(DAY_MONTH_FORMAT, rule.startsAt)}`
+    case 'monthly': {
+      const every = n === 1 ? 'Tous les mois' : `Tous les ${n} mois`
+      return `${every} ${monthlyDayLabel(rule.monthlyMode, rule.startsAt)}`
+    }
+    case 'yearly': {
+      const every = n === 1 ? 'Tous les ans' : `Tous les ${n} ans`
+      return `${every} le ${withOrdinal(DAY_MONTH_FORMAT, rule.startsAt)}`
+    }
   }
 }
 

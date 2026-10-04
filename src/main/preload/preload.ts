@@ -40,7 +40,8 @@ contextBridge.exposeInMainWorld('about', {
 // avertie des occurrences créées par le main
 contextBridge.exposeInMainWorld('recurrence', {
   onTasksCreated: (callback: (tasks: unknown[]) => void) => {
-    const listener = (_event: unknown, tasks: unknown[]) => callback(tasks)
+    // Tâches reçues en JSON (cf. main.ts) : mêmes dates en chaînes que l'API
+    const listener = (_event: unknown, json: string) => callback(JSON.parse(json) as unknown[])
     ipcRenderer.on('tasks:created', listener)
     return () => ipcRenderer.removeListener('tasks:created', listener)
   },

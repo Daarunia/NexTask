@@ -209,10 +209,11 @@ app.whenReady().then(async () => {
 
   // Occurrences des tâches récurrentes : transmises à la fenêtre principale,
   // qui les ajoute au tableau sans recharger (aussi en test, via /test/run-recurrences).
-  // Passées par JSON pour arriver dans la même forme que les réponses de l'API.
+  // Envoyées en JSON (décodé par le preload) pour arriver dans la même forme
+  // que les réponses de l'API : dates en chaînes ISO, pas en objets Date.
   onOccurrencesCreated((tasks) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tasks:created', JSON.parse(JSON.stringify(tasks)))
+      mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
     }
   })
 

@@ -170,20 +170,12 @@ function firstDuplicate<T>(keys: T[]): T | undefined {
 }
 
 /**
- * Contrôle du fichier au-delà de sa structure (déjà validée par le schéma) :
- * format, version, ids uniques, noms de tags uniques sans tenir compte de la
- * casse, références des tâches et des séries vers des colonnes, des tags et
- * des séries du fichier, et une seule occurrence par date dans chaque série.
+ * Premier id (ou nom de tag) en double dans le fichier.
  *
  * @param data Fichier reçu
- * @returns Le motif du refus, ou `null` si le fichier est importable
+ * @returns Le motif du refus, ou `null` sans doublon
  */
-function findImportProblem(data: DataImportBody): string | null {
-  if (data.format !== EXPORT_FORMAT) return "Ce fichier n'est pas un export NexTask"
-  if (data.version !== EXPORT_VERSION) {
-    return `Version de format ${data.version} non prise en charge (version attendue : ${EXPORT_VERSION})`
-  }
-
+function findDuplicateProblem(data: DataImportBody): string | null {
   const duplicateStage = firstDuplicate(data.stages.map((stage) => stage.id))
   if (duplicateStage !== undefined) return `Colonne ${duplicateStage} présente plusieurs fois`
 
@@ -196,10 +188,21 @@ function findImportProblem(data: DataImportBody): string | null {
   const duplicateTask = firstDuplicate(data.tasks.map((task) => task.id))
   if (duplicateTask !== undefined) return `Tâche ${duplicateTask} présente plusieurs fois`
 
-  const recurrences = data.recurrences ?? []
-  const duplicateRecurrence = firstDuplicate(recurrences.map((recurrence) => recurrence.id))
+  const duplicateRecurrence = firstDuplicate((data.recurrences ?? []).map((recurrence) => recurrence.id))
   if (duplicateRecurrence !== undefined) return `Série ${duplicateRecurrence} présente plusieurs fois`
 
+  return null
+}
+
+/**
+ * Première référence d'une série ou d'une tâche vers une colonne, un tag ou
+ * une série absents du fichier.
+ *
+ * @param data Fichier reçu
+ * @returns Le motif du refus, ou `null` si toutes les références sont connues
+ */
+function findReferenceProblem(data: DataImportBody): string | null {
+  const recurrences = data.recurrences ?? []
   const stageIds = new Set(data.stages.map((stage) => stage.id))
   const tagIds = new Set(data.tags.map((tag) => tag.id))
   const recurrenceIds = new Set(recurrences.map((recurrence) => recurrence.id))
@@ -222,6 +225,27 @@ function findImportProblem(data: DataImportBody): string | null {
       return `La tâche ${task.id} référence une série absente du fichier (${task.recurrenceId})`
     }
   }
+
+  return null
+}
+
+/**
+ * Contrôle du fichier au-delà de sa structure (déjà validée par le schéma) :
+ * format, version, ids uniques, noms de tags uniques sans tenir compte de la
+ * casse, références des tâches et des séries vers des colonnes, des tags et
+ * des séries du fichier, et une seule occurrence par date dans chaque série.
+ *
+ * @param data Fichier reçu
+ * @returns Le motif du refus, ou `null` si le fichier est importable
+ */
+function findImportProblem(data: DataImportBody): string | null {
+  if (data.format !== EXPORT_FORMAT) return "Ce fichier n'est pas un export NexTask"
+  if (data.version !== EXPORT_VERSION) {
+    return `Version de format ${data.version} non prise en charge (version attendue : ${EXPORT_VERSION})`
+  }
+
+  const problem = findDuplicateProblem(data) ?? findReferenceProblem(data)
+  if (problem) return problem
 
   // Une seule occurrence par date dans chaque série (contrainte d'unicité en base)
   const occurrences = data.tasks

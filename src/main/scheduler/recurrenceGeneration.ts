@@ -253,6 +253,28 @@ async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | nu
   })
 }
 
+/**
+ * Génère l'occurrence d'une série sans jamais échouer : une erreur est
+ * journalisée et la série ignorée pour ce passage (les autres continuent).
+ *
+ * @param id Id de la série
+ * @param now Horodatage de référence
+ * @returns Issue de la génération, `null` si la série n'est plus à générer ou en échec
+ */
+async function generateSeriesSafely(id: number, now: Date): Promise<SeriesOutcome | null> {
+  try {
+    return await generateSeries(id, now)
+  } catch (error) {
+    // P2002 : occurrence déjà créée pour cette date (contrainte d'unicité), rien n'a été écrit
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      Logger.warn(`[recurrence] Série ${id} : occurrence déjà générée pour cette date, ignorée`)
+    } else {
+      Logger.error(`[recurrence] Échec de la génération de la série ${id} :`, error)
+    }
+    return null
+  }
+}
+
 // Passage en cours (ou dernier passé) : les passages s'enchaînent sans se chevaucher
 let lastRun: Promise<unknown> = Promise.resolve()
 
@@ -295,22 +317,13 @@ async function generateDueSeries(now: Date): Promise<RecurrenceGenerationResult>
   const tasks: GeneratedTask[] = []
 
   for (const { id } of dueSeries) {
-    try {
-      const outcome = await generateSeries(id, now)
-      if (!outcome) continue
+    const outcome = await generateSeriesSafely(id, now)
+    if (!outcome) continue
 
-      if (outcome.task) tasks.push(outcome.task)
-      result.skipped += outcome.skipped
-      if (outcome.ended) result.ended++
-      if (outcome.waiting) result.waiting++
-    } catch (error) {
-      // P2002 : occurrence déjà créée pour cette date (contrainte d'unicité), rien n'a été écrit
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        Logger.warn(`[recurrence] Série ${id} : occurrence déjà générée pour cette date, ignorée`)
-      } else {
-        Logger.error(`[recurrence] Échec de la génération de la série ${id} :`, error)
-      }
-    }
+    if (outcome.task) tasks.push(outcome.task)
+    result.skipped += outcome.skipped
+    if (outcome.ended) result.ended++
+    if (outcome.waiting) result.waiting++
   }
 
   result.created = tasks.length

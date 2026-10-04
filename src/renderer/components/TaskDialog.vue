@@ -102,7 +102,7 @@
           :startDate="$form.startDate?.value ?? null"
           :series="series"
           :error="$field.invalid ? $field.error?.message : undefined"
-          @update:modelValue="(value: RecurrenceFormValue) => $field.props.onChange({ value })"
+          @update:modelValue="(value) => $field.props.onChange({ value })"
           @need-start-date="$form.setFieldValue('startDate', defaultStartDate())"
         />
       </FormField>
@@ -146,7 +146,7 @@ import TagSelect from './TagSelect.vue'
 import RecurrenceFields from './RecurrenceFields.vue'
 import { Task, TaskInput } from '../types/task.types'
 import { TagSelection } from '../types/tag.types'
-import { RecurrenceFormValue, taskFormSchema, TaskFormValues } from '../schemas/task.schema'
+import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'

@@ -82,10 +82,9 @@
       </div>
 
       <!-- Jours de la semaine, hebdomadaire selon le calendrier uniquement -->
-      <div
+      <fieldset
         v-if="calendar && modelValue.frequency === 'weekly'"
         class="flex gap-1"
-        role="group"
         aria-label="Jours de la semaine"
       >
         <Button
@@ -102,7 +101,7 @@
           class="weekday-button"
           @click="toggleWeekday(day.value)"
         />
-      </div>
+      </fieldset>
 
       <!-- Jour du mois, mensuel selon le calendrier uniquement : libellés tirés de la date de début -->
       <div
@@ -118,7 +117,7 @@
             :data-mode="option.value"
             :value="option.value"
             :modelValue="modelValue.monthlyMode"
-            @update:modelValue="(monthlyMode: MonthlyMode) => update({ monthlyMode })"
+            @update:modelValue="onMonthlyModeChange"
           />
           <label :for="`recurrence-monthly-${option.value}`" data-testid="recurrence-monthly-label">
             {{ option.label }}
@@ -136,7 +135,7 @@
             data-testid="recurrence-end-never"
             value="never"
             :modelValue="modelValue.endType"
-            @update:modelValue="(endType: RecurrenceEndType) => update({ endType })"
+            @update:modelValue="onEndTypeChange"
           />
           <label for="recurrence-end-never">Jamais</label>
         </div>
@@ -147,7 +146,7 @@
             data-testid="recurrence-end-on-date"
             value="onDate"
             :modelValue="modelValue.endType"
-            @update:modelValue="(endType: RecurrenceEndType) => update({ endType })"
+            @update:modelValue="onEndTypeChange"
           />
           <label for="recurrence-end-on-date">Le</label>
           <DatePicker
@@ -165,7 +164,7 @@
             data-testid="recurrence-end-after-count"
             value="afterCount"
             :modelValue="modelValue.endType"
-            @update:modelValue="(endType: RecurrenceEndType) => update({ endType })"
+            @update:modelValue="onEndTypeChange"
           />
           <label for="recurrence-end-after-count">Après</label>
           <InputNumber
@@ -411,6 +410,22 @@ const monthEndHint = computed(() => {
  */
 function update(changes: Partial<RecurrenceFormValue>) {
   emit('update:modelValue', { ...props.modelValue, ...changes })
+}
+
+/**
+ * Mode mensuel choisi (bouton radio)
+ * @param monthlyMode Jour fixe, Ne jour de la semaine ou dernier jour
+ */
+function onMonthlyModeChange(monthlyMode: MonthlyMode) {
+  update({ monthlyMode })
+}
+
+/**
+ * Fin de série choisie (bouton radio)
+ * @param endType Jamais, à une date ou après N occurrences
+ */
+function onEndTypeChange(endType: RecurrenceEndType) {
+  update({ endType })
 }
 
 /**

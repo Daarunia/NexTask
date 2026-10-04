@@ -64,6 +64,53 @@ type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & {
 }
 
 /**
+ * Met à jour plusieurs tâches dans la transaction de PATCH /tasks/batch, puis
+ * fait suivre leurs séries (archivage ou restauration, cf. onArchiveStatesChanged).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param tasks Tâches à mettre à jour (id requis)
+ * @param now Horodatage de référence
+ * @returns Tâches mises à jour, dans l'ordre reçu, avec le résumé de leur série à jour
+ */
+async function updateTaskBatch(
+  tx: Prisma.TransactionClient,
+  tasks: Array<Partial<PrismaTask> & { id: number }>,
+  now: Date,
+): Promise<Prisma.TaskGetPayload<{ include: typeof taskInclude }>[]> {
+  const archived = await tx.task.findMany({
+    where: { id: { in: tasks.map((t) => t.id) }, isHistorized: true },
+    select: { id: true },
+  })
+  const wasArchived = new Set(archived.map((task) => task.id))
+
+  const updated: Prisma.TaskGetPayload<{ include: typeof taskInclude }>[] = []
+  for (const t of tasks) {
+    const data = withArchiveDate({ ...t }, wasArchived.has(t.id), now)
+
+    // startDate repoussée dans le futur → on réarme la notification.
+    if (data.startDate && new Date(data.startDate) > now) {
+      data.notifiedAt = null
+    }
+
+    updated.push(await tx.task.update({ where: { id: t.id }, data, include: taskInclude }))
+  }
+
+  await onArchiveStatesChanged(
+    tx,
+    updated.map((task) => ({ wasArchived: wasArchived.has(task.id), task })),
+    now,
+  )
+
+  // Relues dans l'ordre reçu : le résumé de leur série est à jour
+  const fresh = await tx.task.findMany({
+    where: { id: { in: updated.map((task) => task.id) } },
+    include: taskInclude,
+  })
+  const freshById = new Map(fresh.map((task) => [task.id, task]))
+  return updated.map((task) => freshById.get(task.id) ?? task)
+}
+
+/**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
  *
  * Fournit les endpoints CRUD pour l'entité `Task` :
@@ -708,38 +755,7 @@ export default async function taskRoutes(fastify) {
 
       try {
         // On fait un update pour chaque tâche, dans une transaction
-        const updatedTasks = await prisma.$transaction(async (tx) => {
-          const archived = await tx.task.findMany({
-            where: { id: { in: tasks.map((t) => t.id) }, isHistorized: true },
-            select: { id: true },
-          })
-          const wasArchived = new Set(archived.map((task) => task.id))
-
-          const updated: Prisma.TaskGetPayload<{ include: typeof taskInclude }>[] = []
-          for (const t of tasks) {
-            const data = withArchiveDate({ ...t }, wasArchived.has(t.id), now)
-
-            // startDate repoussée dans le futur → on réarme la notification.
-            if (data.startDate && new Date(data.startDate) > now) {
-              data.notifiedAt = null
-            }
-
-            updated.push(await tx.task.update({ where: { id: t.id }, data, include: taskInclude }))
-          }
-
-          await onArchiveStatesChanged(
-            tx,
-            updated.map((task) => ({ wasArchived: wasArchived.has(task.id), task })),
-            now,
-          )
-
-          // Relues dans l'ordre reçu : le résumé de leur série est à jour
-          const fresh = await tx.task.findMany({
-            where: { id: { in: updated.map((task) => task.id) } },
-            include: taskInclude,
-          })
-          return updated.map((task) => fresh.find((f) => f.id === task.id) ?? task)
-        })
+        const updatedTasks = await prisma.$transaction((tx) => updateTaskBatch(tx, tasks, now))
 
         Logger.info(`Batch : ${updatedTasks.length} tâche(s) mise(s) à jour`)
         return updatedTasks
