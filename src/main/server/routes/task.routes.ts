@@ -7,14 +7,12 @@ import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas
 import { resolveTagIds } from '../helpers/tag.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
-  applyToSeriesTemplate,
   createSeries,
-  endSeries,
   onArchiveStatesChanged,
   onOccurrenceDeleted,
   onOccurrenceRestored,
+  onTaskUpdated,
   recurrenceInputProblem,
-  updateSeriesRule,
 } from '../helpers/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
 import type { RecurrenceInput } from '../../shared/recurrence.constants.js'
@@ -248,8 +246,8 @@ export default async function taskRoutes(fastify) {
    * Répétition :
    * - `recurrence` absent laisse la série inchangée ;
    * - un objet crée une série dont la tâche est la première occurrence, ou
-   *   modifie la règle de sa série (prochaine date recalculée depuis
-   *   maintenant, sans rattrapage) ;
+   *   modifie la règle de sa série (prochaine date recalculée sans
+   *   rattrapage, selon son mode, cf. updateSeriesRule) ;
    * - `null` arrête sa série, dont les occurrences sont conservées.
    * Avec `applyToSeries` (par défaut), le contenu modifié (titre, description,
    * version, tags, colonne) est aussi reporté sur le modèle des prochaines
@@ -349,27 +347,13 @@ export default async function taskRoutes(fastify) {
             },
           })
 
-          const series = current.recurrence
-          if (recurrence === null) {
-            if (series) await endSeries(tx, series)
-          } else if (recurrence && series) {
-            await updateSeriesRule(tx, series, recurrence, startDate as Date, now)
-          } else if (recurrence) {
-            await createSeries(tx, task, recurrence, tagIds ?? current.tags.map((tag) => tag.id), now)
+          // Série arrêtée, modifiée ou créée, modèle et attente d'archivage à jour
+          const sent = {
+            title: data.title !== undefined,
+            description: data.description !== undefined,
+            version: data.version !== undefined,
           }
-
-          // Contenu reporté sur le modèle d'une série existante (une série créée l'a déjà repris)
-          if (series && applyToSeries) {
-            const changed = {
-              title: data.title !== undefined,
-              description: data.description !== undefined,
-              version: data.version !== undefined,
-              previousStageId: current.stageId,
-            }
-            await applyToSeriesTemplate(tx, series.id, task, changed, tagIds)
-          }
-
-          await onArchiveStatesChanged(tx, [{ wasArchived: current.isHistorized, task }], now)
+          await onTaskUpdated(tx, { current, task, recurrence, startDate, applyToSeries, sent, tagIds }, now)
 
           return tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
         })

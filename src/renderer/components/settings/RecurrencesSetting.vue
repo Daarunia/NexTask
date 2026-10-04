@@ -196,7 +196,7 @@ async function changeStatus(row: RecurrenceRow, next: RecurrenceStatus) {
 
 /**
  * Arrête une série, annulable quelques secondes : elle retrouve alors son
- * état d'avant (active, elle repart de maintenant sans rattrapage)
+ * état d'avant (active, elle repart sans rattrapage, cf. setSeriesStatus)
  * @param row Série
  */
 async function stop(row: RecurrenceRow) {

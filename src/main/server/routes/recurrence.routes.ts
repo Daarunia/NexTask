@@ -56,9 +56,11 @@ export default async function recurrenceRoutes(fastify) {
   /**
    * PATCH /recurrences/:id
    *
-   * Change l'état d'une série. Réactivée, elle repart de maintenant : sa
-   * prochaine date est recalculée sans rattrapage (et la série reste terminée
-   * si sa règle n'en donne plus). Arrêtée, ses occurrences sont conservées.
+   * Change l'état d'une série. Reprise ou réactivée, sa prochaine date est
+   * recalculée sans rattrapage : depuis maintenant selon le calendrier ; après
+   * archivage, elle attend son occurrence au tableau, sinon garde la date
+   * calculée à l'archivage (cf. setSeriesStatus). Elle reste terminée si sa
+   * règle ne donne plus de date. Arrêtée, ses occurrences sont conservées.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête

@@ -305,8 +305,8 @@ function recurrenceChange(input: RecurrenceInput | null): RecurrenceInput | null
 
 /**
  * Rend à une série arrêtée depuis le formulaire son état d'avant (bouton
- * « Annuler » du toast) : active, elle repart de maintenant sans rattrapage ;
- * en pause, elle y reste
+ * « Annuler » du toast) : active, elle repart sans rattrapage (de maintenant
+ * selon le calendrier, en attente de l'archivage sinon) ; en pause, elle y reste
  * @param id Id de la série
  * @param status État de la série avant l'arrêt
  */

@@ -415,7 +415,7 @@ export async function updateSeriesRule(
  * @param changed Champs envoyés, et colonne de l'occurrence avant la modification
  * @param tagIds Ids des tags de l'occurrence, s'ils ont été envoyés
  */
-export async function applyToSeriesTemplate(
+async function applyToSeriesTemplate(
   tx: TransactionClient,
   seriesId: number,
   task: Task,
@@ -434,6 +434,49 @@ export async function applyToSeriesTemplate(
       ...(tagIds && { tags: { set: tagIds.map((id) => ({ id })) } }),
     },
   })
+}
+
+/** Modification d'une tâche reçue par PATCH /tasks/:id, telle que la lit la série. */
+export interface TaskSeriesChange {
+  current: Task & { recurrence: Recurrence | null; tags: { id: number }[] } // tâche avant la modification
+  task: Task // tâche une fois modifiée
+  recurrence: RecurrenceInput | null | undefined // règle envoyée : absente, null (arrêt) ou nouvelle
+  startDate: Date | null // date de début une fois la modification appliquée
+  applyToSeries: boolean // contenu reporté sur le modèle des prochaines occurrences
+  sent: { title: boolean; description: boolean; version: boolean } // champs de contenu envoyés
+  tagIds: number[] | undefined // ids des tags envoyés
+}
+
+/**
+ * Répercute sur sa série la modification d'une tâche (PATCH /tasks/:id), dans
+ * la transaction de la modification :
+ * - `recurrence` null arrête la série, un objet modifie sa règle ou crée une
+ *   série dont la tâche est la première occurrence (règle déjà contrôlée) ;
+ * - avec `applyToSeries`, le contenu envoyé est reporté sur le modèle d'une
+ *   série existante (une série créée l'a déjà repris) ;
+ * - un archivage ou un désarchivage met à jour une série « après archivage ».
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param change Tâche avant et après, règle et options envoyées
+ * @param now Maintenant
+ */
+export async function onTaskUpdated(tx: TransactionClient, change: TaskSeriesChange, now: Date): Promise<void> {
+  const { current, task, recurrence, tagIds } = change
+  const series = current.recurrence
+
+  if (recurrence === null) {
+    if (series) await endSeries(tx, series)
+  } else if (recurrence && series) {
+    await updateSeriesRule(tx, series, recurrence, change.startDate as Date, now)
+  } else if (recurrence) {
+    await createSeries(tx, task, recurrence, tagIds ?? current.tags.map((tag) => tag.id), now)
+  }
+
+  if (series && change.applyToSeries) {
+    await applyToSeriesTemplate(tx, series.id, task, { ...change.sent, previousStageId: current.stageId }, tagIds)
+  }
+
+  await onArchiveStatesChanged(tx, [{ wasArchived: current.isHistorized, task }], now)
 }
 
 /**

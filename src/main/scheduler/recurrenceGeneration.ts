@@ -38,8 +38,9 @@ import { RECURRENCE_LEAD_DAYS_MAX } from '../shared/recurrence.constants.js'
  * - aucune colonne au tableau : rien n'est créé et la série n'avance pas, elle
  *   reprendra au prochain passage.
  *
- * Les séries en pause ou terminées ne génèrent rien. Une série reprise repart
- * de maintenant, sans rattrapage (cf. setSeriesStatus).
+ * Les séries en pause ou terminées ne génèrent rien. Une série reprise ne
+ * rattrape rien : elle repart de maintenant selon le calendrier, ou crée au
+ * plus l'occurrence calculée à l'archivage (cf. setSeriesStatus).
  *
  * Les tâches créées sont transmises à la fenêtre principale (cf. main.ts).
  */
