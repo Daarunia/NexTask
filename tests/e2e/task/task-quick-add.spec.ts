@@ -136,7 +136,8 @@ test.describe("Fenêtre d'ajout rapide", () => {
 
     const closed = win.waitForEvent('close')
     await win.getByTestId('quick-add-title').fill('Idée soudaine')
-    await win.getByTestId('quick-add-title').press('Enter')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
     await closed
 
     await expect.poll(() => taskBoard.columnTaskTitles(FIRST_COLUMN)).toEqual(['Idée soudaine'])
@@ -161,7 +162,8 @@ test.describe("Fenêtre d'ajout rapide", () => {
 
     const closed = win.waitForEvent('close')
     await win.getByTestId('quick-add-title').fill('Urgent')
-    await win.getByTestId('quick-add-title').press('Enter')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
     await closed
 
     await expect.poll(() => taskBoard.columnTaskTitles(OTHER_COLUMN)).toEqual(['Urgent', 'Déjà là'])
