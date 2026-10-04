@@ -40,6 +40,9 @@ export default defineConfig({
     headless: true,
   },
   retries: 1,
+  // Tests répartis un par un entre les workers, pas fichier par fichier : chaque test
+  // repart d'une base remise à zéro, et un gros fichier n'occupe plus seul un worker en fin de run
+  fullyParallel: true,
   // Une app Electron par worker, chacune avec sa base, ses paramètres et son port
   // (cf. src/main/shared/test.constants.ts)
   workers: machineWorkers(),
