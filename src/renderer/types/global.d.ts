@@ -40,6 +40,11 @@ declare global {
     onTasksCreated: (callback: (tasks: Task[]) => void) => () => void // renvoie le désabonnement
   }
 
+  // Rappels : tâche à ouvrir après un clic sur sa notification
+  var notifications: {
+    onOpenTask: (callback: (taskId: number) => void) => () => void // renvoie le désabonnement
+  }
+
   // Ajout rapide : fenêtre ouverte par le raccourci global, et fenêtre
   // principale avertie des tâches qui y sont ajoutées
   var quickAdd: {

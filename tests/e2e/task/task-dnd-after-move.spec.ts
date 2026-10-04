@@ -75,3 +75,31 @@ test("l'édition d'une carte déplacée conserve sa nouvelle position", async ({
 
   for (const title of [renamed, b1, b2]) await taskBoard.archiveTask(title)
 })
+
+test("l'édition d'une carte après un archivage garde l'ordre de la colonne", async ({ taskBoard, page }) => {
+  const s = uid()
+  const [t1, t2, t3] = [`T1-${s}`, `T2-${s}`, `T3-${s}`]
+
+  // Ids croissants, positions 0, 1, 2
+  for (const title of [t1, t2, t3]) await taskBoard.createTask(A_FAIRE, { title })
+
+  // T1 passe en bas : T2(0), T3(1), T1(2), T1 gardant le plus petit id
+  const saved = waitForBatchSave(page)
+  await taskBoard.dragTaskToColumnEnd(t1, A_FAIRE)
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, [t1, t2, t3])).toEqual([t2, t3, t1])
+  await saved
+
+  // Archivage de T2 : un trou reste en tête, T3(1), T1(2)
+  await taskBoard.archiveTask(t2)
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, [t1, t3])).toEqual([t3, t1])
+
+  // Édition de T1, deuxième carte de la colonne : sa position ne doit pas rejoindre celle de T3
+  await taskBoard.openEditDialog(t1)
+  await taskBoard.fillAndSave({ description: 'modifiée' })
+
+  await page.reload()
+  await expect(taskBoard.taskCard(t1)).toBeVisible()
+  await expect.poll(() => taskBoard.orderedTitlesAmong(A_FAIRE, [t1, t3])).toEqual([t3, t1])
+
+  for (const title of [t1, t3]) await taskBoard.archiveTask(title)
+})

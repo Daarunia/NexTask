@@ -144,7 +144,7 @@ import Message from 'primevue/message'
 import Checkbox from 'primevue/checkbox'
 import TagSelect from './TagSelect.vue'
 import RecurrenceFields from './RecurrenceFields.vue'
-import { Task, TaskInput } from '../types/task.types'
+import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
 import { TagSelection } from '../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
@@ -398,12 +398,13 @@ async function saveTask(values: TaskFormValues) {
       savedTask = await taskStore.saveTask(newTask)
       logger.info('Tâche créée avec succès', savedTask)
     } else if (props.editTask) {
-      const updatedTask: TaskInput & Pick<Task, 'id'> = {
+      // Sans position : le dialogue ne déplace pas la carte, et la place affichée
+      // peut différer de la position enregistrée (trous laissés par un archivage)
+      const updatedTask: TaskUpdateInput = {
         id: props.editTask.id,
         stageId: stageId.value,
         title: values.title,
         version: values.version,
-        position: position.value,
         description: values.description,
         isHistorized: props.editTask.isHistorized,
         historizationDate: props.editTask.historizationDate,

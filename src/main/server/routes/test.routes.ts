@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { prisma } from '../prismaClient.js'
 import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
-import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
+import { handleNotificationClick, runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
@@ -21,6 +21,7 @@ import Logger from 'electron-log'
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, et ferme la fenêtre d'ajout rapide
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
+ * - POST /test/click-notification → simule le clic sur une notification de rappel (tâches annoncées en corps)
  * - POST /test/run-recurrences    → déclenche un passage de la génération des tâches récurrentes
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
@@ -158,6 +159,44 @@ export default async function testRoutes(fastify) {
       const body = (req.body ?? {}) as { now?: string }
       const now = body.now ? new Date(body.now) : new Date()
       return runNotificationCheck(now)
+    },
+  )
+
+  /**
+   * POST /test/click-notification
+   *
+   * Simule le clic sur une notification de rappel, qu'un test ne peut pas
+   * cliquer : même traitement que le clic réel (fenêtre principale ramenée,
+   * tâche ouverte si elle est seule annoncée).
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - Corps de la requête
+   * @param {number[]} req.body.taskIds - Ids des tâches annoncées par la notification
+   * @returns {Promise<{message: string}>} Confirmation du clic
+   */
+  fastify.post(
+    '/test/click-notification',
+    {
+      schema: {
+        description: 'Simule le clic sur une notification de rappel (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { taskIds: { type: 'array', items: { type: 'integer' } } },
+          required: ['taskIds'],
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: { message: { type: 'string' } },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const { taskIds } = req.body as { taskIds: number[] }
+      handleNotificationClick(taskIds)
+      return { message: 'Notification cliquée' }
     },
   )
 

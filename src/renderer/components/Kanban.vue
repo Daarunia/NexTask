@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive, watch } from 'vue'
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
@@ -259,12 +259,8 @@ function filterTagSelection(): TagSelection[] {
 function openEditTaskDialog(stageId: number, task: Task) {
   logger.debug('Ouverture édition', { stageId, task })
 
-  // Position = index actuel de la carte dans sa colonne : task.position peut
-  // être obsolète juste après un DnD (sauvegarde batch en cours ou échouée)
-  const index = taskLists.get(stageId)?.findIndex((t) => t.id === task.id) ?? -1
-
+  // Pas de position à l'édition : l'enregistrement ne déplace pas la carte
   stageDialog.value = stageId
-  positionDialog.value = index === -1 ? task.position : index
   editTask.value = task
   creationMode.value = false
   showDialog.value = true
@@ -697,6 +693,26 @@ onBeforeUnmount(stopQuickAddListener)
 // Occurrences des tâches récurrentes créées par le main, insérées de même
 const stopRecurrenceListener = globalThis.recurrence.onTasksCreated((tasks) => tasks.forEach(insertTaskLocally))
 onBeforeUnmount(stopRecurrenceListener)
+
+/**
+ * Ouvre en édition la tâche demandée par un clic sur sa notification. Ignorée
+ * si elle a quitté le tableau entre-temps, ou si le dialogue est déjà ouvert
+ * (la saisie en cours n'est pas remplacée).
+ */
+function openRequestedTask() {
+  const taskId = taskStore.taskToOpen
+  if (taskId === null) return
+  taskStore.taskToOpen = null
+
+  const location = findTaskLocation(taskId)
+  if (!location || showDialog.value) return
+  openEditTaskDialog(location.stageId, location.list[location.index])
+}
+
+// Demande reçue tableau affiché, ou avant (autre page) : traitée une fois le
+// dialogue monté, qui ne lit ses valeurs qu'à un changement d'ouverture
+watch(() => taskStore.taskToOpen, openRequestedTask)
+onMounted(openRequestedTask)
 
 onMounted(() => {
   if (!scrollContainer.value) return

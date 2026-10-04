@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
-import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import {
+  onNotificationClicked,
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './scheduler/notificationScheduler.js'
 import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
@@ -135,6 +139,28 @@ function showMainWindow() {
   mainWindow.focus()
 }
 
+/**
+ * Clic sur une notification de rappel : la fenêtre principale revient au
+ * premier plan et, si la notification n'annonçait qu'une tâche, l'ouvre en
+ * édition. Plusieurs tâches : le tableau seul, qui les montre toutes.
+ *
+ * @param taskIds Ids des tâches annoncées par la notification
+ */
+function openNotifiedTasks(taskIds: number[]) {
+  // En test, la fenêtre reste masquée comme au lancement
+  if (!IS_TEST) showMainWindow()
+  if (taskIds.length !== 1 || !mainWindow) return
+
+  // Fenêtre recréée à l'instant (macOS) : la tâche est envoyée une fois le renderer chargé
+  const contents = mainWindow.webContents
+  const send = () => contents.send('tasks:open', taskIds[0])
+  if (contents.isLoading()) {
+    contents.once('did-finish-load', send)
+  } else {
+    send()
+  }
+}
+
 // Verrou d'instance unique
 const gotTheLock = IS_TEST || app.requestSingleInstanceLock()
 
@@ -216,6 +242,9 @@ app.whenReady().then(async () => {
       mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
     }
   })
+
+  // Clic sur une notification de rappel
+  onNotificationClicked(openNotifiedTasks)
 
   createWindow()
 

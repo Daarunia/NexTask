@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
@@ -13,6 +13,7 @@ const settings = useSettingsStore()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
 const route = useRoute()
+const router = useRouter()
 
 // Page seule, sans en-tête ni notifications (fenêtre d'ajout rapide)
 const bare = computed(() => route.meta.bare === true)
@@ -22,6 +23,9 @@ let stopQuickAddListener: (() => void) | undefined
 
 // Occurrences des tâches récurrentes créées par le main
 let stopRecurrenceListener: (() => void) | undefined
+
+// Tâche à ouvrir après un clic sur sa notification de rappel
+let stopOpenTaskListener: (() => void) | undefined
 
 // Paramètres chargés et appliqués une seule fois, pour toutes les pages
 onMounted(() => {
@@ -42,11 +46,20 @@ onMounted(() => {
       }
     })
   }
+
+  // Clic sur une notification qui n'annonçait qu'une tâche : retour au tableau, qui l'ouvre
+  if (!bare.value) {
+    stopOpenTaskListener = globalThis.notifications.onOpenTask((taskId) => {
+      taskStore.requestOpenTask(taskId)
+      router.push({ name: 'Home' })
+    })
+  }
 })
 
 onBeforeUnmount(() => {
   stopQuickAddListener?.()
   stopRecurrenceListener?.()
+  stopOpenTaskListener?.()
 })
 </script>
 

@@ -137,3 +137,52 @@ test('modifier startDate vers le passé ne réarme pas notifiedAt', async ({ pag
   expect(patchRes.ok()).toBeTruthy()
   expect((await getTask(request, task.id)).notifiedAt).toBeTruthy()
 })
+
+/** Simule le clic sur une notification qui annonçait ces tâches. */
+async function clickNotification(request: APIRequestContext, taskIds: number[]) {
+  const res = await request.post(`${API}/test/click-notification`, { data: { taskIds } })
+  expect(res.ok()).toBeTruthy()
+}
+
+test("le clic sur la notification d'une seule tâche l'ouvre en édition", async ({ page, taskBoard }) => {
+  const stageId = await firstStageId(page.request)
+  const task = await createTask(page.request, stageId, { title: 'Ouverte par notif', startDate: pastDate() })
+
+  // Tâche créée par l'API : rechargement pour l'afficher au tableau
+  await page.reload()
+  await expect(taskBoard.taskCard('Ouverte par notif')).toBeVisible()
+
+  await clickNotification(page.request, [task.id])
+
+  await expect(taskBoard.dialog).toBeVisible()
+  await expect(taskBoard.titleInput).toHaveValue('Ouverte par notif')
+})
+
+test('le clic ramène au tableau depuis une autre page avant d’ouvrir la tâche', async ({ page, header, taskBoard }) => {
+  const stageId = await firstStageId(page.request)
+  const task = await createTask(page.request, stageId, { title: 'Depuis paramètres', startDate: pastDate() })
+
+  await page.reload()
+  await header.settingsButton.click()
+  await expect(page.getByTestId('stage-column')).toHaveCount(0)
+
+  await clickNotification(page.request, [task.id])
+
+  await expect(taskBoard.dialog).toBeVisible()
+  await expect(taskBoard.titleInput).toHaveValue('Depuis paramètres')
+})
+
+test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", async ({ page, taskBoard }) => {
+  const stageId = await firstStageId(page.request)
+  const first = await createTask(page.request, stageId, { title: 'Groupée 1', startDate: pastDate() })
+  const second = await createTask(page.request, stageId, { title: 'Groupée 2', startDate: pastDate() })
+
+  await page.reload()
+  await expect(taskBoard.taskCard('Groupée 1')).toBeVisible()
+
+  await clickNotification(page.request, [first.id, second.id])
+
+  // Le tableau reste affiché, sans dialogue
+  await expect(taskBoard.taskCard('Groupée 2')).toBeVisible()
+  await expect(taskBoard.dialog).toBeHidden()
+})

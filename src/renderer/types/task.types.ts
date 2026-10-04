@@ -42,3 +42,9 @@ export type TaskInput = Omit<Task, 'id' | 'tags' | 'recurrenceId' | 'occurrenceD
   recurrence?: RecurrenceInput | null
   applyToSeries?: boolean
 }
+
+/**
+ * Tâche modifiée depuis le formulaire. Sans position : la place d'une carte ne
+ * change que par le DnD (PATCH /tasks/batch), qui renumérote la colonne.
+ */
+export type TaskUpdateInput = Omit<TaskInput, 'position'> & Pick<Task, 'id'>
