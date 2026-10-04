@@ -3,6 +3,7 @@ import path from 'node:path'
 import { prisma } from '../prismaClient.js'
 import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
 import { runNotificationCheck } from '../../scheduler/notificationScheduler.js'
+import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
@@ -16,10 +17,11 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
+ * - POST /test/reset              → vide les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, et ferme la fenêtre d'ajout rapide
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
+ * - POST /test/run-recurrences    → déclenche un passage de la génération des tâches récurrentes
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
@@ -66,8 +68,10 @@ export default async function testRoutes(fastify) {
     async (req) => {
       const { seedTags } = req.query as { seedTags?: boolean }
 
-      // Ordre important : les tâches référencent les colonnes (clé étrangère)
+      // Ordre important : les tâches référencent les séries et les colonnes,
+      // les séries les colonnes (clés étrangères)
       await prisma.task.deleteMany()
+      await prisma.recurrence.deleteMany()
       // Les liens tâche-tag sont déjà partis en cascade avec les tâches
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
@@ -154,6 +158,50 @@ export default async function testRoutes(fastify) {
       const body = (req.body ?? {}) as { now?: string }
       const now = body.now ? new Date(body.now) : new Date()
       return runNotificationCheck(now)
+    },
+  )
+
+  /**
+   * POST /test/run-recurrences
+   *
+   * Déclenche manuellement un passage de la génération des tâches récurrentes
+   * (`runRecurrenceGeneration`), le planificateur étant désactivé en mode
+   * `--test`. Les tâches créées sont transmises à la fenêtre principale, comme
+   * en temps normal.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} [req.body] - Corps optionnel
+   * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
+   * @returns {Promise<{created: number, skipped: number, ended: number, waiting: number}>} Occurrences
+   *   créées, dates sautées, séries terminées et séries en attente d'une colonne
+   */
+  fastify.post(
+    '/test/run-recurrences',
+    {
+      schema: {
+        description: 'Déclenche un passage de la génération des tâches récurrentes (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { now: { type: 'string', format: 'date-time' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              created: { type: 'integer' },
+              skipped: { type: 'integer' },
+              ended: { type: 'integer' },
+              waiting: { type: 'integer' },
+            },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const body = (req.body ?? {}) as { now?: string }
+      const now = body.now ? new Date(body.now) : new Date()
+      return runRecurrenceGeneration(now)
     },
   )
 

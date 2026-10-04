@@ -5,6 +5,7 @@ import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
 import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
@@ -206,11 +207,22 @@ app.whenReady().then(async () => {
     getMainWindow: () => mainWindow,
   })
 
+  // Occurrences des tâches récurrentes : transmises à la fenêtre principale,
+  // qui les ajoute au tableau sans recharger (aussi en test, via /test/run-recurrences).
+  // Envoyées en JSON (décodé par le preload) pour arriver dans la même forme
+  // que les réponses de l'API : dates en chaînes ISO, pas en objets Date.
+  onOccurrencesCreated((tasks) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
+    }
+  })
+
   createWindow()
 
-  // Planificateur de notifications (tâches dont la startDate est dépassée).
+  // Planificateur de notifications (tâches dont la startDate est dépassée),
+  // précédé à chaque tick de la génération des tâches récurrentes.
   // Désactivé en mode test : les tests le déclenchent manuellement via
-  // /test/run-notifications pour un comportement déterministe.
+  // /test/run-notifications et /test/run-recurrences pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
 
   // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque

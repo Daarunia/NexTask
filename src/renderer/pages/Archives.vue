@@ -30,7 +30,19 @@
             class="archived-task"
           >
             <div class="flex min-w-0 flex-1 flex-col gap-1">
-              <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+              <div class="flex min-w-0 items-center gap-2">
+                <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+
+                <!-- Occurrence d'une tâche récurrente, comme sur les cartes du tableau -->
+                <i
+                  v-if="recurrenceOf(task)"
+                  data-testid="archived-task-recurrence"
+                  :data-status="recurrenceOf(task)!.status"
+                  :class="['pi pi-sync recurrence-icon', { inactive: recurrenceOf(task)!.status !== 'active' }]"
+                  :title="recurrenceTooltip(recurrenceOf(task)!)"
+                  aria-label="Tâche récurrente"
+                ></i>
+              </div>
               <time data-testid="archived-task-date" :datetime="isoDate(task)" class="archives-muted text-sm">
                 {{ archivedLabel(task) }}
               </time>
@@ -110,6 +122,8 @@ import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import type { Tag } from '../types/tag.types'
 import { compareTagNames } from '../utils/tag.helper'
+import { recurrenceTooltip } from '../utils/recurrence.helper'
+import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
@@ -183,6 +197,14 @@ function visibleTags(task: Task): Pick<Tag, 'id' | 'name'>[] {
 }
 
 /**
+ * Série d'une tâche archivée, dans son dernier état connu
+ * @param task Tâche archivée
+ */
+function recurrenceOf(task: Task): RecurrenceSummary | undefined {
+  return taskStore.getRecurrence(task.recurrenceId) ?? task.recurrence ?? undefined
+}
+
+/**
  * Retire une tâche de la liste affichée
  * @param id Id de la tâche
  */
@@ -191,7 +213,9 @@ function removeFromList(id: number) {
 }
 
 /**
- * Restaure une tâche en bas de la première colonne du tableau
+ * Restaure une tâche en bas de la première colonne du tableau. L'occurrence
+ * née de son archivage (série « après archivage »), si le serveur la retire,
+ * quitte le cache du tableau (cf. restoreTask)
  * @param task Tâche archivée
  */
 async function restore(task: Task) {
@@ -199,8 +223,15 @@ async function restore(task: Task) {
   busyIds.add(task.id)
 
   try {
-    await taskStore.restoreTask(task.id)
+    const { removed } = await taskStore.restoreTask(task.id)
     removeFromList(task.id)
+    // Occurrence née de son archivage, retirée avec la restauration : ses tags perdent une tâche
+    if (removed) {
+      tagStore.adjustTaskCounts(
+        [],
+        (removed.tags ?? []).map((tag) => tag.id),
+      )
+    }
   } catch (error) {
     if (httpStatus(error) === 409) {
       showError('Restauration impossible', 'Ajoute une colonne au tableau pour y restaurer la tâche.')
@@ -264,6 +295,17 @@ async function deletePermanently(task: Task) {
 
 .archives-muted {
   color: var(--p-text-muted-color);
+}
+
+.recurrence-icon {
+  @apply shrink-0 text-xs;
+  color: var(--p-primary-color);
+}
+
+/* Série arrêtée ou en pause : icône grisée */
+.recurrence-icon.inactive {
+  color: var(--p-text-muted-color);
+  opacity: 0.6;
 }
 
 .archives-count {

@@ -3,8 +3,6 @@ import { defineConfig } from '@playwright/test'
 const isCI = !!process.env.CI
 
 export default defineConfig({
-  globalSetup: './tests/global-setup.ts',
-  testDir: './tests/e2e',
   // En CI, un test bloqué échoue vite (le plus long prend ~7 s en local). Le lancement
   // de Vite et d'Electron a son propre timeout dans les fixtures worker.
   timeout: isCI ? 30000 : 100000,
@@ -21,4 +19,13 @@ export default defineConfig({
   },
   retries: 1,
   workers: 1,
+  projects: [
+    // Compilation du main avant les tests E2E (projet de setup plutôt qu'un
+    // globalSetup : les tests unitaires s'en passent, `--project=unit`)
+    { name: 'setup', testDir: './tests', testMatch: 'global-setup.ts' },
+    // Tests E2E : l'app Electron est lancée par les fixtures (cf. tests/fixtures)
+    { name: 'e2e', testDir: './tests/e2e', dependencies: ['setup'] },
+    // Tests unitaires des fonctions pures partagées, sans app ni navigateur
+    { name: 'unit', testDir: './tests/unit' },
+  ],
 })
