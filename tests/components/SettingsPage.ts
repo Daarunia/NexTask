@@ -9,6 +9,7 @@ export class SettingsPage {
    */
   readonly page: Page
   readonly root: Locator
+  readonly nav: Locator
   readonly appearanceSection: Locator
   readonly modeSelect: Locator
   readonly colorRow: Locator
@@ -62,6 +63,9 @@ export class SettingsPage {
   constructor(page: Page) {
     this.page = page
     this.root = page.getByTestId('settings-page')
+
+    // Sommaire des sections, à gauche de la page
+    this.nav = this.root.getByTestId('settings-nav')
 
     // Section Apparence
     this.appearanceSection = this.root.getByTestId('settings-appearance')
@@ -135,6 +139,14 @@ export class SettingsPage {
     this.appVersion = this.root.getByTestId('settings-app-version')
     this.openReleaseNotesButton = this.root.getByTestId('btn-open-release-notes')
     this.openNoticesButton = this.root.getByTestId('btn-open-notices')
+  }
+
+  /**
+   * Entrée du sommaire (attribut `aria-current` sur la section affichée).
+   * @param label Libellé exact de la section (ex. « Notifications »)
+   */
+  navItem(label: string): Locator {
+    return this.nav.getByRole('button', { name: label, exact: true })
   }
 
   /**

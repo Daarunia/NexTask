@@ -1,292 +1,309 @@
 <template>
-  <div data-testid="settings-page" class="h-full overflow-y-auto">
-    <div class="mx-auto flex max-w-2xl flex-col gap-6 px-8 py-6">
-      <h1 class="text-2xl">Paramètres</h1>
+  <div ref="root" data-testid="settings-page" class="h-full overflow-y-auto">
+    <div class="mx-auto flex max-w-4xl gap-8 px-8 py-6">
+      <!-- Sommaire collant, masqué sur fenêtre étroite -->
+      <SettingsNav
+        :sections="NAV_SECTIONS"
+        :container="root"
+        class="sticky top-6 hidden w-56 shrink-0 self-start md:block"
+      />
 
-      <!-- Une section par famille de réglages -->
-      <SettingsSection title="Apparence" description="Thème et couleurs de l'application." testId="settings-appearance">
-        <SettingsRow
-          label="Mode"
-          description="Affichage clair, sombre ou réglé sur le système."
-          testId="settings-row-mode"
+      <div class="flex min-w-0 flex-1 flex-col gap-6">
+        <h1 class="text-2xl">Paramètres</h1>
+
+        <!-- Une section par famille de réglages -->
+        <SettingsSection
+          title="Apparence"
+          description="Thème et couleurs de l'application."
+          id="settings-section-appearance"
+          testId="settings-appearance"
         >
-          <SelectButton
-            v-model="theme"
-            data-testid="settings-mode"
-            :options="MODE_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Mode"
+            description="Affichage clair, sombre ou réglé sur le système."
+            testId="settings-row-mode"
+          >
+            <SelectButton
+              v-model="theme"
+              data-testid="settings-mode"
+              :options="MODE_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Couleur d'accent"
-          description="Couleur des boutons et des repères, avec ses gris assortis."
-          testId="settings-row-color"
+          <SettingsRow
+            label="Couleur d'accent"
+            description="Couleur des boutons et des repères, avec ses gris assortis."
+            testId="settings-row-color"
+          >
+            <PrimaryColorPicker />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Taille de l'interface"
+            description="Agrandit ou réduit le texte et les éléments de toute l'application."
+            testId="settings-row-interface-scale"
+          >
+            <SelectButton
+              v-model="interfaceScale"
+              data-testid="settings-interface-scale"
+              :options="INTERFACE_SCALE_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection title="Tâches" id="settings-section-tasks" testId="settings-tasks">
+          <SettingsRow
+            label="Versions"
+            description="Versions proposées dans le formulaire d'une tâche. La version par défaut est présélectionnée à la création."
+            testId="settings-row-versions"
+            stacked
+          >
+            <TaskVersionsSetting />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Position d'une nouvelle tâche"
+            description="Place d'une tâche créée dans sa colonne."
+            testId="settings-row-new-task-position"
+          >
+            <SelectButton
+              v-model="newTaskPosition"
+              data-testid="settings-new-task-position"
+              :options="NEW_TASK_POSITION_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Mémoriser le filtre de tags"
+            description="Le filtre du tableau est retrouvé au prochain lancement."
+            testId="settings-row-remember-filter"
+          >
+            <ToggleSwitch
+              v-model="rememberTagFilter"
+              data-testid="settings-remember-filter-toggle"
+              ariaLabel="Mémoriser le filtre de tags"
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Confirmer l'archivage"
+            description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
+            testId="settings-row-confirm-archive"
+          >
+            <ToggleSwitch
+              v-model="confirmArchive"
+              data-testid="settings-confirm-archive-toggle"
+              ariaLabel="Confirmer l'archivage"
+            />
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Tags"
+          description="Renommer, recolorer ou supprimer un tag s'applique à toutes les tâches qui le portent, archives comprises."
+          id="settings-section-tags"
+          testId="settings-tags"
         >
-          <PrimaryColorPicker />
-        </SettingsRow>
+          <TagsSetting />
+        </SettingsSection>
 
-        <SettingsRow
-          label="Taille de l'interface"
-          description="Agrandit ou réduit le texte et les éléments de toute l'application."
-          testId="settings-row-interface-scale"
+        <SettingsSection
+          title="Tâches récurrentes"
+          description="Séries créées depuis le champ « Répéter » d'une tâche. En pause, une série ne crée plus d'occurrence ; reprise, elle repart de sa prochaine date sans rattraper les dates passées."
+          id="settings-section-recurrences"
+          testId="settings-recurrences"
         >
-          <SelectButton
-            v-model="interfaceScale"
-            data-testid="settings-interface-scale"
-            :options="INTERFACE_SCALE_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
-        </SettingsRow>
-      </SettingsSection>
+          <RecurrencesSetting />
+        </SettingsSection>
 
-      <SettingsSection title="Tâches" testId="settings-tasks">
-        <SettingsRow
-          label="Versions"
-          description="Versions proposées dans le formulaire d'une tâche. La version par défaut est présélectionnée à la création."
-          testId="settings-row-versions"
-          stacked
+        <SettingsSection title="Notifications" id="settings-section-notifications" testId="settings-notifications">
+          <SettingsRow
+            label="Rappels de date de début"
+            description="Notification du système quand la date de début d'une tâche est passée."
+            testId="settings-row-notifications"
+          >
+            <ToggleSwitch
+              v-model="notificationsEnabled"
+              data-testid="settings-notifications-toggle"
+              ariaLabel="Rappels de date de début"
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Style des rappels"
+            description="Windows uniquement. Persistante, la notification reste à l'écran jusqu'à sa fermeture. Temporaire, elle disparaît seule après quelques secondes."
+            testId="settings-row-notification-style"
+          >
+            <SelectButton
+              v-model="notificationStyle"
+              data-testid="settings-notification-style"
+              :options="NOTIFICATION_STYLE_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+              :disabled="!settings.notificationsEnabled"
+            />
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Démarrage et arrière-plan"
+          description="Pour recevoir les rappels, NexTask doit rester ouverte."
+          id="settings-section-system"
+          testId="settings-system"
         >
-          <TaskVersionsSetting />
-        </SettingsRow>
+          <SettingsRow
+            label="Garder en arrière-plan"
+            description="Fermer la fenêtre laisse NexTask dans la zone de notification. « Quitter » depuis son icône la ferme vraiment."
+            testId="settings-row-tray"
+          >
+            <ToggleSwitch v-model="closeToTray" data-testid="settings-tray-toggle" ariaLabel="Garder en arrière-plan" />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Position d'une nouvelle tâche"
-          description="Place d'une tâche créée dans sa colonne."
-          testId="settings-row-new-task-position"
-        >
-          <SelectButton
-            v-model="newTaskPosition"
-            data-testid="settings-new-task-position"
-            :options="NEW_TASK_POSITION_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Lancer à l'ouverture de session"
+            description="NexTask démarre avec le système."
+            testId="settings-row-startup"
+          >
+            <ToggleSwitch
+              v-model="launchAtStartup"
+              data-testid="settings-startup-toggle"
+              ariaLabel="Lancer à l'ouverture de session"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Mémoriser le filtre de tags"
-          description="Le filtre du tableau est retrouvé au prochain lancement."
-          testId="settings-row-remember-filter"
-        >
-          <ToggleSwitch
-            v-model="rememberTagFilter"
-            data-testid="settings-remember-filter-toggle"
-            ariaLabel="Mémoriser le filtre de tags"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Démarrer réduite"
+            description="Au lancement avec le système, la fenêtre ne s'ouvre pas."
+            testId="settings-row-minimized"
+          >
+            <ToggleSwitch
+              v-model="startMinimized"
+              data-testid="settings-minimized-toggle"
+              ariaLabel="Démarrer réduite"
+              :disabled="!settings.launchAtStartup"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Confirmer l'archivage"
-          description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
-          testId="settings-row-confirm-archive"
-        >
-          <ToggleSwitch
-            v-model="confirmArchive"
-            data-testid="settings-confirm-archive-toggle"
-            ariaLabel="Confirmer l'archivage"
-          />
-        </SettingsRow>
-      </SettingsSection>
+          <SettingsRow label="Ajout rapide" :description="quickAddDescription" testId="settings-row-quick-add">
+            <ToggleSwitch v-model="quickAddEnabled" data-testid="settings-quick-add-toggle" ariaLabel="Ajout rapide" />
+          </SettingsRow>
 
-      <SettingsSection
-        title="Tags"
-        description="Renommer, recolorer ou supprimer un tag s'applique à toutes les tâches qui le portent, archives comprises."
-        testId="settings-tags"
-      >
-        <TagsSetting />
-      </SettingsSection>
+          <SettingsRow
+            label="Fenêtre au démarrage"
+            description="Maximisée, ou à la taille et à la position qu'elle avait à la fermeture."
+            testId="settings-row-window-mode"
+          >
+            <SelectButton
+              v-model="windowMode"
+              data-testid="settings-window-mode"
+              :options="WINDOW_MODE_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </SettingsRow>
+        </SettingsSection>
 
-      <SettingsSection
-        title="Tâches récurrentes"
-        description="Séries créées depuis le champ « Répéter » d'une tâche. En pause, une série ne crée plus d'occurrence ; reprise, elle repart de sa prochaine date sans rattraper les dates passées."
-        testId="settings-recurrences"
-      >
-        <RecurrencesSetting />
-      </SettingsSection>
+        <SettingsSection title="Organisation et données" id="settings-section-data" testId="settings-data">
+          <SettingsRow
+            label="Tâches archivées"
+            description="Revoir les tâches archivées, les restaurer sur le tableau ou les supprimer définitivement."
+            testId="settings-row-archives"
+          >
+            <Button
+              data-testid="btn-open-archives"
+              label="Voir les archives"
+              icon="pi pi-inbox"
+              severity="secondary"
+              @click="openArchives"
+            />
+          </SettingsRow>
 
-      <SettingsSection title="Notifications" testId="settings-notifications">
-        <SettingsRow
-          label="Rappels de date de début"
-          description="Notification du système quand la date de début d'une tâche est passée."
-          testId="settings-row-notifications"
-        >
-          <ToggleSwitch
-            v-model="notificationsEnabled"
-            data-testid="settings-notifications-toggle"
-            ariaLabel="Rappels de date de début"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Purge automatique des archives"
+            description="Les tâches archivées depuis plus longtemps que la durée choisie sont supprimées définitivement, au démarrage puis une fois par jour."
+            testId="settings-row-archive-purge"
+          >
+            <ToggleSwitch
+              v-model="archivePurgeEnabled"
+              data-testid="settings-archive-purge-toggle"
+              ariaLabel="Purge automatique des archives"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Style des rappels"
-          description="Windows uniquement. Persistante, la notification reste à l'écran jusqu'à sa fermeture. Temporaire, elle disparaît seule après quelques secondes."
-          testId="settings-row-notification-style"
-        >
-          <SelectButton
-            v-model="notificationStyle"
-            data-testid="settings-notification-style"
-            :options="NOTIFICATION_STYLE_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-            :disabled="!settings.notificationsEnabled"
-          />
-        </SettingsRow>
-      </SettingsSection>
+          <SettingsRow
+            label="Supprimer les archives de plus de"
+            description="Ancienneté d'archivage au-delà de laquelle une tâche est purgée."
+            testId="settings-row-archive-purge-days"
+          >
+            <SelectButton
+              v-model="archivePurgeDays"
+              data-testid="settings-archive-purge-days"
+              :options="ARCHIVE_PURGE_OPTIONS"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+              :disabled="!settings.archivePurgeEnabled"
+            />
+          </SettingsRow>
 
-      <SettingsSection
-        title="Démarrage et arrière-plan"
-        description="Pour recevoir les rappels, NexTask doit rester ouverte."
-        testId="settings-system"
-      >
-        <SettingsRow
-          label="Garder en arrière-plan"
-          description="Fermer la fenêtre laisse NexTask dans la zone de notification. « Quitter » depuis son icône la ferme vraiment."
-          testId="settings-row-tray"
-        >
-          <ToggleSwitch v-model="closeToTray" data-testid="settings-tray-toggle" ariaLabel="Garder en arrière-plan" />
-        </SettingsRow>
+          <DataTransferSetting />
 
-        <SettingsRow
-          label="Lancer à l'ouverture de session"
-          description="NexTask démarre avec le système."
-          testId="settings-row-startup"
-        >
-          <ToggleSwitch
-            v-model="launchAtStartup"
-            data-testid="settings-startup-toggle"
-            ariaLabel="Lancer à l'ouverture de session"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Sauvegarde automatique"
+            description="Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées."
+            testId="settings-row-auto-backup"
+          >
+            <ToggleSwitch
+              v-model="autoBackupEnabled"
+              data-testid="settings-auto-backup-toggle"
+              ariaLabel="Sauvegarde automatique"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Démarrer réduite"
-          description="Au lancement avec le système, la fenêtre ne s'ouvre pas."
-          testId="settings-row-minimized"
-        >
-          <ToggleSwitch
-            v-model="startMinimized"
-            data-testid="settings-minimized-toggle"
-            ariaLabel="Démarrer réduite"
-            :disabled="!settings.launchAtStartup"
-          />
-        </SettingsRow>
+          <SettingsRow
+            label="Dossier des données"
+            description="Base de données et sauvegardes, à ouvrir dans l'explorateur de fichiers."
+            testId="settings-row-data-folder"
+          >
+            <Button
+              data-testid="btn-open-data-folder"
+              label="Ouvrir"
+              icon="pi pi-folder-open"
+              severity="secondary"
+              @click="openDataFolder"
+            />
+          </SettingsRow>
 
-        <SettingsRow label="Ajout rapide" :description="quickAddDescription" testId="settings-row-quick-add">
-          <ToggleSwitch v-model="quickAddEnabled" data-testid="settings-quick-add-toggle" ariaLabel="Ajout rapide" />
-        </SettingsRow>
+          <SettingsRow
+            label="Dossier des journaux"
+            description="Fichiers de log de NexTask, utiles pour signaler un problème."
+            testId="settings-row-logs-folder"
+          >
+            <Button
+              data-testid="btn-open-logs-folder"
+              label="Ouvrir"
+              icon="pi pi-folder-open"
+              severity="secondary"
+              @click="openLogsFolder"
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          label="Fenêtre au démarrage"
-          description="Maximisée, ou à la taille et à la position qu'elle avait à la fermeture."
-          testId="settings-row-window-mode"
-        >
-          <SelectButton
-            v-model="windowMode"
-            data-testid="settings-window-mode"
-            :options="WINDOW_MODE_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
-        </SettingsRow>
-      </SettingsSection>
+          <ResetSettingsSetting />
+        </SettingsSection>
 
-      <SettingsSection title="Organisation et données" testId="settings-data">
-        <SettingsRow
-          label="Tâches archivées"
-          description="Revoir les tâches archivées, les restaurer sur le tableau ou les supprimer définitivement."
-          testId="settings-row-archives"
-        >
-          <Button
-            data-testid="btn-open-archives"
-            label="Voir les archives"
-            icon="pi pi-inbox"
-            severity="secondary"
-            @click="openArchives"
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          label="Purge automatique des archives"
-          description="Les tâches archivées depuis plus longtemps que la durée choisie sont supprimées définitivement, au démarrage puis une fois par jour."
-          testId="settings-row-archive-purge"
-        >
-          <ToggleSwitch
-            v-model="archivePurgeEnabled"
-            data-testid="settings-archive-purge-toggle"
-            ariaLabel="Purge automatique des archives"
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          label="Supprimer les archives de plus de"
-          description="Ancienneté d'archivage au-delà de laquelle une tâche est purgée."
-          testId="settings-row-archive-purge-days"
-        >
-          <SelectButton
-            v-model="archivePurgeDays"
-            data-testid="settings-archive-purge-days"
-            :options="ARCHIVE_PURGE_OPTIONS"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-            :disabled="!settings.archivePurgeEnabled"
-          />
-        </SettingsRow>
-
-        <DataTransferSetting />
-
-        <SettingsRow
-          label="Sauvegarde automatique"
-          description="Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées."
-          testId="settings-row-auto-backup"
-        >
-          <ToggleSwitch
-            v-model="autoBackupEnabled"
-            data-testid="settings-auto-backup-toggle"
-            ariaLabel="Sauvegarde automatique"
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          label="Dossier des données"
-          description="Base de données et sauvegardes, à ouvrir dans l'explorateur de fichiers."
-          testId="settings-row-data-folder"
-        >
-          <Button
-            data-testid="btn-open-data-folder"
-            label="Ouvrir"
-            icon="pi pi-folder-open"
-            severity="secondary"
-            @click="openDataFolder"
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          label="Dossier des journaux"
-          description="Fichiers de log de NexTask, utiles pour signaler un problème."
-          testId="settings-row-logs-folder"
-        >
-          <Button
-            data-testid="btn-open-logs-folder"
-            label="Ouvrir"
-            icon="pi pi-folder-open"
-            severity="secondary"
-            @click="openLogsFolder"
-          />
-        </SettingsRow>
-
-        <ResetSettingsSetting />
-      </SettingsSection>
-
-      <AboutSection />
+        <AboutSection id="settings-section-about" />
+      </div>
     </div>
   </div>
 </template>
@@ -305,6 +322,7 @@ import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'
+import SettingsNav, { type SettingsNavSection } from '../components/settings/SettingsNav.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
@@ -324,6 +342,21 @@ import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
 const settings = useSettingsStore()
 const showError = useErrorToast()
 const router = useRouter()
+
+// Conteneur qui défile, suivi par le sommaire
+const root = ref<HTMLElement | null>(null)
+
+// Entrées du sommaire, dans l'ordre des sections de la page
+const NAV_SECTIONS: SettingsNavSection[] = [
+  { id: 'settings-section-appearance', label: 'Apparence', icon: 'pi-palette' },
+  { id: 'settings-section-tasks', label: 'Tâches', icon: 'pi-check-square' },
+  { id: 'settings-section-tags', label: 'Tags', icon: 'pi-tags' },
+  { id: 'settings-section-recurrences', label: 'Tâches récurrentes', icon: 'pi-replay' },
+  { id: 'settings-section-notifications', label: 'Notifications', icon: 'pi-bell' },
+  { id: 'settings-section-system', label: 'Démarrage et arrière-plan', icon: 'pi-power-off' },
+  { id: 'settings-section-data', label: 'Organisation et données', icon: 'pi-database' },
+  { id: 'settings-section-about', label: 'À propos', icon: 'pi-info-circle' },
+]
 
 const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Clair', value: 'light' },
