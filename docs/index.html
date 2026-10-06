@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NexTask — Free Offline Kanban Todo List for Desktop</title>
+    <meta
+      name="description"
+      content="NexTask is a free, open-source Kanban todo list and task manager for Windows. Recurring tasks, reminders, quick add from anywhere, and 100% offline: no account, no cloud."
+    />
+    <link rel="canonical" href="https://daarunia.github.io/NexTask/" />
+    <meta name="theme-color" content="#7c3aed" />
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+    <link rel="apple-touch-icon" href="assets/icon-256.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NexTask" />
+    <meta property="og:title" content="NexTask — Free Offline Kanban Todo List for Desktop" />
+    <meta
+      property="og:description"
+      content="A fast, private Kanban board for your tasks. Recurring tasks, reminders and a global quick-add shortcut. No account, no cloud."
+    />
+    <meta property="og:url" content="https://daarunia.github.io/NexTask/" />
+    <meta property="og:image" content="https://daarunia.github.io/NexTask/screenshots/board-light.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "NexTask",
+        "description": "Free, open-source offline Kanban todo list and task manager for the desktop.",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "url": "https://daarunia.github.io/NexTask/",
+        "downloadUrl": "https://github.com/Daarunia/NexTask/releases/latest",
+        "screenshot": "https://daarunia.github.io/NexTask/screenshots/board-light.png",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "Maxime Van Eygen", "url": "https://github.com/Daarunia" }
+      }
+    </script>
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Icônes réutilisées -->
+    <svg width="0" height="0" class="sprite" aria-hidden="true">
+      <defs>
+        <symbol
+          id="i-download"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M12 15V3" />
+        </symbol>
+        <symbol
+          id="i-code"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m16 18 6-6-6-6" />
+          <path d="m8 6-6 6 6 6" />
+        </symbol>
+        <symbol
+          id="i-check"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="hero">
+      <div class="wrap">
+        <nav class="nav" aria-label="Main">
+          <a class="brand" href="./">
+            <img src="assets/icon.svg" alt="" width="32" height="32" />
+            NexTask
+          </a>
+          <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#recurring">Recurring tasks</a>
+            <a class="keep" href="https://github.com/Daarunia/NexTask">GitHub</a>
+          </div>
+        </nav>
+
+        <span class="eyebrow">Free &amp; open source · Apache 2.0</span>
+        <h1>The Kanban todo list that <span>stays on your desktop</span></h1>
+        <p class="lead">
+          NexTask is a fast, offline task manager. Organize your work on a Kanban board, capture ideas from anywhere
+          with a shortcut and let recurring tasks show up on their own. No account, no cloud.
+        </p>
+
+        <div class="cta">
+          <a class="btn btn-primary" data-download href="https://github.com/Daarunia/NexTask/releases/latest">
+            <svg aria-hidden="true"><use href="#i-download" /></svg>
+            Download for Windows
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/Daarunia/NexTask">
+            <svg aria-hidden="true"><use href="#i-code" /></svg>
+            View source
+          </a>
+        </div>
+        <p class="meta"><span data-version>Latest release</span> · Windows installer or portable zip</p>
+
+        <div class="window">
+          <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="screenshots/board-dark.png" />
+            <img
+              src="screenshots/board-light.png"
+              width="1640"
+              height="741"
+              alt="NexTask Kanban board with four columns, tasks with colored tags and recurring tasks"
+            />
+          </picture>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="features">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>Everything a todo list needs, nothing it doesn't</h2>
+            <p>Built for people who want to see their work at a glance and get back to it.</p>
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18M15 3v18" />
+                </svg>
+              </div>
+              <h3>Kanban board</h3>
+              <p>Name your own columns and drag tasks and columns around until the board matches how you work.</p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+              </div>
+              <h3>Quick add from anywhere</h3>
+              <p>
+                Press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>N</kbd> in any app to capture a task, even when NexTask is
+                hidden.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m17 2 4 4-4 4" />
+                  <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                  <path d="m7 22-4-4 4-4" />
+                  <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                </svg>
+              </div>
+              <h3>Recurring tasks</h3>
+              <p>
+                Daily, weekly, monthly or yearly, on given weekdays or the last day of the month. Pause a series any
+                time.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+              </div>
+              <h3>Reminders</h3>
+              <p>Give a task a start date and get a native desktop notification when it's time.</p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.59-8.59a1 1 0 0 0 0-1.41z" />
+                  <circle cx="7" cy="7" r="1.5" />
+                </svg>
+              </div>
+              <h3>Tags and versions</h3>
+              <p>Color-coded tags to filter the board, and versions to group tasks by release or milestone.</p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
+                </svg>
+              </div>
+              <h3>Made to feel yours</h3>
+              <p>Light, dark or system theme, your own accent color and an adjustable interface size.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="recurring" class="alt">
+        <div class="wrap split">
+          <div>
+            <h2>Set it once, see it every week</h2>
+            <p class="lead lead-left">
+              Recurring tasks come back on schedule, or only once you've archived the previous one. You decide.
+            </p>
+            <ul>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span
+                  ><strong>Flexible rules.</strong> Every 2 weeks on Monday and Thursday, the 3rd Friday of the month,
+                  the last day of the month…</span
+                >
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span><strong>Ends when you want.</strong> Never, on a date, or after a number of occurrences.</span>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span><strong>Created ahead of time.</strong> Have the task appear a few days before it's due.</span>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span
+                  ><strong>Nothing piles up.</strong> A new occurrence is skipped while the previous one is still
+                  open.</span
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="shot-tall">
+            <img
+              src="screenshots/task-dialog.png"
+              width="448"
+              height="1080"
+              loading="lazy"
+              alt="NexTask task editor showing a weekly recurrence every Friday"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="privacy">
+        <div class="wrap">
+          <div class="section-head flush">
+            <h2>Your tasks never leave your computer</h2>
+            <p>
+              Everything lives in a local SQLite database. NexTask works without an internet connection and sends no
+              data anywhere.
+            </p>
+          </div>
+          <div class="pills">
+            <span class="pill">No account</span>
+            <span class="pill">No cloud</span>
+            <span class="pill">No tracking</span>
+            <span class="pill">Daily automatic backups</span>
+            <span class="pill">JSON import &amp; export</span>
+            <span class="pill">Archives with auto-purge</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="final">
+        <div class="wrap">
+          <h2>Ready to clear your head?</h2>
+          <p class="lead">Download NexTask for free and set up your board in a minute.</p>
+          <div class="cta">
+            <a class="btn btn-primary" data-download href="https://github.com/Daarunia/NexTask/releases/latest">
+              <svg aria-hidden="true"><use href="#i-download" /></svg>
+              Download for Windows
+            </a>
+          </div>
+          <p class="note">
+            The interface is currently in French, English is on the way. macOS and Linux builds can be produced from the
+            <a href="https://github.com/Daarunia/NexTask#build">source code</a>.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>NexTask · Apache 2.0 · Made by <a href="https://github.com/Daarunia">Daarunia</a></span>
+        <nav aria-label="Footer">
+          <a href="https://github.com/Daarunia/NexTask">Source code</a>
+          <a href="https://github.com/Daarunia/NexTask/releases">Release notes</a>
+          <a href="https://github.com/Daarunia/NexTask/issues">Report an issue</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      // Version et lien direct vers l'installeur de la dernière release (la page de release reste le repli)
+      fetch('https://api.github.com/repos/Daarunia/NexTask/releases/latest')
+        .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+        .then((release) => {
+          document.querySelectorAll('[data-version]').forEach((el) => {
+            el.textContent = `Version ${release.tag_name.replace(/^v/, '')}`
+          })
+          const installer = (release.assets || []).find((asset) => /\.exe$/i.test(asset.name))
+          if (installer) {
+            document.querySelectorAll('[data-download]').forEach((el) => {
+              el.href = installer.browser_download_url
+            })
+          }
+        })
+        .catch(() => {})
+    </script>
+  </body>
+</html>
