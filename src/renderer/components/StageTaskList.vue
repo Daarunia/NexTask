@@ -1,13 +1,15 @@
 <template>
-  <div :class="['task-list flex flex-col justify-between flex-1', { 'is-dragging': isDragging }]">
-    <!-- Liste étirée sur toute la hauteur libre : dépôt possible n'importe où dans la colonne -->
+  <div :class="['task-list flex flex-col justify-between flex-1 min-h-0', { 'is-dragging': isDragging }]">
+    <!-- Liste étirée sur toute la hauteur libre : dépôt possible n'importe où dans la colonne.
+         Elle défile seule quand les cartes débordent, en-tête et bouton d'ajout restent visibles -->
     <draggable
       :list="tasks"
       group="tasks"
       itemKey="id"
       v-bind="DND_OPTIONS"
       :disabled="filterActive"
-      class="flex flex-col flex-1 w-full min-h-16"
+      data-testid="task-list-scroll"
+      class="task-list-scroll flex flex-col flex-1 w-full min-h-16"
       @start="setDragging(true)"
       @end="onDragEnd"
     >
@@ -182,6 +184,11 @@ const cardTags = computed(() => {
 
 .btn-edit-task {
   @apply w-full flex items-center justify-center relative pl-8;
+}
+
+/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement */
+.task-list-scroll {
+  @apply -mx-2 px-2 overflow-y-auto;
 }
 
 .draggable-item {

@@ -4,6 +4,7 @@
   <div
     class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4 select-none"
     ref="scrollContainer"
+    data-testid="board-scroll"
   >
     <draggable
       v-model="stagesLocal"
@@ -704,6 +705,11 @@ onMounted(() => {
 
   const onWheel = (event: WheelEvent) => {
     if (event.deltaY === 0) return
+
+    // Molette sur une colonne dont les cartes débordent : défilement vertical natif de la liste
+    const list = (event.target as HTMLElement).closest('.task-list-scroll')
+    if (list && list.scrollHeight > list.clientHeight) return
+
     el.scrollLeft += event.deltaY
     event.preventDefault()
   }
