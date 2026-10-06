@@ -1,71 +1,73 @@
 <template>
-  <div :class="['task-list flex flex-col justify-between flex-1', { 'is-dragging': isDragging }]">
-    <!-- Liste étirée sur toute la hauteur libre : dépôt possible n'importe où dans la colonne -->
+  <div :class="['task-list flex flex-col justify-between flex-1 min-h-0', { 'is-dragging': isDragging }]">
+    <!-- Liste étirée sur toute la hauteur libre : dépôt possible n'importe où dans la colonne.
+         Elle défile seule quand les cartes débordent, en-tête et bouton d'ajout restent visibles -->
     <draggable
       :list="tasks"
       group="tasks"
       itemKey="id"
       v-bind="DND_OPTIONS"
       :disabled="filterActive"
-      class="flex flex-col flex-1 w-full min-h-16"
+      data-testid="task-list-scroll"
+      class="task-list-scroll flex flex-col flex-1 w-full min-h-16"
       @start="setDragging(true)"
       @end="onDragEnd"
     >
       <template #item="{ element }">
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
-          <div class="flex justify-between items-center gap-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <strong>{{ element.title }}</strong>
+          <strong class="task-title">{{ element.title }}</strong>
 
-              <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
-              <i
-                v-if="cardRecurrences.get(element.id)"
-                data-testid="task-card-recurrence"
-                :data-status="cardRecurrences.get(element.id)!.status"
-                :class="[
-                  'pi pi-sync recurrence-icon',
-                  { inactive: cardRecurrences.get(element.id)!.status !== 'active' },
-                ]"
-                :title="recurrenceTooltip(cardRecurrences.get(element.id)!)"
-                aria-label="Tâche récurrente"
-              ></i>
+          <!-- Pied de carte : tags à gauche, icône de récurrence calée à droite -->
+          <div v-if="cardTags.get(element.id)?.length || cardRecurrences.get(element.id)" class="flex items-end gap-2">
+            <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
+            <div class="flex flex-wrap gap-1 flex-1 min-w-0">
+              <TagChip
+                v-for="tag in cardTags.get(element.id)"
+                :key="tag.id"
+                data-testid="task-card-tag"
+                :tagId="tag.id"
+                :name="tag.name"
+                size="small"
+                removable
+                removeOnHover
+                removeTestId="task-card-tag-remove"
+                @remove="$emit('remove-tag', element, tag.id)"
+              />
             </div>
 
-            <div class="opacity-0 group-hover:opacity-100 h-6 flex gap-2 shrink-0">
-              <Button
-                severity="success"
-                data-testid="btn-edit-task"
-                class="draggable-button"
-                @click="$emit('edit-task', element)"
-              >
-                <i class="pi pi-pencil text-white"></i>
-              </Button>
-
-              <Button
-                severity="danger"
-                data-testid="btn-archive-task"
-                class="draggable-button"
-                @click="onArchiveClick($event, element)"
-              >
-                <i class="pi pi-trash text-white"></i>
-              </Button>
-            </div>
+            <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
+            <i
+              v-if="cardRecurrences.get(element.id)"
+              data-testid="task-card-recurrence"
+              :data-status="cardRecurrences.get(element.id)!.status"
+              :class="[
+                'pi pi-sync recurrence-icon',
+                { inactive: cardRecurrences.get(element.id)!.status !== 'active' },
+              ]"
+              :title="recurrenceTooltip(cardRecurrences.get(element.id)!)"
+              aria-label="Tâche récurrente"
+            ></i>
           </div>
 
-          <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
-          <div v-if="cardTags.get(element.id)?.length" class="flex flex-wrap gap-1">
-            <TagChip
-              v-for="tag in cardTags.get(element.id)"
-              :key="tag.id"
-              data-testid="task-card-tag"
-              :tagId="tag.id"
-              :name="tag.name"
-              size="small"
-              removable
-              removeOnHover
-              removeTestId="task-card-tag-remove"
-              @remove="$emit('remove-tag', element, tag.id)"
-            />
+          <!-- Actions en surimpression : masquées, elles ne prennent pas de place au titre -->
+          <div class="card-actions opacity-0 group-hover:opacity-100">
+            <Button
+              severity="success"
+              data-testid="btn-edit-task"
+              class="draggable-button"
+              @click="$emit('edit-task', element)"
+            >
+              <i class="pi pi-pencil text-white"></i>
+            </Button>
+
+            <Button
+              severity="danger"
+              data-testid="btn-archive-task"
+              class="draggable-button"
+              @click="onArchiveClick($event, element)"
+            >
+              <i class="pi pi-trash text-white"></i>
+            </Button>
           </div>
         </div>
       </template>
@@ -184,9 +186,25 @@ const cardTags = computed(() => {
   @apply w-full flex items-center justify-center relative pl-8;
 }
 
+/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement */
+.task-list-scroll {
+  @apply -mx-2 px-2 overflow-y-auto;
+}
+
 .draggable-item {
-  @apply flex flex-col gap-1 rounded-md p-2 mb-2 shadow-md cursor-grab;
+  @apply relative flex flex-col gap-1 rounded-md p-2 mb-2 shadow-md cursor-grab;
   background-color: var(--p-surface-300);
+}
+
+/* Titre sur toute la largeur, un mot trop long est coupé plutôt que de déborder */
+.task-title {
+  overflow-wrap: anywhere;
+}
+
+/* Fond repris de la carte (survol compris) : le titre passe proprement sous les boutons */
+.card-actions {
+  @apply absolute top-2 right-2 h-6 flex gap-2 pl-2 rounded-md;
+  background-color: inherit;
 }
 
 .app-dark .draggable-item {

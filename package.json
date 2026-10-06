@@ -1,21 +1,28 @@
 {
   "name": "nextask",
-  "version": "1.6.0",
-  "description": "NexTask — a modern cross-platform desktop todo app built with Electron, Vue 3, Prisma and TailwindCSS.",
+  "version": "1.6.1",
+  "description": "NexTask — a fast, offline Kanban todo list and task manager for the desktop, built with Electron, Vue 3, Prisma and SQLite.",
   "main": "main/main.js",
   "type": "module",
   "private": true,
   "license": "Apache-2.0",
   "packageManager": "npm@12.0.2",
   "keywords": [
+    "todo",
+    "todo-app",
+    "todo-list",
+    "kanban",
+    "task-manager",
+    "productivity",
+    "desktop-app",
     "electron",
     "vue",
+    "vue3",
     "vite",
-    "desktop-app",
-    "todo",
-    "nextask",
+    "prisma",
     "sqlite",
-    "prisma"
+    "tailwindcss",
+    "nextask"
   ],
   "scripts": {
     "dev": "node scripts/dev-server.js",
@@ -102,5 +109,6 @@
     "better-sqlite3": true,
     "electron-winstaller": true,
     "prisma": true
-  }
+  },
+  "homepage": "https://github.com/Daarunia/NexTask#readme"
 }

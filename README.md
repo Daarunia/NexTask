@@ -1,88 +1,90 @@
-# NexTask
+# NexTask — Kanban Todo List Desktop App
 
-> Une _Todo List_ de bureau moderne et multiplateforme, construite avec Electron, Vue 3, Prisma et TailwindCSS.
+> A fast, offline Kanban todo list and task manager for the desktop, built with Electron, Vue 3, Prisma and SQLite.
 
-## Description
+[![Latest release](https://img.shields.io/github/v/release/Daarunia/NexTask)](https://github.com/Daarunia/NexTask/releases/latest)
+[![License](https://img.shields.io/github/license/Daarunia/NexTask)](LICENSE)
 
-**NexTask** est ma vision d'une _Todo List_ moderne, réalisée dans le but de développer mes compétences et d'explorer des technologies que je n'avais pas encore eu l'occasion de découvrir. C'est un projet en constante évolution, où chaque fonctionnalité ajoutée est une occasion d'expérimenter avec de nouvelles approches et d'améliorer ma compréhension du développement logiciel.
+**NexTask** is a free, open-source **desktop todo app** that organizes your tasks on a **Kanban board**. Everything is stored locally in a SQLite database: no account, no cloud, no tracking. It is designed to stay out of your way, with a global quick-add shortcut, recurring tasks, reminders and a tray icon.
 
-Ce projet me permet également de me familiariser avec l'usage de **Vue 3**, **Electron**, **Prisma**, **TailwindCSS**, **Vite**, et bien d'autres outils modernes dans le monde du développement. Le but est d'assembler une _Todo List_ fonctionnelle et agréable à utiliser, tout en faisant l'expérience de la gestion d'un projet complet, de la conception à la production.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/board-dark.png">
+    <img alt="NexTask Kanban board with tasks, colored tags and recurring tasks" src="docs/screenshots/board-light.png">
+  </picture>
+</p>
 
-## Fonctionnalités principales
+## Download
 
-- **Ajout, suppression et modification de tâches**.
-- **Drag-and-drop** pour réorganiser les tâches avec `sortablejs`.
-- Interface utilisateur épurée et réactive grâce à **Vue 3** et **TailwindCSS**.
-- **Sauvegarde des données** en utilisant **Prisma** pour la gestion d'une base de données (SQL).
-- **Authentification et gestion des utilisateurs** (en développement).
-- Application de bureau multiplateforme grâce à **Electron**.
+Grab the latest Windows installer (`NexTask.Setup.x.y.z.exe`) or portable zip from the [**Releases page**](https://github.com/Daarunia/NexTask/releases/latest).
 
-## Technologies utilisées
+macOS and Linux builds can be produced from source (see [Build](#build)).
 
-### Frontend
+## Features
 
-- **Vue 3** : Framework JavaScript moderne pour la construction de l'interface utilisateur. Utilisé avec des composants dynamiques et un état réactif grâce à **Pinia**.
-- **TailwindCSS** : Utilisé pour styliser l'application de manière rapide et flexible, sans se soucier des classes CSS complexes.
-- **PrimeVue** : Une collection de composants UI pour Vue, qui offre une interface soignée et cohérente.
-- **Vite** : Outil de build moderne, rapide et optimisé pour Vue, permettant un développement rapide et une meilleure performance.
+<img align="right" width="300" alt="Task editor with a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
 
-### Backend et API
+- **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns.
+- **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden.
+- **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
+- **Reminders** through native desktop notifications based on each task's start date.
+- **Tags** with a color palette to categorize and filter tasks.
+- **Task versions** to group tasks by release or milestone.
+- **Archives** for completed tasks, with optional automatic purge after 30, 90 or 365 days.
+- **Undo** for destructive actions.
+- **Automatic daily backups** of the database (the last 7 are kept).
+- **JSON import / export** of all your data.
+- **Light, dark or system theme**, custom accent color and adjustable interface scale.
+- **System integration**: minimize to tray, launch at startup, remembers window size and position.
+- **100% offline and private**: your data never leaves your computer.
 
-- **Fastify** : Framework Node.js rapide et léger pour la création d'une API backend qui gère les requêtes liées aux tâches.
-- **Prisma** : ORM (Object Relational Mapping) pour interagir avec la base de données (SQL).
-- **Axios** : Pour effectuer des requêtes HTTP, principalement utilisé pour interagir avec l'API backend.
+The interface is currently available in French.
 
-### Electron et Déploiement
+<br clear="right">
 
-- **Electron** : Framework permettant de créer des applications de bureau multiplateformes en utilisant les technologies web.
-- **Electron Builder** : Utilisé pour empaqueter et construire l'application pour différentes plateformes (Windows, Mac, Linux).
+## Tech stack
 
-## Installation
+| Layer    | Technologies                                         |
+| -------- | ---------------------------------------------------- |
+| Desktop  | Electron, electron-builder                           |
+| Frontend | Vue 3, Pinia, PrimeVue, TailwindCSS, Vite            |
+| Backend  | Fastify (embedded local API), Prisma ORM, SQLite     |
+| Testing  | Playwright end-to-end tests driving the Electron app |
 
-### Prérequis
+## Getting started (development)
 
-Avant de commencer, assure-toi d'avoir les outils suivants installés :
+### Prerequisites
 
-- **Node.js** (version 24 ou supérieure)
-- **npm** (version 12 ou supérieure)
+- **Node.js** 24 or later
+- **npm** 12 or later
 
-### Installation
-
-1. Clone le projet :
-   ```bash
-   git clone https://github.com/Daarunia/NexTask
-   cd NexTask
-   ```
-2. Installe les dépendances :
+### Install and run
 
 ```bash
+git clone https://github.com/Daarunia/NexTask
+cd NexTask
 npm install
+npm run dev
 ```
 
-3. Lance le serveur de développement (démarre Vite **et** Electron ensemble, avec hot-reload) :
-
-```bash
- npm run dev
-```
+`npm run dev` starts Vite and Electron together with hot reload.
 
 ### Build
 
-Pour créer une version prête pour la production, utilise l'un des scripts de build suivants :
-
-Pour la version Windows :
-
 ```bash
-npm run build:win
+npm run build:win    # Windows (NSIS installer + zip)
+npm run build:mac    # macOS
+npm run build:linux  # Linux (snap)
 ```
 
-Pour la version Mac :
+Packaged apps are written to the `dist/` folder.
+
+### Tests
 
 ```bash
-npm run build:mac
+npm test
 ```
 
-Pour la version Linux :
+## License
 
-```bash
-npm run build:linux
-```
+Released under the [Apache 2.0 License](LICENSE). Third-party licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
