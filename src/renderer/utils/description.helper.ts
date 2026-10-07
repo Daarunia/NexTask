@@ -25,8 +25,8 @@ export function descriptionExcerpt(description: string, maxLength = DESCRIPTION_
         .replace(/^\s*#{1,6}\s+/, '')
         .replace(/^\s*>\s?/, '')
         .replace(/^\s*(?:[-*+]|\d+\.)\s+/, '• ')
-        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-        .replace(/\*\*|__|~~|[*`]/g, '')
+        .replaceAll(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replaceAll(/\*\*|__|~~|[*`]/g, '')
         .trim(),
     )
     .filter(Boolean)

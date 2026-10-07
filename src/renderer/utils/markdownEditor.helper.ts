@@ -78,8 +78,10 @@ const FRENCH: StaticTextDefaultValue = {
  * Configure md-editor-v3 pour toute l'app, une seule fois avant le premier
  * affichage : libellés français, liens ouverts hors de l'app, et rendu sans
  * les cases à cocher (`- [ ]` reste du texte).
+ * Appelée au chargement de ce module, importé seulement par MarkdownEditor.vue
+ * (chargé à la demande par TaskDialog).
  */
-export function setupMarkdownEditor() {
+function setupMarkdownEditor() {
   config({
     editorConfig: {
       languageUserDefined: { [MARKDOWN_EDITOR_LANGUAGE]: FRENCH },
@@ -99,3 +101,5 @@ export function setupMarkdownEditor() {
     markdownItPlugins: (plugins) => plugins.filter((plugin) => plugin.type !== 'taskList'),
   })
 }
+
+setupMarkdownEditor()

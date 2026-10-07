@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-2 w-full">
     <div class="flex items-center justify-between gap-2">
       <span class="font-medium">{{ label }}</span>
-      <div class="markdown-modes" role="group" :aria-label="`Mode d'affichage du champ ${label}`">
+      <fieldset class="markdown-modes" :aria-label="`Mode d'affichage du champ ${label}`">
         <Button
           type="button"
           v-tooltip.top="infoTooltip('Ou double-clic sur l\'aperçu')"
@@ -24,7 +24,7 @@
           :data-testid="`${testId}-preview-btn`"
           @click="mode = 'preview'"
         />
-      </div>
+      </fieldset>
     </div>
 
     <!-- Masqué plutôt que retiré : l'historique d'annulation survit au passage par l'aperçu -->
@@ -75,19 +75,13 @@
   </div>
 </template>
 
-<script lang="ts">
-import { setupMarkdownEditor } from '../utils/markdownEditor.helper'
-
-// Une seule fois, au chargement du composant (chargé à la demande par TaskDialog)
-setupMarkdownEditor()
-</script>
-
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import Button from 'primevue/button'
 import { MdEditor, MdPreview, type ExposeParam } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useSettingsStore } from '../stores/Settings'
+// Le helper configure aussi md-editor-v3 à son premier import
 import { MARKDOWN_EDITOR_LANGUAGE, MARKDOWN_EDITOR_TOOLBARS } from '../utils/markdownEditor.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
 
@@ -111,7 +105,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
+  'update:modelValue': [value: string]
 }>()
 
 const settings = useSettingsStore()
@@ -142,8 +136,9 @@ function onPreviewDblclick(event: MouseEvent) {
 <style scoped>
 @reference "tailwindcss";
 
+/* Fieldset : regroupe les deux boutons pour les lecteurs d'écran, sans le cadre par défaut */
 .markdown-modes {
-  @apply flex gap-1;
+  @apply flex gap-1 m-0 p-0 border-0 min-w-0;
 }
 
 /* Couleurs de md-editor accordées à celles des champs PrimeVue, en clair comme en sombre */
