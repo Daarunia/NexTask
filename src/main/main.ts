@@ -18,6 +18,7 @@ import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
+import { setupExternalLinks } from './system/externalLinks.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import {
@@ -263,6 +264,9 @@ app.whenReady().then(async () => {
       },
     })
   })
+
+  // Liens cliqués dans les pages : navigateur par défaut, jamais dans l'app
+  setupExternalLinks()
 
   try {
     await startServer()

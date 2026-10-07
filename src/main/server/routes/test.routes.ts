@@ -8,6 +8,7 @@ import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system/about.js'
+import { clearOpenedUrls, getOpenedUrls } from '../../system/externalLinks.js'
 import { settingsStore } from '../../stores/settings.js'
 import { closeQuickAdd, openQuickAdd } from '../../system/quickAdd.js'
 import Logger from 'electron-log'
@@ -27,6 +28,7 @@ import Logger from 'electron-log'
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/opened-urls        → liens cliqués dans une page, envoyés au navigateur par défaut (simulé en test)
  * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -111,6 +113,7 @@ export default async function testRoutes(fastify) {
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
       clearOpenedLinks()
+      clearOpenedUrls()
 
       // Fenêtre d'ajout rapide laissée ouverte par un test précédent
       closeQuickAdd()
@@ -390,6 +393,29 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedLinks(),
+  )
+
+  /**
+   * GET /test/opened-urls
+   *
+   * Liens cliqués dans une page de l'app (description Markdown d'une tâche)
+   * depuis le dernier reset, dans l'ordre. En mode test, ils ne sont que notés,
+   * sans ouvrir le navigateur.
+   *
+   * @returns {Promise<string[]>} Adresses des liens
+   */
+  fastify.get(
+    '/test/opened-urls',
+    {
+      schema: {
+        description: "Liens cliqués dans une page dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    async () => getOpenedUrls(),
   )
 
   /**
