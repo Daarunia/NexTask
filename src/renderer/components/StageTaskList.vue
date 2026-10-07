@@ -17,8 +17,13 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <strong class="task-title">{{ element.title }}</strong>
 
-          <!-- Pied de carte : tags à gauche, icône de récurrence calée à droite -->
-          <div v-if="cardTags.get(element.id)?.length || cardRecurrences.get(element.id)" class="flex items-end gap-2">
+          <!-- Pied de carte : tags à gauche, icônes de description et de récurrence calées à droite -->
+          <div
+            v-if="
+              cardTags.get(element.id)?.length || cardRecurrences.get(element.id) || hasDescription(element.description)
+            "
+            class="flex items-end gap-2"
+          >
             <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
             <div class="flex flex-wrap gap-1 flex-1 min-w-0">
               <TagChip
@@ -34,6 +39,15 @@
                 @remove="$emit('remove-tag', element, tag.id)"
               />
             </div>
+
+            <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown -->
+            <i
+              v-if="hasDescription(element.description)"
+              data-testid="task-card-description"
+              class="pi pi-align-left description-icon"
+              :title="descriptionExcerpt(element.description)"
+              aria-label="Tâche avec une description"
+            ></i>
 
             <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
             <i
@@ -92,6 +106,7 @@ import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
+import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
 import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
@@ -253,6 +268,12 @@ const cardTags = computed(() => {
 .recurrence-icon {
   @apply shrink-0 text-xs;
   color: var(--p-primary-color);
+}
+
+/* Discrète : signale seulement qu'il y a quelque chose à lire */
+.description-icon {
+  @apply shrink-0 text-xs;
+  color: var(--p-text-muted-color);
 }
 
 /* Série arrêtée ou en pause : icône grisée */

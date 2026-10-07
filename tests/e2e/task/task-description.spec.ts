@@ -5,8 +5,8 @@ import { API } from '../../helpers/api.helper'
 /**
  * Tests E2E de la description Markdown de l'écran de tâche (md-editor-v3) :
  * modes écriture et aperçu (double-clic compris), barre d'outils, suite des
- * listes, rendu du Markdown, HTML non interprété, liens ouverts hors de l'app
- * et enregistrement au clavier.
+ * listes, rendu du Markdown, HTML non interprété, liens ouverts hors de l'app,
+ * enregistrement au clavier et indicateur de description sur la carte.
  *
  * En mode test, le main n'ouvre pas le navigateur : il note le lien cliqué,
  * relu via GET /test/opened-urls (vidé par le reset).
@@ -164,6 +164,15 @@ test("n'enregistre pas au clavier une tâche invalide", async ({ taskBoard }) =>
 
   await expect(taskBoard.titleError).toBeVisible()
   await expect(taskBoard.dialog).toBeVisible()
+})
+
+test('signale sur la carte une tâche avec une description', async ({ taskBoard }) => {
+  await taskBoard.createTask(COLUMN, { title: 'Sans description' })
+  await taskBoard.createTask(COLUMN, { title: 'Avec description', description: '## Contexte\n\n- **Point** clé' })
+
+  await expect(taskBoard.cardDescriptionIcon('Sans description')).toHaveCount(0)
+  // Extrait au survol, sans la syntaxe Markdown
+  await expect(taskBoard.cardDescriptionIcon('Avec description')).toHaveAttribute('title', 'Contexte\n• Point clé')
 })
 
 test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ page, taskBoard }) => {

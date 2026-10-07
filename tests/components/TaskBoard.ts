@@ -195,6 +195,14 @@ export class TaskBoard {
   }
 
   /**
+   * Icône d'une carte signalant que la tâche a une description.
+   * @param title Titre exact de la tâche
+   */
+  cardDescriptionIcon(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-description')
+  }
+
+  /**
    * Bouton de la barre d'outils de l'éditeur Markdown, repéré par son infobulle.
    * @param title Infobulle du bouton (ex : "Gras")
    */
