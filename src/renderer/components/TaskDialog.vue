@@ -33,7 +33,9 @@
       <!-- Description -->
       <!-- Description en Markdown : ouverte en aperçu si la tâche en a déjà une -->
       <FormField v-slot="$field" name="description">
-        <MarkdownEditor
+        <component
+          :is="MarkdownEditor"
+          v-if="MarkdownEditor"
           id="description"
           label="Description"
           testId="task-description"
@@ -143,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineAsyncComponent, PropType } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, PropType, type Component } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
@@ -174,9 +176,20 @@ import {
   toRecurrenceValue,
 } from '../utils/recurrence.helper'
 
-// Éditeur Markdown (md-editor-v3 et CodeMirror) chargé à la première ouverture,
-// pour ne pas alourdir le démarrage de l'app
-const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue'))
+// Éditeur Markdown (md-editor-v3 et CodeMirror) dans un chunk à part, pour ne pas
+// alourdir le démarrage : préchargé au montage, et attendu avant d'ouvrir le
+// dialogue. Le formulaire s'affiche d'un bloc, sans que la description apparaisse
+// après coup et décale les champs suivants (et le popover des tags ouvert dessus).
+const MarkdownEditor = shallowRef<Component | null>(null)
+
+/** Charge l'éditeur Markdown une seule fois. */
+async function loadMarkdownEditor() {
+  MarkdownEditor.value ??= (await import('./MarkdownEditor.vue')).default
+}
+
+onMounted(() => {
+  loadMarkdownEditor().catch((error) => logger.error("Chargement de l'éditeur Markdown impossible", error))
+})
 
 // Props
 const props = defineProps({
@@ -265,7 +278,7 @@ const saving = ref(false)
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
-  (val) => {
+  async (val) => {
     if (val) {
       stageId.value = props.stageId
       position.value = props.position
@@ -285,6 +298,15 @@ watch(
           applyToSeries: true,
         }
       }
+
+      // Éditeur prêt avant l'affichage (déjà chargé au montage, sauf ouverture très rapide)
+      try {
+        await loadMarkdownEditor()
+      } catch (error) {
+        logger.error("Chargement de l'éditeur Markdown impossible", error)
+      }
+      // Fermé entre-temps : ne pas le rouvrir
+      if (!props.modelValue) return
     }
 
     visible.value = val

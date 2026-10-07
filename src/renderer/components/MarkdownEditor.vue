@@ -169,10 +169,40 @@ function onPreviewDblclick(event: MouseEvent) {
   --md-theme-link-hover-color: var(--p-primary-hover-color);
 }
 
+/* Hauteur qui suit le texte, entre une zone compacte (proche d'un champ de 4 lignes)
+   et un plafond au-delà duquel la saisie défile : le dialogue tient sur un petit écran.
+   md-editor fixe sinon sa hauteur (500px) et étire la zone de saisie sur toute celle-ci */
 .markdown-editor {
   @apply rounded-md;
-  height: 16rem;
+  height: auto;
   border-color: var(--p-form-field-border-color);
+}
+
+.markdown-editor :deep(.md-editor-content) {
+  flex: none;
+  height: auto;
+}
+
+.markdown-editor :deep(.md-editor-input-wrapper),
+.markdown-editor :deep(.cm-editor) {
+  height: auto;
+}
+
+.markdown-editor :deep(.cm-editor) {
+  min-height: 6.5rem;
+  max-height: 18rem;
+}
+
+/* Agrandi : la zone de saisie occupe toute la hauteur, sans plafond */
+.markdown-editor.md-editor-fullscreen :deep(.md-editor-content) {
+  flex: 1;
+  height: 0;
+}
+
+.markdown-editor.md-editor-fullscreen :deep(.md-editor-input-wrapper),
+.markdown-editor.md-editor-fullscreen :deep(.cm-editor) {
+  height: 100%;
+  max-height: none;
 }
 
 /* Barre d'outils sur plusieurs lignes si la place manque, plutôt que le
