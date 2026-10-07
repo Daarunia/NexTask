@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
 import { DEV_API_PORT, testApiPort } from './shared/api.constants.js'
-import { TEST_INDEX_ARG, testFileSuffix } from './shared/test.constants.js'
+import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from './shared/test.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
@@ -19,6 +19,11 @@ export const IS_TEST = process.argv.includes('--test')
 const testIndexArg = process.argv.find((arg) => arg.startsWith(TEST_INDEX_ARG))
 export const TEST_INDEX = testIndexArg ? Number(testIndexArg.slice(TEST_INDEX_ARG.length)) : 0
 const TEST_SUFFIX = testFileSuffix(TEST_INDEX)
+
+// Nombre d'instances de test lancées en parallèle (`--test-slots=N`, 1 par défaut) :
+// leurs fenêtres se partagent l'écran en cascade, cf. main.ts
+const testSlotsArg = process.argv.find((arg) => arg.startsWith(TEST_SLOTS_ARG))
+export const TEST_SLOTS = testSlotsArg ? Math.max(1, Number(testSlotsArg.slice(TEST_SLOTS_ARG.length))) : 1
 
 // Version de l'app.
 export const APP_VERSION: string = app.isPackaged

@@ -11,6 +11,9 @@
 /** Argument portant l'index du worker Playwright (`--test-index=N`). */
 export const TEST_INDEX_ARG = '--test-index='
 
+/** Argument portant le nombre de workers Playwright, donc d'instances à l'écran (`--test-slots=N`). */
+export const TEST_SLOTS_ARG = '--test-slots='
+
 /** Argument portant le PID du worker Playwright, que l'instance suit (`--test-worker-pid=N`). */
 export const TEST_WORKER_PID_ARG = '--test-worker-pid='
 

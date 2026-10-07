@@ -11,7 +11,7 @@ import { RecurrenceFields } from '../components/RecurrenceFields'
 import { electronArgs } from '../../scripts/server-utils.js'
 import { API, TEST_INDEX } from '../helpers/api.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
-import { TEST_INDEX_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
+import { TEST_INDEX_ARG, TEST_SLOTS_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
 
 type Fixtures = {
   ui: boolean
@@ -40,14 +40,16 @@ export const test = base.extend<Fixtures>({
   ui: [true, { option: true }],
 
   electronApp: [
-    async ({}, use) => {
+    async ({}, use, workerInfo) => {
       const app = await electron.launch({
         // Instance propre au worker : base, paramètres et port à part (cf. test.constants.ts).
         // Renderer construit, servi par le serveur commun à tous les workers (cf. playwright.config.ts).
+        // Le nombre de workers dimensionne sa fenêtre, en cascade avec les autres (cf. main.ts).
         // Le PID du worker permet à l'app de s'arrêter si le worker plante (cf. main.ts).
         args: electronArgs(TEST_RENDERER_PORT, [
           '--test',
           `${TEST_INDEX_ARG}${TEST_INDEX}`,
+          `${TEST_SLOTS_ARG}${workerInfo.config.workers}`,
           `${TEST_WORKER_PID_ARG}${process.pid}`,
         ]),
         // Mode dev explicite (renderer chargé depuis un serveur, base dans le projet) :

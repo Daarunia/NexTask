@@ -20,7 +20,16 @@ import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
-import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, TEST_INDEX, staticAsset } from './constants.js'
+import {
+  APP_ID,
+  APP_VERSION,
+  DEV_RENDERER_URL,
+  IS_DEV,
+  IS_TEST,
+  TEST_INDEX,
+  TEST_SLOTS,
+  staticAsset,
+} from './constants.js'
 import Logger from 'electron-log'
 import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
 
@@ -36,8 +45,6 @@ let mainWindow: BrowserWindow | null = null
 
 // Décalage entre les fenêtres des instances de test lancées en parallèle
 const TEST_WINDOW_OFFSET = 24
-// Instances décalées avant de revenir au coin de l'écran
-const TEST_WINDOW_SLOTS = 8
 
 /**
  * Fenêtre d'une instance de test : presque tout l'écran, décalée en cascade selon
@@ -45,11 +52,15 @@ const TEST_WINDOW_SLOTS = 8
  * entièrement, et Windows bridait les processus des fenêtres cachées en les
  * confinant sur les cœurs basse consommation : les tests en parallèle n'allaient
  * guère plus vite qu'un seul worker. Un bord visible suffit à l'éviter.
+ *
+ * La marge dépend du nombre réel de workers : sur le petit écran de la CI
+ * (1024x768, 2 workers), une marge prévue pour 8 réduisait trop la hauteur des
+ * colonnes, qui défilaient au milieu des glisser-déposer.
  */
 function applyTestBounds(win: BrowserWindow) {
   const area = screen.getPrimaryDisplay().workArea
-  const shift = (TEST_INDEX % TEST_WINDOW_SLOTS) * TEST_WINDOW_OFFSET
-  const margin = (TEST_WINDOW_SLOTS - 1) * TEST_WINDOW_OFFSET
+  const shift = (TEST_INDEX % TEST_SLOTS) * TEST_WINDOW_OFFSET
+  const margin = (TEST_SLOTS - 1) * TEST_WINDOW_OFFSET
   win.setBounds({ x: area.x + shift, y: area.y + shift, width: area.width - margin, height: area.height - margin })
   win.show()
 }
