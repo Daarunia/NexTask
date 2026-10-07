@@ -50,7 +50,8 @@
       @update:modelValue="(value: string) => emit('update:modelValue', value)"
     />
 
-    <template v-if="mode === 'preview'">
+    <!-- Double-clic sur l'aperçu : retour en écriture (un lien reste ouvert en simple clic) -->
+    <div v-if="mode === 'preview'" class="contents" title="Double-clic pour modifier" @dblclick="onPreviewDblclick">
       <MdPreview
         v-if="modelValue.trim()"
         :id="`${id}-preview`"
@@ -69,7 +70,7 @@
         :data-testid="`${testId}-preview`"
       />
       <p v-else class="markdown-preview markdown-empty" :data-testid="`${testId}-preview`">Rien à afficher</p>
-    </template>
+    </div>
   </div>
 </template>
 
@@ -123,6 +124,16 @@ async function showEditor() {
   mode.value = 'edit'
   await nextTick()
   editorRef.value?.focus('end')
+}
+
+/**
+ * Double-clic dans l'aperçu : repasse en écriture, sauf sur un lien (déjà
+ * ouvert dans le navigateur au premier clic).
+ * @param event Double-clic
+ */
+function onPreviewDblclick(event: MouseEvent) {
+  if ((event.target as Element | null)?.closest('a')) return
+  showEditor()
 }
 </script>
 

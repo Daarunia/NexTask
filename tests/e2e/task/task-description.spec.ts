@@ -4,9 +4,9 @@ import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de la description Markdown de l'écran de tâche (md-editor-v3) :
- * modes écriture et aperçu, barre d'outils, suite des listes, rendu du
- * Markdown, HTML non interprété, liens ouverts hors de l'app et
- * enregistrement au clavier.
+ * modes écriture et aperçu (double-clic compris), barre d'outils, suite des
+ * listes, rendu du Markdown, HTML non interprété, liens ouverts hors de l'app
+ * et enregistrement au clavier.
  *
  * En mode test, le main n'ouvre pas le navigateur : il note le lien cliqué,
  * relu via GET /test/opened-urls (vidé par le reset).
@@ -117,6 +117,19 @@ test("se rouvre en aperçu et repasse en écriture sur le texte d'origine", asyn
   await expect(taskBoard.descriptionEditor).toBeVisible()
   await expect(taskBoard.descriptionInput).toBeFocused()
   await expect(taskBoard.descriptionInput).toHaveText(description)
+})
+
+test("repasse en écriture au double-clic sur l'aperçu", async ({ taskBoard }) => {
+  const title = 'Tâche à reprendre'
+
+  await taskBoard.createTask(COLUMN, { title, description: 'Premier jet' })
+  await taskBoard.openEditDialog(title)
+
+  await taskBoard.descriptionPreview.dblclick()
+
+  await expect(taskBoard.descriptionEditor).toBeVisible()
+  await expect(taskBoard.descriptionInput).toBeFocused()
+  await expect(taskBoard.descriptionInput).toHaveText('Premier jet')
 })
 
 test('enregistre la tâche avec Ctrl+S depuis la description', async ({ taskBoard }) => {
