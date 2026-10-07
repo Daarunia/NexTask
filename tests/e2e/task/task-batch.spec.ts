@@ -13,6 +13,9 @@ import { API } from '../../helpers/api.helper'
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`).
  */
 
+// API pure : pas de rechargement de la page après le reset
+test.use({ ui: false })
+
 /** Récupère les ids des colonnes seedées, triées par position. */
 async function stageIds(request: APIRequestContext): Promise<number[]> {
   const res = await request.get(`${API}/stages`)
@@ -98,4 +101,32 @@ test('PATCH /tasks/batch accepte et renvoie un stageId null (tâche archivée)',
   const fetched = await request.get(`${API}/tasks/${task.id}`)
   expect(fetched.ok()).toBeTruthy()
   expect(await fetched.json()).toMatchObject({ id: task.id, stageId: null, isHistorized: true })
+})
+
+test('PATCH /tasks/batch refuse un tableau vide (400)', async ({ page }) => {
+  const res = await page.request.patch(`${API}/tasks/batch`, { data: [] })
+  expect(res.status()).toBe(400)
+})
+
+test('PATCH /tasks/batch : une tâche inconnue annule tout le lot (500)', async ({ page }) => {
+  const request = page.request
+  const [firstStageId] = await stageIds(request)
+
+  const created = await request.post(`${API}/tasks`, {
+    data: { stageId: firstStageId, position: 0, title: 'Batch atomique', version: '1.0.0', description: '' },
+  })
+  expect(created.ok()).toBeTruthy()
+  const task = (await created.json()) as { id: number }
+
+  const res = await request.patch(`${API}/tasks/batch`, {
+    data: [
+      { id: task.id, position: 5 },
+      { id: 999999, position: 0 },
+    ],
+  })
+  expect(res.status()).toBe(500)
+
+  // La tâche connue, mise à jour avant l'échec, garde sa position : rien n'est écrit
+  const fetched = await request.get(`${API}/tasks/${task.id}`)
+  expect(await fetched.json()).toMatchObject({ id: task.id, position: 0 })
 })

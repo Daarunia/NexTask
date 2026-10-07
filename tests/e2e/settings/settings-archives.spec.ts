@@ -77,6 +77,8 @@ async function listTitles(request: APIRequestContext, query = ''): Promise<strin
 }
 
 test.describe("GET /tasks : filtre d'historisation", () => {
+  test.use({ ui: false })
+
   test('isHistorized=true ne renvoie que les tâches archivées, la plus récente en tête', async ({ page }) => {
     await createActive(page.request, 'Active')
     await createArchived(page.request, 'Ancienne', new Date(Date.now() - 3 * DAY))
@@ -102,6 +104,8 @@ test.describe("GET /tasks : filtre d'historisation", () => {
 })
 
 test.describe('POST /tasks/:id/restore', () => {
+  test.use({ ui: false })
+
   test('restaure la tâche en bas de la première colonne, avec ses tags', async ({ page }) => {
     await createActive(page.request, 'A', 0)
     await createActive(page.request, 'B', 1)
@@ -130,6 +134,16 @@ test.describe('POST /tasks/:id/restore', () => {
     const task = await createActive(page.request, 'Active')
     const res = await page.request.post(`${API}/tasks/${task.id}/restore`)
     expect(res.status()).toBe(409)
+  })
+
+  test('409 sans aucune colonne pour la restaurer : la tâche reste archivée', async ({ page }) => {
+    const archived = await createArchived(page.request, 'Sans colonne', new Date())
+    const stages = (await (await page.request.get(`${API}/stages`)).json()) as { id: number }[]
+    for (const { id } of stages) expect((await page.request.delete(`${API}/stages/${id}`)).ok()).toBeTruthy()
+
+    const res = await page.request.post(`${API}/tasks/${archived.id}/restore`)
+    expect(res.status()).toBe(409)
+    expect(await (await page.request.get(`${API}/tasks/${archived.id}`)).json()).toMatchObject({ isHistorized: true })
   })
 
   test('avec stageId et position, reprend cette place et décale les tâches suivantes', async ({ page }) => {

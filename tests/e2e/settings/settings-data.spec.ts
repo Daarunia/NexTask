@@ -85,6 +85,8 @@ function importData(request: APIRequestContext, data: unknown) {
 }
 
 test.describe('GET /data/export', () => {
+  test.use({ ui: false })
+
   test('exporte colonnes, tags et tâches (archives comprises) avec format et version', async ({ page }) => {
     await seedData(page.request)
 
@@ -105,6 +107,8 @@ test.describe('GET /data/export', () => {
 })
 
 test.describe('POST /data/import', () => {
+  test.use({ ui: false })
+
   test("l'aller-retour export → import restitue les mêmes données", async ({ page }) => {
     await seedData(page.request)
     const original = await exportData(page.request)
@@ -139,6 +143,22 @@ test.describe('POST /data/import', () => {
   })
 
   test.describe('fichier invalide : refusé sans rien modifier', () => {
+    /** Série valable, rattachée à la première colonne du fichier. */
+    const series = (data: ExportFile) => ({
+      id: 1,
+      frequency: 'daily',
+      interval: 1,
+      time: '09:00',
+      startsAt: '2030-01-01T08:00:00.000Z',
+      endType: 'never',
+      status: 'active',
+      title: 'Série',
+      description: '',
+      version: '1.0.0',
+      stageId: data.stages[0].id,
+      tagIds: [],
+    })
+
     const cases: { name: string; change: (data: ExportFile) => unknown; message?: RegExp }[] = [
       { name: 'version inconnue', change: (data) => ({ ...data, version: 99 }), message: /Version de format 99/ },
       { name: 'autre format', change: (data) => ({ ...data, format: 'autre' }), message: /pas un export NexTask/ },
@@ -157,6 +177,31 @@ test.describe('POST /data/import', () => {
         name: 'noms de tags en double (casse mise à part)',
         change: (data) => ({ ...data, tags: data.tags.map((t) => ({ ...t, name: 'Doublon' })) }),
         message: /Plusieurs tags/,
+      },
+      {
+        name: 'id de colonne en double',
+        change: (data) => ({ ...data, stages: data.stages.map((s) => ({ ...s, id: data.stages[0].id })) }),
+        message: /Colonne .* plusieurs fois/,
+      },
+      {
+        name: 'id de tag en double',
+        change: (data) => ({ ...data, tags: data.tags.map((t) => ({ ...t, id: data.tags[0].id })) }),
+        message: /Tag .* plusieurs fois/,
+      },
+      {
+        name: 'id de série en double',
+        change: (data) => ({ ...data, recurrences: [series(data), series(data)] }),
+        message: /Série 1 présente plusieurs fois/,
+      },
+      {
+        name: 'série dans une colonne absente',
+        change: (data) => ({ ...data, recurrences: [{ ...series(data), stageId: 999999 }] }),
+        message: /série 1 référence une colonne absente/,
+      },
+      {
+        name: 'série avec un tag absent du fichier',
+        change: (data) => ({ ...data, recurrences: [{ ...series(data), tagIds: [999999] }] }),
+        message: /série 1 référence un tag absent/,
       },
       {
         name: 'id de tâche en double',

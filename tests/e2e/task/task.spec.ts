@@ -112,3 +112,13 @@ test('archive une tâche la retire du tableau', async ({ taskBoard }) => {
   await taskBoard.archiveTask(title)
   await expect(taskBoard.taskCard(title)).toHaveCount(0)
 })
+
+test("l'API répond 404 à la modification et à la suppression d'une tâche inexistante", async ({ page }) => {
+  const patch = await page.request.patch(`${API}/tasks/999999`, { data: { title: 'Fantôme' } })
+  expect(patch.status()).toBe(404)
+  expect(await patch.json()).toEqual({ error: 'Tâche non trouvée' })
+
+  const del = await page.request.delete(`${API}/tasks/999999`)
+  expect(del.status()).toBe(404)
+  expect(await del.json()).toEqual({ error: 'Tâche non trouvée' })
+})

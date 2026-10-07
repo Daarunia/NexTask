@@ -13,3 +13,13 @@ export const DEV_API_PORT = 3000
 
 /** Port fixe en mode test, que les tests E2E appellent, distinct du dev pour lancer les deux à la fois. */
 export const TEST_API_PORT = 3001
+
+/**
+ * Port du serveur de l'instance de test d'index donné, un par worker Playwright
+ * (cf. test.constants.ts).
+ *
+ * @param index Index du worker Playwright
+ */
+export function testApiPort(index: number): number {
+  return TEST_API_PORT + index
+}

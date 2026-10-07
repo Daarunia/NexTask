@@ -8,10 +8,13 @@ import { SettingsPage } from '../components/SettingsPage'
 import { ArchivesPage } from '../components/ArchivesPage'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
-import { startRenderer, electronArgs } from '../../scripts/server-utils.js'
-import { API } from '../helpers/api.helper'
+import { electronArgs } from '../../scripts/server-utils.js'
+import { API, TEST_INDEX } from '../helpers/api.helper'
+import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
+import { TEST_INDEX_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
 
 type Fixtures = {
+  ui: boolean
   cleanState: void
   electronApp: ElectronApplication
   page: Page
@@ -25,32 +28,31 @@ type Fixtures = {
   recurrenceFields: RecurrenceFields
 }
 
-type WorkerFixtures = {
-  vitePort: number
-}
-
 /**
  * Base du lancement d'un test
  */
-export const test = base.extend<Fixtures, WorkerFixtures>({
-  vitePort: [
-    async ({}, use) => {
-      const vite = await startRenderer()
-
-      try {
-        await use(vite.config.server.port)
-      } finally {
-        await vite.close()
-      }
-    },
-    // Démarrage plus long que les tests eux-mêmes, surtout sur un runner CI à froid
-    { scope: 'worker', timeout: 100000 },
-  ],
+export const test = base.extend<Fixtures>({
+  /**
+   * Le test passe par l'interface : `cleanState` recharge alors la page après le reset.
+   * Les tests d'API pure le désactivent avec `test.use({ ui: false })` et
+   * s'épargnent ce rechargement, la plus grande part de leur durée.
+   */
+  ui: [true, { option: true }],
 
   electronApp: [
-    async ({ vitePort }, use) => {
+    async ({}, use) => {
       const app = await electron.launch({
-        args: electronArgs(vitePort, ['--test']),
+        // Instance propre au worker : base, paramètres et port à part (cf. test.constants.ts).
+        // Renderer construit, servi par le serveur commun à tous les workers (cf. playwright.config.ts).
+        // Le PID du worker permet à l'app de s'arrêter si le worker plante (cf. main.ts).
+        args: electronArgs(TEST_RENDERER_PORT, [
+          '--test',
+          `${TEST_INDEX_ARG}${TEST_INDEX}`,
+          `${TEST_WORKER_PID_ARG}${process.pid}`,
+        ]),
+        // Mode dev explicite (renderer chargé depuis un serveur, base dans le projet) :
+        // rien ne le pose dans l'environnement hérité du worker
+        env: { ...process.env, NODE_ENV: 'development' } as Record<string, string>,
       })
 
       try {
@@ -107,7 +109,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   /**
    * Isolation : remet la base et les paramètres de test à zéro avant chaque test
-   * via l'endpoint test-only POST /test/reset, puis recharge la page. Petite boucle de retry
+   * via l'endpoint test-only POST /test/reset, puis recharge la page (sauf `ui: false`). Petite boucle de retry
    * pour couvrir le tout premier test (le serveur Fastify peut finir de démarrer).
    *
    * Fixture automatique plutôt qu'un test.beforeEach dans ce module : ce module
@@ -115,7 +117,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
    * qu'au premier fichier de tests chargé.
    */
   cleanState: [
-    async ({ page }, use) => {
+    async ({ page, ui }, use) => {
       // Garantit que l'app (et donc son serveur) est démarrée
       await page.waitForLoadState('domcontentloaded')
 
@@ -136,6 +138,12 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         await new Promise((r) => setTimeout(r, 250))
       }
       if (!done) throw new Error(`Impossible de réinitialiser la base de test : ${lastError}`)
+
+      // Test d'API pure : la page n'est pas lue, inutile de la recharger
+      if (!ui) {
+        await use()
+        return
+      }
 
       // 2) Retour au tableau (un test précédent a pu finir sur une autre page),
       // rechargement pour purger le cache Pinia, puis attente du tableau chargé

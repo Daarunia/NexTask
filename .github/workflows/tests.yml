@@ -98,8 +98,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Tests unitaires d'abord : rapides, ils échouent avant le lancement de l'app
+      - name: Run unit tests
+        run: npm run test:unit
+
       - name: Run E2E tests
-        run: npm run test
+        run: npm run test:e2e
 
       # Traces, captures et vidéos Playwright en cas d'échec, y compris quand le job est annulé
       - name: Upload test results

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { CACHE_TTL } from '../constants/time.constants'
-import { Task, TaskInput } from '../types/task.types'
+import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
 import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
@@ -32,10 +32,15 @@ export interface RestoreResult {
  * l'affichage de toutes les autres (cf. getRecurrence).
  */
 export const useTaskStore = defineStore('task', {
-  state: (): BaseEntityState<Task> & { recurrences: Record<number, RecurrenceSummary> } => ({
+  state: (): BaseEntityState<Task> & {
+    recurrences: Record<number, RecurrenceSummary>
+    taskToOpen: number | null
+  } => ({
     allEntities: null,
     ttl: CACHE_TTL,
     recurrences: {},
+    // Tâche à ouvrir en édition au tableau (clic sur sa notification), cf. Kanban
+    taskToOpen: null,
   }),
   getters: {
     /**
@@ -56,6 +61,14 @@ export const useTaskStore = defineStore('task', {
     },
   },
   actions: {
+    /**
+     * Demande l'ouverture d'une tâche en édition, faite par le tableau dès qu'il est affiché
+     * @param id Id de la tâche
+     */
+    requestOpenTask(id: number) {
+      this.taskToOpen = id
+    },
+
     setAllTasksCache(data: Task[]) {
       this.allEntities = { data, timestamp: Date.now() }
       this.rememberRecurrences(data)
@@ -296,7 +309,7 @@ export const useTaskStore = defineStore('task', {
      * @returns La tâche mise à jour, telle que renvoyée par le serveur (seule à
      *   contenir les tags résolus), ou une erreur si la mise à jour échoue
      */
-    async updateTask(task: TaskInput & Pick<Task, 'id'>): Promise<Task> {
+    async updateTask(task: TaskUpdateInput): Promise<Task> {
       const { id, ...payload } = task
 
       try {
