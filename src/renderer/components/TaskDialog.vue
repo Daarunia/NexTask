@@ -1,5 +1,6 @@
 <template>
-  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-md w-full">
+  <!-- Largeur prévue pour la barre d'outils de l'éditeur Markdown de la description -->
+  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-2xl w-full">
     <!-- Le contenu du Dialog est démonté à la fermeture, donc le formulaire repart
          de initialValues à chaque ouverture, sans erreur résiduelle -->
     <Form
@@ -26,18 +27,18 @@
       </div>
 
       <!-- Description -->
-      <div class="flex flex-col gap-2 w-full">
-        <label for="description" class="font-medium"> Description </label>
-        <Textarea
+      <!-- Description en Markdown : ouverte en aperçu si la tâche en a déjà une -->
+      <FormField v-slot="$field" name="description">
+        <MarkdownEditor
           id="description"
-          name="description"
-          data-testid="task-description-input"
-          autoResize
-          rows="4"
-          class="resize-y"
-          placeholder="Décris ta tâche ici..."
+          label="Description"
+          testId="task-description"
+          placeholder="Décris ta tâche ici... (Markdown accepté)"
+          :modelValue="$field.value ?? ''"
+          :startInPreview="!!initialValues.description?.trim()"
+          @update:modelValue="(value: string) => $field.props.onChange({ value })"
         />
-      </div>
+      </FormField>
 
       <!-- Tags : valeur du formulaire = TagSelection[] -->
       <div class="flex flex-col gap-2 w-full">
@@ -131,12 +132,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, PropType } from 'vue'
+import { ref, computed, watch, defineAsyncComponent, PropType } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
@@ -161,6 +161,10 @@ import {
   toRecurrenceInput,
   toRecurrenceValue,
 } from '../utils/recurrence.helper'
+
+// Éditeur Markdown (md-editor-v3 et CodeMirror) chargé à la première ouverture,
+// pour ne pas alourdir le démarrage de l'app
+const MarkdownEditor = defineAsyncComponent(() => import('./MarkdownEditor.vue'))
 
 // Props
 const props = defineProps({

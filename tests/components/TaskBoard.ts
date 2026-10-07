@@ -14,7 +14,12 @@ export class TaskBoard {
   readonly dialog: Locator
   readonly titleInput: Locator
   readonly titleError: Locator
+  readonly descriptionEditor: Locator
   readonly descriptionInput: Locator
+  readonly descriptionPlaceholder: Locator
+  readonly descriptionPreview: Locator
+  readonly descriptionEditButton: Locator
+  readonly descriptionPreviewButton: Locator
   readonly versionSelect: Locator
   readonly startDateInput: Locator
   readonly saveButton: Locator
@@ -35,7 +40,15 @@ export class TaskBoard {
     this.dialog = page.getByTestId('task-dialog')
     this.titleInput = page.getByTestId('task-title-input')
     this.titleError = page.getByTestId('task-title-error')
-    this.descriptionInput = page.getByTestId('task-description-input')
+    // Description Markdown (md-editor-v3) : zone de saisie CodeMirror, éditable
+    // mais sans valeur de formulaire (toHaveText plutôt que toHaveValue).
+    // Ouverte en aperçu quand la tâche a déjà une description.
+    this.descriptionEditor = page.getByTestId('task-description-editor')
+    this.descriptionInput = this.descriptionEditor.locator('.cm-content')
+    this.descriptionPlaceholder = this.descriptionEditor.locator('.cm-placeholder')
+    this.descriptionPreview = page.getByTestId('task-description-preview')
+    this.descriptionEditButton = page.getByTestId('task-description-edit-btn')
+    this.descriptionPreviewButton = page.getByTestId('task-description-preview-btn')
     this.versionSelect = page.getByTestId('task-version-select')
     // La DatePicker PrimeVue expose un <input> interne sous le data-testid
     this.startDateInput = page.getByTestId('task-startdate-input').locator('input')
@@ -172,12 +185,30 @@ export class TaskBoard {
   }
 
   /**
+   * Saisit la description, en passant d'abord en écriture (sans effet si le
+   * champ y est déjà, utile s'il s'est ouvert en aperçu).
+   * @param text Texte Markdown
+   */
+  async fillDescription(text: string) {
+    await this.descriptionEditButton.click()
+    await this.descriptionInput.fill(text)
+  }
+
+  /**
+   * Bouton de la barre d'outils de l'éditeur Markdown, repéré par son infobulle.
+   * @param title Infobulle du bouton (ex : "Gras")
+   */
+  descriptionToolbarButton(title: string): Locator {
+    return this.descriptionEditor.getByRole('button', { name: title, exact: true })
+  }
+
+  /**
    * Remplit les champs présents puis enregistre (création ou édition selon le
    * dialog ouvert). Les champs non fournis sont laissés en l'état.
    */
   async fillAndSave(data: { title?: string; description?: string; version?: string }) {
     if (data.title !== undefined) await this.titleInput.fill(data.title)
-    if (data.description !== undefined) await this.descriptionInput.fill(data.description)
+    if (data.description !== undefined) await this.fillDescription(data.description)
     if (data.version !== undefined) await this.selectVersion(data.version)
 
     await this.saveButton.click()
