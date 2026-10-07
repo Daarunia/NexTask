@@ -5,7 +5,8 @@ import { API } from '../../helpers/api.helper'
 /**
  * Tests E2E de la description Markdown de l'écran de tâche (md-editor-v3) :
  * modes écriture et aperçu, barre d'outils, suite des listes, rendu du
- * Markdown, HTML non interprété et liens ouverts hors de l'app.
+ * Markdown, HTML non interprété, liens ouverts hors de l'app et
+ * enregistrement au clavier.
  *
  * En mode test, le main n'ouvre pas le navigateur : il note le lien cliqué,
  * relu via GET /test/opened-urls (vidé par le reset).
@@ -116,6 +117,40 @@ test("se rouvre en aperçu et repasse en écriture sur le texte d'origine", asyn
   await expect(taskBoard.descriptionEditor).toBeVisible()
   await expect(taskBoard.descriptionInput).toBeFocused()
   await expect(taskBoard.descriptionInput).toHaveText(description)
+})
+
+test('enregistre la tâche avec Ctrl+S depuis la description', async ({ taskBoard }) => {
+  const title = 'Enregistrée au clavier'
+
+  await taskBoard.openCreateDialog(COLUMN)
+  await taskBoard.titleInput.fill(title)
+  await taskBoard.descriptionInput.fill('Écrite sans souris')
+  await taskBoard.descriptionInput.press('ControlOrMeta+s')
+
+  await expect(taskBoard.dialog).toBeHidden()
+  await expect(taskBoard.taskCard(title)).toBeVisible()
+  // Une seule tâche créée
+  await expect(taskBoard.taskCard(title)).toHaveCount(1)
+})
+
+test('enregistre la tâche avec Ctrl+Entrée depuis le titre', async ({ taskBoard }) => {
+  const title = 'Enregistrée avec Entrée'
+
+  await taskBoard.openCreateDialog(COLUMN)
+  await taskBoard.titleInput.fill(title)
+  await taskBoard.titleInput.press('ControlOrMeta+Enter')
+
+  await expect(taskBoard.dialog).toBeHidden()
+  await expect(taskBoard.taskCard(title)).toHaveCount(1)
+})
+
+test("n'enregistre pas au clavier une tâche invalide", async ({ taskBoard }) => {
+  await taskBoard.openCreateDialog(COLUMN)
+  await taskBoard.descriptionInput.fill('Sans titre')
+  await taskBoard.descriptionInput.press('ControlOrMeta+s')
+
+  await expect(taskBoard.titleError).toBeVisible()
+  await expect(taskBoard.dialog).toBeVisible()
 })
 
 test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ page, taskBoard }) => {

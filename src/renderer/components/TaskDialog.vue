@@ -3,13 +3,17 @@
   <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-2xl w-full">
     <!-- Le contenu du Dialog est démonté à la fermeture, donc le formulaire repart
          de initialValues à chaque ouverture, sans erreur résiduelle -->
+    <!-- Raccourcis d'enregistrement écoutés en capture : avant l'éditeur Markdown,
+         qui réserve aussi Ctrl+S et Ctrl+Entrée -->
     <Form
+      ref="formRef"
       v-slot="$form"
       :initialValues="initialValues"
       :resolver="resolver"
       data-testid="task-dialog"
       class="pt-4 flex flex-col gap-4"
       @submit="onSubmit"
+      @keydown.capture="onSaveShortcut"
     >
       <!-- Titre -->
       <div class="flex flex-col gap-2 w-full">
@@ -125,7 +129,14 @@
           class="flex-1"
           @click="visible = false"
         />
-        <Button type="submit" label="Save" data-testid="task-save-btn" severity="success" class="flex-1" />
+        <Button
+          type="submit"
+          label="Save"
+          title="Enregistrer (Ctrl+S ou Ctrl+Entrée)"
+          data-testid="task-save-btn"
+          severity="success"
+          class="flex-1"
+        />
       </div>
     </Form>
   </Dialog>
@@ -244,6 +255,12 @@ const seriesLive = computed(() => !!series.value && series.value.status !== 'end
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
 const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 
+// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Save)
+const formRef = ref<{ submit: () => void } | null>(null)
+
+// Sauvegarde en cours
+const saving = ref(false)
+
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
@@ -354,6 +371,21 @@ function toTagNames(selection: TagSelection[]): string[] {
   })
 }
 
+/**
+ * Ctrl+S ou Ctrl+Entrée (Cmd sur macOS), depuis n'importe quel champ :
+ * enregistre la tâche comme le bouton Save, validation comprise.
+ * @param event Touche pressée dans le formulaire
+ */
+function onSaveShortcut(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+  if (event.key !== 'Enter' && event.key.toLowerCase() !== 's') return
+
+  // Ni enregistrement de la page par le navigateur, ni nouvelle ligne dans l'éditeur
+  event.preventDefault()
+  event.stopPropagation()
+  if (!event.repeat) formRef.value?.submit()
+}
+
 // Soumission, sachant que <Form> émet submit même si la validation échoue
 function onSubmit({ valid, values }: FormSubmitEvent) {
   if (!valid) {
@@ -366,6 +398,10 @@ function onSubmit({ valid, values }: FormSubmitEvent) {
 
 // Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
 async function saveTask(values: TaskFormValues) {
+  // Une seule à la fois : un double clic ou un raccourci répété ne crée pas la tâche deux fois
+  if (saving.value) return
+  saving.value = true
+
   logger.debug('Début sauvegarde tâche :', {
     stageId: stageId.value,
     title: values.title,
@@ -443,6 +479,8 @@ async function saveTask(values: TaskFormValues) {
     // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)
     showError('Enregistrement impossible', "La tâche n'a pas été enregistrée.")
+  } finally {
+    saving.value = false
   }
 }
 </script>
