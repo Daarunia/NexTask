@@ -1,11 +1,17 @@
 {
   "appId": "com.daarunia.nextask",
   "productName": "NexTask",
+  "publish": {
+    "provider": "github",
+    "owner": "Daarunia",
+    "repo": "NexTask"
+  },
   "directories": {
     "output": "dist",
     "buildResources": "resources"
   },
   "nsis": {
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
