@@ -5,13 +5,16 @@ import Toast from 'primevue/toast'
 import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
 import UndoToast from './components/UndoToast.vue'
+import UpdateToast from './components/UpdateToast.vue'
 import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useTagStore } from './stores/Tag'
+import { useUpdateStore } from './stores/Update'
 
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
+const updateStore = useUpdateStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -30,6 +33,9 @@ let stopOpenTaskListener: (() => void) | undefined
 // Paramètres chargés et appliqués une seule fois, pour toutes les pages
 onMounted(() => {
   settings.load()
+
+  // État de la mise à jour, pour la section « À propos » et le toast de redémarrage
+  if (!bare.value) updateStore.load()
 
   // Cache mis à jour pour toutes les pages, le tableau insère aussi la carte (cf. Kanban)
   if (!bare.value) stopQuickAddListener = globalThis.quickAdd.onTaskCreated((task) => taskStore.insertCachedTask(task))
@@ -60,6 +66,7 @@ onBeforeUnmount(() => {
   stopQuickAddListener?.()
   stopRecurrenceListener?.()
   stopOpenTaskListener?.()
+  updateStore.stop()
 })
 </script>
 
@@ -79,6 +86,9 @@ onBeforeUnmount(() => {
 
     <!-- Annulation d'une action qui vient d'être faite (cf. useUndoToast) -->
     <UndoToast />
+
+    <!-- Nouvelle version téléchargée, redémarrage proposé (cf. stores/Update) -->
+    <UpdateToast />
 
     <!-- Confirmations ancrées sur leur bouton (cf. useConfirm) -->
     <ConfirmPopup data-testid="confirm-popup" />

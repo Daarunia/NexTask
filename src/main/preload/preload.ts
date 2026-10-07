@@ -36,6 +36,19 @@ contextBridge.exposeInMainWorld('about', {
   openNotices: () => ipcRenderer.invoke('about:open', 'notices'),
 })
 
+// Mise à jour automatique (cf. system/updater) : état courant, suivi de ses
+// changements, recherche et installation
+contextBridge.exposeInMainWorld('updater', {
+  getStatus: () => ipcRenderer.invoke('update:status'),
+  check: () => ipcRenderer.invoke('update:check'),
+  install: () => ipcRenderer.invoke('update:install'),
+  onStatus: (callback: (status: unknown) => void) => {
+    const listener = (_event: unknown, status: unknown) => callback(status)
+    ipcRenderer.on('update:status', listener)
+    return () => ipcRenderer.removeListener('update:status', listener)
+  },
+})
+
 // Tâches récurrentes (cf. scheduler/recurrenceGeneration) : fenêtre principale
 // avertie des occurrences créées par le main
 contextBridge.exposeInMainWorld('recurrence', {
