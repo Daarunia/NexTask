@@ -5,6 +5,7 @@
       <div class="markdown-modes" role="group" :aria-label="`Mode d'affichage du champ ${label}`">
         <Button
           type="button"
+          v-tooltip.top="infoTooltip('Ou double-clic sur l\'aperçu')"
           label="Écrire"
           size="small"
           :text="mode !== 'edit'"
@@ -51,7 +52,7 @@
     />
 
     <!-- Double-clic sur l'aperçu : retour en écriture (un lien reste ouvert en simple clic) -->
-    <div v-if="mode === 'preview'" class="contents" title="Double-clic pour modifier" @dblclick="onPreviewDblclick">
+    <div v-if="mode === 'preview'" class="contents" @dblclick="onPreviewDblclick">
       <MdPreview
         v-if="modelValue.trim()"
         :id="`${id}-preview`"
@@ -88,6 +89,7 @@ import { MdEditor, MdPreview, type ExposeParam } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useSettingsStore } from '../stores/Settings'
 import { MARKDOWN_EDITOR_LANGUAGE, MARKDOWN_EDITOR_TOOLBARS } from '../utils/markdownEditor.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 
 /**
  * Champ Markdown d'un formulaire, avec un mode écriture (md-editor-v3 : barre

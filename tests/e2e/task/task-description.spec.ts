@@ -166,13 +166,17 @@ test("n'enregistre pas au clavier une tâche invalide", async ({ taskBoard }) =>
   await expect(taskBoard.dialog).toBeVisible()
 })
 
-test('signale sur la carte une tâche avec une description', async ({ taskBoard }) => {
+test('signale sur la carte une tâche avec une description', async ({ page, taskBoard }) => {
   await taskBoard.createTask(COLUMN, { title: 'Sans description' })
   await taskBoard.createTask(COLUMN, { title: 'Avec description', description: '## Contexte\n\n- **Point** clé' })
 
   await expect(taskBoard.cardDescriptionIcon('Sans description')).toHaveCount(0)
-  // Extrait au survol, sans la syntaxe Markdown
-  await expect(taskBoard.cardDescriptionIcon('Avec description')).toHaveAttribute('title', 'Contexte\n• Point clé')
+
+  // Extrait sans la syntaxe Markdown, nom accessible de l'icône et infobulle au survol
+  const icon = taskBoard.cardDescriptionIcon('Avec description')
+  await expect(icon).toHaveAttribute('aria-label', 'Contexte\n• Point clé')
+  await icon.hover()
+  await expect(page.locator('.p-tooltip.info-tooltip')).toContainText('Point clé')
 })
 
 test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ page, taskBoard }) => {

@@ -634,7 +634,7 @@ test.describe('Interface', () => {
     })
     const icon = taskBoard.taskCard('Arroser les plantes').getByTestId('task-card-recurrence')
     await expect(icon).toHaveAttribute(
-      'title',
+      'aria-label',
       "3 jours après l'archivage de la précédente, à 09:00\nProchaine : après archivage",
     )
 

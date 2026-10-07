@@ -40,26 +40,27 @@
               />
             </div>
 
-            <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown -->
+            <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown.
+                 Même texte en aria-label, nom accessible de l'icône -->
             <i
               v-if="hasDescription(element.description)"
+              v-tooltip.top="infoTooltip(descriptionExcerpt(element.description), isDragging)"
               data-testid="task-card-description"
               class="pi pi-align-left description-icon"
-              :title="descriptionExcerpt(element.description)"
-              aria-label="Tâche avec une description"
+              :aria-label="descriptionExcerpt(element.description)"
             ></i>
 
-            <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
+            <!-- Tâche récurrente : résumé de la série et prochaine date au survol, aussi en aria-label -->
             <i
               v-if="cardRecurrences.get(element.id)"
+              v-tooltip.top="infoTooltip(recurrenceTooltip(cardRecurrences.get(element.id)!), isDragging)"
               data-testid="task-card-recurrence"
               :data-status="cardRecurrences.get(element.id)!.status"
               :class="[
                 'pi pi-sync recurrence-icon',
                 { inactive: cardRecurrences.get(element.id)!.status !== 'active' },
               ]"
-              :title="recurrenceTooltip(cardRecurrences.get(element.id)!)"
-              aria-label="Tâche récurrente"
+              :aria-label="recurrenceTooltip(cardRecurrences.get(element.id)!)"
             ></i>
           </div>
 
@@ -107,6 +108,7 @@ import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
 import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'

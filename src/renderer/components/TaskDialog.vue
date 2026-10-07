@@ -132,7 +132,7 @@
         <Button
           type="submit"
           label="Save"
-          title="Enregistrer (Ctrl+S ou Ctrl+Entrée)"
+          v-tooltip.top="infoTooltip('Ctrl+S ou Ctrl+Entrée')"
           data-testid="task-save-btn"
           severity="success"
           class="flex-1"
@@ -165,6 +165,7 @@ import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
