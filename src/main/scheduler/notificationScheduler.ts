@@ -18,6 +18,9 @@ import { runRecurrenceGeneration } from './recurrenceGeneration.js'
  * Rappels désactivés dans les paramètres : les tâches échues sont marquées sans
  * notification, pour ne pas toutes ressortir d'un coup à la réactivation.
  *
+ * Un clic sur la notification ramène la fenêtre principale, et ouvre la tâche
+ * si elle est seule annoncée (cf. onNotificationClicked).
+ *
  * Chaque tick commence par générer les occurrences des séries récurrentes
  * (cf. recurrenceGeneration), rappelées dans la foulée. La génération a aussi
  * un passage au démarrage du planificateur.
@@ -31,6 +34,34 @@ const CAP = 10
 
 // Marque affichée dans la notification OS.
 const ICON = staticAsset('icon-256.png')
+
+// Notifications affichées, gardées jusqu'à leur clic ou leur fermeture : sans
+// référence, Electron peut les libérer et leurs événements sont perdus
+const shownNotifications = new Set<Notification>()
+
+// Destinataire des clics sur une notification (ids des tâches annoncées), branché par main.ts
+let clickListener: ((taskIds: number[]) => void) | null = null
+
+/**
+ * Branche le destinataire des clics sur une notification.
+ *
+ * @param listener Reçoit les ids des tâches annoncées par la notification cliquée
+ */
+export function onNotificationClicked(listener: (taskIds: number[]) => void): void {
+  clickListener = listener
+}
+
+/**
+ * Clic sur une notification : transmis au destinataire branché par main.ts.
+ * Exporté pour les tests, qui ne peuvent pas cliquer une notification OS
+ * (cf. /test/click-notification).
+ *
+ * @param taskIds Ids des tâches annoncées par la notification
+ */
+export function handleNotificationClick(taskIds: number[]): void {
+  Logger.info(`[scheduler] Notification cliquée (${taskIds.length} tâche(s))`)
+  clickListener?.(taskIds)
+}
 
 // Échappe les caractères spéciaux XML pour une insertion sûre dans le toast.
 function escapeXml(text: string): string {
@@ -81,7 +112,20 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
   // déclenché manuellement via /test/run-notifications).
-  if (!IS_TEST) notification.show()
+  if (IS_TEST) return
+
+  // Un clic ouvre l'app (et la tâche si elle est seule), cf. main.ts
+  const taskIds = tasks.map((t) => t.id)
+  const release = () => shownNotifications.delete(notification)
+  notification.on('click', () => {
+    release()
+    handleNotificationClick(taskIds)
+  })
+  notification.on('close', release)
+  notification.on('failed', release)
+
+  shownNotifications.add(notification)
+  notification.show()
 }
 
 /** Résultat d'un passage du planificateur. */

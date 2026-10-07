@@ -66,6 +66,8 @@ async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promi
 }
 
 test.describe('POST /tasks/quick-add', () => {
+  test.use({ ui: false })
+
   test('crée la tâche en bas de la première colonne, avec la version par défaut', async ({ page }) => {
     const ids = await stageIds(page.request)
     await createTask(page.request, ids[FIRST_COLUMN], 'Existante', 0)
@@ -108,6 +110,16 @@ test.describe('POST /tasks/quick-add', () => {
     })
   })
 
+  test('409 sans aucune colonne au tableau', async ({ page }) => {
+    for (const stageId of Object.values(await stageIds(page.request))) {
+      expect((await page.request.delete(`${API}/stages/${stageId}`)).ok()).toBeTruthy()
+    }
+
+    const res = await page.request.post(`${API}/tasks/quick-add`, { data: { title: 'Sans colonne' } })
+    expect(res.status()).toBe(409)
+    expect(await (await page.request.get(`${API}/tasks`)).json()).toEqual([])
+  })
+
   test('400 pour un titre vide', async ({ page }) => {
     const res = await page.request.post(`${API}/tasks/quick-add`, { data: { title: '   ' } })
     expect(res.status()).toBe(400)
@@ -124,7 +136,8 @@ test.describe("Fenêtre d'ajout rapide", () => {
 
     const closed = win.waitForEvent('close')
     await win.getByTestId('quick-add-title').fill('Idée soudaine')
-    await win.getByTestId('quick-add-title').press('Enter')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
     await closed
 
     await expect.poll(() => taskBoard.columnTaskTitles(FIRST_COLUMN)).toEqual(['Idée soudaine'])
@@ -149,7 +162,8 @@ test.describe("Fenêtre d'ajout rapide", () => {
 
     const closed = win.waitForEvent('close')
     await win.getByTestId('quick-add-title').fill('Urgent')
-    await win.getByTestId('quick-add-title').press('Enter')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
     await closed
 
     await expect.poll(() => taskBoard.columnTaskTitles(OTHER_COLUMN)).toEqual(['Urgent', 'Déjà là'])

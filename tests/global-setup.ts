@@ -12,6 +12,12 @@ setup('compile Electron main process', async () => {
   setup.setTimeout(COMPILE_TIMEOUT)
   const start = Date.now()
 
+  // Electron ne télécharge son binaire qu'au premier import du paquet (pas à
+  // l'installation) : fait ici une seule fois, avant que les workers ne le
+  // téléchargent chacun en même temps dans le même dossier et lancent un
+  // exécutable incomplet (premier test en échec en CI)
+  await import('electron')
+
   console.log(pc.blue('Compiling Electron main process...\n'))
   await compileMain()
 

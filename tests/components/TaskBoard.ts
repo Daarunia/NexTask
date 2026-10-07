@@ -344,15 +344,19 @@ export class TaskBoard {
    * On saisit la carte près de son bord gauche (au-dessus du titre, loin des
    * boutons d'action), on franchit le seuil `fallbackTolerance`, puis on approche
    * la cible en plusieurs paliers avant de relâcher.
+   *
+   * Le point de dépôt est calculé après la mise en vue de la carte source : ce
+   * défilement peut déplacer la cible (colonne ou tableau qui défile), et une
+   * position mesurée avant fait lâcher la carte à côté (échec observé en CI).
    * @param sourceTitle Titre de la carte à déplacer
-   * @param targetX Abscisse du point de dépôt
-   * @param targetY Ordonnée du point de dépôt
+   * @param dropPoint Calcul du point de dépôt, une fois la source en vue
    */
-  private async performDrag(sourceTitle: string, targetX: number, targetY: number) {
+  private async performDrag(sourceTitle: string, dropPoint: () => Promise<{ x: number; y: number }>) {
     const source = this.taskCard(sourceTitle)
     await source.scrollIntoViewIfNeeded()
     const sb = await source.boundingBox()
     if (!sb) throw new Error(`Carte source introuvable : "${sourceTitle}"`)
+    const { x: targetX, y: targetY } = await dropPoint()
 
     // Point de préhension : à gauche, sur le titre (évite les boutons à droite)
     const grabX = sb.x + 15
@@ -377,12 +381,13 @@ export class TaskBoard {
    * @param where "before" (au-dessus) ou "after" (en dessous) de la cible
    */
   async dragTaskOntoCard(sourceTitle: string, targetTitle: string, where: 'before' | 'after' = 'before') {
-    const tb = await this.taskCard(targetTitle).boundingBox()
-    if (!tb) throw new Error(`Carte cible introuvable : "${targetTitle}"`)
+    await this.performDrag(sourceTitle, async () => {
+      const tb = await this.taskCard(targetTitle).boundingBox()
+      if (!tb) throw new Error(`Carte cible introuvable : "${targetTitle}"`)
 
-    const x = tb.x + tb.width / 2
-    const y = where === 'before' ? tb.y + tb.height * 0.25 : tb.y + tb.height * 0.75
-    await this.performDrag(sourceTitle, x, y)
+      const y = where === 'before' ? tb.y + tb.height * 0.25 : tb.y + tb.height * 0.75
+      return { x: tb.x + tb.width / 2, y }
+    })
   }
 
   /**
@@ -397,10 +402,12 @@ export class TaskBoard {
    * @param columnName Colonne de destination
    */
   async dragTaskToColumnEnd(sourceTitle: string, columnName: string) {
-    const last = this.column(columnName).getByTestId('task-card').last()
-    const lb = await last.boundingBox()
-    if (!lb) throw new Error(`Colonne "${columnName}" sans carte pour servir de cible de dépôt`)
+    await this.performDrag(sourceTitle, async () => {
+      const last = this.column(columnName).getByTestId('task-card').last()
+      const lb = await last.boundingBox()
+      if (!lb) throw new Error(`Colonne "${columnName}" sans carte pour servir de cible de dépôt`)
 
-    await this.performDrag(sourceTitle, lb.x + lb.width / 2, lb.y + lb.height + 4)
+      return { x: lb.x + lb.width / 2, y: lb.y + lb.height + 4 }
+    })
   }
 }

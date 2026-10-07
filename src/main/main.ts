@@ -1,10 +1,14 @@
-import { app, BrowserWindow, dialog, ipcMain, session, type WebPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getApiUrl, isServerStarted, startServer } from './server/index.js'
 import { setupDatabase } from './setupDatabase.js'
 import { applySeeds } from './seedDatabase.js'
-import { startNotificationScheduler, stopNotificationScheduler } from './scheduler/notificationScheduler.js'
+import {
+  onNotificationClicked,
+  startNotificationScheduler,
+  stopNotificationScheduler,
+} from './scheduler/notificationScheduler.js'
 import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
@@ -16,8 +20,18 @@ import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
-import { APP_ID, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from './constants.js'
+import {
+  APP_ID,
+  APP_VERSION,
+  DEV_RENDERER_URL,
+  IS_DEV,
+  IS_TEST,
+  TEST_INDEX,
+  TEST_SLOTS,
+  staticAsset,
+} from './constants.js'
 import Logger from 'electron-log'
+import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -28,6 +42,28 @@ const WINDOW_ICON = staticAsset(process.platform === 'win32' ? 'icon.ico' : 'ico
 
 // Référence à la fenêtre principale
 let mainWindow: BrowserWindow | null = null
+
+// Décalage entre les fenêtres des instances de test lancées en parallèle
+const TEST_WINDOW_OFFSET = 24
+
+/**
+ * Fenêtre d'une instance de test : presque tout l'écran, décalée en cascade selon
+ * l'index du worker. Maximisées, les fenêtres des workers se recouvraient
+ * entièrement, et Windows bridait les processus des fenêtres cachées en les
+ * confinant sur les cœurs basse consommation : les tests en parallèle n'allaient
+ * guère plus vite qu'un seul worker. Un bord visible suffit à l'éviter.
+ *
+ * La marge dépend du nombre réel de workers : sur le petit écran de la CI
+ * (1024x768, 2 workers), une marge prévue pour 8 réduisait trop la hauteur des
+ * colonnes, qui défilaient au milieu des glisser-déposer.
+ */
+function applyTestBounds(win: BrowserWindow) {
+  const area = screen.getPrimaryDisplay().workArea
+  const shift = (TEST_INDEX % TEST_SLOTS) * TEST_WINDOW_OFFSET
+  const margin = (TEST_SLOTS - 1) * TEST_WINDOW_OFFSET
+  win.setBounds({ x: area.x + shift, y: area.y + shift, width: area.width - margin, height: area.height - margin })
+  win.show()
+}
 
 /**
  * Préférences web communes aux fenêtres de l'app (principale, ajout rapide).
@@ -44,8 +80,8 @@ function rendererWebPreferences(): WebPreferences {
 }
 
 /**
- * Charge le renderer dans une fenêtre : serveur Vite en dev (et en test),
- * fichier construit en prod.
+ * Charge le renderer dans une fenêtre : serveur Vite en dev, serveur statique
+ * des tests en test, fichier construit en prod.
  *
  * @param win Fenêtre à charger
  * @param route Route du renderer (historique en hash), la page d'accueil par défaut
@@ -78,9 +114,11 @@ function createWindow() {
   })
 
   // Plein écran fenêtré, sauf dernière taille non maximisée à restaurer (déjà
-  // appliquée à la création)
+  // appliquée à la création), ou cascade des instances en test
   const applyStartupSize = () => {
-    if (!restored || restored.maximized) mainWindow?.maximize()
+    if (!mainWindow) return
+    if (IS_TEST) applyTestBounds(mainWindow)
+    else if (!restored || restored.maximized) mainWindow.maximize()
   }
 
   // Lancée réduite, la fenêtre reste masquée si l'icône de la zone de
@@ -133,6 +171,49 @@ function showMainWindow() {
   if (mainWindow.isMinimized()) mainWindow.restore()
   if (!mainWindow.isVisible()) mainWindow.show()
   mainWindow.focus()
+}
+
+/**
+ * Clic sur une notification de rappel : la fenêtre principale revient au
+ * premier plan et, si la notification n'annonçait qu'une tâche, l'ouvre en
+ * édition. Plusieurs tâches : le tableau seul, qui les montre toutes.
+ *
+ * @param taskIds Ids des tâches annoncées par la notification
+ */
+function openNotifiedTasks(taskIds: number[]) {
+  // En test, la fenêtre reste masquée comme au lancement
+  if (!IS_TEST) showMainWindow()
+  if (taskIds.length !== 1 || !mainWindow) return
+
+  // Fenêtre recréée à l'instant (macOS) : la tâche est envoyée une fois le renderer chargé
+  const contents = mainWindow.webContents
+  const send = () => contents.send('tasks:open', taskIds[0])
+  if (contents.isLoading()) {
+    contents.once('did-finish-load', send)
+  } else {
+    send()
+  }
+}
+
+/**
+ * En test, arrête l'app quand le worker Playwright qui l'a lancée disparaît. Un
+ * worker qui plante laisserait sinon une instance orpheline, qui garderait son
+ * port et sa base et ferait échouer toutes les instances relancées après elle.
+ */
+function quitWithTestWorker() {
+  const arg = process.argv.find((a) => a.startsWith(TEST_WORKER_PID_ARG))
+  if (!arg) return
+  const workerPid = Number(arg.slice(TEST_WORKER_PID_ARG.length))
+
+  setInterval(() => {
+    try {
+      // Signal 0 : vérifie seulement que le processus existe
+      process.kill(workerPid, 0)
+    } catch {
+      Logger.warn(`Worker de test ${workerPid} disparu, arrêt de l'instance`)
+      app.exit(0)
+    }
+  }, 1000).unref()
 }
 
 // Verrou d'instance unique
@@ -217,6 +298,9 @@ app.whenReady().then(async () => {
     }
   })
 
+  // Clic sur une notification de rappel
+  onNotificationClicked(openNotifiedTasks)
+
   createWindow()
 
   // Planificateur de notifications (tâches dont la startDate est dépassée),
@@ -228,6 +312,8 @@ app.whenReady().then(async () => {
   // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
   // jour. Désactivée en mode test, comme les notifications (/test/run-*).
   if (!IS_TEST) startMaintenanceScheduler()
+
+  if (IS_TEST) quitWithTestWorker()
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {

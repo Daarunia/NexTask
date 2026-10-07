@@ -47,6 +47,16 @@ contextBridge.exposeInMainWorld('recurrence', {
   },
 })
 
+// Rappels (cf. scheduler/notificationScheduler) : tâche à ouvrir après un clic
+// sur une notification qui n'annonçait qu'elle
+contextBridge.exposeInMainWorld('notifications', {
+  onOpenTask: (callback: (taskId: number) => void) => {
+    const listener = (_event: unknown, taskId: number) => callback(taskId)
+    ipcRenderer.on('tasks:open', listener)
+    return () => ipcRenderer.removeListener('tasks:open', listener)
+  },
+})
+
 // Ajout rapide (cf. system/quickAdd) : fenêtre ouverte par le raccourci global,
 // et fenêtre principale avertie des tâches qui y sont ajoutées
 contextBridge.exposeInMainWorld('quickAdd', {

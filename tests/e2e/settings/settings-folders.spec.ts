@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
-import { API } from '../../helpers/api.helper'
+import { API, TEST_INDEX } from '../../helpers/api.helper'
+import { testFileSuffix } from '../../../src/main/shared/test.constants'
 
 /**
  * Tests E2E des boutons d'ouverture du dossier des données et du dossier des
@@ -31,7 +32,7 @@ test('ouvre le dossier des données, qui contient la base', async ({ page, heade
 
   await expect.poll(async () => (await openedFolders(page.request)).map((f) => f.kind)).toEqual(['data'])
   const [folder] = await openedFolders(page.request)
-  expect(fs.existsSync(path.join(folder.path, 'test.db'))).toBe(true)
+  expect(fs.existsSync(path.join(folder.path, `test${testFileSuffix(TEST_INDEX)}.db`))).toBe(true)
 })
 
 test('ouvre le dossier des journaux, créé au besoin', async ({ page, header, settingsPage }) => {

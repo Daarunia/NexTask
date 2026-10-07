@@ -19,6 +19,9 @@ import { TAG_COLORS } from '../../../src/main/shared/tag.constants'
  * rejouent le reset en conservant les tags seedés.
  */
 
+// API pure : pas de rechargement de la page après le reset
+test.use({ ui: false })
+
 const NAME_TAKEN = 'Un tag porte déjà ce nom'
 
 // Identifiant qu'aucune tâche ni aucun tag de la base de test ne peut porter
