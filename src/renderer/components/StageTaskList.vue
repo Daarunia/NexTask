@@ -9,7 +9,7 @@
       v-bind="DND_OPTIONS"
       :disabled="filterActive"
       data-testid="task-list-scroll"
-      class="task-list-scroll flex flex-col flex-1 w-full min-h-16"
+      class="task-list-scroll flex flex-col flex-1 min-h-16"
       @start="setDragging(true)"
       @end="onDragEnd"
     >
@@ -186,7 +186,9 @@ const cardTags = computed(() => {
   @apply w-full flex items-center justify-center relative pl-8;
 }
 
-/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement */
+/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement.
+   Largeur laissée à l'étirement du parent (pas de w-full) : avec une largeur fixée,
+   les marges négatives décalaient la liste vers la gauche au lieu de l'élargir des deux côtés */
 .task-list-scroll {
   @apply -mx-2 px-2 overflow-y-auto;
 }
