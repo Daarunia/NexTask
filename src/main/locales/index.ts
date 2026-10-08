@@ -12,4 +12,4 @@ import { zh } from './zh.js'
  */
 export const MAIN_CATALOGS: Record<Locale, MainMessages> = { fr, en, es, pt, zh }
 
-export { fr, type MainMessages }
+export { fr, type MainMessages } from './fr.js'
