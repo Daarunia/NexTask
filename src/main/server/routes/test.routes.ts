@@ -1,7 +1,8 @@
 import fs from 'node:fs'
-import path from 'node:path'
 import { prisma } from '../prismaClient.js'
-import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
+import { BACKUPS_PATH } from '../../constants.js'
+import { readSeedFiles } from '../../seedDatabase.js'
+import { getLocale } from '../../i18n.js'
 import { handleNotificationClick, runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
@@ -84,16 +85,13 @@ export default async function testRoutes(fastify) {
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
 
-      // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
-      const seedFiles = fs.existsSync(SEEDS_PATH)
-        ? fs
-            .readdirSync(SEEDS_PATH)
-            .filter((f) => f.endsWith('.sql'))
-            .sort((a, b) => a.localeCompare(b))
-        : []
+      // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
+      // relus par le renderer au rechargement qui suit le reset. Avant les
+      // seeds, pour qu'elles suivent la langue par défaut et non celle d'un test précédent
+      settingsStore.clear()
 
-      for (const file of seedFiles) {
-        const sql = fs.readFileSync(path.join(SEEDS_PATH, file), 'utf8')
+      // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
+      for (const { sql } of readSeedFiles(getLocale())) {
         // Exécute chaque instruction du fichier SQL individuellement
         const statements = sql
           .split(';')
@@ -107,10 +105,6 @@ export default async function testRoutes(fastify) {
 
       // Les tests partent d'une liste de tags vide, sauf demande explicite
       if (!seedTags) await prisma.tag.deleteMany()
-
-      // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
-      // relus par le renderer au rechargement qui suit le reset
-      settingsStore.clear()
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })

@@ -6,6 +6,7 @@ import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import type { NotificationStyle } from '../shared/settings.constants.js'
 import { runRecurrenceGeneration } from './recurrenceGeneration.js'
+import { t, tn } from '../i18n.js'
 
 /**
  * Planificateur de notifications.
@@ -77,10 +78,10 @@ function escapeXml(text: string): string {
 function notify(tasks: { id: number; title: string }[], style: NotificationStyle): void {
   const lines = tasks.slice(0, CAP).map((t) => `• ${t.title}`)
   if (tasks.length > CAP) {
-    lines.push(`… et ${tasks.length - CAP} autre(s)`)
+    lines.push(tn('notifications.more', tasks.length - CAP))
   }
 
-  const title = `Tâches à démarrer (${tasks.length})`
+  const title = tn('notifications.title', tasks.length)
   const body = lines.join('\n')
 
   const notification = new Notification({ title, body, icon: ICON })
@@ -104,7 +105,7 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
           </binding>
         </visual>
         <actions>
-          <action activationType="system" arguments="dismiss" content="Fermer"/>
+          <action activationType="system" arguments="dismiss" content="${escapeXml(t('notifications.dismiss'))}"/>
         </actions>
       </toast>
     `

@@ -3,7 +3,8 @@ import path from 'node:path'
 import { app, type BrowserWindow, dialog } from 'electron'
 import Logger from 'electron-log'
 import { getApiUrl } from '../server/index.js'
-import type { DataCounts, DataTransferResult } from '../shared/data.constants.js'
+import type { DataCounts, DataTransferResult, ImportProblem } from '../shared/data.constants.js'
+import { t } from '../i18n.js'
 
 /**
  * Export et import des données vers et depuis un fichier, à la demande du
@@ -13,8 +14,12 @@ import type { DataCounts, DataTransferResult } from '../shared/data.constants.js
  * les lire, les valider et les écrire : le fichier est transmis tel quel.
  */
 
-// Filtre des boîtes de dialogue
-const JSON_FILTERS = [{ name: 'Export NexTask', extensions: ['json'] }]
+/**
+ * Filtre des boîtes de dialogue : fichiers JSON, nommés dans la langue active.
+ */
+function jsonFilters() {
+  return [{ name: t('dataTransfer.fileFilter'), extensions: ['json'] }]
+}
 
 /**
  * Nom proposé pour un export : `nextask-AAAA-MM-JJ.json`, à la date du jour.
@@ -33,7 +38,9 @@ function defaultExportName(): string {
  */
 async function errorMessage(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { message?: string; error?: string }
+    const body = (await response.json()) as { message?: string; error?: string; problem?: ImportProblem }
+    // Motif de refus connu : traduit dans la langue de l'interface
+    if (body.problem) return t(`importProblems.${body.problem.code}`, body.problem.params)
     return body.message ?? body.error ?? `HTTP ${response.status}`
   } catch {
     return `HTTP ${response.status}`
@@ -48,9 +55,9 @@ async function errorMessage(response: Response): Promise<string> {
  */
 export async function exportDataToFile(window: BrowserWindow | null): Promise<DataTransferResult> {
   const options = {
-    title: 'Exporter les données',
+    title: t('dataTransfer.exportTitle'),
     defaultPath: path.join(app.getPath('documents'), defaultExportName()),
-    filters: JSON_FILTERS,
+    filters: jsonFilters(),
   }
   const { canceled, filePath } = window
     ? await dialog.showSaveDialog(window, options)
@@ -78,8 +85,8 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
  */
 export async function importDataFromFile(window: BrowserWindow | null): Promise<DataTransferResult> {
   const options = {
-    title: 'Importer des données',
-    filters: JSON_FILTERS,
+    title: t('dataTransfer.importTitle'),
+    filters: jsonFilters(),
     properties: ['openFile' as const],
   }
   const { canceled, filePaths } = window
@@ -88,14 +95,14 @@ export async function importDataFromFile(window: BrowserWindow | null): Promise<
   const [filePath] = filePaths
   if (canceled || !filePath) return { status: 'canceled' }
 
-  // Contrôlé ici pour un message en français, le serveur refusant aussi un JSON invalide
+  // Contrôlé ici pour un message traduit, le serveur refusant aussi un JSON invalide
   let content: string
   try {
     content = await readFile(filePath, 'utf8')
     JSON.parse(content)
   } catch (error) {
     Logger.warn(`Import refusé, fichier illisible ou JSON invalide : ${filePath}`, error)
-    return { status: 'invalid', message: "Le fichier n'est pas un fichier JSON lisible" }
+    return { status: 'invalid', message: t('dataTransfer.unreadableFile') }
   }
 
   const response = await fetch(`${getApiUrl()}/data/import`, {

@@ -21,6 +21,7 @@ import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
+import { getLocale, setupI18n, t } from './i18n.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import {
   APP_ID,
@@ -237,21 +238,22 @@ app.whenReady().then(async () => {
   // Dissociation prod et dev au niveau de l'id de l'app
   app.setAppUserModelId(IS_DEV ? `${APP_ID}.dev` : APP_ID)
 
+  // Langue de l'interface, avant les seeds (colonnes et tags initiaux traduits)
+  // et les fenêtres
+  setupI18n()
+
   try {
     // Migrations
     setupDatabase()
 
     // Seeds
-    applySeeds()
+    applySeeds(getLocale())
   } catch (err) {
     // La migration ou la seed fautive a été annulée : on n'ouvre pas l'app sur
     // une base qui ne correspond pas au code
     Logger.error('Erreur du lancement des migrations ou des seeds :', err)
     if (!IS_TEST) {
-      dialog.showErrorBox(
-        'NexTask ne peut pas démarrer',
-        `La mise à jour de la base de données a échoué et a été annulée.\n\n${err}`,
-      )
+      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.databaseFailed')}\n\n${err}`)
     }
     app.quit()
     return
@@ -276,7 +278,7 @@ app.whenReady().then(async () => {
     // qui occupe le port) : on n'ouvre pas l'app
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
     if (!IS_TEST) {
-      dialog.showErrorBox('NexTask ne peut pas démarrer', `Le serveur local de l'app n'a pas pu démarrer.\n\n${err}`)
+      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.serverFailed')}\n\n${err}`)
     }
     app.quit()
     return

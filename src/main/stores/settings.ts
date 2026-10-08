@@ -1,10 +1,11 @@
 import Store from 'electron-store'
-import { SETTINGS_FILE } from '../constants.js'
+import { IS_TEST, SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
   ARCHIVE_PURGE_DAYS,
   DEFAULT_SETTINGS,
   INTERFACE_SCALES,
+  LANGUAGES,
   NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
   TASK_VERSION_MAX_LENGTH,
@@ -13,10 +14,21 @@ import {
 } from '../shared/settings.constants.js'
 
 /**
+ * Valeurs par défaut côté main. En test, l'interface reste en français quelle
+ * que soit la langue de la machine (CI en anglais) : les tests E2E lisent ses textes.
+ */
+const MAIN_DEFAULTS: AppSettings = { ...DEFAULT_SETTINGS, language: IS_TEST ? 'fr' : DEFAULT_SETTINGS.language }
+
+/**
  * Schéma des paramètres : valeurs par défaut et validation à l'écriture
  * (electron-store refuse une valeur hors schéma)
  */
 const schema = {
+  language: {
+    type: 'string',
+    enum: [...LANGUAGES],
+    default: MAIN_DEFAULTS.language,
+  },
   theme: {
     type: 'string',
     enum: [...THEME_MODES],
@@ -147,7 +159,7 @@ export function isSettingsKey(key: unknown): key is SettingsKeys {
  * @returns Paramètres après la remise à zéro
  */
 export function resetSettings(): AppSettings {
-  const defaults = structuredClone(DEFAULT_SETTINGS)
+  const defaults = structuredClone(MAIN_DEFAULTS)
   settingsStore.set({ ...defaults, windowState: settingsStore.get('windowState') })
   return settingsStore.store
 }

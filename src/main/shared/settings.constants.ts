@@ -12,6 +12,21 @@ export const THEME_MODES = ['light', 'dark', 'system'] as const
 /** Mode d'affichage. */
 export type ThemeMode = (typeof THEME_MODES)[number]
 
+/** Langues de l'interface prises en charge (la première sert de repli). */
+export const SUPPORTED_LOCALES = ['fr', 'en'] as const
+
+/** Langue de l'interface. */
+export type Locale = (typeof SUPPORTED_LOCALES)[number]
+
+/** Locale `Intl` de chaque langue, pour les dates et les nombres. */
+export const INTL_LOCALES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US' }
+
+/** Choix de langue proposés (`system` suit la langue de l'OS). */
+export const LANGUAGES = ['system', ...SUPPORTED_LOCALES] as const
+
+/** Choix de langue. */
+export type Language = (typeof LANGUAGES)[number]
+
 /**
  * Styles de notification (Windows uniquement) : `reminder` reste à l'écran
  * jusqu'à sa fermeture, `default` disparaît seul après quelques secondes.
@@ -59,6 +74,7 @@ export const TASK_VERSION_MAX_LENGTH = 20
 
 /** Paramètres persistés par electron-store. */
 export interface AppSettings {
+  language: Language // langue de l'interface, résolue par le main (cf. i18n.ts)
   theme: ThemeMode
   primaryColor: string // nom du thème de couleur (cf. APP_THEMES côté renderer)
   interfaceScale: InterfaceScale // zoom de toute l'interface, appliqué par le main
@@ -84,6 +100,7 @@ export interface AppSettings {
 
 /** Valeurs par défaut, reprises par le schéma electron-store et le store Pinia. */
 export const DEFAULT_SETTINGS: AppSettings = {
+  language: 'system',
   theme: 'dark',
   primaryColor: 'violet',
   interfaceScale: 100,

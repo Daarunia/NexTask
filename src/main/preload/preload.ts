@@ -17,6 +17,17 @@ contextBridge.exposeInMainWorld('settings', {
   reset: () => ipcRenderer.invoke('settings:reset'),
 })
 
+// Langue de l'interface résolue par le main (cf. i18n.ts) : état lu avant le
+// montage, puis suivi de ses changements
+contextBridge.exposeInMainWorld('i18n', {
+  getState: () => ipcRenderer.invoke('i18n:state'),
+  onChanged: (callback: (state: unknown) => void) => {
+    const listener = (_event: unknown, state: unknown) => callback(state)
+    ipcRenderer.on('i18n:changed', listener)
+    return () => ipcRenderer.removeListener('i18n:changed', listener)
+  },
+})
+
 // Export et import des données via les boîtes de dialogue natives (cf. system/dataTransfer)
 contextBridge.exposeInMainWorld('dataTransfer', {
   exportToFile: () => ipcRenderer.invoke('data:export'),
