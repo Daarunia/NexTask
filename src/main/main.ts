@@ -49,6 +49,10 @@ let mainWindow: BrowserWindow | null = null
 // Décalage entre les fenêtres des instances de test lancées en parallèle
 const TEST_WINDOW_OFFSET = 24
 
+// Fenêtre d'une instance de test sur le runner de la CI : écran 1024x768 moins
+// la barre des tâches (1024x728), moins la cascade de ses 2 workers
+const CI_TEST_WINDOW = { width: 1000, height: 704 }
+
 /**
  * Fenêtre d'une instance de test : presque tout l'écran, décalée en cascade selon
  * l'index du worker. Maximisées, les fenêtres des workers se recouvraient
@@ -59,12 +63,21 @@ const TEST_WINDOW_OFFSET = 24
  * La marge dépend du nombre réel de workers : sur le petit écran de la CI
  * (1024x768, 2 workers), une marge prévue pour 8 réduisait trop la hauteur des
  * colonnes, qui défilaient au milieu des glisser-déposer.
+ *
+ * La fenêtre ne dépasse jamais celle de la CI : sur un grand écran, les tests
+ * voient la même interface qu'en CI (dialogue de tâche qui défile, colonnes
+ * basses), et un échec propre au petit écran se reproduit en local.
  */
 function applyTestBounds(win: BrowserWindow) {
   const area = screen.getPrimaryDisplay().workArea
   const shift = (TEST_INDEX % TEST_SLOTS) * TEST_WINDOW_OFFSET
   const margin = (TEST_SLOTS - 1) * TEST_WINDOW_OFFSET
-  win.setBounds({ x: area.x + shift, y: area.y + shift, width: area.width - margin, height: area.height - margin })
+  win.setBounds({
+    x: area.x + shift,
+    y: area.y + shift,
+    width: Math.min(area.width - margin, CI_TEST_WINDOW.width),
+    height: Math.min(area.height - margin, CI_TEST_WINDOW.height),
+  })
   win.show()
 }
 
