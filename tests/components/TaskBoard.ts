@@ -123,7 +123,7 @@ export class TaskBoard {
    */
   async openCreateDialog(columnName: string) {
     await this.column(columnName).getByTestId('btn-add-task').click()
-    await expect(this.dialog).toBeVisible()
+    await this.waitForDialogOpened()
   }
 
   /**
@@ -134,7 +134,22 @@ export class TaskBoard {
     const card = this.taskCard(title)
     await card.hover()
     await card.getByTestId('btn-edit-task').click()
+    await this.waitForDialogOpened()
+  }
+
+  /**
+   * Attend que l'écran de tâche soit affiché et que son animation d'ouverture
+   * (zoom de 300 ms) soit terminée. Pendant le zoom, Playwright peut faire défiler
+   * le dialogue pour amener en vue un champ qu'il croit masqué, sur le petit écran
+   * de la CI. L'événement de défilement n'arrive qu'à la frame suivante, une fois le
+   * popover des tags ouvert par le clic, et PrimeVue le referme aussitôt.
+   */
+  async waitForDialogOpened() {
     await expect(this.dialog).toBeVisible()
+    await this.dialog.evaluate(async (form) => {
+      const dialog = form.closest('.p-dialog')
+      await Promise.allSettled(dialog?.getAnimations().map((animation) => animation.finished) ?? [])
+    })
   }
 
   /**
