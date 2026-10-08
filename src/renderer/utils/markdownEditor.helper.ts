@@ -1,4 +1,5 @@
 import { config, type StaticTextDefaultValue, type ToolbarNames } from 'md-editor-v3'
+import type { Locale } from '../../main/shared/settings.constants'
 
 /**
  * Configuration de md-editor-v3, l'éditeur Markdown des descriptions de tâche.
@@ -9,16 +10,19 @@ import { config, type StaticTextDefaultValue, type ToolbarNames } from 'md-edito
  * et les boutons qui en dépendent ne sont pas affichés.
  */
 
-/** Langue française des libellés de l'éditeur, déclarée par `setupMarkdownEditor`. */
-const FRENCH_LANGUAGE = 'fr-FR'
+/**
+ * Langue des libellés de l'éditeur pour chaque langue de l'interface. Celles
+ * que md-editor-v3 ne fournit pas (il connaît `en-US` et `zh-CN`) sont
+ * déclarées par `setupMarkdownEditor`.
+ */
+const EDITOR_LANGUAGES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }
 
 /**
- * Langue des libellés de l'éditeur pour une langue de l'interface : français
- * déclaré ici, anglais fourni par md-editor-v3.
- * @param locale Langue de l'interface (`fr`, `en`)
+ * Langue des libellés de l'éditeur pour une langue de l'interface.
+ * @param locale Langue de l'interface (`fr`, `en`…)
  */
 export function markdownEditorLanguage(locale: string): string {
-  return locale === 'en' ? 'en-US' : FRENCH_LANGUAGE
+  return EDITOR_LANGUAGES[locale as Locale] ?? EDITOR_LANGUAGES.en
 }
 
 /**
@@ -47,8 +51,8 @@ export const MARKDOWN_EDITOR_TOOLBARS: ToolbarNames[] = [
 ]
 
 /**
- * Libellés français, limités à ce que l'éditeur affiche. Ils restent ici
- * plutôt que dans les catalogues : c'est la forme attendue par md-editor-v3.
+ * Libellés de chaque langue déclarée, limités à ce que l'éditeur affiche. Ils
+ * restent ici plutôt que dans les catalogues : c'est la forme attendue par md-editor-v3.
  */
 const FRENCH: StaticTextDefaultValue = {
   toolbarTips: {
@@ -86,17 +90,53 @@ const FRENCH: StaticTextDefaultValue = {
   },
 }
 
+const SPANISH: StaticTextDefaultValue = {
+  toolbarTips: {
+    bold: 'Negrita',
+    italic: 'Cursiva',
+    strikeThrough: 'Tachado',
+    title: 'Título',
+    quote: 'Cita',
+    unorderedList: 'Lista con viñetas',
+    orderedList: 'Lista numerada',
+    codeRow: 'Código en línea',
+    code: 'Bloque de código',
+    link: 'Enlace',
+    table: 'Tabla',
+    revoke: 'Deshacer',
+    next: 'Rehacer',
+    pageFullscreen: 'Ampliar',
+  },
+  titleItem: {
+    h1: 'Título 1',
+    h2: 'Título 2',
+    h3: 'Título 3',
+    h4: 'Título 4',
+    h5: 'Título 5',
+    h6: 'Título 6',
+  },
+  copyCode: {
+    text: 'Copiar',
+    successTips: 'Copiado',
+    failTips: 'No se ha podido copiar',
+  },
+  footer: {
+    markdownTotal: 'Caracteres',
+    scrollAuto: 'Desplazamiento sincronizado',
+  },
+}
+
 /**
  * Configure md-editor-v3 pour toute l'app, une seule fois avant le premier
- * affichage : libellés français (l'anglais est fourni), liens ouverts hors de l'app, et rendu sans
- * les cases à cocher (`- [ ]` reste du texte).
+ * affichage : libellés des langues que md-editor-v3 ne fournit pas, liens
+ * ouverts hors de l'app, et rendu sans les cases à cocher (`- [ ]` reste du texte).
  * Appelée au chargement de ce module, importé seulement par MarkdownEditor.vue
  * (chargé à la demande par TaskDialog).
  */
 function setupMarkdownEditor() {
   config({
     editorConfig: {
-      languageUserDefined: { [FRENCH_LANGUAGE]: FRENCH },
+      languageUserDefined: { [EDITOR_LANGUAGES.fr]: FRENCH, [EDITOR_LANGUAGES.es]: SPANISH },
     },
     // Lien en nouvelle fenêtre : le main le confie au navigateur par défaut,
     // sans tenter de naviguer dans la page de l'app

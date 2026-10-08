@@ -144,3 +144,38 @@ describe('Libellés en français', () => {
     )
   })
 })
+
+describe('Libellés en espagnol', () => {
+  beforeEach(() => {
+    i18n.global.locale.value = 'es'
+  })
+
+  afterEach(() => {
+    i18n.global.locale.value = 'fr'
+  })
+
+  test('résumés, rangs et prochaine date', () => {
+    expect(describeRecurrence(summary())).toBe('Todos los meses el tercer jueves a las 09:00')
+    expect(
+      describeRecurrence(
+        summary({ frequency: 'weekly', interval: 2, weekdays: '1,4', endType: 'afterCount', maxCount: 3, leadDays: 2 }),
+      ),
+    ).toBe('Cada 2 semanas el lunes y jueves a las 09:00, 3 veces, creada 2 días antes')
+    expect(describeRecurrence(summary({ anchor: 'completion', frequency: 'daily', interval: 3 }))).toBe(
+      '3 días después de archivar la anterior, a las 09:00',
+    )
+    expect(formatNextRun(local(2026, 10, 22))).toBe('jue, 22 oct 09:00')
+  })
+
+  test('préréglages', () => {
+    expect(recurrencePresetOptions(local(2026, 10, 1)).map((option) => option.label)).toEqual([
+      'No repetir',
+      'Todos los días',
+      'Todos los días laborables (lun–vie)',
+      'Todas las semanas el jueves',
+      'Todos los meses el día 1',
+      'Todos los años el 1 de octubre',
+      'Personalizar…',
+    ])
+  })
+})

@@ -13,6 +13,8 @@ describe('systemLocale', () => {
     [['en-US', 'fr-FR'], 'en'],
     [['en-GB'], 'en'],
     [['de-DE', 'fr-FR'], 'fr'],
+    [['es-ES'], 'es'],
+    [['de-DE', 'es-AR', 'en-US'], 'es'],
     [['FR_be'], 'fr'],
     [['de-DE', 'ja-JP'], 'en'],
     [[], 'en'],
@@ -29,6 +31,7 @@ describe('resolveLocale', () => {
 
   test('le choix « système » suit la langue de l’OS', () => {
     expect(resolveLocale('system', ['fr-FR'])).toBe('fr')
-    expect(resolveLocale('system', ['es-ES'])).toBe('en')
+    expect(resolveLocale('system', ['es-MX'])).toBe('es')
+    expect(resolveLocale('system', ['ja-JP'])).toBe('en')
   })
 })

@@ -21,6 +21,17 @@ import { restoreDialogs, stubOpenDialog } from '../../helpers/dialog.helper'
 const DAY = 24 * 60 * 60 * 1000
 
 /**
+ * Langues proposées après « Langue du système », chacune écrite dans sa propre
+ * langue, avec le titre de la page Paramètres et le bouton d'ajout de liste
+ * attendus une fois choisie.
+ */
+const LANGUAGES = [
+  { name: 'Français', lang: 'fr', settings: 'Paramètres', addStage: 'Ajouter une liste' },
+  { name: 'English', lang: 'en', settings: 'Settings', addStage: 'Add a list' },
+  { name: 'Español', lang: 'es', settings: 'Ajustes', addStage: 'Añadir una lista' },
+]
+
+/**
  * Passe l'interface en anglais depuis les Paramètres, puis attend la bascule.
  * @param page Fenêtre principale
  * @param settingsPage Objet de la page Paramètres
@@ -47,7 +58,7 @@ async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promi
   return win
 }
 
-test('le français est la langue par défaut en test, trois choix sont proposés', async ({
+test('le français est la langue par défaut en test, toutes les langues sont proposées', async ({
   page,
   header,
   settingsPage,
@@ -60,11 +71,25 @@ test('le français est la langue par défaut en test, trois choix sont proposés
 
   await settingsPage.languageSelect.click()
   const options = page.getByRole('option')
-  await expect(options).toHaveCount(3)
-  await expect(options.nth(0)).toHaveText(/^Langue du système \((Français|English)\)$/)
-  await expect(options.nth(1)).toHaveText('Français')
-  await expect(options.nth(2)).toHaveText('English')
+  await expect(options).toHaveCount(LANGUAGES.length + 1)
+  const names = LANGUAGES.map((language) => language.name)
+  await expect(options.nth(0)).toHaveText(new RegExp(String.raw`^Langue du système \((${names.join('|')})\)$`))
+  for (const [index, name] of names.entries()) {
+    await expect(options.nth(index + 1)).toHaveText(name)
+  }
 })
+
+for (const language of LANGUAGES.filter((candidate) => candidate.lang !== 'fr')) {
+  test(`choisir ${language.name} traduit les Paramètres et le tableau`, async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.chooseLanguage(language.name)
+    await expect(page.locator('html')).toHaveAttribute('lang', language.lang)
+    await expect(settingsPage.root.getByRole('heading', { name: language.settings })).toBeVisible()
+
+    await header.goHome()
+    await expect(page.getByTestId('btn-add-stage')).toHaveText(language.addStage)
+  })
+}
 
 test("passer en anglais traduit l'interface sans recharger", async ({ page, header, settingsPage, taskBoard }) => {
   await switchToEnglish(page, settingsPage, header)
