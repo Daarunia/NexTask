@@ -1,6 +1,7 @@
 import type { AppSettings } from '../../main/shared/settings.constants'
 import type { DataTransferResult } from '../../main/shared/data.constants'
 import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
+import type { UpdateStatus } from '../../main/shared/update.constants'
 import type { Task } from './task.types'
 
 declare global {
@@ -33,6 +34,14 @@ declare global {
     getVersion: () => Promise<string>
     openReleaseNotes: () => Promise<void>
     openNotices: () => Promise<void>
+  }
+
+  // Mise à jour automatique depuis les releases GitHub
+  var updater: {
+    getStatus: () => Promise<UpdateStatus>
+    check: () => Promise<void>
+    install: () => Promise<void> // quitte l'app, installe et relance
+    onStatus: (callback: (status: UpdateStatus) => void) => () => void // renvoie le désabonnement
   }
 
   // Tâches récurrentes : fenêtre principale avertie des occurrences créées par le main

@@ -9,7 +9,7 @@
       v-bind="DND_OPTIONS"
       :disabled="filterActive"
       data-testid="task-list-scroll"
-      class="task-list-scroll flex flex-col flex-1 w-full min-h-16"
+      class="task-list-scroll flex flex-col flex-1 min-h-16"
       @start="setDragging(true)"
       @end="onDragEnd"
     >
@@ -17,8 +17,13 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <strong class="task-title">{{ element.title }}</strong>
 
-          <!-- Pied de carte : tags à gauche, icône de récurrence calée à droite -->
-          <div v-if="cardTags.get(element.id)?.length || cardRecurrences.get(element.id)" class="flex items-end gap-2">
+          <!-- Pied de carte : tags à gauche, icônes de description et de récurrence calées à droite -->
+          <div
+            v-if="
+              cardTags.get(element.id)?.length || cardRecurrences.get(element.id) || hasDescription(element.description)
+            "
+            class="flex items-end gap-2"
+          >
             <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
             <div class="flex flex-wrap gap-1 flex-1 min-w-0">
               <TagChip
@@ -35,17 +40,27 @@
               />
             </div>
 
-            <!-- Tâche récurrente : résumé de la série et prochaine date au survol -->
+            <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown.
+                 Même texte en aria-label, nom accessible de l'icône -->
+            <i
+              v-if="hasDescription(element.description)"
+              v-tooltip.top="infoTooltip(descriptionExcerpt(element.description), isDragging)"
+              data-testid="task-card-description"
+              class="pi pi-align-left description-icon"
+              :aria-label="descriptionExcerpt(element.description)"
+            ></i>
+
+            <!-- Tâche récurrente : résumé de la série et prochaine date au survol, aussi en aria-label -->
             <i
               v-if="cardRecurrences.get(element.id)"
+              v-tooltip.top="infoTooltip(recurrenceTooltip(cardRecurrences.get(element.id)!), isDragging)"
               data-testid="task-card-recurrence"
               :data-status="cardRecurrences.get(element.id)!.status"
               :class="[
                 'pi pi-sync recurrence-icon',
                 { inactive: cardRecurrences.get(element.id)!.status !== 'active' },
               ]"
-              :title="recurrenceTooltip(cardRecurrences.get(element.id)!)"
-              aria-label="Tâche récurrente"
+              :aria-label="recurrenceTooltip(cardRecurrences.get(element.id)!)"
             ></i>
           </div>
 
@@ -92,6 +107,8 @@ import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
+import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
@@ -186,7 +203,9 @@ const cardTags = computed(() => {
   @apply w-full flex items-center justify-center relative pl-8;
 }
 
-/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement */
+/* Marge intérieure compensée : l'ombre des cartes n'est pas rognée sur les côtés par le défilement.
+   Largeur laissée à l'étirement du parent (pas de w-full) : avec une largeur fixée,
+   les marges négatives décalaient la liste vers la gauche au lieu de l'élargir des deux côtés */
 .task-list-scroll {
   @apply -mx-2 px-2 overflow-y-auto;
 }
@@ -251,6 +270,12 @@ const cardTags = computed(() => {
 .recurrence-icon {
   @apply shrink-0 text-xs;
   color: var(--p-primary-color);
+}
+
+/* Discrète : signale seulement qu'il y a quelque chose à lire */
+.description-icon {
+  @apply shrink-0 text-xs;
+  color: var(--p-text-muted-color);
 }
 
 /* Série arrêtée ou en pause : icône grisée */

@@ -18,6 +18,8 @@ import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
+import { setupExternalLinks } from './system/externalLinks.js'
+import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import {
@@ -264,6 +266,9 @@ app.whenReady().then(async () => {
     })
   })
 
+  // Liens cliqués dans les pages : navigateur par défaut, jamais dans l'app
+  setupExternalLinks()
+
   try {
     await startServer()
   } catch (err) {
@@ -314,6 +319,9 @@ app.whenReady().then(async () => {
   if (!IS_TEST) startMaintenanceScheduler()
 
   if (IS_TEST) quitWithTestWorker()
+
+  // Mise à jour depuis les releases GitHub, seulement pour l'app packagée
+  setupUpdater()
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -399,3 +407,13 @@ ipcMain.handle('about:open', (_, kind: unknown) => {
 
   return openAboutLink(kind)
 })
+
+// Mise à jour automatique (cf. system/updater) : état lu au chargement du
+// renderer, puis suivi via `update:status`
+ipcMain.handle('update:status', () => getUpdateStatus())
+
+// Recherche d'une nouvelle version, demandée depuis les Paramètres
+ipcMain.handle('update:check', () => checkForUpdates())
+
+// Redémarrage pour installer la version téléchargée
+ipcMain.handle('update:install', () => installUpdate())

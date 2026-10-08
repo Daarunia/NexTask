@@ -38,9 +38,9 @@
                   v-if="recurrenceOf(task)"
                   data-testid="archived-task-recurrence"
                   :data-status="recurrenceOf(task)!.status"
+                  v-tooltip.top="infoTooltip(recurrenceTooltip(recurrenceOf(task)!))"
                   :class="['pi pi-sync recurrence-icon', { inactive: recurrenceOf(task)!.status !== 'active' }]"
-                  :title="recurrenceTooltip(recurrenceOf(task)!)"
-                  aria-label="Tâche récurrente"
+                  :aria-label="recurrenceTooltip(recurrenceOf(task)!)"
                 ></i>
               </div>
               <time data-testid="archived-task-date" :datetime="isoDate(task)" class="archives-muted text-sm">
@@ -123,6 +123,7 @@ import { useTagStore } from '../stores/Tag'
 import type { Tag } from '../types/tag.types'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'

@@ -20,7 +20,8 @@ test("ouvre l'écran de tâche en création avec les valeurs par défaut", async
 
   // Champs vides et version par défaut à 1.5.0
   await expect(taskBoard.titleInput).toHaveValue('')
-  await expect(taskBoard.descriptionInput).toHaveValue('')
+  // Description vide : éditeur ouvert, texte d'aide affiché
+  await expect(taskBoard.descriptionPlaceholder).toBeVisible()
   await expect(taskBoard.versionSelect).toContainText('1.5.0')
   // La date de début est vide par défaut (champ optionnel)
   await expect(taskBoard.startDateInput).toHaveValue('')
@@ -67,7 +68,8 @@ test("pré-remplit l'écran puis reflète l'édition d'une tâche", async ({ tas
 
   // Les champs sont pré-remplis avec la tâche existante
   await expect(taskBoard.titleInput).toHaveValue(title)
-  await expect(taskBoard.descriptionInput).toHaveValue('Avant')
+  // Description déjà remplie : ouverte en aperçu
+  await expect(taskBoard.descriptionPreview).toHaveText('Avant')
 
   await taskBoard.fillAndSave({ title: editedTitle, description: 'Après' })
 
