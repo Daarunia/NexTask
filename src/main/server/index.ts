@@ -1,12 +1,10 @@
-import Fastify from 'fastify'
+import Fastify, { type FastifyInstance } from 'fastify'
 import taskRoutes from './routes/task.routes.js'
 import stageRoutes from './routes/stage.routes.js'
 import tagRoutes from './routes/tag.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
 import testRoutes from './routes/test.routes.js'
-import swagger from '@fastify/swagger'
-import swaggerUI from '@fastify/swagger-ui'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import type { AddressInfo } from 'node:net'
@@ -24,6 +22,51 @@ import { readFileSync } from 'node:fs'
 function readBrandAsset(name: string): Buffer | null {
   const filePath = staticAsset(name)
   return filePath ? readFileSync(filePath) : null
+}
+
+/**
+ * Enregistre Swagger et sa page de documentation sur `/docs`. Plugins chargés
+ * dynamiquement, ce sont des dépendances de dev absentes de l'app packagée.
+ */
+async function registerApiDocs(fastify: FastifyInstance) {
+  const { default: swagger } = await import('@fastify/swagger')
+  const { default: swaggerUI } = await import('@fastify/swagger-ui')
+
+  await fastify.register(swagger, {
+    openapi: {
+      info: {
+        title: 'NexTask API',
+        description: 'API pour gérer les tâches',
+        version: APP_VERSION,
+      },
+    },
+  })
+
+  // Marque appliquée à la documentation (onglet + bandeau).
+  const logo = readBrandAsset('icon.svg')
+  const favicons = [
+    { name: 'favicon-32.png', sizes: '32x32' },
+    { name: 'favicon-16.png', sizes: '16x16' },
+  ]
+    .map(({ name, sizes }) => ({ name, sizes, content: readBrandAsset(name) }))
+    .filter((icon): icon is { name: string; sizes: string; content: Buffer } => icon.content !== null)
+    .map(({ name, sizes, content }) => ({ filename: name, rel: 'icon', type: 'image/png', sizes, content }))
+
+  // ---- point d'accés Swagger ----
+  await fastify.register(swaggerUI, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'full',
+      deepLinking: false,
+    },
+    theme: {
+      title: 'NexTask — API',
+      favicon: favicons,
+    },
+    ...(logo ? { logo: { type: 'image/svg+xml', content: logo, href: '/docs' } } : {}),
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+  })
 }
 
 // URL du serveur une fois à l'écoute (port choisi par le système en prod)
@@ -69,42 +112,12 @@ export async function startServer() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
 
-  // ---- Swagger ----
-  await fastify.register(swagger, {
-    openapi: {
-      info: {
-        title: 'NexTask API',
-        description: 'API pour gérer les tâches',
-        version: APP_VERSION,
-      },
-    },
-  })
-
-  // Marque appliquée à la documentation (onglet + bandeau).
-  const logo = readBrandAsset('icon.svg')
-  const favicons = [
-    { name: 'favicon-32.png', sizes: '32x32' },
-    { name: 'favicon-16.png', sizes: '16x16' },
-  ]
-    .map(({ name, sizes }) => ({ name, sizes, content: readBrandAsset(name) }))
-    .filter((icon): icon is { name: string; sizes: string; content: Buffer } => icon.content !== null)
-    .map(({ name, sizes, content }) => ({ filename: name, rel: 'icon', type: 'image/png', sizes, content }))
-
-  // ---- point d'accés Swagger ----
-  await fastify.register(swaggerUI, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'full',
-      deepLinking: false,
-    },
-    theme: {
-      title: 'NexTask — API',
-      favicon: favicons,
-    },
-    ...(logo ? { logo: { type: 'image/svg+xml', content: logo, href: '/docs' } } : {}),
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
-  })
+  // Documentation de l'API, en dev seulement : en prod le port est choisi par
+  // le système, la page n'est donc pas joignable et ses dépendances ne sont pas
+  // embarquées dans l'app
+  if (IS_DEV) {
+    await registerApiDocs(fastify)
+  }
 
   // Routes
   await fastify.register(taskRoutes)
@@ -123,7 +136,7 @@ export async function startServer() {
     const { port } = fastify.server.address() as AddressInfo
     apiUrl = `http://localhost:${port}`
     Logger.info(`Fastify API -> ${apiUrl}`)
-    Logger.info(`Swagger UI -> ${apiUrl}/docs`)
+    if (IS_DEV) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
   } catch (err) {
     fastify.log.error(err)
     throw err
