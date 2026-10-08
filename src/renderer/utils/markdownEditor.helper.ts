@@ -15,7 +15,7 @@ import type { Locale } from '../../main/shared/settings.constants'
  * que md-editor-v3 ne fournit pas (il connaît `en-US` et `zh-CN`) sont
  * déclarées par `setupMarkdownEditor`.
  */
-const EDITOR_LANGUAGES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-BR' }
+const EDITOR_LANGUAGES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-BR', zh: 'zh-CN' }
 
 /**
  * Langue des libellés de l'éditeur pour une langue de l'interface.

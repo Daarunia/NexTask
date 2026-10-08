@@ -30,6 +30,7 @@ const LANGUAGES = [
   { name: 'English', lang: 'en', settings: 'Settings', addStage: 'Add a list' },
   { name: 'Español', lang: 'es', settings: 'Ajustes', addStage: 'Añadir una lista' },
   { name: 'Português', lang: 'pt', settings: 'Configurações', addStage: 'Adicionar uma lista' },
+  { name: '简体中文', lang: 'zh', settings: '设置', addStage: '添加列表' },
 ]
 
 /**

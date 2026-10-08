@@ -216,3 +216,35 @@ describe('Libellés en portugais', () => {
     ])
   })
 })
+
+describe('Libellés en chinois simplifié', () => {
+  beforeEach(() => {
+    i18n.global.locale.value = 'zh'
+  })
+
+  afterEach(() => {
+    i18n.global.locale.value = 'fr'
+  })
+
+  test('résumés, prochaine date et préréglages', () => {
+    expect(describeRecurrence(summary())).toBe('每月第三个星期四 09:00')
+    expect(
+      describeRecurrence(
+        summary({ frequency: 'weekly', interval: 2, weekdays: '1,4', endType: 'afterCount', maxCount: 3, leadDays: 2 }),
+      ),
+    ).toBe('每 2 周星期一和星期四 09:00，共 3 次，提前 2 天创建')
+    expect(describeRecurrence(summary({ anchor: 'completion', frequency: 'daily', interval: 3 }))).toBe(
+      '上一个归档后 3 天，09:00',
+    )
+    expect(formatNextRun(local(2026, 10, 22))).toBe('10月22日周四 09:00')
+    expect(recurrencePresetOptions(local(2026, 10, 1)).map((option) => option.label)).toEqual([
+      '不重复',
+      '每天',
+      '每个工作日（周一至周五）',
+      '每周星期四',
+      '每月1日',
+      '每年10月1日',
+      '自定义…',
+    ])
+  })
+})
