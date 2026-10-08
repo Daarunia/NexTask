@@ -1,6 +1,6 @@
 {
   "name": "nextask",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "NexTask — a fast, offline Kanban todo list and task manager for the desktop, built with Electron, Vue 3, Prisma and SQLite.",
   "main": "main/main.js",
   "type": "module",
