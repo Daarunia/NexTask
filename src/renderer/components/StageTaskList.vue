@@ -90,7 +90,7 @@
 
     <Button class="btn-edit-task mt-3" data-testid="btn-add-task" text @click="$emit('create-task')">
       <i class="pi pi-plus absolute left-3"></i>
-      <span>Ajouter une tâche</span>
+      <span>{{ t('board.addTask') }}</span>
     </Button>
   </div>
 </template>
@@ -113,6 +113,7 @@ import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { isDragging, setDragging } from '../utils/dnd.helper'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
   defineProps<{
@@ -136,6 +137,7 @@ const tagStore = useTagStore()
 const taskStore = useTaskStore()
 const settings = useSettingsStore()
 const confirm = useConfirm()
+const { t } = useI18n()
 
 /**
  * Série de chaque carte récurrente, dans son dernier état connu (store Task) :
@@ -166,10 +168,15 @@ function onArchiveClick(event: MouseEvent, task: Task) {
 
   confirm.require({
     target: event.currentTarget as HTMLElement,
-    message: 'Archiver cette tâche ?',
+    message: t('board.archiveConfirm'),
     icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
-    acceptProps: { label: 'Archiver', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    rejectProps: {
+      label: t('common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+      'data-testid': 'btn-confirm-reject',
+    },
+    acceptProps: { label: t('common.archive'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: () => emit('archive-task', task),
   })
 }

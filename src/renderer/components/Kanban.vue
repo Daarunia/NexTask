@@ -1,5 +1,5 @@
 <template>
-  <p v-if="showFilterEmpty" data-testid="filter-empty" class="filter-empty">Aucune tâche ne correspond au filtre</p>
+  <p v-if="showFilterEmpty" data-testid="filter-empty" class="filter-empty">{{ t('board.filterNoMatch') }}</p>
 
   <div
     class="flex h-4/5 pt-8 overflow-x-auto ml-4 before:content-[''] before:flex-1 after:content-[''] after:flex-1 pb-4 select-none"
@@ -68,7 +68,7 @@
     <div class="btn-add-container">
       <Button v-if="!isAddingStage" class="btn-add-stage" data-testid="btn-add-stage" text @click="showAddStageInput">
         <i class="pi pi-plus absolute left-3"></i>
-        <span>Ajouter une liste</span>
+        <span>{{ t('board.addStage') }}</span>
       </Button>
 
       <div v-else class="flex gap-2 w-full">
@@ -77,7 +77,7 @@
           v-model="newStageName"
           data-testid="stage-name-input"
           class="flex-1 p-2 rounded border"
-          placeholder="Nom de la liste"
+          :placeholder="t('board.stageNamePlaceholder')"
           @keyup.enter="createStage"
           autofocus
         />
@@ -123,6 +123,7 @@ import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
   defineProps<{
@@ -139,6 +140,7 @@ const taskStore = useTaskStore()
 const stageStore = useStageStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
+const { t } = useI18n()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
 const confirm = useConfirm()
@@ -192,14 +194,15 @@ const showFilterEmpty = computed(
   () => filterActive.value && [...visibleTaskLists.value.values()].every((list) => list.length === 0),
 )
 
-const stageMenuItems = [
+// Calculé pour suivre la langue de l'interface
+const stageMenuItems = computed(() => [
   {
-    label: 'Supprimer',
+    label: t('common.delete'),
     icon: 'pi pi-trash',
     command: () => setTimeout(askDeleteStage),
     class: 'text-primary',
   },
-]
+])
 
 function buildTaskLists() {
   const map = new Map<number, Task[]>()
@@ -274,7 +277,7 @@ async function onTasksDrop() {
   if (await saveTaskOrder()) return
 
   restorePersistedTasks()
-  showError('Déplacement annulé')
+  showError(t('board.moveCanceled'))
 }
 
 /**
@@ -359,7 +362,7 @@ async function onStagesDrop() {
     await stageStore.updateStageBatch(modifiedStages)
   } catch {
     stagesLocal.value = [...stagesLocal.value].sort((a, b) => a.position - b.position)
-    showError('Déplacement annulé')
+    showError(t('board.moveCanceled'))
     return
   }
 
@@ -404,7 +407,7 @@ async function removeTagFromTask(task: Task, tagId: number) {
       (updatedTask.tags ?? []).map((tag) => tag.id),
     )
   } catch {
-    showError('Retrait impossible', "Le tag n'a pas été retiré de la tâche.")
+    showError(t('board.tagRemoveFailed'), t('board.tagRemoveFailedDetail'))
   }
 }
 
@@ -412,7 +415,7 @@ async function archiveTask(task: Task) {
   try {
     await taskStore.archiveTask(task.id)
   } catch {
-    showError('Archivage impossible', "La tâche n'a pas été archivée.")
+    showError(t('board.archiveFailed'), t('board.archiveFailedDetail'))
     return
   }
 
@@ -432,7 +435,7 @@ async function archiveTask(task: Task) {
 
   // Place de la carte (position persistée), reprise si l'archivage est annulé
   const place = location ? { stageId: location.stageId, position: location.list[location.index].position } : undefined
-  showUndo('Tâche archivée', { detail: task.title, undo: () => undoArchive(task.id, place) })
+  showUndo(t('board.taskArchived'), { detail: task.title, undo: () => undoArchive(task.id, place) })
 }
 
 /**
@@ -456,7 +459,7 @@ async function undoArchive(taskId: number, place?: { stageId: number; position: 
     }
     logger.debug('Archivage annulé', restored)
   } catch {
-    showError('Annulation impossible', "La tâche n'a pas été remise au tableau.")
+    showError(t('board.undoFailed'), t('board.undoArchiveFailedDetail'))
   }
 }
 
@@ -512,7 +515,7 @@ async function onTaskSaved(task: Task) {
 
     // Insérée avant d'autres cartes : celles-ci sont renumérotées en base
     if (index < list.length - 1 && !(await saveTaskOrder([task.stageId]))) {
-      showError('Ordre non enregistré', "La tâche a été créée, mais l'ordre de la colonne n'a pas été enregistré.")
+      showError(t('board.orderNotSaved'), t('board.orderNotSavedDetail'))
     }
     return
   }
@@ -570,7 +573,7 @@ async function createStage() {
     newStage = await stageStore.saveStage(name, stagesLocal.value.length)
   } catch {
     // La saisie est conservée pour pouvoir réessayer
-    showError('Création impossible', "La liste n'a pas été créée.")
+    showError(t('board.stageCreateFailed'), t('board.stageCreateFailedDetail'))
     return
   }
 
@@ -609,13 +612,17 @@ function askDeleteStage() {
     return
   }
 
-  const consequence = count === 1 ? 'Sa tâche sera archivée' : `Ses ${count} tâches seront archivées`
   confirm.require({
     target: stageMenuTrigger.value ?? undefined,
-    message: `Supprimer la liste « ${stage.name} » ? ${consequence}.`,
+    message: t('board.stageDeleteConfirm', { name: stage.name, count }, count),
     icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
-    acceptProps: { label: 'Supprimer', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    rejectProps: {
+      label: t('common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+      'data-testid': 'btn-confirm-reject',
+    },
+    acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: () => deleteStage(stage),
   })
 }
@@ -642,7 +649,7 @@ async function deleteStage(stage: Stage) {
       stageId,
       error,
     })
-    showError('Suppression impossible', "La liste n'a pas été supprimée.")
+    showError(t('board.stageDeleteFailed'), t('board.stageDeleteFailedDetail'))
   }
 }
 
@@ -672,7 +679,7 @@ async function saveStageName(stage: Stage) {
     await stageStore.updateStage(stage.id, stage.name)
   } catch {
     stage.name = previousName
-    showError('Renommage annulé')
+    showError(t('board.renameCanceled'))
   }
 }
 

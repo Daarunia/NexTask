@@ -18,7 +18,7 @@
         :name="selection.name"
       />
     </template>
-    <span v-else class="tag-field-placeholder">Aucun tag</span>
+    <span v-else class="tag-field-placeholder">{{ t('tags.none') }}</span>
   </button>
 
   <!-- Un seul popover : pas d'overlay imbriqué, fermeture au clic extérieur gérée par PrimeVue -->
@@ -44,13 +44,13 @@
             data-testid="tag-select-search"
             class="tag-search-input"
             :maxlength="TAG_NAME_MAX_LENGTH"
-            placeholder="Rechercher un tag..."
+            :placeholder="t('tags.searchPlaceholder')"
             autofocus
             @keydown="onSearchKeydown"
           />
         </div>
 
-        <p class="tag-panel-hint">Sélectionne un tag ou crée-en un</p>
+        <p class="tag-panel-hint">{{ t('tags.selectHint') }}</p>
 
         <!-- Liste des tags, filtrée sur la saisie sans tenir compte de la casse -->
         <div class="tag-list">
@@ -64,7 +64,7 @@
             @mouseenter="highlightedIndex = index"
           >
             <TagChip :tagId="tag.id" />
-            <i v-if="isSelected(tag.id)" class="pi pi-check tag-option-check" aria-label="Sélectionné"></i>
+            <i v-if="isSelected(tag.id)" class="pi pi-check tag-option-check" :aria-label="t('tags.selected')"></i>
 
             <!-- Menu d'édition : mousedown et click arrêtés pour ne pas sélectionner l'option
                ni laisser le popover croire à un clic intérieur en attente -->
@@ -72,7 +72,7 @@
               type="button"
               data-testid="tag-option-menu"
               class="tag-option-menu"
-              :aria-label="`Modifier le tag ${tag.name}`"
+              :aria-label="t('tags.editTag', { name: tag.name })"
               @mousedown.stop
               @click.stop="openEditView(tag)"
             >
@@ -90,12 +90,12 @@
             @click="createTag"
             @mouseenter="highlightedIndex = createIndex"
           >
-            <span class="tag-create-label">Créer</span>
+            <span class="tag-create-label">{{ t('tags.create') }}</span>
             <TagChip :name="trimmedSearch" />
             <i
               v-if="isCreatingSearch"
               class="pi pi-spinner pi-spin tag-option-check"
-              aria-label="Création en cours"
+              :aria-label="t('tags.creating')"
             ></i>
           </div>
         </div>
@@ -111,10 +111,10 @@
             size="small"
             text
             rounded
-            aria-label="Retour à la liste des tags"
+            :aria-label="t('tags.backToList')"
             @click="backToList"
           />
-          <span class="font-medium text-sm">Modifier le tag</span>
+          <span class="font-medium text-sm">{{ t('tags.editTitle') }}</span>
         </div>
 
         <div class="flex flex-col gap-1">
@@ -127,7 +127,7 @@
             data-testid="tag-edit-name"
             class="p-inputtext p-component p-inputtext-sm"
             :class="{ 'p-invalid': !!editError }"
-            aria-label="Nom du tag"
+            :aria-label="t('tags.name')"
             :aria-invalid="!!editError || undefined"
             @input="editError = ''"
             @keydown="onEditNameKeydown"
@@ -138,7 +138,7 @@
         <p data-testid="tag-edit-count" class="tag-panel-hint">{{ tagUsageLabel(editedTag.taskCount ?? 0) }}</p>
 
         <!-- Couleurs : un clic applique immédiatement -->
-        <p class="tag-panel-hint">Couleurs</p>
+        <p class="tag-panel-hint">{{ t('tags.colors') }}</p>
         <TagColorOptions :selected="editedTag.color" @select="applyColor" />
 
         <!-- Suppression en bas, séparée des réglages : action destructive, confirmée sur place -->
@@ -148,7 +148,7 @@
             <div class="flex gap-2">
               <Button
                 data-testid="tag-delete-cancel"
-                label="Annuler"
+                :label="t('common.cancel')"
                 severity="secondary"
                 size="small"
                 class="flex-1"
@@ -156,7 +156,7 @@
               />
               <Button
                 data-testid="tag-delete-confirm"
-                label="Supprimer"
+                :label="t('common.delete')"
                 severity="danger"
                 size="small"
                 class="flex-1"
@@ -168,7 +168,7 @@
           <Button
             v-else
             data-testid="tag-edit-delete"
-            label="Supprimer"
+            :label="t('common.delete')"
             icon="pi pi-trash"
             severity="danger"
             size="small"
@@ -200,6 +200,7 @@ import {
   tagUsageLabel,
   validateTagName,
 } from '../utils/tag.helper'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Sélecteur de tags façon Notion, branché au formulaire de TaskDialog.
@@ -223,6 +224,7 @@ const emit = defineEmits<{
 const logger = getLogger()
 const tagStore = useTagStore()
 const showError = useErrorToast()
+const { t } = useI18n()
 
 const popover = ref()
 const fieldRef = ref<HTMLButtonElement | null>(null)
@@ -427,7 +429,7 @@ async function createAndSelect(name: string): Promise<void> {
     if (sameName(search.value.trim(), name)) search.value = ''
   } catch {
     // Le store a journalisé l'erreur et n'a rien modifié
-    showError('Création impossible', `Le tag « ${name} » n'a pas été créé.`)
+    showError(t('tags.createFailed'), t('tags.createFailedDetail', { name }))
   }
 }
 
@@ -584,7 +586,7 @@ function rejectRename(tag: Tag, message: string, inline: boolean): false {
   if (inline) {
     editError.value = message
   } else {
-    showError('Renommage annulé', message)
+    showError(t('tags.renameCanceled'), message)
   }
 
   return false
@@ -646,7 +648,7 @@ async function sendRename(tag: Tag, name: string, inline: boolean): Promise<bool
 
     // Erreur réseau : retour à l'état d'avant
     if (editedTagId.value === tag.id) editName.value = tag.name
-    showError('Renommage annulé')
+    showError(t('tags.renameCanceled'))
     return false
   }
 }
@@ -702,7 +704,7 @@ async function applyColor(color: TagColor) {
     await tagStore.updateTag(tag.id, { color })
   } catch {
     // Le store n'a rien modifié : la couleur d'avant reste affichée
-    showError('Couleur non modifiée')
+    showError(t('tags.colorNotChanged'))
   }
 }
 
@@ -729,7 +731,7 @@ async function confirmDelete() {
   try {
     await tagStore.deleteTag(tagId)
   } catch {
-    showError('Suppression impossible', "Le tag n'a pas été supprimé.")
+    showError(t('tags.deleteFailed'), t('tags.deleteFailedDetail'))
     confirmingDelete.value = false
     focusPanel()
     return

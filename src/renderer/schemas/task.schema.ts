@@ -10,6 +10,9 @@ import {
   RECURRENCE_LEAD_DAYS_MAX,
 } from '../../main/shared/recurrence.constants'
 import { startOfLocalDay } from '../../main/shared/recurrence.helper'
+import { t } from '../i18n'
+
+// Messages d'erreur traduits à la validation (fonctions), dans la langue active à ce moment
 
 /**
  * Choix du champ « Répéter » : ne pas répéter, un préréglage calculé depuis
@@ -56,7 +59,7 @@ function checkRecurrence(values: { startDate: Date | null; recurrence: Recurrenc
   if (recurrence.preset === 'none') return
 
   if (!startDate) {
-    ctx.addIssue({ code: 'custom', path: ['startDate'], message: 'Une tâche récurrente doit avoir une date de début' })
+    ctx.addIssue({ code: 'custom', path: ['startDate'], message: t('task.validation.startDateRequired') })
   }
 
   if (recurrence.preset !== 'custom') return
@@ -65,27 +68,27 @@ function checkRecurrence(values: { startDate: Date | null; recurrence: Recurrenc
   const { interval, maxCount, leadDays } = recurrence
 
   if (interval === null || !Number.isInteger(interval) || interval < 1 || interval > RECURRENCE_INTERVAL_MAX) {
-    issue(`L'intervalle doit être compris entre 1 et ${RECURRENCE_INTERVAL_MAX}`)
+    issue(t('task.validation.intervalRange', { max: RECURRENCE_INTERVAL_MAX }))
   } else if (recurrence.anchor === 'schedule' && recurrence.frequency === 'weekly' && !recurrence.weekdays.length) {
-    issue('Choisis au moins un jour de la semaine')
+    issue(t('task.validation.weekdayRequired'))
   } else if (recurrence.endType === 'onDate' && !recurrence.endsOn) {
-    issue('Choisis la date de fin de la série')
+    issue(t('task.validation.endDateRequired'))
   } else if (
     recurrence.endType === 'onDate' &&
     startDate &&
     startOfLocalDay(recurrence.endsOn!) < startOfLocalDay(startDate)
   ) {
-    issue('La date de fin doit suivre la date de début')
+    issue(t('task.validation.endDateBeforeStart'))
   } else if (
     recurrence.endType === 'afterCount' &&
     (maxCount === null || !Number.isInteger(maxCount) || maxCount < 1 || maxCount > RECURRENCE_COUNT_MAX)
   ) {
-    issue(`Le nombre d'occurrences doit être compris entre 1 et ${RECURRENCE_COUNT_MAX}`)
+    issue(t('task.validation.countRange', { max: RECURRENCE_COUNT_MAX }))
   } else if (
     recurrence.createEarly &&
     (leadDays === null || !Number.isInteger(leadDays) || leadDays < 1 || leadDays > RECURRENCE_LEAD_DAYS_MAX)
   ) {
-    issue(`Le nombre de jours doit être compris entre 1 et ${RECURRENCE_LEAD_DAYS_MAX}`)
+    issue(t('task.validation.leadDaysRange', { max: RECURRENCE_LEAD_DAYS_MAX }))
   }
 }
 
@@ -104,10 +107,9 @@ const tagSelectionsSchema = z
       name: z.string().trim(),
     }),
   )
-  .refine(
-    (tags) => tags.every((tag) => tag.name.length >= 1 && tag.name.length <= TAG_NAME_MAX_LENGTH),
-    `Un tag doit faire entre 1 et ${TAG_NAME_MAX_LENGTH} caractères`,
-  )
+  .refine((tags) => tags.every((tag) => tag.name.length >= 1 && tag.name.length <= TAG_NAME_MAX_LENGTH), {
+    error: () => t('task.validation.tagLength', { max: TAG_NAME_MAX_LENGTH }),
+  })
 
 /**
  * Règles de validation du formulaire de tâche (TaskDialog).
@@ -121,10 +123,12 @@ export const taskFormSchema = z
     title: z
       .string()
       .trim()
-      .min(1, 'Le titre est obligatoire')
-      .max(LABEL_MAX_LENGTH, `${LABEL_MAX_LENGTH} caractères maximum`),
+      .min(1, { error: () => t('task.validation.titleRequired') })
+      .max(LABEL_MAX_LENGTH, { error: () => t('task.validation.titleTooLong', { max: LABEL_MAX_LENGTH }) }),
     description: z.string(),
-    version: z.string({ error: 'Sélectionne une version' }).min(1, 'Sélectionne une version'),
+    version: z
+      .string({ error: () => t('task.validation.versionRequired') })
+      .min(1, { error: () => t('task.validation.versionRequired') }),
     startDate: z.date().nullable(),
     tags: tagSelectionsSchema,
     recurrence: recurrenceFieldsSchema,

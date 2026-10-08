@@ -1,6 +1,7 @@
 import type { Tag } from '../types/tag.types'
 import { TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
 import { httpStatus } from './api.helper'
+import { t } from '../i18n'
 
 /**
  * Ordre d'affichage des tags : par nom, sans tenir compte de la casse ni des
@@ -11,9 +12,6 @@ import { httpStatus } from './api.helper'
 export function compareTagNames(a: { name: string }, b: { name: string }): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 }
-
-/** Message affiché quand le nom est déjà porté par un autre tag */
-export const TAG_NAME_TAKEN = 'Un tag porte déjà ce nom'
 
 /**
  * Compare deux noms de tag sans tenir compte de la casse
@@ -33,9 +31,9 @@ export function sameTagName(a: string, b: string): boolean {
  * @returns Le message d'erreur, ou une chaîne vide si le nom est valide
  */
 export function validateTagName(name: string, tagId: number, tags: Tag[]): string {
-  if (!name) return 'Le nom du tag est obligatoire'
-  if (name.length > TAG_NAME_MAX_LENGTH) return `${TAG_NAME_MAX_LENGTH} caractères maximum`
-  if (tags.some((tag) => tag.id !== tagId && sameTagName(tag.name, name))) return TAG_NAME_TAKEN
+  if (!name) return t('tags.nameRequired')
+  if (name.length > TAG_NAME_MAX_LENGTH) return t('tags.nameTooLong', { max: TAG_NAME_MAX_LENGTH })
+  if (tags.some((tag) => tag.id !== tagId && sameTagName(tag.name, name))) return t('tags.nameTaken')
   return ''
 }
 
@@ -46,17 +44,9 @@ export function validateTagName(name: string, tagId: number, tags: Tag[]): strin
  */
 export function renameRejection(error: unknown): string | undefined {
   const status = httpStatus(error)
-  if (status === 409) return TAG_NAME_TAKEN
-  if (status === 400) return 'Nom de tag invalide'
+  if (status === 409) return t('tags.nameTaken')
+  if (status === 400) return t('tags.nameInvalid')
   return undefined
-}
-
-/**
- * Nombre de tâches, au singulier ou au pluriel
- * @param count Nombre de tâches
- */
-function taskCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'tâche' : 'tâches'}`
 }
 
 /**
@@ -64,7 +54,7 @@ function taskCountLabel(count: number): string {
  * @param count Nombre de tâches
  */
 export function tagUsageLabel(count: number): string {
-  return `Utilisé par ${taskCountLabel(count)}`
+  return t('tags.usage', { count }, count)
 }
 
 /**
@@ -72,5 +62,6 @@ export function tagUsageLabel(count: number): string {
  * @param tag Tag à supprimer
  */
 export function tagDeleteQuestion(tag: Tag): string {
-  return `Supprimer « ${tag.name} » ? Il sera retiré de ${taskCountLabel(tag.taskCount ?? 0)}.`
+  const count = tag.taskCount ?? 0
+  return t('tags.deleteQuestion', { name: tag.name, count }, count)
 }

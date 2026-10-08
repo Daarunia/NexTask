@@ -15,7 +15,7 @@
       type="button"
       :data-testid="removeTestId"
       class="tag-chip-remove"
-      :aria-label="`Retirer le tag ${label}`"
+      :aria-label="t('tags.removeTag', { name: label })"
       @click="emit('remove')"
     >
       <i class="pi pi-times"></i>
@@ -27,6 +27,7 @@
 import { computed } from 'vue'
 import { useTagStore } from '../stores/Tag'
 import { getTagColorStyle } from '../constants/tag.constants'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Chip d'un tag.
@@ -63,6 +64,7 @@ const emit = defineEmits<{
 }>()
 
 const tagStore = useTagStore()
+const { t } = useI18n()
 
 // Tag du store (undefined pour un tag à créer ou supprimé)
 const tag = computed(() => (props.tagId === undefined ? undefined : tagStore.getTagById(props.tagId)))

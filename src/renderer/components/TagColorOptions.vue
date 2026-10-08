@@ -12,7 +12,7 @@
       @click="emit('select', color.name)"
     >
       <span class="tag-color-swatch" :style="swatchVars(color)"></span>
-      <span class="flex-1 text-left text-sm">{{ color.label }}</span>
+      <span class="flex-1 text-left text-sm">{{ t(`tagColors.${color.name}`) }}</span>
       <i v-if="selected === color.name" class="pi pi-check text-xs"></i>
     </button>
   </div>
@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { TAG_COLOR_STYLES, TagColorStyle } from '../constants/tag.constants'
 import { TagColor } from '../types/tag.types'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Choix de la couleur d'un tag, partagé par le menu d'édition du sélecteur
@@ -34,6 +35,8 @@ defineProps<{
 const emit = defineEmits<{
   select: [color: TagColor]
 }>()
+
+const { t } = useI18n()
 
 /**
  * Teinte de la pastille d'une couleur
