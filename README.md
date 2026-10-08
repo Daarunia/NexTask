@@ -35,6 +35,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **Automatic daily backups** of the database (the last 7 are kept).
 - **JSON import / export** of all your data.
 - **Light, dark or system theme**, custom accent color and adjustable interface scale.
+- **English and French**, following the system language or chosen in the settings.
 - **System integration**: minimize to tray, launch at startup, remembers window size and position.
 - **100% offline and private**: your data never leaves your computer.
 
@@ -47,7 +48,7 @@ The interface is currently available in French.
 | Layer    | Technologies                                         |
 | -------- | ---------------------------------------------------- |
 | Desktop  | Electron, electron-builder                           |
-| Frontend | Vue 3, Pinia, PrimeVue, TailwindCSS, Vite            |
+| Frontend | Vue 3, Pinia, PrimeVue, vue-i18n, TailwindCSS, Vite  |
 | Backend  | Fastify (embedded local API), Prisma ORM, SQLite     |
 | Testing  | Playwright end-to-end tests driving the Electron app |
 
