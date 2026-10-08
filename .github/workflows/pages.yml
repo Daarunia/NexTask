@@ -1,0 +1,39 @@
+# Pages : publication du site vitrine (dossier docs/) uniquement à chaque tag vX.Y.Z
+name: Pages
+
+on:
+  push:
+    tags: ['v*.*.*']
+  # Republication manuelle, par exemple pour corriger le site sans sortir de version
+  workflow_dispatch:
+
+# Un seul déploiement à la fois, le plus récent l'emporte
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Droits requis par actions/deploy-pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/configure-pages@v5
+
+      # Le site est déjà statique, on publie docs/ tel quel
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
