@@ -36,6 +36,17 @@ body {
   display: none;
 }
 
+/* Infobulles d'information (v-tooltip + infoTooltip) : plus larges que celles de PrimeVue,
+   pour un extrait de description ou le résumé d'une série sans coupure toutes les trois mots */
+.p-tooltip.info-tooltip {
+  max-width: 20rem;
+}
+
+.p-tooltip.info-tooltip .p-tooltip-text {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 /* Drag en cours (carte ou colonne) : main fermée partout, même hors des éléments déplaçables */
 .is-dragging,
 .is-dragging * {

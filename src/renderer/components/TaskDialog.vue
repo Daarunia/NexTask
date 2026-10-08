@@ -1,14 +1,19 @@
 <template>
-  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-md w-full">
+  <!-- Largeur prévue pour la barre d'outils de l'éditeur Markdown de la description -->
+  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-2xl w-full">
     <!-- Le contenu du Dialog est démonté à la fermeture, donc le formulaire repart
          de initialValues à chaque ouverture, sans erreur résiduelle -->
+    <!-- Raccourcis d'enregistrement écoutés en capture : avant l'éditeur Markdown,
+         qui réserve aussi Ctrl+S et Ctrl+Entrée -->
     <Form
+      ref="formRef"
       v-slot="$form"
       :initialValues="initialValues"
       :resolver="resolver"
       data-testid="task-dialog"
       class="pt-4 flex flex-col gap-4"
       @submit="onSubmit"
+      @keydown.capture="onSaveShortcut"
     >
       <!-- Titre -->
       <div class="flex flex-col gap-2 w-full">
@@ -26,18 +31,20 @@
       </div>
 
       <!-- Description -->
-      <div class="flex flex-col gap-2 w-full">
-        <label for="description" class="font-medium"> Description </label>
-        <Textarea
+      <!-- Description en Markdown : ouverte en aperçu si la tâche en a déjà une -->
+      <FormField v-slot="$field" name="description">
+        <component
+          :is="MarkdownEditor"
+          v-if="MarkdownEditor"
           id="description"
-          name="description"
-          data-testid="task-description-input"
-          autoResize
-          rows="4"
-          class="resize-y"
-          placeholder="Décris ta tâche ici..."
+          label="Description"
+          testId="task-description"
+          placeholder="Décris ta tâche ici... (Markdown accepté)"
+          :modelValue="$field.value ?? ''"
+          :startInPreview="!!initialValues.description?.trim()"
+          @update:modelValue="(value: string) => $field.props.onChange({ value })"
         />
-      </div>
+      </FormField>
 
       <!-- Tags : valeur du formulaire = TagSelection[] -->
       <div class="flex flex-col gap-2 w-full">
@@ -124,19 +131,25 @@
           class="flex-1"
           @click="visible = false"
         />
-        <Button type="submit" label="Save" data-testid="task-save-btn" severity="success" class="flex-1" />
+        <Button
+          type="submit"
+          label="Save"
+          v-tooltip.top="infoTooltip('Ctrl+S ou Ctrl+Entrée')"
+          data-testid="task-save-btn"
+          severity="success"
+          class="flex-1"
+        />
       </div>
     </Form>
   </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, PropType } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, PropType, type Component } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
@@ -154,6 +167,7 @@ import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
+import { infoTooltip } from '../utils/tooltip.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
@@ -161,6 +175,21 @@ import {
   toRecurrenceInput,
   toRecurrenceValue,
 } from '../utils/recurrence.helper'
+
+// Éditeur Markdown (md-editor-v3 et CodeMirror) dans un chunk à part, pour ne pas
+// alourdir le démarrage : préchargé au montage, et attendu avant d'ouvrir le
+// dialogue. Le formulaire s'affiche d'un bloc, sans que la description apparaisse
+// après coup et décale les champs suivants (et le popover des tags ouvert dessus).
+const MarkdownEditor = shallowRef<Component | null>(null)
+
+/** Charge l'éditeur Markdown une seule fois. */
+async function loadMarkdownEditor() {
+  MarkdownEditor.value ??= (await import('./MarkdownEditor.vue')).default
+}
+
+onMounted(() => {
+  loadMarkdownEditor().catch((error) => logger.error("Chargement de l'éditeur Markdown impossible", error))
+})
 
 // Props
 const props = defineProps({
@@ -240,10 +269,16 @@ const seriesLive = computed(() => !!series.value && series.value.status !== 'end
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
 const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 
+// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Save)
+const formRef = ref<{ submit: () => void } | null>(null)
+
+// Sauvegarde en cours
+const saving = ref(false)
+
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
-  (val) => {
+  async (val) => {
     if (val) {
       stageId.value = props.stageId
       position.value = props.position
@@ -263,6 +298,15 @@ watch(
           applyToSeries: true,
         }
       }
+
+      // Éditeur prêt avant l'affichage (déjà chargé au montage, sauf ouverture très rapide)
+      try {
+        await loadMarkdownEditor()
+      } catch (error) {
+        logger.error("Chargement de l'éditeur Markdown impossible", error)
+      }
+      // Fermé entre-temps : ne pas le rouvrir
+      if (!props.modelValue) return
     }
 
     visible.value = val
@@ -350,6 +394,21 @@ function toTagNames(selection: TagSelection[]): string[] {
   })
 }
 
+/**
+ * Ctrl+S ou Ctrl+Entrée (Cmd sur macOS), depuis n'importe quel champ :
+ * enregistre la tâche comme le bouton Save, validation comprise.
+ * @param event Touche pressée dans le formulaire
+ */
+function onSaveShortcut(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+  if (event.key !== 'Enter' && event.key.toLowerCase() !== 's') return
+
+  // Ni enregistrement de la page par le navigateur, ni nouvelle ligne dans l'éditeur
+  event.preventDefault()
+  event.stopPropagation()
+  if (!event.repeat) formRef.value?.submit()
+}
+
 // Soumission, sachant que <Form> émet submit même si la validation échoue
 function onSubmit({ valid, values }: FormSubmitEvent) {
   if (!valid) {
@@ -362,6 +421,10 @@ function onSubmit({ valid, values }: FormSubmitEvent) {
 
 // Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
 async function saveTask(values: TaskFormValues) {
+  // Une seule à la fois : un double clic ou un raccourci répété ne crée pas la tâche deux fois
+  if (saving.value) return
+  saving.value = true
+
   logger.debug('Début sauvegarde tâche :', {
     stageId: stageId.value,
     title: values.title,
@@ -439,6 +502,8 @@ async function saveTask(values: TaskFormValues) {
     // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)
     showError('Enregistrement impossible', "La tâche n'a pas été enregistrée.")
+  } finally {
+    saving.value = false
   }
 }
 </script>

@@ -87,11 +87,7 @@ export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/se
 export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/migrations' : 'prisma/migrations')
 
 // Emplacements possibles des assets statiques
-const STATIC_DIRS = [
-  path.join(process.cwd(), 'src', 'main', 'static'),
-  path.join(RESOURCES_PATH, 'static'),
-  path.join(app.getAppPath(), 'static'),
-]
+const STATIC_DIRS = [path.join(process.cwd(), 'src', 'main', 'static'), path.join(RESOURCES_PATH, 'static')]
 
 /**
  * Chemin absolu d'un asset statique, ou `undefined` s'il est introuvable.

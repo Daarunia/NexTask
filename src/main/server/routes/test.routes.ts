@@ -8,8 +8,11 @@ import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system/about.js'
+import { clearOpenedUrls, getOpenedUrls } from '../../system/externalLinks.js'
 import { settingsStore } from '../../stores/settings.js'
 import { closeQuickAdd, openQuickAdd } from '../../system/quickAdd.js'
+import { resetUpdateForTest, simulateUpdateStatus, wasInstallRequested } from '../../system/updater.js'
+import { UPDATE_STATES, type UpdateStatus } from '../../shared/update.constants.js'
 import Logger from 'electron-log'
 
 /**
@@ -19,7 +22,8 @@ import Logger from 'electron-log'
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
- *                                    oublie les dossiers et les liens ouverts, et ferme la fenêtre d'ajout rapide
+ *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide
+ *                                    et remet la mise à jour à son état de départ
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/click-notification → simule le clic sur une notification de rappel (tâches annoncées en corps)
  * - POST /test/run-recurrences    → déclenche un passage de la génération des tâches récurrentes
@@ -27,7 +31,10 @@ import Logger from 'electron-log'
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/opened-urls        → liens cliqués dans une page, envoyés au navigateur par défaut (simulé en test)
  * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
+ * - POST /test/update-status      → impose un état de la mise à jour automatique (désactivée en test)
+ * - GET  /test/update-install     → indique si l'installation de la mise à jour a été demandée (simulée en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -111,9 +118,13 @@ export default async function testRoutes(fastify) {
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
       clearOpenedLinks()
+      clearOpenedUrls()
 
       // Fenêtre d'ajout rapide laissée ouverte par un test précédent
       closeQuickAdd()
+
+      // Mise à jour simulée par un test précédent
+      resetUpdateForTest()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -393,6 +404,29 @@ export default async function testRoutes(fastify) {
   )
 
   /**
+   * GET /test/opened-urls
+   *
+   * Liens cliqués dans une page de l'app (description Markdown d'une tâche)
+   * depuis le dernier reset, dans l'ordre. En mode test, ils ne sont que notés,
+   * sans ouvrir le navigateur.
+   *
+   * @returns {Promise<string[]>} Adresses des liens
+   */
+  fastify.get(
+    '/test/opened-urls',
+    {
+      schema: {
+        description: "Liens cliqués dans une page dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    async () => getOpenedUrls(),
+  )
+
+  /**
    * POST /test/open-quick-add
    *
    * Ouvre la fenêtre d'ajout rapide, comme le raccourci global (jamais
@@ -418,5 +452,69 @@ export default async function testRoutes(fastify) {
       openQuickAdd()
       return { message: "Fenêtre d'ajout rapide ouverte" }
     },
+  )
+
+  /**
+   * POST /test/update-status
+   *
+   * Impose un état de la mise à jour automatique, envoyé aux fenêtres comme
+   * en temps normal. electron-updater n'est jamais lancé en mode test.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - État simulé (`state`, `version`, `percent`)
+   * @returns {Promise<{message: string}>} Confirmation
+   */
+  fastify.post(
+    '/test/update-status',
+    {
+      schema: {
+        description: 'Impose un état de la mise à jour automatique (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: {
+            state: { type: 'string', enum: [...UPDATE_STATES] },
+            version: { type: 'string' },
+            percent: { type: 'number' },
+          },
+          required: ['state'],
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: { message: { type: 'string' } },
+          },
+        },
+      },
+    },
+    async (req) => {
+      simulateUpdateStatus(req.body as UpdateStatus)
+      return { message: 'État de la mise à jour imposé' }
+    },
+  )
+
+  /**
+   * GET /test/update-install
+   *
+   * Indique si l'installation de la mise à jour a été demandée depuis le
+   * dernier reset. En mode test, l'IPC `update:install` ne fait que le noter.
+   *
+   * @returns {Promise<{requested: boolean}>} Installation demandée
+   */
+  fastify.get(
+    '/test/update-install',
+    {
+      schema: {
+        description: 'Installation de la mise à jour demandée (tests E2E uniquement)',
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'object',
+            properties: { requested: { type: 'boolean' } },
+          },
+        },
+      },
+    },
+    async () => ({ requested: wasInstallRequested() }),
   )
 }

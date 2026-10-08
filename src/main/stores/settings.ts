@@ -99,6 +99,10 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.quickAddEnabled,
   },
+  autoUpdateEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.autoUpdateEnabled,
+  },
   windowMode: {
     type: 'string',
     enum: [...WINDOW_MODES],

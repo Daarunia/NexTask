@@ -107,7 +107,7 @@ test.describe('Champ « Répéter »', () => {
     const icon = taskBoard.taskCard('Arrosage').getByTestId('task-card-recurrence')
     await expect(icon).toBeVisible()
     await expect(icon).toHaveAttribute('data-status', 'active')
-    await expect(icon).toHaveAttribute('title', /^Tous les jours à 09:00\nProchaine : /)
+    await expect(icon).toHaveAttribute('aria-label', /^Tous les jours à 09:00\nProchaine : /)
 
     const [task] = (await (await page.request.get(`${API_TASKS}`)).json()) as { id: number }[]
     expect((await getTask(page.request, task.id)).recurrence).toMatchObject({ frequency: 'daily', interval: 1 })
@@ -300,7 +300,7 @@ test.describe('Création anticipée', () => {
     const [created] = (await (await page.request.get(API_TASKS)).json()) as { id: number }[]
     expect((await getTask(page.request, created.id)).recurrence).toMatchObject({ frequency: 'daily', leadDays: 2 })
     await expect(taskBoard.taskCard('Préparée').getByTestId('task-card-recurrence')).toHaveAttribute(
-      'title',
+      'aria-label',
       /^Tous les jours à 09:00, créée 2 jours avant\n/,
     )
 
@@ -368,7 +368,7 @@ test.describe('Occurrences au tableau', () => {
 
     const icon = archivesPage.item('Archivée').getByTestId('archived-task-recurrence')
     await expect(icon).toBeVisible()
-    await expect(icon).toHaveAttribute('title', /^Tous les jours à 09:00\nProchaine : /)
+    await expect(icon).toHaveAttribute('aria-label', /^Tous les jours à 09:00\nProchaine : /)
   })
 })
 
@@ -430,7 +430,7 @@ test.describe('Modification et arrêt', () => {
     const icons = taskBoard.taskCard('Série').getByTestId('task-card-recurrence')
     await expect(icons).toHaveCount(2)
     for (const icon of await icons.all()) await expect(icon).toHaveAttribute('data-status', 'ended')
-    await expect(icons.first()).toHaveAttribute('title', /\nSérie arrêtée$/)
+    await expect(icons.first()).toHaveAttribute('aria-label', /\nSérie arrêtée$/)
     expect((await getTask(page.request, origin.id)).recurrence).toMatchObject({ status: 'ended', nextRunAt: null })
 
     await undoToast.undo('Série')

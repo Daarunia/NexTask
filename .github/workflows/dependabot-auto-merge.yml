@@ -1,0 +1,30 @@
+# Fusion automatique des PR Dependabot (mineures et patch) une fois la CI passée
+name: Dependabot auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+
+    steps:
+      # Type de montée de version (la plus haute du groupe pour une PR groupée)
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      # --auto attend les checks requis par le ruleset de main (format, build, e2e)
+      # avant de fusionner, en merge commit comme les autres PR vers main.
+      # Les majeures sont déjà ignorées par dependabot.yml, double sécurité ici
+      - name: Enable auto-merge
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -54,6 +54,10 @@ export class SettingsPage {
   readonly appVersion: Locator
   readonly openReleaseNotesButton: Locator
   readonly openNoticesButton: Locator
+  readonly autoUpdateSwitch: Locator
+  readonly updateRow: Locator
+  readonly checkUpdateButton: Locator
+  readonly installUpdateButton: Locator
 
   /**
    * Constructeur
@@ -139,6 +143,12 @@ export class SettingsPage {
     this.appVersion = this.root.getByTestId('settings-app-version')
     this.openReleaseNotesButton = this.root.getByTestId('btn-open-release-notes')
     this.openNoticesButton = this.root.getByTestId('btn-open-notices')
+
+    // Section À propos : mise à jour automatique
+    this.autoUpdateSwitch = this.root.getByRole('switch', { name: 'Mise à jour automatique' })
+    this.updateRow = this.root.getByTestId('settings-row-update')
+    this.checkUpdateButton = this.root.getByTestId('btn-check-update')
+    this.installUpdateButton = this.root.getByTestId('btn-install-update-settings')
   }
 
   /**

@@ -1,11 +1,17 @@
 {
   "appId": "com.daarunia.nextask",
   "productName": "NexTask",
+  "publish": {
+    "provider": "github",
+    "owner": "Daarunia",
+    "repo": "NexTask"
+  },
   "directories": {
     "output": "dist",
     "buildResources": "resources"
   },
   "nsis": {
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
@@ -29,33 +35,29 @@
     "category": "Utility"
   },
   "files": [
+    "package.json",
     {
       "from": "build/main/",
-      "to": "main",
-      "filter": ["**/*"]
-    },
-    {
-      "from": "src/main/static",
-      "to": "static",
-      "filter": ["**/*"]
+      "to": "main"
     },
     {
       "from": "build/renderer",
-      "to": "renderer",
-      "filter": ["**/*"]
+      "to": "renderer"
     },
-    "!build",
-    "!dist",
-    "!scripts"
+    "!**/*.map",
+    "!**/node_modules/**/{docs/**,*.d.ts,*.d.mts,*.d.cts}",
+    "!**/node_modules/**/{README,readme,Readme,CHANGELOG,changelog,History,HISTORY,SECURITY,CONTRIBUTING,GOVERNANCE}.md",
+    "!**/node_modules/@prisma/client/runtime/*{postgresql,mysql,sqlserver,cockroachdb}*",
+    "!**/node_modules/@prisma/client/runtime/{query_compiler_small_,wasm-compiler-edge}*",
+    "!**/node_modules/@prisma/client/runtime/*.wasm-base64.js",
+    "!**/node_modules/better-sqlite3/{deps,src,bin}/**",
+    "!**/node_modules/better-sqlite3/build/{deps/**,*.vcxproj*}",
+    "!**/node_modules/better-sqlite3/build/Release/{obj/**,test_extension*,*.iobj,*.ipdb,*.lib,*.exp}"
   ],
   "extraResources": [
     {
       "from": "src/main/static",
       "to": "static"
-    },
-    {
-      "from": "build/main/prisma",
-      "to": "prisma"
     },
     {
       "from": "src/main/prisma/migrations",

@@ -14,7 +14,12 @@ export class TaskBoard {
   readonly dialog: Locator
   readonly titleInput: Locator
   readonly titleError: Locator
+  readonly descriptionEditor: Locator
   readonly descriptionInput: Locator
+  readonly descriptionPlaceholder: Locator
+  readonly descriptionPreview: Locator
+  readonly descriptionEditButton: Locator
+  readonly descriptionPreviewButton: Locator
   readonly versionSelect: Locator
   readonly startDateInput: Locator
   readonly saveButton: Locator
@@ -35,7 +40,15 @@ export class TaskBoard {
     this.dialog = page.getByTestId('task-dialog')
     this.titleInput = page.getByTestId('task-title-input')
     this.titleError = page.getByTestId('task-title-error')
-    this.descriptionInput = page.getByTestId('task-description-input')
+    // Description Markdown (md-editor-v3) : zone de saisie CodeMirror, éditable
+    // mais sans valeur de formulaire (toHaveText plutôt que toHaveValue).
+    // Ouverte en aperçu quand la tâche a déjà une description.
+    this.descriptionEditor = page.getByTestId('task-description-editor')
+    this.descriptionInput = this.descriptionEditor.locator('.cm-content')
+    this.descriptionPlaceholder = this.descriptionEditor.locator('.cm-placeholder')
+    this.descriptionPreview = page.getByTestId('task-description-preview')
+    this.descriptionEditButton = page.getByTestId('task-description-edit-btn')
+    this.descriptionPreviewButton = page.getByTestId('task-description-preview-btn')
     this.versionSelect = page.getByTestId('task-version-select')
     // La DatePicker PrimeVue expose un <input> interne sous le data-testid
     this.startDateInput = page.getByTestId('task-startdate-input').locator('input')
@@ -110,7 +123,7 @@ export class TaskBoard {
    */
   async openCreateDialog(columnName: string) {
     await this.column(columnName).getByTestId('btn-add-task').click()
-    await expect(this.dialog).toBeVisible()
+    await this.waitForDialogOpened()
   }
 
   /**
@@ -121,7 +134,22 @@ export class TaskBoard {
     const card = this.taskCard(title)
     await card.hover()
     await card.getByTestId('btn-edit-task').click()
+    await this.waitForDialogOpened()
+  }
+
+  /**
+   * Attend que l'écran de tâche soit affiché et que son animation d'ouverture
+   * (zoom de 300 ms) soit terminée. Pendant le zoom, Playwright peut faire défiler
+   * le dialogue pour amener en vue un champ qu'il croit masqué, sur le petit écran
+   * de la CI. L'événement de défilement n'arrive qu'à la frame suivante, une fois le
+   * popover des tags ouvert par le clic, et PrimeVue le referme aussitôt.
+   */
+  async waitForDialogOpened() {
     await expect(this.dialog).toBeVisible()
+    await this.dialog.evaluate(async (form) => {
+      const dialog = form.closest('.p-dialog')
+      await Promise.allSettled(dialog?.getAnimations().map((animation) => animation.finished) ?? [])
+    })
   }
 
   /**
@@ -172,12 +200,38 @@ export class TaskBoard {
   }
 
   /**
+   * Saisit la description, en passant d'abord en écriture (sans effet si le
+   * champ y est déjà, utile s'il s'est ouvert en aperçu).
+   * @param text Texte Markdown
+   */
+  async fillDescription(text: string) {
+    await this.descriptionEditButton.click()
+    await this.descriptionInput.fill(text)
+  }
+
+  /**
+   * Icône d'une carte signalant que la tâche a une description.
+   * @param title Titre exact de la tâche
+   */
+  cardDescriptionIcon(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-description')
+  }
+
+  /**
+   * Bouton de la barre d'outils de l'éditeur Markdown, repéré par son infobulle.
+   * @param title Infobulle du bouton (ex : "Gras")
+   */
+  descriptionToolbarButton(title: string): Locator {
+    return this.descriptionEditor.getByRole('button', { name: title, exact: true })
+  }
+
+  /**
    * Remplit les champs présents puis enregistre (création ou édition selon le
    * dialog ouvert). Les champs non fournis sont laissés en l'état.
    */
   async fillAndSave(data: { title?: string; description?: string; version?: string }) {
     if (data.title !== undefined) await this.titleInput.fill(data.title)
-    if (data.description !== undefined) await this.descriptionInput.fill(data.description)
+    if (data.description !== undefined) await this.fillDescription(data.description)
     if (data.version !== undefined) await this.selectVersion(data.version)
 
     await this.saveButton.click()

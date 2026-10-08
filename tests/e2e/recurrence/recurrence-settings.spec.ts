@@ -142,7 +142,7 @@ test.describe('Actions', () => {
     // Cartes grisées sans recharger, pause rappelée dans l'écran de tâche
     await header.goHome()
     for (const icon of await icons.all()) await expect(icon).toHaveAttribute('data-status', 'paused')
-    await expect(icons.first()).toHaveAttribute('title', /\nSérie en pause$/)
+    await expect(icons.first()).toHaveAttribute('aria-label', /\nSérie en pause$/)
     await taskBoard.taskCard('Pilote').first().hover()
     await taskBoard.taskCard('Pilote').first().getByTestId('btn-edit-task').click()
     await expect(recurrenceFields.pausedHint).toBeVisible()

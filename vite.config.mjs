@@ -30,7 +30,9 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'primevue', test: /node_modules[\\/](primevue|@primevue|@primeuix)[\\/]/, priority: 2 },
-            { name: 'vendor', test: /node_modules[\\/]/, priority: 1 },
+            // entriesAware : un module chargé seulement à la demande (import dynamique,
+            // ex. la coloration d'un langage dans l'éditeur Markdown) reste hors du chunk principal
+            { name: 'vendor', test: /node_modules[\\/]/, priority: 1, entriesAware: true },
           ],
         },
       },

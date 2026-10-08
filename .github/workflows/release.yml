@@ -33,7 +33,7 @@ jobs:
 
       # Aligne npm sur la version déclarée dans packageManager
       - name: Install npm 12
-        run: npm install -g npm@12.0.2
+        run: npm install -g npm@12.2.0
 
       # Le tag doit correspondre à la version de package.json, sinon l'installateur porterait un autre numéro
       - name: Check tag matches package.json
@@ -69,13 +69,14 @@ jobs:
           NOTES_REF: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
         run: node scripts/release-notes.js "$NOTES_REF" > release-notes.md
 
-      # gh est préinstallé sur les runners GitHub
+      # gh est préinstallé sur les runners GitHub. latest.yml et le .blockmap
+      # servent à la mise à jour automatique de l'app (electron-updater)
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.zip --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
       # Hors tag, brouillon invisible du public et sans tag créé, à supprimer après vérification
       - name: Publish draft release
@@ -83,4 +84,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID" --notes-file release-notes.md
+        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID" --notes-file release-notes.md
