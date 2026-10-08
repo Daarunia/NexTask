@@ -73,16 +73,15 @@ function escapeXml(text: string): string {
  * Affiche une unique notification OS regroupant toutes les tâches échues.
  *
  * @param tasks Tâches échues à annoncer
+ * @param title Titre de la notification, dans la langue de l'interface
  * @param style Style choisi dans les paramètres (seul Windows en tient compte)
- * @returns Titre de la notification, dans la langue de l'interface
  */
-function notify(tasks: { id: number; title: string }[], style: NotificationStyle): string {
+function notify(tasks: { id: number; title: string }[], title: string, style: NotificationStyle): void {
   const lines = tasks.slice(0, CAP).map((t) => `• ${t.title}`)
   if (tasks.length > CAP) {
     lines.push(tn('notifications.more', tasks.length - CAP))
   }
 
-  const title = tn('notifications.title', tasks.length)
   const body = lines.join('\n')
 
   const notification = new Notification({ title, body, icon: ICON })
@@ -114,7 +113,7 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
   // déclenché manuellement via /test/run-notifications).
-  if (IS_TEST) return title
+  if (IS_TEST) return
 
   // Un clic ouvre l'app (et la tâche si elle est seule), cf. main.ts
   const taskIds = tasks.map((t) => t.id)
@@ -128,7 +127,6 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
 
   shownNotifications.add(notification)
   notification.show()
-  return title
 }
 
 /** Résultat d'un passage du planificateur. */
@@ -165,7 +163,8 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
     Logger.info('[scheduler] Rappels désactivés, marquage sans affichage')
   } else if (Notification.isSupported()) {
     style = settingsStore.get('notificationStyle')
-    title = notify(dueTasks, style)
+    title = tn('notifications.title', dueTasks.length)
+    notify(dueTasks, title, style)
   } else {
     Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }

@@ -35,4 +35,5 @@ app.directive('tooltip', Tooltip)
 
 // Route et langue résolues avant le montage : la fenêtre d'ajout rapide
 // s'affiche sans l'en-tête de l'app, et le premier rendu est dans la bonne langue
-Promise.all([router.isReady(), setupI18n(app)]).then(() => app.mount('#app'))
+await Promise.all([router.isReady(), setupI18n(app)])
+app.mount('#app')
