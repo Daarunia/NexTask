@@ -11,25 +11,30 @@ export interface SeedFile {
   sql: string
 }
 
+// Langue de référence des seeds : son dossier fixe la liste et le nom des seeds
+const REFERENCE_LOCALE: Locale = 'fr'
+
 /**
- * Seeds du dossier, dans l'ordre de leur nom. Le fichier à la racine du
- * dossier (en français) donne le nom de la seed ; sa variante du sous-dossier
- * de la langue (`en/01_initial_stages.sql`), si elle existe, donne le contenu.
- * Le nom ne dépend donc pas de la langue : une seed déjà appliquée ne l'est
- * pas une seconde fois après un changement de langue.
+ * Seeds à appliquer, dans l'ordre de leur nom. Chaque langue a son dossier
+ * (`fr/01_initial_stages.sql`, `en/01_initial_stages.sql`…) ; celui du
+ * français donne la liste et le nom des seeds, le dossier de la langue donne
+ * le contenu, le français à défaut. Le nom enregistré dans `_seeds` ne dépend
+ * donc pas de la langue : une seed déjà appliquée ne l'est pas une seconde fois
+ * après un changement de langue.
  *
  * @param locale Langue de l'interface au moment de l'application
  */
 export function readSeedFiles(locale: Locale): SeedFile[] {
-  if (!fs.existsSync(SEEDS_PATH)) return []
+  const referenceDir = path.join(SEEDS_PATH, REFERENCE_LOCALE)
+  if (!fs.existsSync(referenceDir)) return []
 
   return fs
-    .readdirSync(SEEDS_PATH)
+    .readdirSync(referenceDir)
     .filter((f) => f.endsWith('.sql'))
     .sort((a, b) => a.localeCompare(b))
     .map((name) => {
       const translated = path.join(SEEDS_PATH, locale, name)
-      const file = fs.existsSync(translated) ? translated : path.join(SEEDS_PATH, name)
+      const file = fs.existsSync(translated) ? translated : path.join(referenceDir, name)
       return { name, sql: fs.readFileSync(file, 'utf8') }
     })
 }

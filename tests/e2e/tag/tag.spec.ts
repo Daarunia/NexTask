@@ -17,7 +17,7 @@ import { API } from '../../helpers/api.helper'
  * couleur de la palette.
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 test.describe('Création et sélection de tags', () => {

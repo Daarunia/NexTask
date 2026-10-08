@@ -13,7 +13,7 @@ import { API } from '../../helpers/api.helper'
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 /** Id de la colonne seedée `COLUMN`. */

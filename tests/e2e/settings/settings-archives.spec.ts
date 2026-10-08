@@ -15,7 +15,7 @@ import { getTags, type Task } from '../../helpers/tag.helper'
 
 const DAY = 24 * 60 * 60 * 1000
 
-// Première colonne seedée (plus petite position, cf. prisma/seeds/01_initial_stages.sql)
+// Première colonne seedée (plus petite position, cf. prisma/seeds/fr/01_initial_stages.sql)
 const FIRST_COLUMN = 'A faire'
 
 /** Tâche telle que renvoyée par l'API, avec les champs d'archivage. */
