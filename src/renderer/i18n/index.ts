@@ -5,6 +5,7 @@ import type { LocaleState } from '../../main/shared/i18n.constants'
 import { fr, type MessageSchema } from '../locales/fr'
 import { en } from '../locales/en'
 import { es } from '../locales/es'
+import { pt } from '../locales/pt'
 import { primeVueLocale } from '../locales/primevue'
 
 /**
@@ -16,7 +17,7 @@ import { primeVueLocale } from '../locales/primevue'
  * stores) : `t` exporté ici.
  */
 /** Catalogues de l'interface par langue, un pour chaque langue prise en charge. */
-export const MESSAGES: Record<Locale, MessageSchema> = { fr, en, es }
+export const MESSAGES: Record<Locale, MessageSchema> = { fr, en, es, pt }
 
 export const i18n = createI18n<[MessageSchema], Locale, false>({
   legacy: false,
@@ -38,7 +39,7 @@ const systemLocale = ref<Locale>('fr')
  * Nom de chaque langue dans sa propre langue, pour qu'une personne qui ne lit
  * pas la langue affichée retrouve la sienne.
  */
-export const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English', es: 'Español' }
+export const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English', es: 'Español', pt: 'Português' }
 
 // Application Vue, pour la locale de PrimeVue
 let vueApp: App | null = null

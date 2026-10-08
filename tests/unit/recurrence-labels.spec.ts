@@ -179,3 +179,40 @@ describe('Libellés en espagnol', () => {
     ])
   })
 })
+
+describe('Libellés en portugais', () => {
+  beforeEach(() => {
+    i18n.global.locale.value = 'pt'
+  })
+
+  afterEach(() => {
+    i18n.global.locale.value = 'fr'
+  })
+
+  test('le rang s’accorde avec le jour de la semaine', () => {
+    expect(describeRecurrence(summary())).toBe('Todo mês na terceira quinta-feira às 09:00')
+    expect(describeRecurrence(summary({ startsAt: local(2026, 10, 17).toISOString() }))).toBe(
+      'Todo mês no terceiro sábado às 09:00',
+    )
+    expect(describeRecurrence(summary({ startsAt: local(2026, 10, 31).toISOString() }))).toBe(
+      'Todo mês no último sábado às 09:00',
+    )
+  })
+
+  test('résumés et préréglages', () => {
+    expect(
+      describeRecurrence(
+        summary({ frequency: 'weekly', interval: 2, weekdays: '1,4', endType: 'afterCount', maxCount: 3, leadDays: 2 }),
+      ),
+    ).toBe('A cada 2 semanas, segunda-feira e quinta-feira às 09:00, 3 vezes, criada 2 dias antes')
+    expect(recurrencePresetOptions(local(2026, 10, 1)).map((option) => option.label)).toEqual([
+      'Não repetir',
+      'Todos os dias',
+      'Todos os dias úteis (seg–sex)',
+      'Toda semana, quinta-feira',
+      'Todo mês no dia 1',
+      'Todo ano em 1 de outubro',
+      'Personalizar…',
+    ])
+  })
+})

@@ -15,7 +15,7 @@ import type { Locale } from '../../main/shared/settings.constants'
  * que md-editor-v3 ne fournit pas (il connaît `en-US` et `zh-CN`) sont
  * déclarées par `setupMarkdownEditor`.
  */
-const EDITOR_LANGUAGES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' }
+const EDITOR_LANGUAGES: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-BR' }
 
 /**
  * Langue des libellés de l'éditeur pour une langue de l'interface.
@@ -126,6 +126,42 @@ const SPANISH: StaticTextDefaultValue = {
   },
 }
 
+const PORTUGUESE: StaticTextDefaultValue = {
+  toolbarTips: {
+    bold: 'Negrito',
+    italic: 'Itálico',
+    strikeThrough: 'Tachado',
+    title: 'Título',
+    quote: 'Citação',
+    unorderedList: 'Lista com marcadores',
+    orderedList: 'Lista numerada',
+    codeRow: 'Código em linha',
+    code: 'Bloco de código',
+    link: 'Link',
+    table: 'Tabela',
+    revoke: 'Desfazer',
+    next: 'Refazer',
+    pageFullscreen: 'Ampliar',
+  },
+  titleItem: {
+    h1: 'Título 1',
+    h2: 'Título 2',
+    h3: 'Título 3',
+    h4: 'Título 4',
+    h5: 'Título 5',
+    h6: 'Título 6',
+  },
+  copyCode: {
+    text: 'Copiar',
+    successTips: 'Copiado',
+    failTips: 'Não foi possível copiar',
+  },
+  footer: {
+    markdownTotal: 'Caracteres',
+    scrollAuto: 'Rolagem sincronizada',
+  },
+}
+
 /**
  * Configure md-editor-v3 pour toute l'app, une seule fois avant le premier
  * affichage : libellés des langues que md-editor-v3 ne fournit pas, liens
@@ -136,7 +172,11 @@ const SPANISH: StaticTextDefaultValue = {
 function setupMarkdownEditor() {
   config({
     editorConfig: {
-      languageUserDefined: { [EDITOR_LANGUAGES.fr]: FRENCH, [EDITOR_LANGUAGES.es]: SPANISH },
+      languageUserDefined: {
+        [EDITOR_LANGUAGES.fr]: FRENCH,
+        [EDITOR_LANGUAGES.es]: SPANISH,
+        [EDITOR_LANGUAGES.pt]: PORTUGUESE,
+      },
     },
     // Lien en nouvelle fenêtre : le main le confie au navigateur par défaut,
     // sans tenter de naviguer dans la page de l'app

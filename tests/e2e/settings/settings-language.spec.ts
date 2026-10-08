@@ -29,6 +29,7 @@ const LANGUAGES = [
   { name: 'Français', lang: 'fr', settings: 'Paramètres', addStage: 'Ajouter une liste' },
   { name: 'English', lang: 'en', settings: 'Settings', addStage: 'Add a list' },
   { name: 'Español', lang: 'es', settings: 'Ajustes', addStage: 'Añadir una lista' },
+  { name: 'Português', lang: 'pt', settings: 'Configurações', addStage: 'Adicionar uma lista' },
 ]
 
 /**

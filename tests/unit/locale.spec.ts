@@ -14,6 +14,7 @@ describe('systemLocale', () => {
     [['en-GB'], 'en'],
     [['de-DE', 'fr-FR'], 'fr'],
     [['es-ES'], 'es'],
+    [['pt-PT'], 'pt'],
     [['de-DE', 'es-AR', 'en-US'], 'es'],
     [['FR_be'], 'fr'],
     [['de-DE', 'ja-JP'], 'en'],
