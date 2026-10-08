@@ -10,11 +10,11 @@
 
         <Button
           data-testid="btn-undo"
-          label="Annuler"
+          :label="t('undoToast.undo')"
           icon="pi pi-undo"
           size="small"
           severity="secondary"
-          title="Annuler (Ctrl+Z)"
+          :title="t('undoToast.undoHint')"
           @click="undo(message)"
         />
       </div>
@@ -27,9 +27,11 @@ import { onBeforeUnmount, onMounted } from 'vue'
 import Toast, { type ToastMessageOptions } from 'primevue/toast'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { latestUndoMessage, takeUndoAction, UNDO_TOAST_GROUP } from '../utils/toast.helper'
 
 const toast = useToast()
+const { t } = useI18n()
 
 /**
  * Annule l'action d'un toast, puis le retire

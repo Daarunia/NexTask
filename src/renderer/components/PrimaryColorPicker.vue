@@ -7,9 +7,9 @@
         type="button"
         data-testid="palette-swatch"
         :data-theme="theme.name"
-        :aria-label="theme.label"
+        :aria-label="t(`themes.${theme.name}`)"
         :aria-pressed="selected === theme.name"
-        :title="theme.label"
+        :title="t(`themes.${theme.name}`)"
         :class="['swatch', { selected: selected === theme.name }]"
         :style="{ backgroundColor: `var(--p-${theme.name}-${theme.shade})` }"
         @click="selectTheme(theme)"
@@ -26,13 +26,15 @@ import { computed } from 'vue'
 import { APP_THEMES, AppTheme, getAppTheme } from '../constants/theme.constants'
 import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
+import { useI18n } from 'vue-i18n'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
+const { t } = useI18n()
 
 // Une ancienne couleur enregistrée est ramenée à son thème le plus proche
 const selected = computed(() => getAppTheme(settings.primaryColor).name)
-const selectedLabel = computed(() => getAppTheme(settings.primaryColor).label)
+const selectedLabel = computed(() => t(`themes.${selected.value}`))
 
 /**
  * Applique le thème choisi puis l'enregistre (application faite par le store).
@@ -42,7 +44,7 @@ async function selectTheme(theme: AppTheme) {
   try {
     await settings.set('primaryColor', theme.name)
   } catch {
-    showError('Couleur non enregistrée')
+    showError(t('header.colorNotSaved'))
   }
 }
 </script>

@@ -1,5 +1,6 @@
 import type { AppSettings } from '../../main/shared/settings.constants'
 import type { DataTransferResult } from '../../main/shared/data.constants'
+import type { LocaleState } from '../../main/shared/i18n.constants'
 import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
 import type { UpdateStatus } from '../../main/shared/update.constants'
 import type { Task } from './task.types'
@@ -15,6 +16,12 @@ declare global {
     getAll: () => Promise<AppSettings>
     set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>
     reset: () => Promise<AppSettings> // valeurs par défaut, fenêtre conservée
+  }
+
+  // Langue de l'interface résolue par le main (cf. renderer/i18n)
+  var appLocale: {
+    getState: () => Promise<LocaleState>
+    onChanged: (callback: (state: LocaleState) => void) => () => void // renvoie le désabonnement
   }
 
   // Export et import des données, fichier choisi dans une boîte de dialogue native

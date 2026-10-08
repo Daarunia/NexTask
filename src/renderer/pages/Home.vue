@@ -15,10 +15,12 @@ import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { Stage } from '../types/stage.types'
 import { Tag } from '../types/tag.types'
+import { useI18n } from 'vue-i18n'
 
 // Logger
 const logger = getLogger()
 const showError = useErrorToast()
+const { t } = useI18n()
 
 // Liste de stages et de tâches
 const stageStore = useStageStore()
@@ -70,7 +72,7 @@ watch(
 watch(filterTagIds, (ids) => {
   if (!settings.rememberTagFilter || sameIds(ids, settings.tagFilterIds)) return
 
-  settings.set('tagFilterIds', [...ids]).catch(() => showError('Filtre non mémorisé'))
+  settings.set('tagFilterIds', [...ids]).catch(() => showError(t('board.filterNotSaved')))
 })
 
 /**
@@ -106,7 +108,7 @@ async function loadBoard() {
     await Promise.all([stageStore.loadAllStages(), tagStore.loadAllTags(), settings.whenLoaded()])
   } catch (error) {
     logger.error('Erreur lors du chargement du tableau :', error)
-    showError('Chargement impossible', "Le tableau n'a pas pu être chargé.")
+    showError(t('board.loadFailed'), t('board.loadFailedDetail'))
     status.value = 'error'
     return
   }
@@ -138,8 +140,8 @@ onMounted(loadBoard)
           display="chip"
           showClear
           :showToggleAll="false"
-          placeholder="Filtrer par tag"
-          emptyMessage="Aucun tag sur le tableau"
+          :placeholder="t('board.filterPlaceholder')"
+          :emptyMessage="t('board.filterEmpty')"
           class="max-w-xl min-w-60"
         >
           <template #chip="{ value }">
@@ -151,7 +153,7 @@ onMounted(loadBoard)
         </MultiSelect>
 
         <span v-if="filterTagIds.length" data-testid="filter-dnd-hint" class="filter-hint text-sm">
-          Déplacement désactivé pendant le filtrage
+          {{ t('board.filterDndHint') }}
         </span>
       </div>
 
@@ -164,8 +166,8 @@ onMounted(loadBoard)
       data-testid="board-load-error"
       class="flex h-full flex-col items-center justify-center gap-4"
     >
-      <p>Le tableau n'a pas pu être chargé.</p>
-      <Button label="Réessayer" icon="pi pi-refresh" data-testid="btn-retry-load" @click="loadBoard" />
+      <p>{{ t('board.loadFailedDetail') }}</p>
+      <Button :label="t('common.retry')" icon="pi pi-refresh" data-testid="btn-retry-load" @click="loadBoard" />
     </div>
     <div v-else class="flex h-full items-center justify-center">
       <ProgressSpinner />

@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('settings', {
 
 // Langue de l'interface résolue par le main (cf. i18n.ts) : état lu avant le
 // montage, puis suivi de ses changements
-contextBridge.exposeInMainWorld('i18n', {
+contextBridge.exposeInMainWorld('appLocale', {
   getState: () => ipcRenderer.invoke('i18n:state'),
   onChanged: (callback: (state: unknown) => void) => {
     const listener = (_event: unknown, state: unknown) => callback(state)

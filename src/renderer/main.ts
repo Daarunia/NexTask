@@ -9,6 +9,7 @@ import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 import Aura from '@primeuix/themes/aura'
 import router from './router'
+import { setupI18n } from './i18n'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -32,6 +33,6 @@ app.use(ConfirmationService)
 // Infobulles aux couleurs du thème (v-tooltip), à la place de l'attribut title natif
 app.directive('tooltip', Tooltip)
 
-// Route résolue avant le montage : la fenêtre d'ajout rapide s'affiche sans
-// l'en-tête de l'app, même au premier rendu
-router.isReady().then(() => app.mount('#app'))
+// Route et langue résolues avant le montage : la fenêtre d'ajout rapide
+// s'affiche sans l'en-tête de l'app, et le premier rendu est dans la bonne langue
+Promise.all([router.isReady(), setupI18n(app)]).then(() => app.mount('#app'))
