@@ -4,8 +4,7 @@ import { settingsStore } from './stores/settings.js'
 import type { Locale } from './shared/settings.constants.js'
 import { resolveLocale, systemLocale } from './shared/locale.helper.js'
 import type { LocaleState } from './shared/i18n.constants.js'
-import { fr, type MainMessages } from './locales/fr.js'
-import { en } from './locales/en.js'
+import { fr, MAIN_CATALOGS, type MainMessages } from './locales/index.js'
 
 /**
  * Langue de l'interface côté main : résolue depuis le paramètre `language` et
@@ -13,8 +12,6 @@ import { en } from './locales/en.js'
  * textes, cf. renderer/i18n) et utilisée par `t()` pour les textes du main
  * (zone de notification, notifications, boîtes de dialogue).
  */
-
-const CATALOGS: Record<Locale, MainMessages> = { fr, en }
 
 /** Texte au pluriel d'un catalogue. */
 interface PluralMessage {
@@ -109,7 +106,7 @@ export function t(key: MainMessageKey, params?: Params): string {
  * @param params Valeurs des paramètres `{nom}`
  */
 export function translate(target: Locale, key: MainMessageKey, params?: Params): string {
-  const message = lookup(CATALOGS[target], key) ?? lookup(fr, key)
+  const message = lookup(MAIN_CATALOGS[target], key) ?? lookup(fr, key)
   return interpolate(typeof message === 'string' ? message : key, params)
 }
 
@@ -121,7 +118,7 @@ export function translate(target: Locale, key: MainMessageKey, params?: Params):
  * @param params Autres paramètres
  */
 export function tn(key: MainPluralKey, count: number, params?: Params): string {
-  const message = (lookup(CATALOGS[locale], key) ?? lookup(fr, key)) as PluralMessage
+  const message = (lookup(MAIN_CATALOGS[locale], key) ?? lookup(fr, key)) as PluralMessage
   const form = new Intl.PluralRules(locale).select(count) === 'one' ? message.one : message.other
   return interpolate(form, { count, ...params })
 }

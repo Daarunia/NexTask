@@ -66,18 +66,7 @@ describe('Libellés en anglais', () => {
   })
 
   test('ordinaux anglais', () => {
-    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23].map(ordinalRank)).toEqual([
-      '1st',
-      '2nd',
-      '3rd',
-      '4th',
-      '11th',
-      '12th',
-      '13th',
-      '21st',
-      '22nd',
-      '23rd',
-    ])
+    expect([1, 2, 3, 4].map((rank) => ordinalRank(rank))).toEqual(['1st', '2nd', '3rd', '4th'])
     expect(ordinalDay(1)).toBe('1st')
   })
 

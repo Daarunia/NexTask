@@ -100,22 +100,35 @@ function englishOrdinal(n: number): string {
 }
 
 /**
- * Jour du mois en toutes lettres : « 1er », puis « 2 », « 3 »… (« 1st »,
- * « 2nd » en anglais).
+ * Jour du mois en toutes lettres : « 1er », puis « 2 », « 3 »… en français,
+ * « 1st », « 2nd » en anglais, le chiffre seul dans les autres langues (la
+ * tournure est portée par les phrases du catalogue).
  * @param day Jour du mois
  */
 export function ordinalDay(day: number): string {
-  if (currentLocale() === 'en') return englishOrdinal(day)
-  return day === 1 ? '1er' : String(day)
+  switch (currentLocale()) {
+    case 'fr':
+      return day === 1 ? '1er' : String(day)
+    case 'en':
+      return englishOrdinal(day)
+    default:
+      return String(day)
+  }
 }
 
+// Clés des rangs d'un jour dans le mois (1er à 4e, le 5e devenant « le dernier »)
+const RANK_KEYS = ['r1', 'r2', 'r3', 'r4'] as const
+
 /**
- * Rang en toutes lettres : « 1er », puis « 2e », « 3e »… (« 1st », « 2nd »).
- * @param rank Rang (à partir de 1)
+ * Rang en toutes lettres : « 1er », « 2e », « 3e », « 4e » (« 1st », « 2nd »).
+ * Le samedi et le dimanche ont leur propre forme, pour les langues où le rang
+ * s'accorde avec le jour (« na 3ª quinta-feira », « no 3º sábado »).
+ * @param rank Rang, de 1 à 4
+ * @param weekend Rang d'un samedi ou d'un dimanche
  */
-export function ordinalRank(rank: number): string {
-  if (currentLocale() === 'en') return englishOrdinal(rank)
-  return rank === 1 ? '1er' : `${rank}e`
+export function ordinalRank(rank: number, weekend = false): string {
+  const key = RANK_KEYS[rank - 1]
+  return weekend ? t(`recurrence.rankWeekend.${key}`) : t(`recurrence.rank.${key}`)
 }
 
 /**
@@ -129,9 +142,14 @@ export function monthlyDayLabel(mode: MonthlyMode, startDate: Date): string {
     case 'nthWeekday': {
       const { rank, weekday } = monthlyWeekdayOf(startDate)
       const name = weekdayName(weekday)
-      return rank === -1
-        ? t('recurrence.monthly.lastWeekday', { weekday: name })
-        : t('recurrence.monthly.nthWeekday', { rank: ordinalRank(rank), weekday: name })
+      const weekend = weekday >= 6
+      if (rank === -1) {
+        return weekend
+          ? t('recurrence.monthly.lastWeekend', { weekday: name })
+          : t('recurrence.monthly.lastWeekday', { weekday: name })
+      }
+      const params = { rank: ordinalRank(rank, weekend), weekday: name }
+      return weekend ? t('recurrence.monthly.nthWeekend', params) : t('recurrence.monthly.nthWeekday', params)
     }
     case 'lastDay':
       return t('recurrence.monthly.lastDay')

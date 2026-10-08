@@ -248,7 +248,7 @@ describe('Mensuel, dernier jour du mois', () => {
 
 describe('Libellés du mensuel', () => {
   test('rang en toutes lettres : 1er, puis 2e, 3e…', () => {
-    expect([1, 2, 3, 4].map(ordinalRank)).toEqual(['1er', '2e', '3e', '4e'])
+    expect([1, 2, 3, 4].map((rank) => ordinalRank(rank))).toEqual(['1er', '2e', '3e', '4e'])
   })
 
   test('jour du mois déduit de la date de début', () => {

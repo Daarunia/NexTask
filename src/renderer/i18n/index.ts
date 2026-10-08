@@ -14,11 +14,14 @@ import { primeVueLocale } from '../locales/primevue'
  * Dans un composant : `const { t } = useI18n()`. Hors composant (helpers,
  * stores) : `t` exporté ici.
  */
+/** Catalogues de l'interface par langue, un pour chaque langue prise en charge. */
+export const MESSAGES: Record<Locale, MessageSchema> = { fr, en }
+
 export const i18n = createI18n<[MessageSchema], Locale, false>({
   legacy: false,
   locale: 'fr',
   fallbackLocale: 'fr',
-  messages: { fr, en },
+  messages: MESSAGES,
   // Avertissements de clé manquante gardés en dev seulement
   missingWarn: import.meta.env.DEV,
   fallbackWarn: false,

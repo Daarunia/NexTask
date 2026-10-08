@@ -1,15 +1,13 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { fr } from '../../src/renderer/locales/fr'
-import { en } from '../../src/renderer/locales/en'
-import { fr as mainFr } from '../../src/main/locales/fr'
-import { en as mainEn } from '../../src/main/locales/en'
+import { MESSAGES } from '../../src/renderer/i18n'
+import { MAIN_CATALOGS } from '../../src/main/locales'
 
 /**
  * Garde-fous de la traduction de l'interface : aucun texte en dur dans les
  * templates Vue (tout passe par les catalogues), et des catalogues complets
- * dans chaque langue.
+ * dans chaque langue, avec les mêmes paramètres que le français.
  */
 
 const RENDERER = path.join(__dirname, '../../src/renderer')
@@ -94,22 +92,41 @@ describe('Templates', () => {
   )
 })
 
-describe('Catalogues', () => {
-  test('le renderer a les mêmes clés en français et en anglais', () => {
-    expect(keysOf(en).sort()).toEqual(keysOf(fr).sort())
+/**
+ * Valeur d'une clé pointée dans un catalogue.
+ * @param catalog Catalogue
+ * @param key Chemin pointé
+ */
+function valueOf(catalog: object, key: string): unknown {
+  return key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], catalog)
+}
+
+/**
+ * Paramètres `{nom}` d'un texte, triés et sans doublon.
+ * @param text Texte du catalogue
+ */
+function paramsOf(text: string): string[] {
+  return [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort()
+}
+
+const CATALOG_SETS = [
+  ['renderer', MESSAGES],
+  ['main', MAIN_CATALOGS],
+] as const
+
+describe.each(CATALOG_SETS)('Catalogues du %s', (_name, catalogs) => {
+  const reference = keysOf(catalogs.fr).sort()
+
+  test.each(Object.keys(catalogs))('%s a les mêmes clés que le français', (locale) => {
+    expect(keysOf(catalogs[locale as keyof typeof catalogs]).sort()).toEqual(reference)
   })
 
-  test('le main a les mêmes clés en français et en anglais', () => {
-    expect(keysOf(mainEn).sort()).toEqual(keysOf(mainFr).sort())
-  })
-
-  test('aucun texte vide', () => {
-    for (const catalog of [fr, en, mainFr, mainEn]) {
-      const empty = keysOf(catalog).filter(
-        (key) =>
-          key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], catalog) === '',
-      )
-      expect(empty).toEqual([])
+  test.each(Object.keys(catalogs))('%s garde les paramètres et n’a aucun texte vide', (locale) => {
+    const catalog = catalogs[locale as keyof typeof catalogs]
+    for (const key of reference) {
+      const text = valueOf(catalog, key)
+      expect(text, key).not.toBe('')
+      expect(paramsOf(String(text)), key).toEqual(paramsOf(String(valueOf(catalogs.fr, key))))
     }
   })
 })

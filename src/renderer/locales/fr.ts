@@ -147,6 +147,8 @@ export const fr = {
       nthWeekday: 'le {rank} {weekday}',
       lastWeekday: 'le dernier {weekday}',
       lastDay: 'le dernier jour',
+      nthWeekend: 'le {rank} {weekday}',
+      lastWeekend: 'le dernier {weekday}',
     },
     units: {
       daily: '{count} jour | {count} jours',
@@ -220,6 +222,18 @@ export const fr = {
       unitYearly: 'an | ans',
       monthEndHint: "Les mois de moins de {day} jours, l'occurrence tombe le dernier jour du mois.",
       leapYearHint: "Les années non bissextiles, l'occurrence tombe le 28 février.",
+    },
+    rank: {
+      r1: '1er',
+      r2: '2e',
+      r3: '3e',
+      r4: '4e',
+    },
+    rankWeekend: {
+      r1: '1er',
+      r2: '2e',
+      r3: '3e',
+      r4: '4e',
     },
   },
   settings: {

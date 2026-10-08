@@ -145,6 +145,8 @@ export const en: MessageSchema = {
       nthWeekday: 'on the {rank} {weekday}',
       lastWeekday: 'on the last {weekday}',
       lastDay: 'on the last day',
+      nthWeekend: 'on the {rank} {weekday}',
+      lastWeekend: 'on the last {weekday}',
     },
     units: {
       daily: '{count} day | {count} days',
@@ -218,6 +220,18 @@ export const en: MessageSchema = {
       unitYearly: 'year | years',
       monthEndHint: 'In months with fewer than {day} days, the occurrence falls on the last day of the month.',
       leapYearHint: 'In non-leap years, the occurrence falls on February 28.',
+    },
+    rank: {
+      r1: '1st',
+      r2: '2nd',
+      r3: '3rd',
+      r4: '4th',
+    },
+    rankWeekend: {
+      r1: '1st',
+      r2: '2nd',
+      r3: '3rd',
+      r4: '4th',
     },
   },
   settings: {
