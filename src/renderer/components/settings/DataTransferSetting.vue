@@ -1,12 +1,12 @@
 <template>
   <SettingsRow
-    label="Exporter les données"
-    description="Colonnes, tâches (archives comprises) et tags dans un fichier JSON. Les paramètres n'en font pas partie."
+    :label="t('settings.data.export')"
+    :description="t('settings.data.exportDescription')"
     testId="settings-row-export"
   >
     <Button
       data-testid="btn-data-export"
-      label="Exporter…"
+      :label="t('settings.data.exportButton')"
       icon="pi pi-download"
       severity="secondary"
       :loading="exporting"
@@ -15,13 +15,13 @@
   </SettingsRow>
 
   <SettingsRow
-    label="Importer des données"
-    description="Remplace toutes les colonnes, tâches et tags par ceux d'un fichier exporté. Un fichier invalide ne modifie rien."
+    :label="t('settings.data.import')"
+    :description="t('settings.data.importDescription')"
     testId="settings-row-import"
   >
     <Button
       data-testid="btn-data-import"
-      label="Importer…"
+      :label="t('settings.data.importButton')"
       icon="pi pi-upload"
       severity="danger"
       outlined
@@ -39,6 +39,7 @@ import SettingsRow from './SettingsRow.vue'
 import { describeCounts, reloadDataAfterImport } from '../../utils/data.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast, useSuccessToast } from '../../utils/toast.helper'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Export et import des données depuis les Paramètres. Le fichier est choisi
@@ -50,6 +51,7 @@ const logger = getLogger()
 const confirm = useConfirm()
 const showError = useErrorToast()
 const showSuccess = useSuccessToast()
+const { t } = useI18n()
 
 const exporting = ref(false)
 const importing = ref(false)
@@ -64,11 +66,14 @@ async function exportData() {
   try {
     const result = await globalThis.dataTransfer.exportToFile()
     if (result.status === 'done') {
-      showSuccess('Données exportées', `${describeCounts(result.counts)} dans ${result.filePath}`)
+      showSuccess(
+        t('settings.data.exported'),
+        t('settings.data.exportedDetail', { counts: describeCounts(result.counts), path: result.filePath }),
+      )
     }
   } catch (error) {
     logger.error("Erreur lors de l'export des données :", error)
-    showError('Export impossible', "Le fichier n'a pas été écrit.")
+    showError(t('settings.data.exportFailed'), t('settings.data.exportFailedDetail'))
   } finally {
     exporting.value = false
   }
@@ -81,10 +86,15 @@ async function exportData() {
 function askImport(event: MouseEvent) {
   confirm.require({
     target: event.currentTarget as HTMLElement,
-    message: 'Toutes les colonnes, tâches et tags actuels seront remplacés par ceux du fichier. Continuer ?',
+    message: t('settings.data.importConfirm'),
     icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
-    acceptProps: { label: 'Choisir le fichier', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    rejectProps: {
+      label: t('common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+      'data-testid': 'btn-confirm-reject',
+    },
+    acceptProps: { label: t('settings.data.chooseFile'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: importData,
   })
 }
@@ -100,15 +110,15 @@ async function importData() {
     const result = await globalThis.dataTransfer.importFromFile()
 
     if (result.status === 'invalid') {
-      showError('Import refusé', `${result.message}. Aucune donnée n'a été modifiée.`)
+      showError(t('settings.data.importRejected'), t('settings.data.importRejectedDetail', { reason: result.message }))
       return
     }
     if (result.status === 'canceled') return
 
-    showSuccess('Données importées', describeCounts(result.counts))
+    showSuccess(t('settings.data.imported'), describeCounts(result.counts))
   } catch (error) {
     logger.error("Erreur lors de l'import des données :", error)
-    showError('Import impossible', "Aucune donnée n'a été modifiée.")
+    showError(t('settings.data.importFailed'), t('settings.data.importFailedDetail'))
     return
   } finally {
     importing.value = false
@@ -118,7 +128,7 @@ async function importData() {
     await reloadDataAfterImport()
   } catch (error) {
     logger.error("Erreur lors du rechargement des données après l'import :", error)
-    showError('Rechargement impossible', 'Les données ont été importées. Relance NexTask pour les afficher.')
+    showError(t('settings.data.reloadFailed'), t('settings.data.reloadFailedDetail'))
   }
 }
 </script>

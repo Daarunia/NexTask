@@ -2,11 +2,11 @@
   <div class="flex flex-col gap-2 w-full">
     <div class="flex items-center justify-between gap-2">
       <span class="font-medium">{{ label }}</span>
-      <fieldset class="markdown-modes" :aria-label="`Mode d'affichage du champ ${label}`">
+      <fieldset class="markdown-modes" :aria-label="t('markdown.modes', { label })">
         <Button
           type="button"
-          v-tooltip.top="infoTooltip('Ou double-clic sur l\'aperçu')"
-          label="Écrire"
+          v-tooltip.top="infoTooltip(t('markdown.writeHint'))"
+          :label="t('markdown.write')"
           size="small"
           :text="mode !== 'edit'"
           :severity="mode === 'edit' ? undefined : 'secondary'"
@@ -16,7 +16,7 @@
         />
         <Button
           type="button"
-          label="Aperçu"
+          :label="t('markdown.preview')"
           size="small"
           :text="mode !== 'preview'"
           :severity="mode === 'preview' ? undefined : 'secondary'"
@@ -34,7 +34,7 @@
       ref="editorRef"
       :modelValue="modelValue"
       :theme="theme"
-      :language="MARKDOWN_EDITOR_LANGUAGE"
+      :language="editorLanguage"
       :toolbars="MARKDOWN_EDITOR_TOOLBARS"
       :footers="[]"
       :preview="false"
@@ -58,7 +58,7 @@
         :id="`${id}-preview`"
         :modelValue="modelValue"
         :theme="theme"
-        :language="MARKDOWN_EDITOR_LANGUAGE"
+        :language="editorLanguage"
         previewTheme="github"
         :showCodeRowNumber="false"
         :codeFoldable="false"
@@ -70,7 +70,9 @@
         class="markdown-preview"
         :data-testid="`${testId}-preview`"
       />
-      <p v-else class="markdown-preview markdown-empty" :data-testid="`${testId}-preview`">Rien à afficher</p>
+      <p v-else class="markdown-preview markdown-empty" :data-testid="`${testId}-preview`">
+        {{ t('markdown.empty') }}
+      </p>
     </div>
   </div>
 </template>
@@ -82,7 +84,8 @@ import { MdEditor, MdPreview, type ExposeParam } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { useSettingsStore } from '../stores/Settings'
 // Le helper configure aussi md-editor-v3 à son premier import
-import { MARKDOWN_EDITOR_LANGUAGE, MARKDOWN_EDITOR_TOOLBARS } from '../utils/markdownEditor.helper'
+import { MARKDOWN_EDITOR_TOOLBARS, markdownEditorLanguage } from '../utils/markdownEditor.helper'
+import { useI18n } from 'vue-i18n'
 import { infoTooltip } from '../utils/tooltip.helper'
 
 /**
@@ -109,6 +112,10 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
+const { t, locale } = useI18n()
+
+// Libellés de la barre d'outils dans la langue de l'interface
+const editorLanguage = computed(() => markdownEditorLanguage(locale.value))
 const theme = computed(() => (settings.isDark ? 'dark' : 'light'))
 
 const mode = ref<'edit' | 'preview'>(props.startInPreview ? 'preview' : 'edit')

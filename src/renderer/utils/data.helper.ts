@@ -2,6 +2,7 @@ import type { DataCounts } from '../../main/shared/data.constants'
 import { useStageStore } from '../stores/Stage'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
+import { t } from '../i18n'
 
 /**
  * Après un import, qui a remplacé toutes les données : vide les caches du
@@ -20,10 +21,9 @@ export async function reloadDataAfterImport(): Promise<void> {
  * @param counts Nombre de colonnes, tâches et tags
  */
 export function describeCounts(counts: DataCounts): string {
-  const plural = (count: number, singular: string, several: string) => `${count} ${count === 1 ? singular : several}`
   return [
-    plural(counts.stages, 'colonne', 'colonnes'),
-    plural(counts.tasks, 'tâche', 'tâches'),
-    plural(counts.tags, 'tag', 'tags'),
+    t('settings.data.counts.stages', { count: counts.stages }, counts.stages),
+    t('settings.data.counts.tasks', { count: counts.tasks }, counts.tasks),
+    t('settings.data.counts.tags', { count: counts.tags }, counts.tags),
   ].join(', ')
 }

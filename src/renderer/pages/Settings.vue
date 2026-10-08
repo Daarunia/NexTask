@@ -3,30 +3,30 @@
     <div class="mx-auto flex max-w-4xl gap-8 px-8 py-6">
       <!-- Sommaire collant, masqué sur fenêtre étroite -->
       <SettingsNav
-        :sections="NAV_SECTIONS"
+        :sections="navSections"
         :container="root"
         class="sticky top-6 hidden w-56 shrink-0 self-start md:block"
       />
 
       <div class="flex min-w-0 flex-1 flex-col gap-6">
-        <h1 class="text-2xl">Paramètres</h1>
+        <h1 class="text-2xl">{{ t('settings.title') }}</h1>
 
         <!-- Une section par famille de réglages -->
         <SettingsSection
-          title="Apparence"
-          description="Thème et couleurs de l'application."
+          :title="t('settings.appearance.title')"
+          :description="t('settings.appearance.description')"
           id="settings-section-appearance"
           testId="settings-appearance"
         >
           <SettingsRow
-            label="Mode"
-            description="Affichage clair, sombre ou réglé sur le système."
+            :label="t('settings.appearance.mode')"
+            :description="t('settings.appearance.modeDescription')"
             testId="settings-row-mode"
           >
             <SelectButton
               v-model="theme"
               data-testid="settings-mode"
-              :options="MODE_OPTIONS"
+              :options="modeOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -34,22 +34,22 @@
           </SettingsRow>
 
           <SettingsRow
-            label="Couleur d'accent"
-            description="Couleur des boutons et des repères, avec ses gris assortis."
+            :label="t('settings.appearance.accent')"
+            :description="t('settings.appearance.accentDescription')"
             testId="settings-row-color"
           >
             <PrimaryColorPicker />
           </SettingsRow>
 
           <SettingsRow
-            label="Taille de l'interface"
-            description="Agrandit ou réduit le texte et les éléments de toute l'application."
+            :label="t('settings.appearance.scale')"
+            :description="t('settings.appearance.scaleDescription')"
             testId="settings-row-interface-scale"
           >
             <SelectButton
               v-model="interfaceScale"
               data-testid="settings-interface-scale"
-              :options="INTERFACE_SCALE_OPTIONS"
+              :options="interfaceScaleOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -57,10 +57,10 @@
           </SettingsRow>
         </SettingsSection>
 
-        <SettingsSection title="Tâches" id="settings-section-tasks" testId="settings-tasks">
+        <SettingsSection :title="t('settings.tasks.title')" id="settings-section-tasks" testId="settings-tasks">
           <SettingsRow
-            label="Versions"
-            description="Versions proposées dans le formulaire d'une tâche. La version par défaut est présélectionnée à la création."
+            :label="t('settings.tasks.versions')"
+            :description="t('settings.tasks.versionsDescription')"
             testId="settings-row-versions"
             stacked
           >
@@ -68,14 +68,14 @@
           </SettingsRow>
 
           <SettingsRow
-            label="Position d'une nouvelle tâche"
-            description="Place d'une tâche créée dans sa colonne."
+            :label="t('settings.tasks.newTaskPosition')"
+            :description="t('settings.tasks.newTaskPositionDescription')"
             testId="settings-row-new-task-position"
           >
             <SelectButton
               v-model="newTaskPosition"
               data-testid="settings-new-task-position"
-              :options="NEW_TASK_POSITION_OPTIONS"
+              :options="newTaskPositionOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -83,33 +83,33 @@
           </SettingsRow>
 
           <SettingsRow
-            label="Mémoriser le filtre de tags"
-            description="Le filtre du tableau est retrouvé au prochain lancement."
+            :label="t('settings.tasks.rememberFilter')"
+            :description="t('settings.tasks.rememberFilterDescription')"
             testId="settings-row-remember-filter"
           >
             <ToggleSwitch
               v-model="rememberTagFilter"
               data-testid="settings-remember-filter-toggle"
-              ariaLabel="Mémoriser le filtre de tags"
+              :ariaLabel="t('settings.tasks.rememberFilter')"
             />
           </SettingsRow>
 
           <SettingsRow
-            label="Confirmer l'archivage"
-            description="Une confirmation est demandée avant d'archiver une tâche depuis sa carte."
+            :label="t('settings.tasks.confirmArchive')"
+            :description="t('settings.tasks.confirmArchiveDescription')"
             testId="settings-row-confirm-archive"
           >
             <ToggleSwitch
               v-model="confirmArchive"
               data-testid="settings-confirm-archive-toggle"
-              ariaLabel="Confirmer l'archivage"
+              :ariaLabel="t('settings.tasks.confirmArchive')"
             />
           </SettingsRow>
         </SettingsSection>
 
         <SettingsSection
-          title="Tags"
-          description="Renommer, recolorer ou supprimer un tag s'applique à toutes les tâches qui le portent, archives comprises."
+          :title="t('settings.tags.title')"
+          :description="t('settings.tags.description')"
           id="settings-section-tags"
           testId="settings-tags"
         >
@@ -117,36 +117,40 @@
         </SettingsSection>
 
         <SettingsSection
-          title="Tâches récurrentes"
-          description="Séries créées depuis le champ « Répéter » d'une tâche. En pause, une série ne crée plus d'occurrence ; reprise, elle repart de sa prochaine date sans rattraper les dates passées."
+          :title="t('settings.recurrences.title')"
+          :description="t('settings.recurrences.description')"
           id="settings-section-recurrences"
           testId="settings-recurrences"
         >
           <RecurrencesSetting />
         </SettingsSection>
 
-        <SettingsSection title="Notifications" id="settings-section-notifications" testId="settings-notifications">
+        <SettingsSection
+          :title="t('settings.notifications.title')"
+          id="settings-section-notifications"
+          testId="settings-notifications"
+        >
           <SettingsRow
-            label="Rappels de date de début"
-            description="Notification du système quand la date de début d'une tâche est passée."
+            :label="t('settings.notifications.reminders')"
+            :description="t('settings.notifications.remindersDescription')"
             testId="settings-row-notifications"
           >
             <ToggleSwitch
               v-model="notificationsEnabled"
               data-testid="settings-notifications-toggle"
-              ariaLabel="Rappels de date de début"
+              :ariaLabel="t('settings.notifications.reminders')"
             />
           </SettingsRow>
 
           <SettingsRow
-            label="Style des rappels"
-            description="Windows uniquement. Persistante, la notification reste à l'écran jusqu'à sa fermeture. Temporaire, elle disparaît seule après quelques secondes."
+            :label="t('settings.notifications.style')"
+            :description="t('settings.notifications.styleDescription')"
             testId="settings-row-notification-style"
           >
             <SelectButton
               v-model="notificationStyle"
               data-testid="settings-notification-style"
-              :options="NOTIFICATION_STYLE_OPTIONS"
+              :options="notificationStyleOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -156,57 +160,69 @@
         </SettingsSection>
 
         <SettingsSection
-          title="Démarrage et arrière-plan"
-          description="Pour recevoir les rappels, NexTask doit rester ouverte."
+          :title="t('settings.system.title')"
+          :description="t('settings.system.description')"
           id="settings-section-system"
           testId="settings-system"
         >
           <SettingsRow
-            label="Garder en arrière-plan"
-            description="Fermer la fenêtre laisse NexTask dans la zone de notification. « Quitter » depuis son icône la ferme vraiment."
+            :label="t('settings.system.tray')"
+            :description="t('settings.system.trayDescription')"
             testId="settings-row-tray"
           >
-            <ToggleSwitch v-model="closeToTray" data-testid="settings-tray-toggle" ariaLabel="Garder en arrière-plan" />
+            <ToggleSwitch
+              v-model="closeToTray"
+              data-testid="settings-tray-toggle"
+              :ariaLabel="t('settings.system.tray')"
+            />
           </SettingsRow>
 
           <SettingsRow
-            label="Lancer à l'ouverture de session"
-            description="NexTask démarre avec le système."
+            :label="t('settings.system.startup')"
+            :description="t('settings.system.startupDescription')"
             testId="settings-row-startup"
           >
             <ToggleSwitch
               v-model="launchAtStartup"
               data-testid="settings-startup-toggle"
-              ariaLabel="Lancer à l'ouverture de session"
+              :ariaLabel="t('settings.system.startup')"
             />
           </SettingsRow>
 
           <SettingsRow
-            label="Démarrer réduite"
-            description="Au lancement avec le système, la fenêtre ne s'ouvre pas."
+            :label="t('settings.system.minimized')"
+            :description="t('settings.system.minimizedDescription')"
             testId="settings-row-minimized"
           >
             <ToggleSwitch
               v-model="startMinimized"
               data-testid="settings-minimized-toggle"
-              ariaLabel="Démarrer réduite"
+              :ariaLabel="t('settings.system.minimized')"
               :disabled="!settings.launchAtStartup"
             />
           </SettingsRow>
 
-          <SettingsRow label="Ajout rapide" :description="quickAddDescription" testId="settings-row-quick-add">
-            <ToggleSwitch v-model="quickAddEnabled" data-testid="settings-quick-add-toggle" ariaLabel="Ajout rapide" />
+          <SettingsRow
+            :label="t('settings.system.quickAdd')"
+            :description="quickAddDescription"
+            testId="settings-row-quick-add"
+          >
+            <ToggleSwitch
+              v-model="quickAddEnabled"
+              data-testid="settings-quick-add-toggle"
+              :ariaLabel="t('settings.system.quickAdd')"
+            />
           </SettingsRow>
 
           <SettingsRow
-            label="Fenêtre au démarrage"
-            description="Maximisée, ou à la taille et à la position qu'elle avait à la fermeture."
+            :label="t('settings.system.windowMode')"
+            :description="t('settings.system.windowModeDescription')"
             testId="settings-row-window-mode"
           >
             <SelectButton
               v-model="windowMode"
               data-testid="settings-window-mode"
-              :options="WINDOW_MODE_OPTIONS"
+              :options="windowModeOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -214,15 +230,15 @@
           </SettingsRow>
         </SettingsSection>
 
-        <SettingsSection title="Organisation et données" id="settings-section-data" testId="settings-data">
+        <SettingsSection :title="t('settings.data.title')" id="settings-section-data" testId="settings-data">
           <SettingsRow
-            label="Tâches archivées"
-            description="Revoir les tâches archivées, les restaurer sur le tableau ou les supprimer définitivement."
+            :label="t('settings.data.archives')"
+            :description="t('settings.data.archivesDescription')"
             testId="settings-row-archives"
           >
             <Button
               data-testid="btn-open-archives"
-              label="Voir les archives"
+              :label="t('settings.data.openArchives')"
               icon="pi pi-inbox"
               severity="secondary"
               @click="openArchives"
@@ -230,26 +246,26 @@
           </SettingsRow>
 
           <SettingsRow
-            label="Purge automatique des archives"
-            description="Les tâches archivées depuis plus longtemps que la durée choisie sont supprimées définitivement, au démarrage puis une fois par jour."
+            :label="t('settings.data.purge')"
+            :description="t('settings.data.purgeDescription')"
             testId="settings-row-archive-purge"
           >
             <ToggleSwitch
               v-model="archivePurgeEnabled"
               data-testid="settings-archive-purge-toggle"
-              ariaLabel="Purge automatique des archives"
+              :ariaLabel="t('settings.data.purge')"
             />
           </SettingsRow>
 
           <SettingsRow
-            label="Supprimer les archives de plus de"
-            description="Ancienneté d'archivage au-delà de laquelle une tâche est purgée."
+            :label="t('settings.data.purgeDays')"
+            :description="t('settings.data.purgeDaysDescription')"
             testId="settings-row-archive-purge-days"
           >
             <SelectButton
               v-model="archivePurgeDays"
               data-testid="settings-archive-purge-days"
-              :options="ARCHIVE_PURGE_OPTIONS"
+              :options="archivePurgeOptions"
               optionLabel="label"
               optionValue="value"
               :allowEmpty="false"
@@ -260,25 +276,25 @@
           <DataTransferSetting />
 
           <SettingsRow
-            label="Sauvegarde automatique"
-            description="Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées."
+            :label="t('settings.data.autoBackup')"
+            :description="t('settings.data.autoBackupDescription')"
             testId="settings-row-auto-backup"
           >
             <ToggleSwitch
               v-model="autoBackupEnabled"
               data-testid="settings-auto-backup-toggle"
-              ariaLabel="Sauvegarde automatique"
+              :ariaLabel="t('settings.data.autoBackup')"
             />
           </SettingsRow>
 
           <SettingsRow
-            label="Dossier des données"
-            description="Base de données et sauvegardes, à ouvrir dans l'explorateur de fichiers."
+            :label="t('settings.data.dataFolder')"
+            :description="t('settings.data.dataFolderDescription')"
             testId="settings-row-data-folder"
           >
             <Button
               data-testid="btn-open-data-folder"
-              label="Ouvrir"
+              :label="t('settings.data.open')"
               icon="pi pi-folder-open"
               severity="secondary"
               @click="openDataFolder"
@@ -286,13 +302,13 @@
           </SettingsRow>
 
           <SettingsRow
-            label="Dossier des journaux"
-            description="Fichiers de log de NexTask, utiles pour signaler un problème."
+            :label="t('settings.data.logsFolder')"
+            :description="t('settings.data.logsFolderDescription')"
             testId="settings-row-logs-folder"
           >
             <Button
               data-testid="btn-open-logs-folder"
-              label="Ouvrir"
+              :label="t('settings.data.open')"
               icon="pi pi-folder-open"
               severity="secondary"
               @click="openLogsFolder"
@@ -338,57 +354,59 @@ import {
   type WindowMode,
 } from '../../main/shared/settings.constants'
 import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
+import { useI18n } from 'vue-i18n'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
 const router = useRouter()
+const { t } = useI18n()
 
 // Conteneur qui défile, suivi par le sommaire
 const root = ref<HTMLElement | null>(null)
 
-// Entrées du sommaire, dans l'ordre des sections de la page
-const NAV_SECTIONS: SettingsNavSection[] = [
-  { id: 'settings-section-appearance', label: 'Apparence', icon: 'pi-palette' },
-  { id: 'settings-section-tasks', label: 'Tâches', icon: 'pi-check-square' },
-  { id: 'settings-section-tags', label: 'Tags', icon: 'pi-tags' },
-  { id: 'settings-section-recurrences', label: 'Tâches récurrentes', icon: 'pi-replay' },
-  { id: 'settings-section-notifications', label: 'Notifications', icon: 'pi-bell' },
-  { id: 'settings-section-system', label: 'Démarrage et arrière-plan', icon: 'pi-power-off' },
-  { id: 'settings-section-data', label: 'Organisation et données', icon: 'pi-database' },
-  { id: 'settings-section-about', label: 'À propos', icon: 'pi-info-circle' },
-]
+// Entrées du sommaire, dans l'ordre des sections de la page. Libellés et
+// options calculés pour suivre la langue de l'interface.
+const navSections = computed<SettingsNavSection[]>(() => [
+  { id: 'settings-section-appearance', label: t('settings.appearance.title'), icon: 'pi-palette' },
+  { id: 'settings-section-tasks', label: t('settings.tasks.title'), icon: 'pi-check-square' },
+  { id: 'settings-section-tags', label: t('settings.tags.title'), icon: 'pi-tags' },
+  { id: 'settings-section-recurrences', label: t('settings.recurrences.title'), icon: 'pi-replay' },
+  { id: 'settings-section-notifications', label: t('settings.notifications.title'), icon: 'pi-bell' },
+  { id: 'settings-section-system', label: t('settings.system.title'), icon: 'pi-power-off' },
+  { id: 'settings-section-data', label: t('settings.data.title'), icon: 'pi-database' },
+  { id: 'settings-section-about', label: t('settings.about.navLabel'), icon: 'pi-info-circle' },
+])
 
-const MODE_OPTIONS: { label: string; value: ThemeMode }[] = [
-  { label: 'Clair', value: 'light' },
-  { label: 'Sombre', value: 'dark' },
-  { label: 'Système', value: 'system' },
-]
+const modeOptions = computed<{ label: string; value: ThemeMode }[]>(() => [
+  { label: t('settings.appearance.modeLight'), value: 'light' },
+  { label: t('settings.appearance.modeDark'), value: 'dark' },
+  { label: t('settings.appearance.modeSystem'), value: 'system' },
+])
 
-const INTERFACE_SCALE_OPTIONS: { label: string; value: InterfaceScale }[] = INTERFACE_SCALES.map((scale) => ({
-  label: `${scale} %`,
-  value: scale,
-}))
+const interfaceScaleOptions = computed<{ label: string; value: InterfaceScale }[]>(() =>
+  INTERFACE_SCALES.map((scale) => ({ label: t('settings.appearance.scaleValue', { scale }), value: scale })),
+)
 
-const WINDOW_MODE_OPTIONS: { label: string; value: WindowMode }[] = [
-  { label: 'Maximisée', value: 'maximized' },
-  { label: 'Dernière taille', value: 'last' },
-]
+const windowModeOptions = computed<{ label: string; value: WindowMode }[]>(() => [
+  { label: t('settings.system.windowMaximized'), value: 'maximized' },
+  { label: t('settings.system.windowLast'), value: 'last' },
+])
 
-const NEW_TASK_POSITION_OPTIONS: { label: string; value: NewTaskPosition }[] = [
-  { label: 'En haut', value: 'top' },
-  { label: 'En bas', value: 'bottom' },
-]
+const newTaskPositionOptions = computed<{ label: string; value: NewTaskPosition }[]>(() => [
+  { label: t('settings.tasks.positionTop'), value: 'top' },
+  { label: t('settings.tasks.positionBottom'), value: 'bottom' },
+])
 
-const NOTIFICATION_STYLE_OPTIONS: { label: string; value: NotificationStyle }[] = [
-  { label: 'Persistante', value: 'reminder' },
-  { label: 'Temporaire', value: 'default' },
-]
+const notificationStyleOptions = computed<{ label: string; value: NotificationStyle }[]>(() => [
+  { label: t('settings.notifications.stylePersistent'), value: 'reminder' },
+  { label: t('settings.notifications.styleTemporary'), value: 'default' },
+])
 
-const ARCHIVE_PURGE_OPTIONS: { label: string; value: ArchivePurgeDays }[] = [
-  { label: '30 jours', value: 30 },
-  { label: '90 jours', value: 90 },
-  { label: '1 an', value: 365 },
-]
+const archivePurgeOptions = computed<{ label: string; value: ArchivePurgeDays }[]>(() => [
+  { label: t('settings.data.purge30'), value: 30 },
+  { label: t('settings.data.purge90'), value: 90 },
+  { label: t('settings.data.purge365'), value: 365 },
+])
 
 /**
  * Modèle d'un réglage simple : lu dans le store et écrit par lui, de sorte que
@@ -400,7 +418,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
   return computed({
     get: () => settings[key],
     set: (value) => {
-      settings.set(key, value).catch(() => showError('Paramètre non enregistré'))
+      settings.set(key, value).catch(() => showError(t('settings.notSaved')))
     },
   })
 }
@@ -414,7 +432,7 @@ const confirmArchive = settingModel('confirmArchive')
 const rememberTagFilter = computed({
   get: () => settings.rememberTagFilter,
   set: (value: boolean) => {
-    settings.setRememberTagFilter(value).catch(() => showError('Paramètre non enregistré'))
+    settings.setRememberTagFilter(value).catch(() => showError(t('settings.notSaved')))
   },
 })
 const notificationsEnabled = settingModel('notificationsEnabled')
@@ -448,15 +466,15 @@ const quickAddEnabled = computed({
     settings
       .set('quickAddEnabled', value)
       .then(refreshQuickAddStatus)
-      .catch(() => showError('Paramètre non enregistré'))
+      .catch(() => showError(t('settings.notSaved')))
   },
 })
 
 const quickAddDescription = computed(() => {
   const shortcut = quickAddStatus.value?.shortcut ?? 'Ctrl+Alt+N'
-  const description = `${shortcut} ouvre une petite fenêtre pour noter une tâche, depuis n'importe quelle application.`
+  const description = t('settings.system.quickAddDescription', { shortcut })
   return settings.quickAddEnabled && quickAddStatus.value?.unavailable
-    ? `${description} Ce raccourci est déjà utilisé par une autre application.`
+    ? `${description} ${t('settings.system.quickAddUnavailable')}`
     : description
 })
 
@@ -474,7 +492,7 @@ async function openFolder(open: () => Promise<void>) {
     await open()
   } catch (error) {
     getLogger().error("Erreur lors de l'ouverture d'un dossier :", error)
-    showError('Ouverture impossible', "Le dossier n'a pas pu être ouvert.")
+    showError(t('settings.data.openFolderFailed'), t('settings.data.openFolderFailedDetail'))
   }
 }
 

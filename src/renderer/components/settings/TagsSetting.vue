@@ -2,7 +2,7 @@
   <div data-testid="settings-tag-list" class="flex flex-col gap-3">
     <template v-if="status === 'ready'">
       <p v-if="!tagStore.getAllTags.length" data-testid="settings-tags-empty" class="settings-muted text-sm">
-        Aucun tag. Les tags se créent depuis le formulaire d'une tâche.
+        {{ t('settings.tagList.empty') }}
       </p>
 
       <!-- Tags triés par nom, nom et couleur lus dans le store -->
@@ -22,7 +22,7 @@
                   ref="nameInput"
                   v-model="editName"
                   data-testid="settings-tag-name-input"
-                  aria-label="Nom du tag"
+                  :aria-label="t('tags.name')"
                   size="small"
                   :maxlength="TAG_NAME_MAX_LENGTH"
                   :invalid="!!editError"
@@ -34,7 +34,7 @@
                   type="submit"
                   data-testid="btn-tag-rename-save"
                   icon="pi pi-check"
-                  aria-label="Enregistrer le nom"
+                  :aria-label="t('settings.tagList.saveName')"
                   size="small"
                   text
                   rounded
@@ -43,7 +43,7 @@
                 <Button
                   data-testid="btn-tag-rename-cancel"
                   icon="pi pi-times"
-                  aria-label="Annuler le renommage"
+                  :aria-label="t('settings.tagList.cancelRename')"
                   size="small"
                   severity="secondary"
                   text
@@ -68,8 +68,8 @@
             <Button
               data-testid="btn-tag-rename"
               icon="pi pi-pencil"
-              :aria-label="`Renommer ${tag.name}`"
-              title="Renommer"
+              :aria-label="t('settings.tagList.rename', { name: tag.name })"
+              :title="t('settings.tagList.renameShort')"
               size="small"
               severity="secondary"
               text
@@ -79,8 +79,8 @@
             <Button
               data-testid="btn-tag-color"
               icon="pi pi-palette"
-              :aria-label="`Changer la couleur de ${tag.name}`"
-              title="Couleur"
+              :aria-label="t('settings.tagList.changeColor', { name: tag.name })"
+              :title="t('settings.tagList.colorShort')"
               size="small"
               severity="secondary"
               text
@@ -90,8 +90,8 @@
             <Button
               data-testid="btn-tag-delete"
               icon="pi pi-trash"
-              :aria-label="`Supprimer ${tag.name}`"
-              title="Supprimer"
+              :aria-label="t('settings.tagList.delete', { name: tag.name })"
+              :title="t('common.delete')"
               size="small"
               severity="danger"
               text
@@ -104,8 +104,8 @@
     </template>
 
     <div v-else-if="status === 'error'" data-testid="settings-tags-error" class="flex items-center gap-3">
-      <p class="text-sm">Les tags n'ont pas pu être chargés.</p>
-      <Button label="Réessayer" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
+      <p class="text-sm">{{ t('settings.tagList.loadFailed') }}</p>
+      <Button :label="t('common.retry')" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
     </div>
 
     <ProgressSpinner v-else class="h-8! w-8!" />
@@ -135,6 +135,7 @@ import { TAG_NAME_MAX_LENGTH } from '../../../main/shared/validation.constants'
 import { renameRejection, tagDeleteQuestion, tagUsageLabel, validateTagName } from '../../utils/tag.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast } from '../../utils/toast.helper'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Liste des tags dans les Paramètres : renommage, couleur et suppression.
@@ -148,6 +149,7 @@ const logger = getLogger()
 const tagStore = useTagStore()
 const confirm = useConfirm()
 const showError = useErrorToast()
+const { t } = useI18n()
 
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
@@ -231,7 +233,7 @@ async function saveRename(tag: Tag) {
     if (rejection) {
       editError.value = rejection
     } else {
-      showError('Renommage annulé')
+      showError(t('tags.renameCanceled'))
     }
   } finally {
     saving.value = false
@@ -261,7 +263,7 @@ async function applyColor(color: TagColor) {
     await tagStore.updateTag(tag.id, { color })
   } catch {
     // Le store n'a rien modifié : la couleur d'avant reste affichée
-    showError('Couleur non modifiée')
+    showError(t('tags.colorNotChanged'))
   }
 }
 
@@ -276,8 +278,13 @@ function askDelete(event: MouseEvent, tag: Tag) {
     target: event.currentTarget as HTMLElement,
     message: tagDeleteQuestion(tag),
     icon: 'pi pi-exclamation-triangle',
-    rejectProps: { label: 'Annuler', severity: 'secondary', outlined: true, 'data-testid': 'btn-confirm-reject' },
-    acceptProps: { label: 'Supprimer', severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    rejectProps: {
+      label: t('common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+      'data-testid': 'btn-confirm-reject',
+    },
+    acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: () => deleteTag(tag),
   })
 }
@@ -290,7 +297,7 @@ async function deleteTag(tag: Tag) {
   try {
     await tagStore.deleteTag(tag.id)
   } catch {
-    showError('Suppression impossible', "Le tag n'a pas été supprimé.")
+    showError(t('tags.deleteFailed'), t('tags.deleteFailedDetail'))
   }
 }
 </script>

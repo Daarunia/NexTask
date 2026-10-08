@@ -9,8 +9,17 @@ import { config, type StaticTextDefaultValue, type ToolbarNames } from 'md-edito
  * et les boutons qui en dépendent ne sont pas affichés.
  */
 
-/** Langue des libellés de l'éditeur, déclarée par `setupMarkdownEditor`. */
-export const MARKDOWN_EDITOR_LANGUAGE = 'fr-FR'
+/** Langue française des libellés de l'éditeur, déclarée par `setupMarkdownEditor`. */
+const FRENCH_LANGUAGE = 'fr-FR'
+
+/**
+ * Langue des libellés de l'éditeur pour une langue de l'interface : français
+ * déclaré ici, anglais fourni par md-editor-v3.
+ * @param locale Langue de l'interface (`fr`, `en`)
+ */
+export function markdownEditorLanguage(locale: string): string {
+  return locale === 'en' ? 'en-US' : FRENCH_LANGUAGE
+}
 
 /**
  * Boutons de la barre d'outils, dans l'ordre (`-` = séparateur, `=` = la suite
@@ -37,7 +46,10 @@ export const MARKDOWN_EDITOR_TOOLBARS: ToolbarNames[] = [
   'pageFullscreen',
 ]
 
-/** Libellés français, limités à ce que l'éditeur affiche. */
+/**
+ * Libellés français, limités à ce que l'éditeur affiche. Ils restent ici
+ * plutôt que dans les catalogues : c'est la forme attendue par md-editor-v3.
+ */
 const FRENCH: StaticTextDefaultValue = {
   toolbarTips: {
     bold: 'Gras',
@@ -76,7 +88,7 @@ const FRENCH: StaticTextDefaultValue = {
 
 /**
  * Configure md-editor-v3 pour toute l'app, une seule fois avant le premier
- * affichage : libellés français, liens ouverts hors de l'app, et rendu sans
+ * affichage : libellés français (l'anglais est fourni), liens ouverts hors de l'app, et rendu sans
  * les cases à cocher (`- [ ]` reste du texte).
  * Appelée au chargement de ce module, importé seulement par MarkdownEditor.vue
  * (chargé à la demande par TaskDialog).
@@ -84,7 +96,7 @@ const FRENCH: StaticTextDefaultValue = {
 function setupMarkdownEditor() {
   config({
     editorConfig: {
-      languageUserDefined: { [MARKDOWN_EDITOR_LANGUAGE]: FRENCH },
+      languageUserDefined: { [FRENCH_LANGUAGE]: FRENCH },
     },
     // Lien en nouvelle fenêtre : le main le confie au navigateur par défaut,
     // sans tenter de naviguer dans la page de l'app

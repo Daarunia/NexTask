@@ -16,14 +16,14 @@
           data-testid="settings-version-default"
           class="default-badge"
         >
-          Par défaut
+          {{ t('settings.versions.default') }}
         </span>
         <Button
           v-else
           data-testid="btn-version-default"
           icon="pi pi-star"
-          :aria-label="`Utiliser ${version} par défaut`"
-          title="Utiliser par défaut"
+          :aria-label="t('settings.versions.useItemAsDefault', { version })"
+          :title="t('settings.versions.useAsDefault')"
           text
           rounded
           size="small"
@@ -34,7 +34,7 @@
         <Button
           data-testid="btn-version-remove"
           icon="pi pi-trash"
-          :aria-label="`Retirer ${version}`"
+          :aria-label="t('settings.versions.remove', { version })"
           :disabled="settings.taskVersions.length <= 1"
           text
           rounded
@@ -50,14 +50,14 @@
       <InputText
         v-model="newVersion"
         data-testid="settings-version-input"
-        aria-label="Nouvelle version"
-        placeholder="Nouvelle version (ex. 1.6.0)"
+        :aria-label="t('settings.versions.newVersion')"
+        :placeholder="t('settings.versions.newVersionPlaceholder')"
         :maxlength="TASK_VERSION_MAX_LENGTH"
         :invalid="!!error"
         class="flex-1"
         @input="error = ''"
       />
-      <Button type="submit" data-testid="btn-version-add" icon="pi pi-plus" label="Ajouter" />
+      <Button type="submit" data-testid="btn-version-add" icon="pi pi-plus" :label="t('settings.versions.add')" />
     </form>
     <Message v-if="error" data-testid="settings-version-error" severity="error" size="small" variant="simple">
       {{ error }}
@@ -73,9 +73,11 @@ import Message from 'primevue/message'
 import { TASK_VERSION_MAX_LENGTH } from '../../../main/shared/settings.constants'
 import { useSettingsStore } from '../../stores/Settings'
 import { useErrorToast } from '../../utils/toast.helper'
+import { useI18n } from 'vue-i18n'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
+const { t } = useI18n()
 
 const newVersion = ref('')
 const error = ref('')
@@ -87,11 +89,11 @@ async function add() {
   const version = newVersion.value.trim()
 
   if (!version) {
-    error.value = 'Saisis une version'
+    error.value = t('settings.versions.required')
     return
   }
   if (settings.taskVersions.includes(version)) {
-    error.value = 'Cette version est déjà proposée'
+    error.value = t('settings.versions.duplicate')
     return
   }
 
@@ -100,7 +102,7 @@ async function add() {
     newVersion.value = ''
   } catch {
     // La saisie est conservée pour pouvoir réessayer
-    showError('Version non ajoutée')
+    showError(t('settings.versions.addFailed'))
   }
 }
 
@@ -120,7 +122,7 @@ async function remove(version: string) {
     }
     await settings.set('taskVersions', remaining)
   } catch {
-    showError('Version non retirée')
+    showError(t('settings.versions.removeFailed'))
   }
 }
 
@@ -132,7 +134,7 @@ async function setDefault(version: string) {
   try {
     await settings.set('defaultTaskVersion', version)
   } catch {
-    showError('Version par défaut non enregistrée')
+    showError(t('settings.versions.defaultFailed'))
   }
 }
 </script>
