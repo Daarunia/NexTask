@@ -1,4 +1,4 @@
-import type { App } from 'vue'
+import { type App, ref } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { INTL_LOCALES, type Locale } from '../../main/shared/settings.constants'
 import type { LocaleState } from '../../main/shared/i18n.constants'
@@ -28,7 +28,13 @@ export const i18n = createI18n<[MessageSchema], Locale, false>({
 export const t = i18n.global.t
 
 // Langue que donnerait le choix « système », affichée dans les Paramètres
-let systemLocale: Locale = 'fr'
+const systemLocale = ref<Locale>('fr')
+
+/**
+ * Nom de chaque langue dans sa propre langue, pour qu'une personne qui ne lit
+ * pas la langue affichée retrouve la sienne.
+ */
+export const LANGUAGE_NAMES: Record<Locale, string> = { fr: 'Français', en: 'English' }
 
 // Application Vue, pour la locale de PrimeVue
 let vueApp: App | null = null
@@ -40,7 +46,7 @@ export function currentLocale(): Locale {
 
 /** Langue de l'OS, rapprochée des langues prises en charge. */
 export function currentSystemLocale(): Locale {
-  return systemLocale
+  return systemLocale.value
 }
 
 /** Locale `Intl` de la langue active (`fr-FR`, `en-US`), pour les dates. */
@@ -55,7 +61,7 @@ export function intlLocale(): string {
  * @param state Langue active et langue de l'OS, envoyées par le main
  */
 export function applyLocale(state: LocaleState): void {
-  systemLocale = state.systemLocale
+  systemLocale.value = state.systemLocale
   i18n.global.locale.value = state.locale
   document.documentElement.lang = state.locale
 

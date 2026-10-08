@@ -12,6 +12,7 @@ import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system
 import { clearOpenedUrls, getOpenedUrls } from '../../system/externalLinks.js'
 import { settingsStore } from '../../stores/settings.js'
 import { closeQuickAdd, openQuickAdd } from '../../system/quickAdd.js'
+import { trayMenuLabels } from '../../system/systemIntegration.js'
 import { resetUpdateForTest, simulateUpdateStatus, wasInstallRequested } from '../../system/updater.js'
 import { UPDATE_STATES, type UpdateStatus } from '../../shared/update.constants.js'
 import Logger from 'electron-log'
@@ -36,6 +37,7 @@ import Logger from 'electron-log'
  * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
  * - POST /test/update-status      → impose un état de la mise à jour automatique (désactivée en test)
  * - GET  /test/update-install     → indique si l'installation de la mise à jour a été demandée (simulée en test)
+ * - GET  /test/tray-menu          → libellés du menu de l'icône de la zone de notification (non créée en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -135,8 +137,8 @@ export default async function testRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} [req.body] - Corps optionnel
    * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
-   * @returns {Promise<{count: number, shown: boolean, style: string|null}>} Nombre de tâches notifiées, envoi ou non
-   *   de la notification OS et son style (`reminder` ou `default`, null sans envoi)
+   * @returns {Promise<{count: number, shown: boolean, style: string|null, title: string|null}>} Nombre de tâches
+   *   notifiées, envoi ou non de la notification OS, son style (`reminder` ou `default`) et son titre (null sans envoi)
    */
   fastify.post(
     '/test/run-notifications',
@@ -155,6 +157,7 @@ export default async function testRoutes(fastify) {
               count: { type: 'integer' },
               shown: { type: 'boolean' },
               style: { type: ['string', 'null'] },
+              title: { type: ['string', 'null'] },
             },
           },
         },
@@ -418,6 +421,28 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedUrls(),
+  )
+
+  /**
+   * GET /test/tray-menu
+   *
+   * Libellés du menu de l'icône de la zone de notification, dans la langue de
+   * l'interface. L'icône n'est jamais créée en mode test.
+   *
+   * @returns {Promise<string[]>} Libellés, dans l'ordre du menu
+   */
+  fastify.get(
+    '/test/tray-menu',
+    {
+      schema: {
+        description: "Libellés du menu de l'icône de la zone de notification (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    async () => trayMenuLabels(),
   )
 
   /**

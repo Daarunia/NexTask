@@ -261,6 +261,9 @@ export const fr = {
       modeDark: 'Sombre',
       modeSystem: 'Système',
       scaleValue: '{scale} %',
+      language: 'Langue · Language',
+      languageDescription: "Langue de l'interface. « Langue du système » suit celle de l'OS.",
+      languageSystem: 'Langue du système ({name})',
     },
     tasks: {
       title: 'Tâches',

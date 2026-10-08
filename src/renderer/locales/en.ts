@@ -259,6 +259,9 @@ export const en: MessageSchema = {
       modeDark: 'Dark',
       modeSystem: 'System',
       scaleValue: '{scale}%',
+      language: 'Language · Langue',
+      languageDescription: 'Interface language. “System language” follows the OS.',
+      languageSystem: 'System language ({name})',
     },
     tasks: {
       title: 'Tasks',

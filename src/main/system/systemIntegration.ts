@@ -1,4 +1,4 @@
-import { app, Menu, nativeImage, Tray } from 'electron'
+import { app, Menu, type MenuItemConstructorOptions, nativeImage, Tray } from 'electron'
 import Logger from 'electron-log'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
@@ -52,13 +52,32 @@ export function shouldHideOnClose(): boolean {
  * @param openQuickAdd Ouvre la fenêtre d'ajout rapide
  */
 function buildTrayMenu(showWindow: () => void, openQuickAdd: () => void): Menu {
-  return Menu.buildFromTemplate([
+  return Menu.buildFromTemplate(trayMenuTemplate(showWindow, openQuickAdd))
+}
+
+/**
+ * Entrées du menu de l'icône, dans la langue active.
+ *
+ * @param showWindow Réaffiche la fenêtre principale
+ * @param openQuickAdd Ouvre la fenêtre d'ajout rapide
+ */
+function trayMenuTemplate(showWindow: () => void, openQuickAdd: () => void): MenuItemConstructorOptions[] {
+  return [
     { label: t('tray.open'), click: showWindow },
     // Raccourci affiché pour mémoire, enregistré à part (cf. quickAdd)
     { label: t('tray.quickAdd'), click: openQuickAdd, accelerator: QUICK_ADD_ACCELERATOR, registerAccelerator: false },
     { type: 'separator' },
     { label: t('tray.quit'), click: () => app.quit() },
-  ])
+  ]
+}
+
+/**
+ * Libellés du menu de l'icône, pour les tests (l'icône n'est pas créée en
+ * mode test, cf. /test/tray-menu).
+ */
+export function trayMenuLabels(): string[] {
+  const noop = () => {}
+  return trayMenuTemplate(noop, noop).flatMap((item) => (item.label ? [item.label] : []))
 }
 
 /**

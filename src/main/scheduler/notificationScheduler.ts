@@ -74,8 +74,9 @@ function escapeXml(text: string): string {
  *
  * @param tasks Tâches échues à annoncer
  * @param style Style choisi dans les paramètres (seul Windows en tient compte)
+ * @returns Titre de la notification, dans la langue de l'interface
  */
-function notify(tasks: { id: number; title: string }[], style: NotificationStyle): void {
+function notify(tasks: { id: number; title: string }[], style: NotificationStyle): string {
   const lines = tasks.slice(0, CAP).map((t) => `• ${t.title}`)
   if (tasks.length > CAP) {
     lines.push(tn('notifications.more', tasks.length - CAP))
@@ -113,7 +114,7 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
   // déclenché manuellement via /test/run-notifications).
-  if (IS_TEST) return
+  if (IS_TEST) return title
 
   // Un clic ouvre l'app (et la tâche si elle est seule), cf. main.ts
   const taskIds = tasks.map((t) => t.id)
@@ -127,6 +128,7 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
 
   shownNotifications.add(notification)
   notification.show()
+  return title
 }
 
 /** Résultat d'un passage du planificateur. */
@@ -134,6 +136,7 @@ export interface NotificationCheckResult {
   count: number // tâches échues marquées comme notifiées
   shown: boolean // une notification OS a été envoyée
   style: NotificationStyle | null // style de la notification envoyée, null sans envoi
+  title: string | null // titre de la notification envoyée, null sans envoi
 }
 
 /**
@@ -142,7 +145,7 @@ export interface NotificationCheckResult {
  * Extrait pour être testable.
  *
  * @param now Horodatage de référence (injectable pour les tests)
- * @returns Nombre de tâches traitées, envoi ou non de la notification et son style
+ * @returns Nombre de tâches traitées, envoi ou non de la notification, son style et son titre
  */
 export async function runNotificationCheck(now: Date = new Date()): Promise<NotificationCheckResult> {
   const dueTasks = await prisma.task.findMany({
@@ -154,14 +157,15 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
     select: { id: true, title: true },
   })
 
-  if (dueTasks.length === 0) return { count: 0, shown: false, style: null }
+  if (dueTasks.length === 0) return { count: 0, shown: false, style: null, title: null }
 
   let style: NotificationStyle | null = null
+  let title: string | null = null
   if (!settingsStore.get('notificationsEnabled')) {
     Logger.info('[scheduler] Rappels désactivés, marquage sans affichage')
   } else if (Notification.isSupported()) {
     style = settingsStore.get('notificationStyle')
-    notify(dueTasks, style)
+    title = notify(dueTasks, style)
   } else {
     Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }
@@ -172,7 +176,7 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
   })
 
   Logger.info(`[scheduler] ${dueTasks.length} tâche(s) notifiée(s)`)
-  return { count: dueTasks.length, shown: style !== null, style }
+  return { count: dueTasks.length, shown: style !== null, style, title }
 }
 
 /**

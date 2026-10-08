@@ -18,6 +18,22 @@
           id="settings-section-appearance"
           testId="settings-appearance"
         >
+          <!-- Libellé bilingue : une personne qui ne lit pas la langue affichée retrouve ce réglage -->
+          <SettingsRow
+            :label="t('settings.appearance.language')"
+            :description="t('settings.appearance.languageDescription')"
+            testId="settings-row-language"
+          >
+            <Select
+              v-model="language"
+              data-testid="setting-language"
+              :options="languageOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-60"
+            />
+          </SettingsRow>
+
           <SettingsRow
             :label="t('settings.appearance.mode')"
             :description="t('settings.appearance.modeDescription')"
@@ -328,6 +344,7 @@
 import { computed, onMounted, ref, type WritableComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingsSection from '../components/settings/SettingsSection.vue'
@@ -345,9 +362,11 @@ import { useErrorToast } from '../utils/toast.helper'
 import { getLogger } from '../utils/logger'
 import {
   INTERFACE_SCALES,
+  SUPPORTED_LOCALES,
   type AppSettings,
   type ArchivePurgeDays,
   type InterfaceScale,
+  type Language,
   type NewTaskPosition,
   type NotificationStyle,
   type ThemeMode,
@@ -355,6 +374,7 @@ import {
 } from '../../main/shared/settings.constants'
 import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
 import { useI18n } from 'vue-i18n'
+import { currentSystemLocale, LANGUAGE_NAMES } from '../i18n'
 
 const settings = useSettingsStore()
 const showError = useErrorToast()
@@ -375,6 +395,13 @@ const navSections = computed<SettingsNavSection[]>(() => [
   { id: 'settings-section-system', label: t('settings.system.title'), icon: 'pi-power-off' },
   { id: 'settings-section-data', label: t('settings.data.title'), icon: 'pi-database' },
   { id: 'settings-section-about', label: t('settings.about.navLabel'), icon: 'pi-info-circle' },
+])
+
+// « Système » précise la langue qu'il donne sur ce poste, les autres sont
+// écrites dans leur propre langue
+const languageOptions = computed<{ label: string; value: Language }[]>(() => [
+  { label: t('settings.appearance.languageSystem', { name: LANGUAGE_NAMES[currentSystemLocale()] }), value: 'system' },
+  ...SUPPORTED_LOCALES.map((locale) => ({ label: LANGUAGE_NAMES[locale], value: locale })),
 ])
 
 const modeOptions = computed<{ label: string; value: ThemeMode }[]>(() => [
@@ -423,6 +450,7 @@ function settingModel<K extends keyof AppSettings>(key: K): WritableComputedRef<
   })
 }
 
+const language = settingModel('language')
 const theme = settingModel('theme')
 const interfaceScale = settingModel('interfaceScale')
 const newTaskPosition = settingModel('newTaskPosition')

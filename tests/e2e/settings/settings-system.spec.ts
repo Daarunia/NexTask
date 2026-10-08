@@ -44,7 +44,7 @@ test.describe('Notifications', () => {
 
     const id = await createOverdueTask(page.request)
     const res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: false, style: null })
+    expect(await res.json()).toEqual({ count: 1, shown: false, style: null, title: null })
 
     // Marquée quand même : elle ne ressortira pas à la réactivation
     const task = (await (await page.request.get(`${API}/tasks/${id}`)).json()) as { notifiedAt: string | null }
@@ -77,14 +77,14 @@ test.describe('Style des rappels', () => {
     // Style par défaut : toast « reminder » qui reste à l'écran (Windows)
     await createOverdueTask(page.request)
     let res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'reminder' })
+    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'reminder', title: 'Tâches à démarrer (1)' })
 
     await settingsPage.notificationStyleOption('Temporaire').click()
     await expect(settingsPage.notificationStyleOption('Temporaire')).toHaveAttribute('aria-pressed', 'true')
 
     await createOverdueTask(page.request)
     res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'default' })
+    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'default', title: 'Tâches à démarrer (1)' })
   })
 
   test('le style est conservé après un rechargement', async ({ page, header, settingsPage }) => {
