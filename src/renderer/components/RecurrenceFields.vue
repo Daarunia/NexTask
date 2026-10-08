@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-col gap-2 w-full" data-testid="recurrence-fields">
     <div class="flex items-center justify-between gap-2">
-      <label for="recurrence" class="font-medium">Répéter</label>
+      <label for="recurrence" class="font-medium">{{ t('recurrence.fields.repeat') }}</label>
       <!-- Raccourci vers « Ne pas répéter » : la série s'arrête à l'enregistrement -->
       <Button
         v-if="seriesLive && modelValue.preset !== 'none'"
         data-testid="recurrence-stop"
-        label="Arrêter la série"
+        :label="t('recurrence.fields.stopSeries')"
         size="small"
         link
         class="p-0!"
@@ -26,25 +26,27 @@
 
     <!-- Résumé en clair et prochaine date -->
     <p v-if="summary" data-testid="recurrence-summary" class="recurrence-hint">{{ summary }}</p>
-    <p v-if="nextRun" data-testid="recurrence-next" class="recurrence-hint">Prochaine : {{ formatNextRun(nextRun) }}</p>
+    <p v-if="nextRun" data-testid="recurrence-next" class="recurrence-hint">
+      {{ t('recurrence.next', { date: formatNextRun(nextRun) }) }}
+    </p>
     <!-- Après archivage : pas de date tant que la tâche est au tableau -->
     <p v-else-if="waitingForArchive" data-testid="recurrence-next" class="recurrence-hint">
-      Prochaine : {{ WAITING_FOR_ARCHIVE_LABEL.toLowerCase() }}
+      {{ t('recurrence.next', { date: waitingForArchiveLabel().toLowerCase() }) }}
     </p>
     <p v-if="seriesPaused" data-testid="recurrence-paused-hint" class="recurrence-hint">
-      Série en pause : aucune occurrence n'est créée. Elle se reprend depuis les paramètres.
+      {{ t('recurrence.fields.pausedHint') }}
     </p>
     <p v-if="monthEndHint" data-testid="recurrence-month-end-hint" class="recurrence-hint">{{ monthEndHint }}</p>
     <p v-if="seriesLive && modelValue.preset === 'none'" data-testid="recurrence-stop-hint" class="recurrence-hint">
-      La série s'arrêtera à l'enregistrement. Les occurrences déjà créées sont conservées.
+      {{ t('recurrence.fields.stopHint') }}
     </p>
 
     <!-- Règle personnalisée -->
     <div v-if="modelValue.preset === 'custom'" data-testid="recurrence-custom" class="recurrence-custom">
       <!-- Point de départ des dates : calendrier, ou archivage de l'occurrence précédente -->
       <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-anchor-label">
-        <span id="recurrence-anchor-label">Répéter</span>
-        <div v-for="option in ANCHOR_OPTIONS" :key="option.value" class="flex items-center gap-2">
+        <span id="recurrence-anchor-label">{{ t('recurrence.fields.repeat') }}</span>
+        <div v-for="option in anchorOptions" :key="option.value" class="flex items-center gap-2">
           <RadioButton
             :inputId="`recurrence-anchor-${option.value}`"
             :data-testid="`recurrence-anchor-${option.value}`"
@@ -57,7 +59,9 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <span v-if="calendar">{{ modelValue.frequency === 'weekly' ? 'Toutes les' : 'Tous les' }}</span>
+        <span v-if="calendar">{{
+          t(modelValue.frequency === 'weekly' ? 'recurrence.fields.everyFeminine' : 'recurrence.fields.everyMasculine')
+        }}</span>
         <InputNumber
           data-testid="recurrence-interval"
           :modelValue="modelValue.interval"
@@ -65,7 +69,7 @@
           :max="RECURRENCE_INTERVAL_MAX"
           :useGrouping="false"
           inputClass="w-16"
-          aria-label="Intervalle"
+          :aria-label="t('recurrence.fields.interval')"
           @update:modelValue="(interval: number | null) => update({ interval })"
         />
         <Select
@@ -74,32 +78,32 @@
           :options="unitOptions"
           optionLabel="label"
           optionValue="value"
-          aria-label="Unité"
+          :aria-label="t('recurrence.fields.unit')"
           class="flex-1"
           @update:modelValue="onUnitChange"
         />
-        <span v-if="!calendar" data-testid="recurrence-after-archive">après l'archivage</span>
+        <span v-if="!calendar" data-testid="recurrence-after-archive">{{ t('recurrence.fields.afterArchive') }}</span>
       </div>
 
       <!-- Jours de la semaine, hebdomadaire selon le calendrier uniquement -->
       <fieldset
         v-if="calendar && modelValue.frequency === 'weekly'"
         class="flex gap-1"
-        aria-label="Jours de la semaine"
+        :aria-label="t('recurrence.fields.weekdays')"
       >
         <Button
           v-for="day in WEEKDAYS"
-          :key="day.value"
+          :key="day"
           data-testid="recurrence-weekday"
-          :data-weekday="day.value"
-          :label="day.letter"
-          :aria-label="day.name"
-          :aria-pressed="modelValue.weekdays.includes(day.value)"
-          :outlined="!modelValue.weekdays.includes(day.value)"
+          :data-weekday="day"
+          :label="weekdayLetter(day)"
+          :aria-label="weekdayName(day)"
+          :aria-pressed="modelValue.weekdays.includes(day)"
+          :outlined="!modelValue.weekdays.includes(day)"
           size="small"
           rounded
           class="weekday-button"
-          @click="toggleWeekday(day.value)"
+          @click="toggleWeekday(day)"
         />
       </fieldset>
 
@@ -108,7 +112,7 @@
         v-if="calendar && modelValue.frequency === 'monthly'"
         class="flex flex-col gap-2"
         role="radiogroup"
-        aria-label="Jour du mois"
+        :aria-label="t('recurrence.fields.dayOfMonth')"
       >
         <div v-for="option in monthlyOptions" :key="option.value" class="flex items-center gap-2">
           <RadioButton
@@ -127,7 +131,7 @@
 
       <!-- Fin de la série -->
       <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-end-label">
-        <span id="recurrence-end-label">Se termine</span>
+        <span id="recurrence-end-label">{{ t('recurrence.fields.ends') }}</span>
 
         <div class="flex items-center gap-2">
           <RadioButton
@@ -137,7 +141,7 @@
             :modelValue="modelValue.endType"
             @update:modelValue="onEndTypeChange"
           />
-          <label for="recurrence-end-never">Jamais</label>
+          <label for="recurrence-end-never">{{ t('recurrence.fields.never') }}</label>
         </div>
 
         <div class="flex items-center gap-2">
@@ -148,12 +152,11 @@
             :modelValue="modelValue.endType"
             @update:modelValue="onEndTypeChange"
           />
-          <label for="recurrence-end-on-date">Le</label>
+          <label for="recurrence-end-on-date">{{ t('recurrence.fields.on') }}</label>
           <DatePicker
             data-testid="recurrence-end-date"
             :modelValue="modelValue.endsOn"
-            dateFormat="dd/mm/yy"
-            placeholder="Date de fin"
+            :placeholder="t('recurrence.fields.endDate')"
             @update:modelValue="onEndDateChange"
           />
         </div>
@@ -166,7 +169,7 @@
             :modelValue="modelValue.endType"
             @update:modelValue="onEndTypeChange"
           />
-          <label for="recurrence-end-after-count">Après</label>
+          <label for="recurrence-end-after-count">{{ t('recurrence.fields.after') }}</label>
           <InputNumber
             data-testid="recurrence-end-count"
             :modelValue="modelValue.maxCount"
@@ -174,16 +177,16 @@
             :max="RECURRENCE_COUNT_MAX"
             :useGrouping="false"
             inputClass="w-16"
-            aria-label="Nombre d'occurrences"
+            :aria-label="t('recurrence.fields.occurrenceCount')"
             @update:modelValue="(maxCount: number | null) => update({ maxCount, endType: 'afterCount' })"
           />
-          <span>occurrences</span>
+          <span>{{ t('recurrence.fields.occurrences') }}</span>
         </div>
       </div>
 
       <!-- Création anticipée : la tâche arrive au tableau avant sa date, son rappel reste à sa date -->
       <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="recurrence-lead-label">
-        <span id="recurrence-lead-label">Créer la tâche</span>
+        <span id="recurrence-lead-label">{{ t('recurrence.fields.createTask') }}</span>
 
         <div class="flex items-center gap-2">
           <RadioButton
@@ -193,7 +196,7 @@
             :modelValue="modelValue.createEarly"
             @update:modelValue="(createEarly: boolean) => update({ createEarly })"
           />
-          <label for="recurrence-lead-same-day">Le jour même</label>
+          <label for="recurrence-lead-same-day">{{ t('recurrence.fields.sameDay') }}</label>
         </div>
 
         <div class="flex items-center gap-2">
@@ -211,13 +214,15 @@
             :max="RECURRENCE_LEAD_DAYS_MAX"
             :useGrouping="false"
             inputClass="w-16"
-            aria-label="Nombre de jours d'avance"
+            :aria-label="t('recurrence.fields.leadDays')"
             @update:modelValue="(leadDays: number | null) => update({ leadDays, createEarly: true })"
           />
-          <label for="recurrence-lead-before">{{ modelValue.leadDays === 1 ? 'jour avant' : 'jours avant' }}</label>
+          <label for="recurrence-lead-before">{{
+            t('recurrence.fields.daysBefore', modelValue.leadDays === 1 ? 1 : 2)
+          }}</label>
         </div>
         <p v-if="modelValue.createEarly" class="recurrence-hint">
-          À l'heure de l'occurrence. Le rappel reste à sa date.
+          {{ t('recurrence.fields.leadHint') }}
         </p>
       </div>
 
@@ -231,12 +236,12 @@
             :modelValue="modelValue.skipIfPending"
             @update:modelValue="(skipIfPending: boolean) => update({ skipIfPending })"
           />
-          <label for="recurrence-skip">Ne pas empiler les occurrences</label>
+          <label for="recurrence-skip">{{ t('recurrence.fields.skipIfPending') }}</label>
         </div>
-        <p class="recurrence-hint">Pas de nouvelle occurrence tant que la précédente est au tableau.</p>
+        <p class="recurrence-hint">{{ t('recurrence.fields.skipHint') }}</p>
       </template>
       <p v-else class="recurrence-hint">
-        La prochaine occurrence est créée une fois celle-ci archivée, à l'heure de sa date de début.
+        {{ t('recurrence.fields.completionHint') }}
       </p>
     </div>
 
@@ -271,7 +276,6 @@ import {
   WEEKDAYS,
   describeRecurrence,
   describeRecurrenceInput,
-  WAITING_FOR_ARCHIVE_LABEL,
   formatNextRun,
   isWaitingForArchive,
   monthlyModeOptions,
@@ -281,7 +285,11 @@ import {
   summaryToInput,
   toCustomValue,
   toRecurrenceInput,
+  waitingForArchiveLabel,
+  weekdayLetter,
+  weekdayName,
 } from '../utils/recurrence.helper'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Champ « Répéter » du formulaire de tâche (cf. TaskDialog) : préréglages
@@ -306,6 +314,8 @@ const emit = defineEmits<{
   (e: 'need-start-date'): void
 }>()
 
+const { t } = useI18n()
+
 // Composants PrimeVue internes détachés du formulaire parent : sans cela, ils
 // liraient et écriraient la valeur du FormField `recurrence` (l'objet entier)
 // au lieu de leur propre modelValue
@@ -319,10 +329,10 @@ const seriesLive = computed(() => !!props.series && props.series.status !== 'end
 const seriesPaused = computed(() => props.series?.status === 'paused' && props.modelValue.preset !== 'none')
 
 // Points de départ proposés dans « Personnaliser… »
-const ANCHOR_OPTIONS: { value: RecurrenceAnchor; label: string }[] = [
-  { value: 'schedule', label: 'Selon le calendrier' },
-  { value: 'completion', label: "Après l'archivage de la précédente" },
-]
+const anchorOptions = computed<{ value: RecurrenceAnchor; label: string }[]>(() => [
+  { value: 'schedule', label: t('recurrence.fields.anchorSchedule') },
+  { value: 'completion', label: t('recurrence.fields.anchorCompletion') },
+])
 
 // Règle personnalisée selon le calendrier : jours de la semaine, jour du mois et « Ne pas empiler » proposés
 const calendar = computed(() => props.modelValue.anchor !== 'completion')
@@ -335,12 +345,12 @@ const monthlyOptions = computed(() => monthlyModeOptions(props.startDate))
 
 // Unités de la règle personnalisée, au singulier pour un intervalle de 1
 const unitOptions = computed(() => {
-  const plural = props.modelValue.interval !== 1
+  const form = props.modelValue.interval === 1 ? 1 : 2
   return [
-    { value: 'daily', label: plural ? 'jours' : 'jour' },
-    { value: 'weekly', label: plural ? 'semaines' : 'semaine' },
-    { value: 'monthly', label: 'mois' },
-    { value: 'yearly', label: plural ? 'ans' : 'an' },
+    { value: 'daily', label: t('recurrence.fields.unitDaily', form) },
+    { value: 'weekly', label: t('recurrence.fields.unitWeekly', form) },
+    { value: 'monthly', label: t('recurrence.fields.unitMonthly', form) },
+    { value: 'yearly', label: t('recurrence.fields.unitYearly', form) },
   ]
 })
 
@@ -396,10 +406,10 @@ const monthEndHint = computed(() => {
 
   const day = date.getDate()
   if (input.value.frequency === 'monthly' && input.value.monthlyMode === 'dayOfMonth' && day >= 29) {
-    return `Les mois de moins de ${day} jours, l'occurrence tombe le dernier jour du mois.`
+    return t('recurrence.fields.monthEndHint', { day })
   }
   if (input.value.frequency === 'yearly' && date.getMonth() === 1 && day === 29) {
-    return "Les années non bissextiles, l'occurrence tombe le 28 février."
+    return t('recurrence.fields.leapYearHint')
   }
   return ''
 })

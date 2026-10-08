@@ -2,19 +2,21 @@
   <div data-testid="settings-recurrence-list" class="flex flex-col gap-3">
     <template v-if="status === 'ready'">
       <p v-if="!rows.length" data-testid="settings-recurrences-empty" class="settings-muted text-sm">
-        Aucune tâche récurrente. Une série se crée depuis le champ « Répéter » du formulaire d'une tâche.
+        {{ t('settings.recurrences.empty') }}
       </p>
 
       <!-- Séries en cours puis terminées, état lu dans le store Task -->
       <table v-else class="recurrence-table">
         <thead>
           <tr>
-            <th scope="col">Tâche</th>
-            <th scope="col">Règle</th>
-            <th scope="col">Prochaine</th>
+            <th scope="col">{{ t('settings.recurrences.task') }}</th>
+            <th scope="col">{{ t('settings.recurrences.rule') }}</th>
+            <th scope="col">{{ t('settings.recurrences.next') }}</th>
             <!-- relative : le libellé masqué (sr-only, en absolu) reste dans le défilement de la page,
               sinon il agrandit toute la fenêtre et fait apparaître une seconde barre de défilement -->
-            <th scope="col" class="relative"><span class="sr-only">Actions</span></th>
+            <th scope="col" class="relative">
+              <span class="sr-only">{{ t('settings.recurrences.actions') }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -36,8 +38,8 @@
                   v-if="row.summary.status === 'active'"
                   data-testid="btn-recurrence-pause"
                   icon="pi pi-pause"
-                  :aria-label="`Mettre en pause ${row.title}`"
-                  title="Mettre en pause"
+                  :aria-label="t('settings.recurrences.pauseItem', { title: row.title })"
+                  :title="t('settings.recurrences.pause')"
                   size="small"
                   severity="secondary"
                   text
@@ -48,8 +50,8 @@
                   v-if="row.summary.status === 'paused'"
                   data-testid="btn-recurrence-resume"
                   icon="pi pi-play"
-                  :aria-label="`Reprendre ${row.title}`"
-                  title="Reprendre"
+                  :aria-label="t('settings.recurrences.resumeItem', { title: row.title })"
+                  :title="t('settings.recurrences.resume')"
                   size="small"
                   severity="secondary"
                   text
@@ -60,8 +62,8 @@
                   v-if="row.summary.status !== 'ended'"
                   data-testid="btn-recurrence-stop"
                   icon="pi pi-stop-circle"
-                  :aria-label="`Arrêter ${row.title}`"
-                  title="Arrêter"
+                  :aria-label="t('settings.recurrences.stopItem', { title: row.title })"
+                  :title="t('settings.recurrences.stop')"
                   size="small"
                   severity="danger"
                   text
@@ -72,8 +74,8 @@
                   v-if="canReactivate(row.summary)"
                   data-testid="btn-recurrence-reactivate"
                   icon="pi pi-replay"
-                  :aria-label="`Réactiver ${row.title}`"
-                  title="Réactiver"
+                  :aria-label="t('settings.recurrences.reactivateItem', { title: row.title })"
+                  :title="t('settings.recurrences.reactivate')"
                   size="small"
                   severity="secondary"
                   text
@@ -88,8 +90,8 @@
     </template>
 
     <div v-else-if="status === 'error'" data-testid="settings-recurrences-error" class="flex items-center gap-3">
-      <p class="text-sm">Les tâches récurrentes n'ont pas pu être chargées.</p>
-      <Button label="Réessayer" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
+      <p class="text-sm">{{ t('settings.recurrences.loadFailed') }}</p>
+      <Button :label="t('common.retry')" icon="pi pi-refresh" size="small" severity="secondary" @click="load" />
     </div>
 
     <ProgressSpinner v-else class="h-8! w-8!" />
@@ -104,11 +106,12 @@ import { useTaskStore } from '../../stores/Task'
 import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
 import { hasNextDate, toRecurrenceRule } from '../../../main/shared/recurrence.helper'
 import {
-  WAITING_FOR_ARCHIVE_LABEL,
   describeRecurrence,
   formatNextRun,
   isWaitingForArchive,
+  waitingForArchiveLabel,
 } from '../../utils/recurrence.helper'
+import { useI18n } from 'vue-i18n'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
 
@@ -133,6 +136,7 @@ const logger = getLogger()
 const taskStore = useTaskStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
+const { t } = useI18n()
 
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 const items = ref<RecurrenceListItem[]>([])
@@ -167,9 +171,9 @@ onMounted(load)
  * @param summary Série
  */
 function nextLabel(summary: RecurrenceSummary): string {
-  if (summary.status === 'paused') return 'En pause'
-  if (isWaitingForArchive(summary)) return WAITING_FOR_ARCHIVE_LABEL
-  if (summary.status === 'ended' || !summary.nextRunAt) return 'Terminée'
+  if (summary.status === 'paused') return t('settings.recurrences.paused')
+  if (isWaitingForArchive(summary)) return waitingForArchiveLabel()
+  if (summary.status === 'ended' || !summary.nextRunAt) return t('settings.recurrences.ended')
   return formatNextRun(new Date(summary.nextRunAt))
 }
 
@@ -192,7 +196,10 @@ async function changeStatus(row: RecurrenceRow, next: RecurrenceStatus) {
   try {
     await taskStore.updateRecurrenceStatus(row.id, next)
   } catch {
-    showError('Série non modifiée', `L'état de « ${row.title} » n'a pas changé.`)
+    showError(
+      t('settings.recurrences.changeFailed'),
+      t('settings.recurrences.changeFailedDetail', { title: row.title }),
+    )
   }
 }
 
@@ -207,17 +214,17 @@ async function stop(row: RecurrenceRow) {
   try {
     await taskStore.updateRecurrenceStatus(row.id, 'ended')
   } catch {
-    showError('Arrêt impossible', `La série « ${row.title} » n'a pas été arrêtée.`)
+    showError(t('settings.recurrences.stopFailed'), t('settings.recurrences.stopFailedDetail', { title: row.title }))
     return
   }
 
-  showUndo('Série arrêtée', {
+  showUndo(t('recurrence.state.ended'), {
     detail: row.title,
     undo: async () => {
       try {
         await taskStore.updateRecurrenceStatus(row.id, previous)
       } catch {
-        showError('Annulation impossible', "La série n'a pas été relancée.")
+        showError(t('task.dialog.undoFailed'), t('task.dialog.resumeFailedDetail'))
       }
     },
   })

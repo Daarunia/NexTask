@@ -13,6 +13,7 @@ import {
   type RecurrenceRule,
 } from '../../main/shared/recurrence.helper'
 import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.schema'
+import { currentLocale, intlLocale, t } from '../i18n'
 
 /**
  * Libellés et conversions des tâches récurrentes côté renderer : préréglages
@@ -25,35 +26,28 @@ import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.sche
  */
 
 /** Jours de la semaine, du lundi (jour ISO 1) au dimanche. */
-export const WEEKDAYS = [
-  { value: 1, letter: 'L', name: 'lundi' },
-  { value: 2, letter: 'M', name: 'mardi' },
-  { value: 3, letter: 'M', name: 'mercredi' },
-  { value: 4, letter: 'J', name: 'jeudi' },
-  { value: 5, letter: 'V', name: 'vendredi' },
-  { value: 6, letter: 'S', name: 'samedi' },
-  { value: 7, letter: 'D', name: 'dimanche' },
-] as const
+export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const
 
 // Jours ouvrés : du lundi au vendredi
 const WORKING_DAYS = [1, 2, 3, 4, 5]
 
-// « 3 octobre » (le 1er est corrigé par withOrdinal)
-const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' })
-
-// « 31 déc. 2026 »
-const END_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
-
-// « jeu. 22 oct. »
-const NEXT_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-
-// Unités de l'intervalle d'une série « après archivage », au singulier et au pluriel
-const UNITS: Record<RecurrenceInput['frequency'], [string, string]> = {
-  daily: ['jour', 'jours'],
-  weekly: ['semaine', 'semaines'],
-  monthly: ['mois', 'mois'],
-  yearly: ['an', 'ans'],
+/**
+ * Format de date dans la langue active, recréé à chaque appel : la langue peut
+ * changer pendant que l'app tourne.
+ * @param options Options d'`Intl.DateTimeFormat`
+ */
+function dateFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(intlLocale(), options)
 }
+
+// « 3 octobre », « October 3 » (le 1er est corrigé par withOrdinal)
+const DAY_MONTH: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
+
+// « 31 déc. 2026 », « Dec 31, 2026 »
+const END_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }
+
+// « jeu. 22 oct. », « Thu, Oct 22 »
+const NEXT_DATE: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }
 
 /** Règle d'une série à décrire. */
 interface RecurrenceDescription {
@@ -70,18 +64,57 @@ interface RecurrenceDescription {
 }
 
 /**
- * Jour du mois en toutes lettres : « 1er », puis « 2 », « 3 »…
+ * Date d'un jour de la semaine (2024-01-01 est un lundi), à midi pour éviter
+ * tout décalage de fuseau.
+ * @param weekday Jour ISO (lundi = 1)
+ */
+function weekdayDate(weekday: number): Date {
+  return new Date(2024, 0, weekday, 12)
+}
+
+/**
+ * Nom d'un jour de la semaine dans la langue active : « lundi », « Monday ».
+ * @param weekday Jour ISO (lundi = 1)
+ */
+export function weekdayName(weekday: number): string {
+  return dateFormat({ weekday: 'long' }).format(weekdayDate(weekday))
+}
+
+/**
+ * Initiale d'un jour de la semaine : « L », « M ».
+ * @param weekday Jour ISO (lundi = 1)
+ */
+export function weekdayLetter(weekday: number): string {
+  return dateFormat({ weekday: 'narrow' }).format(weekdayDate(weekday))
+}
+
+/** Suffixes des ordinaux anglais, par catégorie de `Intl.PluralRules`. */
+const EN_ORDINAL_SUFFIXES: Record<string, string> = { one: 'st', two: 'nd', few: 'rd', other: 'th' }
+
+/**
+ * Nombre ordinal anglais : « 1st », « 2nd », « 3rd », « 4th ».
+ * @param n Nombre
+ */
+function englishOrdinal(n: number): string {
+  return `${n}${EN_ORDINAL_SUFFIXES[new Intl.PluralRules('en-US', { type: 'ordinal' }).select(n)]}`
+}
+
+/**
+ * Jour du mois en toutes lettres : « 1er », puis « 2 », « 3 »… (« 1st »,
+ * « 2nd » en anglais).
  * @param day Jour du mois
  */
 export function ordinalDay(day: number): string {
+  if (currentLocale() === 'en') return englishOrdinal(day)
   return day === 1 ? '1er' : String(day)
 }
 
 /**
- * Rang en toutes lettres : « 1er », puis « 2e », « 3e »…
+ * Rang en toutes lettres : « 1er », puis « 2e », « 3e »… (« 1st », « 2nd »).
  * @param rank Rang (à partir de 1)
  */
 export function ordinalRank(rank: number): string {
+  if (currentLocale() === 'en') return englishOrdinal(rank)
   return rank === 1 ? '1er' : `${rank}e`
 }
 
@@ -95,12 +128,15 @@ export function monthlyDayLabel(mode: MonthlyMode, startDate: Date): string {
   switch (mode) {
     case 'nthWeekday': {
       const { rank, weekday } = monthlyWeekdayOf(startDate)
-      return `le ${rank === -1 ? 'dernier' : ordinalRank(rank)} ${WEEKDAYS[weekday - 1].name}`
+      const name = weekdayName(weekday)
+      return rank === -1
+        ? t('recurrence.monthly.lastWeekday', { weekday: name })
+        : t('recurrence.monthly.nthWeekday', { rank: ordinalRank(rank), weekday: name })
     }
     case 'lastDay':
-      return 'le dernier jour'
+      return t('recurrence.monthly.lastDay')
     default:
-      return `le ${ordinalDay(startDate.getDate())}`
+      return t('recurrence.monthly.dayOfMonth', { day: ordinalDay(startDate.getDate()) })
   }
 }
 
@@ -118,23 +154,23 @@ export function monthlyModeOptions(startDate: Date | null): { value: MonthlyMode
 }
 
 /**
- * Date formatée, le 1er du mois écrit « 1er ».
- * @param format Format de date
+ * Date formatée, le 1er du mois écrit « 1er » en français (l'anglais garde
+ * le chiffre seul, « October 1 »).
+ * @param options Format de date
  * @param date Date
  */
-function withOrdinal(format: Intl.DateTimeFormat, date: Date): string {
-  return format
-    .formatToParts(date)
-    .map((part) => (part.type === 'day' ? ordinalDay(Number(part.value)) : part.value))
-    .join('')
+function withOrdinal(options: Intl.DateTimeFormatOptions, date: Date): string {
+  const parts = dateFormat(options).formatToParts(date)
+  if (currentLocale() !== 'fr') return parts.map((part) => part.value).join('')
+  return parts.map((part) => (part.type === 'day' ? ordinalDay(Number(part.value)) : part.value)).join('')
 }
 
 /**
- * Énumération en français : « a », « a et b », « a, b et c ».
+ * Énumération dans la langue active : « a, b et c », « a, b, and c ».
  * @param items Éléments
  */
 function enumerate(items: string[]): string {
-  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} et ${items.at(-1)}`
+  return new Intl.ListFormat(intlLocale(), { type: 'conjunction' }).format(items)
 }
 
 /**
@@ -152,8 +188,7 @@ function sameDays(a: number[], b: number[]): boolean {
  * @param interval Intervalle
  */
 export function intervalLabel(frequency: RecurrenceInput['frequency'], interval: number): string {
-  const [singular, plural] = UNITS[frequency]
-  return `${interval} ${interval === 1 ? singular : plural}`
+  return t(`recurrence.units.${frequency}`, { count: interval }, interval)
 }
 
 /**
@@ -162,33 +197,21 @@ export function intervalLabel(frequency: RecurrenceInput['frequency'], interval:
  */
 function describeFrequency(rule: RecurrenceDescription): string {
   const n = rule.interval
+  const every = t(`recurrence.every.${rule.frequency}`, { count: n }, n)
 
   switch (rule.frequency) {
     case 'daily':
-      return n === 1 ? 'Tous les jours' : `Tous les ${n} jours`
+      return every
     case 'weekly': {
-      if (n === 1 && sameDays(rule.weekdays, WORKING_DAYS)) return 'Tous les jours ouvrés'
-      const days = enumerate(rule.weekdays.map((day) => `le ${WEEKDAYS[day - 1].name}`))
-      const every = n === 1 ? 'Toutes les semaines' : `Toutes les ${n} semaines`
-      return `${every} ${days}`
+      if (n === 1 && sameDays(rule.weekdays, WORKING_DAYS)) return t('recurrence.everyWorkingDay')
+      const days = enumerate(rule.weekdays.map((day) => t('recurrence.weekdayItem', { weekday: weekdayName(day) })))
+      return t('recurrence.weeklyOn', { every, days })
     }
-    case 'monthly': {
-      const every = n === 1 ? 'Tous les mois' : `Tous les ${n} mois`
-      return `${every} ${monthlyDayLabel(rule.monthlyMode, rule.startsAt)}`
-    }
-    case 'yearly': {
-      const every = n === 1 ? 'Tous les ans' : `Tous les ${n} ans`
-      return `${every} le ${withOrdinal(DAY_MONTH_FORMAT, rule.startsAt)}`
-    }
+    case 'monthly':
+      return t('recurrence.monthlyOn', { every, day: monthlyDayLabel(rule.monthlyMode, rule.startsAt) })
+    case 'yearly':
+      return t('recurrence.yearlyOn', { every, date: withOrdinal(DAY_MONTH, rule.startsAt) })
   }
-}
-
-/**
- * Création anticipée en toutes lettres : « créée 2 jours avant ».
- * @param days Jours d'avance (au moins 1)
- */
-function describeLeadDays(days: number): string {
-  return `créée ${days} ${days === 1 ? 'jour' : 'jours'} avant`
 }
 
 /**
@@ -199,15 +222,19 @@ function describeLeadDays(days: number): string {
  */
 function describeRule(rule: RecurrenceDescription): string {
   let end = ''
-  if (rule.endType === 'onDate' && rule.endsOn) end = `, jusqu'au ${withOrdinal(END_DATE_FORMAT, rule.endsOn)}`
-  if (rule.endType === 'afterCount' && rule.maxCount) end = `, ${rule.maxCount} fois`
-  const lead = rule.leadDays > 0 ? `, ${describeLeadDays(rule.leadDays)}` : ''
+  if (rule.endType === 'onDate' && rule.endsOn) {
+    end = t('recurrence.endsOn', { date: withOrdinal(END_DATE, rule.endsOn) })
+  }
+  if (rule.endType === 'afterCount' && rule.maxCount) {
+    end = t('recurrence.endsAfter', { count: rule.maxCount }, rule.maxCount)
+  }
+  const lead = rule.leadDays > 0 ? t('recurrence.createdEarly', { count: rule.leadDays }, rule.leadDays) : ''
   const time = localTime(rule.startsAt)
 
   if (rule.anchor === 'completion') {
-    return `${intervalLabel(rule.frequency, rule.interval)} après l'archivage de la précédente, à ${time}${end}${lead}`
+    return t('recurrence.afterArchive', { interval: intervalLabel(rule.frequency, rule.interval), time }) + end + lead
   }
-  return `${describeFrequency(rule)} à ${time}${end}${lead}`
+  return t('recurrence.atTime', { frequency: describeFrequency(rule), time }) + end + lead
 }
 
 /**
@@ -254,11 +281,13 @@ export function describeRecurrenceInput(input: RecurrenceInput, startDate: Date)
  * @param date Date
  */
 export function formatNextRun(date: Date): string {
-  return `${withOrdinal(NEXT_DATE_FORMAT, date)} ${localTime(date)}`
+  return `${withOrdinal(NEXT_DATE, date)} ${localTime(date)}`
 }
 
 /** Libellé d'une série en attente de l'archivage de son occurrence (mode « après archivage »). */
-export const WAITING_FOR_ARCHIVE_LABEL = 'Après archivage'
+export function waitingForArchiveLabel(): string {
+  return t('recurrence.waitingForArchive')
+}
 
 /**
  * Vrai pour une série « après archivage » qui attend l'archivage de son
@@ -275,11 +304,11 @@ export function isWaitingForArchive(summary: RecurrenceSummary): boolean {
  * @param summary Résumé de la série
  */
 export function recurrenceTooltip(summary: RecurrenceSummary): string {
-  let state = 'Série arrêtée'
-  if (summary.status === 'paused') state = 'Série en pause'
-  if (isWaitingForArchive(summary)) state = `Prochaine : ${WAITING_FOR_ARCHIVE_LABEL.toLowerCase()}`
+  let state = t('recurrence.state.ended')
+  if (summary.status === 'paused') state = t('recurrence.state.paused')
+  if (isWaitingForArchive(summary)) state = t('recurrence.next', { date: waitingForArchiveLabel().toLowerCase() })
   if (summary.status === 'active' && summary.nextRunAt) {
-    state = `Prochaine : ${formatNextRun(new Date(summary.nextRunAt))}`
+    state = t('recurrence.next', { date: formatNextRun(new Date(summary.nextRunAt)) })
   }
 
   return `${describeRecurrence(summary)}\n${state}`
@@ -292,13 +321,13 @@ export function recurrenceTooltip(summary: RecurrenceSummary): string {
 export function recurrencePresetOptions(startDate: Date | null): { value: RecurrencePreset; label: string }[] {
   const date = startDate ?? new Date()
   return [
-    { value: 'none', label: 'Ne pas répéter' },
-    { value: 'daily', label: 'Tous les jours' },
-    { value: 'weekdays', label: 'Tous les jours ouvrés (lun–ven)' },
-    { value: 'weekly', label: `Toutes les semaines le ${WEEKDAYS[isoWeekday(date) - 1].name}` },
-    { value: 'monthly', label: `Tous les mois le ${ordinalDay(date.getDate())}` },
-    { value: 'yearly', label: `Tous les ans le ${withOrdinal(DAY_MONTH_FORMAT, date)}` },
-    { value: 'custom', label: 'Personnaliser…' },
+    { value: 'none', label: t('recurrence.presets.none') },
+    { value: 'daily', label: t('recurrence.presets.daily') },
+    { value: 'weekdays', label: t('recurrence.presets.weekdays') },
+    { value: 'weekly', label: t('recurrence.presets.weekly', { weekday: weekdayName(isoWeekday(date)) }) },
+    { value: 'monthly', label: t('recurrence.presets.monthly', { day: ordinalDay(date.getDate()) }) },
+    { value: 'yearly', label: t('recurrence.presets.yearly', { date: withOrdinal(DAY_MONTH, date) }) },
+    { value: 'custom', label: t('recurrence.presets.custom') },
   ]
 }
 
