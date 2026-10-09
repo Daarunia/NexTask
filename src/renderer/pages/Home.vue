@@ -13,6 +13,7 @@ import { compareTagNames } from '../utils/tag.helper'
 import { useStageStore } from '../stores/Stage'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
+import { useBoardFilterStore } from '../stores/BoardFilter'
 import { Stage } from '../types/stage.types'
 import { Tag } from '../types/tag.types'
 import { useI18n } from 'vue-i18n'
@@ -33,9 +34,8 @@ const stages = ref<Stage[]>([])
 // État du chargement du tableau
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
-// Ids des tags du filtre. Remis à zéro au redémarrage, sauf si le paramètre
-// « mémoriser le filtre de tags » est activé (relu au chargement du tableau)
-const filterTagIds = ref<number[]>([])
+// Filtre du board, partagé avec la barre de recherche de l'en-tête
+const boardFilter = useBoardFilterStore()
 
 /**
  * Tags proposés par le filtre : ceux portés par au moins une tâche active,
@@ -45,7 +45,7 @@ const filterTagIds = ref<number[]>([])
  * Tag, les tags supprimés sont écartés. Tri par nom sans tenir compte de la casse.
  */
 const filterOptions = computed<Tag[]>(() => {
-  const ids = new Set<number>(filterTagIds.value)
+  const ids = new Set<number>(boardFilter.tagIds)
 
   for (const task of taskStore.getAllTasks) {
     for (const tag of task.tags ?? []) ids.add(tag.id)
@@ -57,42 +57,24 @@ const filterOptions = computed<Tag[]>(() => {
     .sort(compareTagNames)
 })
 
-// Un tag supprimé sort du filtre. Un tag qui n'est simplement plus porté reste sélectionné.
-watch(
-  () => filterTagIds.value.filter((id) => tagStore.getTagById(id) !== undefined),
-  (existingIds) => {
-    if (existingIds.length === filterTagIds.value.length) return
-
-    logger.debug('Tags supprimés retirés du filtre', { filterTagIds: filterTagIds.value, existingIds })
-    filterTagIds.value = existingIds
-  },
-)
-
-// Filtre mémorisé : chaque changement est enregistré, y compris le retrait d'un tag supprimé
-watch(filterTagIds, (ids) => {
-  if (!settings.rememberTagFilter || sameIds(ids, settings.tagFilterIds)) return
-
-  settings.set('tagFilterIds', [...ids]).catch(() => showError(t('board.filterNotSaved')))
+// Tags du filtre, enregistrés à chaque changement si le filtre est mémorisé
+const filterTagIds = computed({
+  get: () => boardFilter.tagIds,
+  set: (ids: number[]) => saveFilter(boardFilter.setTags(ids)),
 })
 
-/**
- * Vrai si les deux listes contiennent les mêmes ids, dans le même ordre.
- * @param a Première liste
- * @param b Seconde liste
- */
-function sameIds(a: number[], b: number[]): boolean {
-  return a.length === b.length && a.every((id, index) => id === b[index])
-}
+// Un tag supprimé sort du filtre. Un tag qui n'est simplement plus porté reste sélectionné.
+watch(
+  () => tagStore.getAllTags,
+  () => saveFilter(boardFilter.pruneDeletedTags()),
+)
 
 /**
- * Reprend le filtre mémorisé si le paramètre est activé, sans les tags
- * supprimés depuis (ils sortent aussi du filtre enregistré).
+ * Prévient l'utilisateur si le filtre mémorisé n'a pas pu être enregistré.
+ * @param save Enregistrement en cours
  */
-function restoreFilter() {
-  if (!settings.rememberTagFilter) return
-
-  filterTagIds.value = settings.tagFilterIds.filter((id) => tagStore.getTagById(id) !== undefined)
-  logger.debug('Filtre de tags mémorisé repris', filterTagIds.value)
+function saveFilter(save: Promise<void>) {
+  save.catch(() => showError(t('board.filterNotSaved')))
 }
 
 /**
@@ -118,7 +100,7 @@ async function loadBoard() {
   logger.debug('Stages récupérées : ', stages.value)
   logger.debug('Tâches récupérées : ', tasks.value)
 
-  restoreFilter()
+  saveFilter(boardFilter.restoreTags())
 
   status.value = 'ready'
 }
@@ -158,7 +140,7 @@ onMounted(loadBoard)
       </div>
 
       <div class="min-h-0 flex-1">
-        <Kanban :stages="stages" :tasks="tasks" :filterTagIds="filterTagIds" />
+        <Kanban :stages="stages" :tasks="tasks" />
       </div>
     </template>
     <div

@@ -37,9 +37,9 @@
               >
                 {{ stage.name }}
               </h2>
-              <!-- Nombre de cartes affichées (filtre compris) -->
+              <!-- Nombre de cartes affichées, sur le total de la colonne quand un filtre est actif -->
               <span data-testid="stage-count" class="stage-count">
-                {{ visibleTaskLists.get(stage.id)?.length ?? 0 }}
+                {{ stageCount(stage.id) }}
               </span>
             </div>
 
@@ -114,6 +114,7 @@ import { useTaskStore } from '../stores/Task'
 import { useStageStore } from '../stores/Stage'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
+import { useBoardFilterStore } from '../stores/BoardFilter'
 import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
 import { Tag, TagSelection } from '../types/tag.types'
@@ -125,21 +126,17 @@ import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useI18n } from 'vue-i18n'
 
-const props = withDefaults(
-  defineProps<{
-    stages: Stage[]
-    tasks: Task[]
-    // Ids des tags du filtre (OU logique), vide = tout est visible
-    filterTagIds?: number[]
-  }>(),
-  { filterTagIds: () => [] },
-)
+const props = defineProps<{
+  stages: Stage[]
+  tasks: Task[]
+}>()
 
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
+const boardFilter = useBoardFilterStore()
 const { t } = useI18n()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
@@ -163,26 +160,25 @@ const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
 
-// Filtre par tag actif : le DnD des tâches est alors désactivé
-const filterActive = computed(() => props.filterTagIds.length > 0)
+// Filtre actif (texte ou tags) : le DnD des tâches est alors désactivé
+const filterActive = computed(() => boardFilter.isActive)
 
 /**
  * Colonnes telles qu'affichées. taskLists reste la liste complète, seule source
  * des positions et du DnD. Sans filtre, c'est taskLists lui-même : chaque
  * colonne reçoit alors le tableau d'origine, que vuedraggable modifie sur place.
- * Avec un filtre, des copies filtrées (OU logique), jamais modifiées
- * puisque le DnD est désactivé.
+ * Avec un filtre, des copies filtrées (cf. store BoardFilter), jamais
+ * modifiées puisque le DnD est désactivé.
  */
 const visibleTaskLists = computed<Map<number, Task[]>>(() => {
   if (!filterActive.value) return taskLists
 
-  const selected = new Set(props.filterTagIds)
   const map = new Map<number, Task[]>()
 
   for (const [stageId, list] of taskLists) {
     map.set(
       stageId,
-      list.filter((task) => task.tags?.some((tag) => selected.has(tag.id))),
+      list.filter((task) => boardFilter.matches(task)),
     )
   }
 
@@ -193,6 +189,15 @@ const visibleTaskLists = computed<Map<number, Task[]>>(() => {
 const showFilterEmpty = computed(
   () => filterActive.value && [...visibleTaskLists.value.values()].every((list) => list.length === 0),
 )
+
+/**
+ * Compteur d'une colonne : cartes visibles, sur le total quand un filtre est actif.
+ * @param stageId Id de la colonne
+ */
+function stageCount(stageId: number): string {
+  const visible = visibleTaskLists.value.get(stageId)?.length ?? 0
+  return filterActive.value ? `${visible}/${taskLists.get(stageId)?.length ?? 0}` : String(visible)
+}
 
 // Calculé pour suivre la langue de l'interface
 const stageMenuItems = computed(() => [
@@ -249,7 +254,7 @@ function openCreateTaskDialog(stageId: number) {
  * créée sous filtre reste visible après enregistrement
  */
 function filterTagSelection(): TagSelection[] {
-  return props.filterTagIds
+  return boardFilter.tagIds
     .map((id) => tagStore.getTagById(id))
     .filter((tag): tag is Tag => tag !== undefined)
     .sort(compareTagNames)
