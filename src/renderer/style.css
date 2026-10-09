@@ -52,3 +52,16 @@ body {
 .is-dragging * {
   cursor: grabbing !important;
 }
+
+/* Libellé d'un réglage secondaire de formulaire : petit, discret, précédé d'une icône */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+.field-label > .pi {
+  font-size: 0.75rem;
+}

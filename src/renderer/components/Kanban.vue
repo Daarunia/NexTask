@@ -99,6 +99,7 @@
     :creationMode="creationMode"
     :defaultTags="defaultTagsDialog"
     @task-saved="onTaskSaved"
+    @archive-task="archiveTask"
   />
 </template>
 

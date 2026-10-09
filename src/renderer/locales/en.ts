@@ -75,6 +75,9 @@ export const en: MessageSchema = {
   },
   task: {
     dialog: {
+      newTask: 'New task',
+      editTask: 'Edit task',
+      close: 'Close',
       title: 'Title',
       titlePlaceholder: 'Describe your title here...',
       description: 'Description',

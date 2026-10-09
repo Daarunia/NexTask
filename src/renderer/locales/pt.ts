@@ -75,6 +75,9 @@ export const pt: MessageSchema = {
   },
   task: {
     dialog: {
+      newTask: 'Nova tarefa',
+      editTask: 'Editar a tarefa',
+      close: 'Fechar',
       title: 'Título',
       titlePlaceholder: 'Descreva seu título aqui...',
       description: 'Descrição',

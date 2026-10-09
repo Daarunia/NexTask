@@ -75,6 +75,9 @@ export const zh: MessageSchema = {
   },
   task: {
     dialog: {
+      newTask: '新任务',
+      editTask: '编辑任务',
+      close: '关闭',
       title: '标题',
       titlePlaceholder: '在此输入标题...',
       description: '描述',

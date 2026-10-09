@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-2 w-full">
     <div class="flex items-center justify-between gap-2">
-      <span class="font-medium">{{ label }}</span>
+      <span class="field-label"><i class="pi pi-align-left" aria-hidden="true"></i>{{ label }}</span>
       <fieldset class="markdown-modes" :aria-label="t('markdown.modes', { label })">
         <Button
           type="button"

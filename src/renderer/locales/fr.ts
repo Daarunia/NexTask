@@ -77,6 +77,9 @@ export const fr = {
   },
   task: {
     dialog: {
+      newTask: 'Nouvelle tâche',
+      editTask: 'Modifier la tâche',
+      close: 'Fermer',
       title: 'Titre',
       titlePlaceholder: 'Décris ton titre ici...',
       description: 'Description',
