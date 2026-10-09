@@ -34,7 +34,7 @@
       </div>
 
       <!-- Titre : grand champ sans cadre, comme sur la carte -->
-      <div class="flex flex-col gap-1 w-full">
+      <div class="flex flex-col gap-1 w-full -mt-4">
         <InputText
           id="inputValue"
           name="title"
@@ -582,7 +582,7 @@ async function saveTask(values: TaskFormValues) {
 .title-input {
   font-size: 1.375rem;
   font-weight: 600;
-  padding-inline: 0;
+  padding: 0.125rem 0 0.375rem;
   border-width: 0 0 1px;
   border-radius: 0;
   background: transparent;
