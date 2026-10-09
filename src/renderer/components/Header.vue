@@ -6,6 +6,9 @@
       <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
     </h1>
 
+    <!-- Recherche globale, propre au tableau -->
+    <BoardSearch v-if="isHome" class="mx-4" />
+
     <div class="flex items-center gap-2" ref="menuWrapper">
       <!-- Raccourcis d'apparence, masqués sur la page Paramètres qui propose les mêmes réglages -->
       <template v-if="!isSettings">
@@ -47,6 +50,7 @@ import Button from 'primevue/button'
 import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
+import BoardSearch from './BoardSearch.vue'
 import { useSettingsStore } from '../stores/Settings.js'
 import { useErrorToast } from '../utils/toast.helper.js'
 import { useRouter, useRoute } from 'vue-router'

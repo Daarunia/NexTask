@@ -196,10 +196,7 @@ test.describe('Mémoriser le filtre de tags', () => {
 
     await expect(tagFilter.dndHint).toBeVisible()
     await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug', 'UI'])
-    await tagFilter.open()
-    await tagFilter.expectSelected('bug')
-    await tagFilter.expectSelected('ui')
-    await tagFilter.close()
+    await tagFilter.expectChips(['bug', 'ui'])
 
     // Le réglage lui-même est conservé
     await header.goSettings()
@@ -229,10 +226,7 @@ test.describe('Mémoriser le filtre de tags', () => {
     // Le retrait a été enregistré : le filtre reste réduit à « bug » au rechargement suivant
     await page.reload()
     await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Bug'])
-    await tagFilter.open()
-    await tagFilter.expectOptions(['bug'])
-    await tagFilter.expectSelected('bug')
-    await tagFilter.close()
+    await tagFilter.expectChips(['bug'])
   })
 
   test('désactiver la mémorisation oublie le filtre enregistré', async ({

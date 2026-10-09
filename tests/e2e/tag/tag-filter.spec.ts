@@ -417,10 +417,8 @@ test.describe('Filtre sans résultat', () => {
     await expect(tagFilter.emptyMessage).toHaveCount(0)
     await expectVisibleCards(taskBoard, { [A_FAIRE]: [title] })
 
-    // De nouveau porté par une tâche active, « doc » est proposé et coché : on vide le filtre
-    await tagFilter.open()
+    // « doc » est toujours dans le filtre : on le retire
     await tagFilter.expectSelected('doc')
-    await tagFilter.close()
     await tagFilter.unselect('doc')
 
     await expect(tagFilter.emptyMessage).toHaveCount(0)

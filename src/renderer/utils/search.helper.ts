@@ -44,3 +44,63 @@ export function taskMatchesFilter(task: Task, terms: string[], tagIds: readonly 
   const text = taskSearchText(task)
   return terms.every((term) => text.includes(term))
 }
+
+/** Morceau de texte affiché, surligné s'il correspond à un mot recherché. */
+export interface HighlightPart {
+  text: string
+  match: boolean
+}
+
+/**
+ * Découpe un texte pour surligner les mots recherchés, sans tenir compte de la
+ * casse ni des accents : le texte d'origine est conservé tel quel.
+ * @param text Texte affiché
+ * @param terms Mots normalisés (cf. `searchTerms`)
+ */
+export function highlightParts(text: string, terms: string[]): HighlightPart[] {
+  // Texte normalisé caractère par caractère : chaque position renvoie au texte d'origine
+  const chars = [...text]
+  const normalized: string[] = []
+  const origin: number[] = []
+  chars.forEach((char, index) => {
+    for (const c of normalizeSearchText(char) || (/\s/.test(char) ? ' ' : '')) {
+      normalized.push(c)
+      origin.push(index)
+    }
+  })
+
+  const haystack = normalized.join('')
+  const matched = new Array<boolean>(chars.length).fill(false)
+  for (const term of terms) {
+    for (let from = haystack.indexOf(term); from !== -1; from = haystack.indexOf(term, from + 1)) {
+      for (let i = from; i < from + term.length; i++) matched[origin[i]] = true
+    }
+  }
+
+  const parts: HighlightPart[] = []
+  chars.forEach((char, index) => {
+    const last = parts.at(-1)
+    if (last?.match === matched[index]) last.text += char
+    else parts.push({ text: char, match: matched[index] })
+  })
+  return parts
+}
+
+/**
+ * Extrait d'une description centré sur le premier mot trouvé, sur une ligne,
+ * pour la liste de suggestions. Vide si aucun mot n'y figure.
+ * @param description Description Markdown
+ * @param terms Mots normalisés
+ * @param radius Nombre de caractères gardés de part et d'autre
+ */
+export function matchExcerpt(description: string, terms: string[], radius = 30): string {
+  const text = descriptionExcerpt(description ?? '', Infinity).replaceAll(/\s+/g, ' ')
+  const haystack = [...text].map((char) => normalizeSearchText(char) || ' ').join('')
+  const positions = terms.map((term) => haystack.indexOf(term)).filter((index) => index !== -1)
+  if (!positions.length) return ''
+
+  const at = Math.min(...positions)
+  const start = Math.max(0, at - radius)
+  const end = Math.min(text.length, at + radius)
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`
+}

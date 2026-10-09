@@ -1,22 +1,28 @@
 import { Page, Locator, expect } from '@playwright/test'
 
 /**
- * Objet page du filtre du Kanban par tag (MultiSelect au-dessus du tableau).
+ * Objet page de la barre de recherche du board (en-tête) : filtre par texte
+ * et par tags.
  *
- * Couvre l'ouverture de la liste, le cochage / décochage d'un tag, la
- * fermeture par Échap, la lecture des tags proposés et les deux messages liés
- * au filtre. Le ciblage repose sur les `data-testid` du filtre et sur les
- * rôles ARIA standards de la liste (`listbox`, `option`, `aria-selected`).
+ * Les tags se choisissent en tapant `#` puis leur nom, et s'affichent en chips
+ * dans la barre. Le ciblage repose sur les `data-testid` de la barre et sur
+ * les rôles ARIA de la liste de suggestions (`combobox`, `listbox`, `option`).
  */
 export class TagFilter {
   readonly page: Page
 
-  // Racine du MultiSelect, un clic ouvre la liste
+  // Barre entière, champ de saisie et liste de suggestions
   readonly root: Locator
-  // Liste ouverte (téléportée hors de la racine) et ses options
+  readonly input: Locator
   readonly list: Locator
+  // Suggestions de tags et de tâches, et l'option « Rechercher … »
   readonly options: Locator
-  // « Déplacement désactivé pendant le filtrage », présent si le filtre est actif
+  readonly taskOptions: Locator
+  readonly textOption: Locator
+  // Chips des tags du filtre
+  readonly chips: Locator
+  readonly clearButton: Locator
+  // Icône « déplacement désactivé », présente si le filtre est actif
   readonly dndHint: Locator
   // « Aucune tâche ne correspond au filtre »
   readonly emptyMessage: Locator
@@ -28,43 +34,65 @@ export class TagFilter {
   constructor(page: Page) {
     this.page = page
 
-    this.root = page.getByTestId('tag-filter')
-    this.list = page.getByRole('listbox')
-    this.options = this.list.getByRole('option')
+    this.root = page.getByTestId('board-search')
+    this.input = page.getByTestId('search-input')
+    this.list = page.getByTestId('search-list')
+    this.options = this.list.getByTestId('search-option-tag')
+    this.taskOptions = this.list.getByTestId('search-option-task')
+    this.textOption = this.list.getByTestId('search-option-text')
+    this.chips = this.root.getByTestId('search-tag-chip')
+    this.clearButton = page.getByTestId('search-clear')
     this.dndHint = page.getByTestId('filter-dnd-hint')
     this.emptyMessage = page.getByTestId('filter-empty')
   }
 
   /**
-   * Option d'un tag dans la liste ouverte, repérée par son nom accessible.
+   * Suggestion d'un tag dans la liste ouverte, repérée par son nom accessible.
    * @param name Nom exact du tag
    */
   option(name: string): Locator {
-    return this.page.getByRole('option', { name, exact: true })
-  }
-
-  /** Ouvre la liste des tags si elle ne l'est pas déjà. */
-  async open() {
-    if (await this.list.isVisible()) return
-
-    // Clic près du bord droit (flèche de la liste) : le centre peut tomber sur
-    // le × d'une chip sélectionnée, qui retirerait le tag au lieu d'ouvrir
-    const box = await this.root.boundingBox()
-    if (!box) throw new Error('Filtre par tag introuvable')
-    await this.root.click({ position: { x: box.width - 10, y: box.height / 2 } })
-    await expect(this.list).toBeVisible()
-  }
-
-  /** Referme la liste par Échap. */
-  async close() {
-    await this.page.keyboard.press('Escape')
-    await expect(this.list).toBeHidden()
+    return this.list.getByRole('option', { name, exact: true }).and(this.options)
   }
 
   /**
-   * Noms des tags proposés dans la liste ouverte, triés sans tenir compte de
-   * la casse. La ligne « aucune option » d'une liste vide n'a pas de nom de
-   * tag et n'est pas comptée.
+   * Suggestion d'une tâche dans la liste ouverte.
+   * @param title Titre exact de la tâche
+   */
+  taskOption(title: string): Locator {
+    return this.list.getByRole('option', { name: title, exact: true }).and(this.taskOptions)
+  }
+
+  /**
+   * Chip d'un tag du filtre.
+   * @param name Nom exact du tag
+   */
+  chip(name: string): Locator {
+    return this.chips.filter({ hasText: new RegExp(`^${name}$`) })
+  }
+
+  /** Ouvre la liste des tags proposés (saisie de `#`). */
+  async open() {
+    await this.input.fill('#')
+    await expect(this.list).toBeVisible()
+  }
+
+  /** Referme la liste par Échap et vide la saisie. */
+  async close() {
+    await this.input.press('Escape')
+    await expect(this.list).toBeHidden()
+    await this.input.fill('')
+  }
+
+  /**
+   * Saisit un texte de recherche (le board se filtre en direct).
+   * @param text Texte saisi
+   */
+  async search(text: string) {
+    await this.input.fill(text)
+  }
+
+  /**
+   * Noms des tags proposés dans la liste ouverte, triés sans tenir compte de la casse.
    */
   async optionNames(): Promise<string[]> {
     const names = await this.options.evaluateAll((rows) =>
@@ -83,42 +111,42 @@ export class TagFilter {
   }
 
   /**
-   * Vérifie qu'un tag proposé est coché (liste ouverte au préalable).
+   * Vérifie qu'un tag fait partie du filtre (chip affichée).
    * @param name Nom exact du tag
    */
   async expectSelected(name: string) {
-    await expect(this.option(name)).toHaveAttribute('aria-selected', 'true')
+    await expect(this.chip(name)).toBeVisible()
   }
 
   /**
-   * Coche ou décoche un tag dans la liste ouverte et attend le nouvel état.
-   * @param name Nom exact du tag
-   * @param selected État attendu après le clic
+   * Vérifie la liste exacte des tags du filtre, dans l'ordre de sélection.
+   * @param names Noms attendus
    */
-  private async toggle(name: string, selected: boolean) {
-    const option = this.option(name)
-    await expect(option).toHaveAttribute('aria-selected', String(!selected))
-    await option.click()
-    await expect(option).toHaveAttribute('aria-selected', String(selected))
+  async expectChips(names: string[]) {
+    await expect(this.chips).toHaveText(names)
   }
 
   /**
-   * Coche un ou plusieurs tags puis referme la liste.
-   * @param names Noms exacts des tags à cocher
+   * Ajoute un ou plusieurs tags au filtre via `#nom`.
+   * @param names Noms exacts des tags
    */
   async select(...names: string[]) {
-    await this.open()
-    for (const name of names) await this.toggle(name, true)
-    await this.close()
+    for (const name of names) {
+      await this.input.fill(`#${name}`)
+      await this.option(name).click()
+      await this.expectSelected(name)
+    }
+    await this.input.blur()
   }
 
   /**
-   * Décoche un ou plusieurs tags puis referme la liste.
-   * @param names Noms exacts des tags à décocher
+   * Retire un ou plusieurs tags du filtre par le × de leur chip.
+   * @param names Noms exacts des tags
    */
   async unselect(...names: string[]) {
-    await this.open()
-    for (const name of names) await this.toggle(name, false)
-    await this.close()
+    for (const name of names) {
+      await this.chip(name).getByTestId('search-tag-chip-remove').click()
+      await expect(this.chip(name)).toHaveCount(0)
+    }
   }
 }

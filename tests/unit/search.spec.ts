@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { normalizeSearchText, searchTerms, taskMatchesFilter } from '../../src/renderer/utils/search.helper'
+import {
+  highlightParts,
+  matchExcerpt,
+  normalizeSearchText,
+  searchTerms,
+  taskMatchesFilter,
+} from '../../src/renderer/utils/search.helper'
 import type { Task } from '../../src/renderer/types/task.types'
 
 /**
@@ -83,5 +89,42 @@ describe('taskMatchesFilter', () => {
     expect(taskMatchesFilter(t, searchTerms('redm'), [1])).toBe(true)
     expect(taskMatchesFilter(t, searchTerms('redm'), [2])).toBe(false)
     expect(taskMatchesFilter(t, searchTerms('jira'), [1])).toBe(false)
+  })
+})
+
+describe('highlightParts', () => {
+  test('surligne sans tenir compte de la casse ni des accents, texte conservé', () => {
+    expect(highlightParts('Créer la Tâche', searchTerms('tache'))).toEqual([
+      { text: 'Créer la ', match: false },
+      { text: 'Tâche', match: true },
+    ])
+  })
+
+  test('plusieurs mots et occurrences', () => {
+    expect(highlightParts('redmine et Redmine', ['redm', 'et'])).toEqual([
+      { text: 'redm', match: true },
+      { text: 'ine ', match: false },
+      { text: 'et', match: true },
+      { text: ' ', match: false },
+      { text: 'Redm', match: true },
+      { text: 'ine', match: false },
+    ])
+  })
+
+  test('sans mots, un seul morceau non surligné', () => {
+    expect(highlightParts('Wiki', [])).toEqual([{ text: 'Wiki', match: false }])
+  })
+})
+
+describe('matchExcerpt', () => {
+  test('extrait centré sur le mot trouvé, Markdown retiré', () => {
+    const description = `${'a'.repeat(50)} vers **Redmine** ${'b'.repeat(50)}`
+    const excerpt = matchExcerpt(description, ['redmine'], 10)
+    expect(excerpt).toMatch(/^….*Redmine.*…$/)
+    expect(excerpt).not.toContain('**')
+  })
+
+  test('vide si le mot est absent', () => {
+    expect(matchExcerpt('rien ici', ['redmine'])).toBe('')
   })
 })
