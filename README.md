@@ -28,6 +28,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden.
 - **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
 - **Reminders** through native desktop notifications based on each task's start date.
+- **Global search** from the header (`Ctrl+F`): filter the board by text (title and description) and by tags, or jump straight to a task.
 - **Tags** with a color palette to categorize and filter tasks.
 - **Task versions** to group tasks by release or milestone.
 - **Archives** for completed tasks, with optional automatic purge after 30, 90 or 365 days.
