@@ -751,8 +751,11 @@ async function confirmDelete() {
 @reference "tailwindcss";
 
 .tag-field {
-  @apply flex flex-wrap items-center gap-1 w-full min-h-10 px-3 py-2 rounded-md border cursor-pointer text-left;
+  @apply flex flex-wrap items-center gap-1 w-full px-3 py-1 rounded-md border cursor-pointer text-left;
   font: inherit;
+  /* Même taille de texte et hauteur que les autres champs PrimeVue (Select, DatePicker) */
+  font-size: 1rem;
+  min-height: calc(2 * var(--p-form-field-padding-y) + 1.5rem + 2px);
   background-color: var(--p-form-field-background);
   border-color: var(--p-form-field-border-color);
   transition: border-color 0.2s;

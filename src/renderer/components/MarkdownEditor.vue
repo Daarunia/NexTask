@@ -191,7 +191,7 @@ function onPreviewDblclick(event: MouseEvent) {
 }
 
 .markdown-editor :deep(.cm-editor) {
-  min-height: 6.5rem;
+  min-height: 9rem;
   max-height: 18rem;
 }
 
@@ -221,7 +221,7 @@ function onPreviewDblclick(event: MouseEvent) {
 
 .markdown-preview {
   @apply rounded-md px-3 py-2 overflow-auto;
-  min-height: 6.5rem;
+  min-height: 9rem;
   max-height: 24rem;
   background-color: var(--p-form-field-background);
   border: 1px solid var(--p-form-field-border-color);

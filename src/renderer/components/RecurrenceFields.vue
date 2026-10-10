@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2 w-full" data-testid="recurrence-fields">
+  <div class="flex flex-col gap-1 w-full" data-testid="recurrence-fields">
     <div class="flex items-center justify-between gap-2">
       <label for="recurrence" class="field-label">
         <i class="pi pi-replay" aria-hidden="true"></i>{{ t('recurrence.fields.repeat') }}
