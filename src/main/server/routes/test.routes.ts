@@ -38,6 +38,7 @@ import Logger from 'electron-log'
  * - POST /test/update-status      → impose un état de la mise à jour automatique (désactivée en test)
  * - GET  /test/update-install     → indique si l'installation de la mise à jour a été demandée (simulée en test)
  * - GET  /test/tray-menu          → libellés du menu de l'icône de la zone de notification (non créée en test)
+ * - GET  /test/task-checklists    → nombre de checklists de tâches et de leurs points en base (contrôle de la cascade)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -539,5 +540,42 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => ({ requested: wasInstallRequested() }),
+  )
+
+  /**
+   * GET /test/task-checklists
+   *
+   * Compte les checklists de tâches (modèles exclus) et leurs points en base,
+   * orphelins compris. Aucune route ne liste les checklists sans leur tâche,
+   * c'est donc le seul moyen de vérifier que la suppression d'une tâche les
+   * emporte (cascade, clés étrangères actives).
+   *
+   * @returns {Promise<{checklists: number, items: number}>} Nombre de checklists de tâches et de leurs points
+   */
+  fastify.get(
+    '/test/task-checklists',
+    {
+      schema: {
+        description: 'Nombre de checklists de tâches et de leurs points en base (tests E2E uniquement)',
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              checklists: { type: 'integer' },
+              items: { type: 'integer' },
+            },
+          },
+        },
+      },
+    },
+    async () => {
+      const taskChecklist = { taskId: { not: null } }
+      const [checklists, items] = await prisma.$transaction([
+        prisma.checklist.count({ where: taskChecklist }),
+        prisma.checklistItem.count({ where: { checklist: taskChecklist } }),
+      ])
+      return { checklists, items }
+    },
   )
 }
