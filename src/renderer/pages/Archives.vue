@@ -35,6 +35,9 @@
               <div class="flex min-w-0 items-center gap-2">
                 <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
 
+                <!-- Avancement de la checklist, gardée telle quelle à l'archivage, comme sur les cartes -->
+                <ChecklistBadge data-testid="archived-task-checklist" :checklist="task.checklist" />
+
                 <!-- Occurrence d'une tâche récurrente, comme sur les cartes du tableau -->
                 <i
                   v-if="recurrenceOf(task)"
@@ -120,6 +123,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import TagChip from '../components/TagChip.vue'
+import ChecklistBadge from '../components/ChecklistBadge.vue'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import type { Tag } from '../types/tag.types'
