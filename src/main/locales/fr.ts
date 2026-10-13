@@ -26,6 +26,11 @@ export const fr = {
   quickAdd: {
     windowTitle: 'NexTask — Ajout rapide',
   },
+  // Modèles de checklist
+  checklists: {
+    // Nom de la copie d'un modèle, numérotée ensuite si elle est déjà prise
+    copyName: '{name} (copie)',
+  },
   dataTransfer: {
     exportTitle: 'Exporter les données',
     importTitle: 'Importer des données',

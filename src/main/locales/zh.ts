@@ -23,6 +23,9 @@ export const zh: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — 快速添加',
   },
+  checklists: {
+    copyName: '{name}（副本）',
+  },
   dataTransfer: {
     exportTitle: '导出数据',
     importTitle: '导入数据',

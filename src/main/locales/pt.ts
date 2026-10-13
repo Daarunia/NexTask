@@ -23,6 +23,9 @@ export const pt: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — Adição rápida',
   },
+  checklists: {
+    copyName: '{name} (cópia)',
+  },
   dataTransfer: {
     exportTitle: 'Exportar os dados',
     importTitle: 'Importar dados',

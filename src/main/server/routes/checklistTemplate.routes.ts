@@ -7,7 +7,10 @@ import {
   checklistTemplateSchema,
 } from '../schemas/checklistSchema.js'
 import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
+import { t } from '../../i18n.js'
+import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../shared/checklist.constants.js'
 import {
+  duplicateName,
   findTemplateByName,
   nextTemplatePosition,
   templateInclude,
@@ -30,6 +33,18 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
+ * Nom de la copie d'un modèle, « Nom (copie) » dans la langue de l'app. Le nom
+ * d'origine est raccourci si besoin pour que le suffixe tienne dans la
+ * longueur maximale.
+ *
+ * @param name Nom du modèle copié
+ */
+function copyBaseName(name: string): string {
+  const room = CHECKLIST_TEMPLATE_NAME_MAX_LENGTH - t('checklists.copyName', { name: '' }).length
+  return t('checklists.copyName', { name: name.slice(0, room).trimEnd() })
+}
+
+/**
  * Plugin de routes Fastify pour les modèles de checklist (`Checklist` sans
  * tâche). Les checklists des tâches passent par les routes des tâches, et
  * toutes les routes ci-dessous les ignorent (un id de checklist de tâche
@@ -37,6 +52,7 @@ function isUniqueViolation(error: unknown): boolean {
  * - GET    /checklist-templates       → Liste les modèles dans leur ordre
  * - POST   /checklist-templates       → Crée un modèle en fin de liste
  * - PATCH  /checklist-templates/:id   → Renomme un modèle et/ou remplace ses points
+ * - POST   /checklist-templates/:id/duplicate → Copie un modèle sous le nom « Nom (copie) »
  * - DELETE /checklist-templates/:id   → Supprime un modèle, sans effet sur les tâches
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -231,6 +247,66 @@ export default async function checklistTemplateRoutes(fastify) {
         }
         throw error
       }
+    },
+  )
+
+  /**
+   * POST /checklist-templates/:id/duplicate
+   *
+   * Crée en fin de liste une copie du modèle et de ses points, nommée
+   * « Nom (copie) » dans la langue de l'app, puis « Nom (copie) 2 »… si ce nom
+   * est déjà pris (cf. duplicateName).
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID du modèle copié
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Copie créée (201), 404 si le modèle
+   *   n'existe pas
+   */
+  fastify.post(
+    '/checklist-templates/:id/duplicate',
+    {
+      schema: {
+        description: 'Duplique un modèle de checklist sous le nom « Nom (copie) »',
+        tags: ['ChecklistTemplate'],
+        params: idParam,
+        response: {
+          201: checklistTemplateSchema,
+          404: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const id = Number(req.params.id)
+
+      // Transaction : les noms pris, la position et la création voient le même état
+      return prisma.$transaction(async (tx) => {
+        const source = await tx.checklist.findFirst({ where: { ...templateWhere, id }, include: templateInclude })
+        if (!source) {
+          reply.code(404)
+          return { error: NOT_FOUND }
+        }
+
+        const taken = await tx.checklist.findMany({ where: templateWhere, select: { nameKey: true } })
+        const takenKeys = new Set(taken.map((template) => template.nameKey).filter((key) => key !== null))
+        const name = duplicateName(copyBaseName(source.name ?? ''), takenKeys)
+
+        const created = await tx.checklist.create({
+          data: {
+            taskId: null,
+            name,
+            nameKey: templateKey(name),
+            position: await nextTemplatePosition(tx),
+            items: { create: templateItemRows(source.items.map((item) => item.text)) },
+          },
+          include: templateInclude,
+        })
+
+        Logger.info(`Modèle de checklist ${id} dupliqué en ${created.id} « ${name} »`)
+        reply.code(201)
+        return created
+      })
     },
   )
 
