@@ -64,10 +64,11 @@ function withArchiveDate<T extends { isHistorized?: unknown; historizationDate?:
 }
 
 /** Corps de PATCH /tasks/:id, une fois validé par Fastify. */
-type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & {
+type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags' | 'checklist'> & {
   tags?: string[]
   recurrence?: RecurrenceInput | null
   applyToSeries?: boolean
+  checklistItems?: ChecklistItemInput[]
 }
 
 /**
@@ -306,6 +307,12 @@ export default async function taskRoutes(fastify) {
    * Sinon la tâche porte exactement les tags nommés, rapprochés ou créés
    * comme pour POST /tasks, dans la même transaction que la mise à jour.
    *
+   * Pour la checklist, `checklistItems` absent la laisse inchangée, `[]` la supprime
+   * avec tous ses points. Sinon la liste envoyée la remplace, dans l'ordre. Un
+   * point avec l'id d'un point de la tâche est modifié, un point sans id
+   * (ou avec un id étranger à la tâche) est créé, un point absent est
+   * supprimé. Le serveur date la coche (`checkedAt`), cf. planChecklistSync.
+   *
    * Répétition :
    * - `recurrence` absent laisse la série inchangée ;
    * - un objet crée une série dont la tâche est la première occurrence, ou
@@ -326,11 +333,13 @@ export default async function taskRoutes(fastify) {
    * @param {number} req.params.id - ID de la tâche
    * @param {Object} req.body - Données à mettre à jour
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche (remplacent les actuels)
+   * @param {Object[]} [req.body.checklistItems] - Points de la checklist (remplacent les actuels)
    * @param {Object|null} [req.body.recurrence] - Règle de répétition, null pour arrêter la série
    * @param {boolean} [req.body.applyToSeries] - Reporter le contenu sur le modèle de la série (défaut : true)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags et sa série,
-   *   400 si la règle de répétition est incohérente, 404 si la tâche n'existe pas,
+   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags, sa checklist
+   *   et sa série, 400 si la règle de répétition est incohérente ou si un point est invalide,
+   *   404 si la tâche n'existe pas,
    *   500 pour toute autre erreur
    */
   fastify.patch(
@@ -358,6 +367,7 @@ export default async function taskRoutes(fastify) {
             tags: taskTagsBody,
             recurrence: nullableRecurrenceInputSchema,
             applyToSeries: { type: 'boolean' },
+            checklistItems: taskChecklistItemsSchema,
           },
         },
         response: {
@@ -370,7 +380,7 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
-      const { tags, recurrence, applyToSeries = true, ...data } = req.body as TaskUpdateBody
+      const { tags, recurrence, applyToSeries = true, checklistItems, ...data } = req.body as TaskUpdateBody
       const now = new Date()
 
       // Si la startDate est repoussée dans le futur, on réarme la notification.
@@ -409,6 +419,9 @@ export default async function taskRoutes(fastify) {
               ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
             },
           })
+
+          // Checklist remplacée avant la série, qui pourra en reprendre les textes
+          await syncTaskChecklist(tx, id, checklistItems, now)
 
           // Série arrêtée, modifiée ou créée, modèle et attente d'archivage à jour
           const sent = {
@@ -747,8 +760,9 @@ export default async function taskRoutes(fastify) {
               notifiedAt: { type: ['string', 'null'], format: 'date-time' },
             },
             required: ['id'],
-            // Les tags ne se modifient pas en batch : 400 plutôt qu'une erreur Prisma (500)
-            not: { required: ['tags'] },
+            // Ni les tags ni la checklist ne se modifient en batch, d'où un 400 plutôt
+            // qu'une erreur Prisma (500)
+            not: { anyOf: [{ required: ['tags'] }, { required: ['checklistItems'] }] },
           },
         },
         response: {
