@@ -55,6 +55,14 @@ export class ArchivesPage {
   }
 
   /**
+   * Badge d'avancement de la checklist d'une ligne (« 2/3 »), absent sans point.
+   * @param title Titre exact de la tâche
+   */
+  checklistBadge(title: string): Locator {
+    return this.item(title).getByTestId('archived-task-checklist')
+  }
+
+  /**
    * Titres affichés, dans l'ordre de la liste (haut → bas).
    */
   async titleList(): Promise<string[]> {

@@ -218,6 +218,14 @@ export class TaskBoard {
   }
 
   /**
+   * Badge d'avancement de la checklist d'une carte (« 2/3 »), absent sans point.
+   * @param title Titre exact de la tâche
+   */
+  cardChecklistBadge(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-checklist')
+  }
+
+  /**
    * Bouton de la barre d'outils de l'éditeur Markdown, repéré par son infobulle.
    * @param title Infobulle du bouton (ex : "Gras")
    */
