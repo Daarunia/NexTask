@@ -89,6 +89,8 @@ model Recurrence {
   stageId        Int?
   stage          Stage?    @relation(fields: [stageId], references: [id], onDelete: SetNull)
   tags           Tag[]
+  // Textes des points des occurrences (string[]), toujours décochés à la génération
+  checklistItems Json      @default("[]")
   tasks          Task[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
