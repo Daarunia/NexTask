@@ -12,7 +12,7 @@ import { API } from '../../helpers/api.helper'
  * nettoyage manuel.
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 test("ouvre l'écran de tâche en création avec les valeurs par défaut", async ({ taskBoard }) => {
@@ -123,4 +123,39 @@ test("l'API répond 404 à la modification et à la suppression d'une tâche ine
   const del = await page.request.delete(`${API}/tasks/999999`)
   expect(del.status()).toBe(404)
   expect(await del.json()).toEqual({ error: 'Tâche non trouvée' })
+})
+
+test("l'en-tête indique le mode et la colonne, et la croix ferme sans enregistrer", async ({ page, taskBoard }) => {
+  const heading = page.getByTestId('task-dialog-heading')
+
+  await taskBoard.openCreateDialog(COLUMN)
+  await expect(heading).toHaveText(`Nouvelle tâche · ${COLUMN}`)
+  // Pas d'archivage pour une tâche pas encore créée
+  await expect(page.getByTestId('task-archive-btn')).toHaveCount(0)
+  await taskBoard.titleInput.fill('Fermée sans enregistrer')
+  await page.getByTestId('task-close-btn').click()
+  await expect(taskBoard.dialog).toBeHidden()
+  await expect(taskBoard.taskCard('Fermée sans enregistrer')).toHaveCount(0)
+
+  await taskBoard.createTask(COLUMN, { title: 'Existante' })
+  await taskBoard.openEditDialog('Existante')
+  await expect(heading).toHaveText(`Modifier la tâche · ${COLUMN}`)
+})
+
+test("« Archiver » dans l'édition archive la tâche, annulable depuis le toast", async ({
+  page,
+  taskBoard,
+  undoToast,
+}) => {
+  const title = 'Archivée depuis le dialogue'
+  await taskBoard.createTask(COLUMN, { title })
+
+  await taskBoard.openEditDialog(title)
+  await page.getByTestId('task-archive-btn').click()
+
+  await expect(taskBoard.dialog).toBeHidden()
+  await expect(taskBoard.taskCard(title)).toHaveCount(0)
+
+  await undoToast.undo(title)
+  await expect(taskBoard.taskCard(title)).toBeVisible()
 })

@@ -15,10 +15,34 @@
       @submit="onSubmit"
       @keydown.capture="onSaveShortcut"
     >
-      <!-- Titre -->
-      <div class="flex flex-col gap-2 w-full">
-        <label for="inputValue" class="font-medium">Titre</label>
-        <InputText id="inputValue" name="title" data-testid="task-title-input" placeholder="Décris ton titre ici..." />
+      <!-- En-tête : nature du dialogue et colonne de la tâche -->
+      <div class="flex items-center justify-between gap-2 -mt-2">
+        <span data-testid="task-dialog-heading" class="dialog-heading">
+          {{ creationMode ? t('task.dialog.newTask') : t('task.dialog.editTask') }}
+          <template v-if="stageName"> · {{ stageName }}</template>
+        </span>
+        <Button
+          type="button"
+          icon="pi pi-times"
+          text
+          rounded
+          size="small"
+          data-testid="task-close-btn"
+          :aria-label="t('task.dialog.close')"
+          @click="visible = false"
+        />
+      </div>
+
+      <!-- Titre : grand champ sans cadre, comme sur la carte -->
+      <div class="flex flex-col gap-1 w-full -mt-4">
+        <InputText
+          id="inputValue"
+          name="title"
+          data-testid="task-title-input"
+          class="title-input"
+          :aria-label="t('task.dialog.title')"
+          :placeholder="t('task.dialog.titlePlaceholder')"
+        />
         <Message
           v-if="$form.title?.invalid"
           severity="error"
@@ -37,107 +61,130 @@
           :is="MarkdownEditor"
           v-if="MarkdownEditor"
           id="description"
-          label="Description"
+          :label="t('task.dialog.description')"
           testId="task-description"
-          placeholder="Décris ta tâche ici... (Markdown accepté)"
+          :placeholder="t('task.dialog.descriptionPlaceholder')"
           :modelValue="$field.value ?? ''"
           :startInPreview="!!initialValues.description?.trim()"
           @update:modelValue="(value: string) => $field.props.onChange({ value })"
         />
       </FormField>
 
-      <!-- Tags : valeur du formulaire = TagSelection[] -->
-      <div class="flex flex-col gap-2 w-full">
-        <span class="font-medium">Tags</span>
-        <FormField v-slot="$field" name="tags">
-          <TagSelect
-            ref="tagSelectRef"
-            :modelValue="$field.value ?? []"
-            @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
+      <!-- Réglages secondaires, sur deux colonnes -->
+      <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+        <!-- Tags : valeur du formulaire = TagSelection[] -->
+        <div class="flex flex-col gap-1 min-w-0">
+          <span class="field-label"><i class="pi pi-tag" aria-hidden="true"></i>{{ t('task.dialog.tags') }}</span>
+          <FormField v-slot="$field" name="tags">
+            <TagSelect
+              ref="tagSelectRef"
+              :modelValue="$field.value ?? []"
+              @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
+            />
+          </FormField>
+          <Message v-if="$form.tags?.invalid" severity="error" size="small" variant="simple">
+            {{ $form.tags.error?.message }}
+          </Message>
+        </div>
+
+        <!-- Version -->
+        <div class="flex flex-col gap-1 min-w-0">
+          <label for="version" class="field-label">
+            <i class="pi pi-bookmark" aria-hidden="true"></i>{{ t('task.dialog.version') }}
+          </label>
+          <Select
+            id="version"
+            name="version"
+            data-testid="task-version-select"
+            :options="versions"
+            optionLabel="label"
+            optionValue="value"
+            :placeholder="t('task.dialog.versionPlaceholder')"
+          />
+          <Message v-if="$form.version?.invalid" severity="error" size="small" variant="simple">
+            {{ $form.version.error?.message }}
+          </Message>
+        </div>
+
+        <!-- Date de début -->
+        <div class="flex flex-col gap-1 min-w-0">
+          <label for="startDate" class="field-label">
+            <i class="pi pi-calendar" aria-hidden="true"></i>{{ t('task.dialog.startDate') }}
+          </label>
+          <DatePicker
+            id="startDate"
+            name="startDate"
+            data-testid="task-startdate-input"
+            showTime
+            hourFormat="24"
+            showButtonBar
+            :placeholder="t('task.dialog.startDatePlaceholder')"
+          />
+          <Message
+            v-if="$form.startDate?.invalid"
+            severity="error"
+            size="small"
+            variant="simple"
+            data-testid="task-startdate-error"
+          >
+            {{ $form.startDate.error?.message }}
+          </Message>
+        </div>
+
+        <!-- Répéter : valeur du formulaire = RecurrenceFormValue. Toute la largeur
+             dès qu'une règle est choisie (résumé, règle personnalisée) -->
+        <FormField
+          v-slot="$field"
+          name="recurrence"
+          :class="[
+            'min-w-0',
+            { 'sm:col-span-2': $form.recurrence?.value?.preset && $form.recurrence.value.preset !== 'none' },
+          ]"
+        >
+          <RecurrenceFields
+            :modelValue="$field.value ?? defaultRecurrenceValue()"
+            :startDate="$form.startDate?.value ?? null"
+            :series="series"
+            :error="$field.invalid ? $field.error?.message : undefined"
+            @update:modelValue="(value) => $field.props.onChange({ value })"
+            @need-start-date="$form.setFieldValue('startDate', defaultStartDate())"
           />
         </FormField>
-        <Message v-if="$form.tags?.invalid" severity="error" size="small" variant="simple">
-          {{ $form.tags.error?.message }}
-        </Message>
       </div>
-
-      <!-- Version -->
-      <div class="flex flex-col gap-2 w-full">
-        <label for="version" class="font-medium">Version</label>
-        <Select
-          id="version"
-          name="version"
-          data-testid="task-version-select"
-          :options="versions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Sélectionne une version"
-        />
-        <Message v-if="$form.version?.invalid" severity="error" size="small" variant="simple">
-          {{ $form.version.error?.message }}
-        </Message>
-      </div>
-
-      <!-- Date de début -->
-      <div class="flex flex-col gap-2 w-full">
-        <label for="startDate" class="font-medium">Date de début</label>
-        <DatePicker
-          id="startDate"
-          name="startDate"
-          data-testid="task-startdate-input"
-          showTime
-          hourFormat="24"
-          showButtonBar
-          dateFormat="dd/mm/yy"
-          placeholder="Date de début de la tâche"
-        />
-        <Message
-          v-if="$form.startDate?.invalid"
-          severity="error"
-          size="small"
-          variant="simple"
-          data-testid="task-startdate-error"
-        >
-          {{ $form.startDate.error?.message }}
-        </Message>
-      </div>
-
-      <!-- Répéter : valeur du formulaire = RecurrenceFormValue -->
-      <FormField v-slot="$field" name="recurrence">
-        <RecurrenceFields
-          :modelValue="$field.value ?? defaultRecurrenceValue()"
-          :startDate="$form.startDate?.value ?? null"
-          :series="series"
-          :error="$field.invalid ? $field.error?.message : undefined"
-          @update:modelValue="(value) => $field.props.onChange({ value })"
-          @need-start-date="$form.setFieldValue('startDate', defaultStartDate())"
-        />
-      </FormField>
 
       <!-- Contenu reporté sur les prochaines occurrences (modification d'une
            occurrence). Masqué plutôt que retiré : le champ reste dans le formulaire. -->
       <div v-show="seriesLive && $form.recurrence?.value?.preset !== 'none'" class="flex items-center gap-2">
         <Checkbox inputId="applyToSeries" name="applyToSeries" binary data-testid="task-apply-to-series" />
-        <label for="applyToSeries">Appliquer aux prochaines occurrences</label>
+        <label for="applyToSeries">{{ t('task.dialog.applyToSeries') }}</label>
       </div>
 
-      <!-- Boutons -->
-      <div class="flex gap-2 w-full">
+      <!-- Boutons : archivage à gauche (édition), annulation discrète, enregistrement à l'accent -->
+      <div class="flex items-center gap-2 w-full pt-1">
+        <Button
+          v-if="!creationMode"
+          type="button"
+          icon="pi pi-box"
+          :label="t('common.archive')"
+          data-testid="task-archive-btn"
+          severity="secondary"
+          text
+          @click="onArchive"
+        />
+        <span class="flex-1"></span>
         <Button
           type="button"
-          label="Cancel"
+          :label="t('common.cancel')"
           data-testid="task-cancel-btn"
           severity="secondary"
-          class="flex-1"
+          text
           @click="visible = false"
         />
         <Button
           type="submit"
-          label="Save"
-          v-tooltip.top="infoTooltip('Ctrl+S ou Ctrl+Entrée')"
+          :label="t('common.save')"
+          v-tooltip.top="infoTooltip(t('task.dialog.saveShortcut'))"
           data-testid="task-save-btn"
-          severity="success"
-          class="flex-1"
         />
       </div>
     </Form>
@@ -163,6 +210,7 @@ import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
 import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
+import { useStageStore } from '../stores/Stage'
 import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
@@ -175,6 +223,7 @@ import {
   toRecurrenceInput,
   toRecurrenceValue,
 } from '../utils/recurrence.helper'
+import { useI18n } from 'vue-i18n'
 
 // Éditeur Markdown (md-editor-v3 et CodeMirror) dans un chunk à part, pour ne pas
 // alourdir le démarrage : préchargé au montage, et attendu avant d'ouvrir le
@@ -223,10 +272,12 @@ const props = defineProps({
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'task-saved', task: Task): void
+  (e: 'archive-task', task: Task): void
 }>()
 
 // Paramètres : versions proposées et version par défaut
 const settings = useSettingsStore()
+const { t } = useI18n()
 
 // State
 const visible = ref(props.modelValue)
@@ -252,6 +303,7 @@ const resolver = zodResolver(taskFormSchema)
 // Logger & Store
 const logger = getLogger()
 const taskStore = useTaskStore()
+const stageStore = useStageStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
@@ -266,10 +318,22 @@ const series = computed(() =>
 // Série encore en cours (active ou en pause) : modifiable et arrêtable depuis la tâche
 const seriesLive = computed(() => !!series.value && series.value.status !== 'ended')
 
+// Colonne de la tâche, affichée dans l'en-tête
+const stageName = computed(() => stageStore.getAllStages.find((stage) => stage.id === stageId.value)?.name ?? '')
+
+/**
+ * Archive la tâche éditée (le tableau s'en charge, annulation comprise) et ferme le dialogue.
+ */
+function onArchive() {
+  if (!props.editTask) return
+  emit('archive-task', props.editTask)
+  visible.value = false
+}
+
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
 const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 
-// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Save)
+// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Enregistrer)
 const formRef = ref<{ submit: () => void } | null>(null)
 
 // Sauvegarde en cours
@@ -358,7 +422,7 @@ async function resumeSeries(id: number, status: RecurrenceStatus) {
   try {
     await taskStore.updateRecurrenceStatus(id, status)
   } catch {
-    showError('Annulation impossible', "La série n'a pas été relancée.")
+    showError(t('task.dialog.undoFailed'), t('task.dialog.resumeFailedDetail'))
   }
 }
 
@@ -396,7 +460,7 @@ function toTagNames(selection: TagSelection[]): string[] {
 
 /**
  * Ctrl+S ou Ctrl+Entrée (Cmd sur macOS), depuis n'importe quel champ :
- * enregistre la tâche comme le bouton Save, validation comprise.
+ * enregistre la tâche comme le bouton Enregistrer, validation comprise.
  * @param event Touche pressée dans le formulaire
  */
 function onSaveShortcut(event: KeyboardEvent) {
@@ -494,16 +558,34 @@ async function saveTask(values: TaskFormValues) {
     // Série arrêtée : annulable quelques secondes, elle retrouve alors son état
     if (stopped) {
       const { id, status } = stopped
-      showUndo('Série arrêtée', { detail: savedTask?.title, undo: () => resumeSeries(id, status) })
+      showUndo(t('task.dialog.seriesStopped'), { detail: savedTask?.title, undo: () => resumeSeries(id, status) })
     }
 
     emit('update:modelValue', false)
   } catch (error) {
     // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)
-    showError('Enregistrement impossible', "La tâche n'a pas été enregistrée.")
+    showError(t('task.dialog.saveFailed'), t('task.dialog.saveFailedDetail'))
   } finally {
     saving.value = false
   }
 }
 </script>
+
+<style scoped>
+.dialog-heading {
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
+}
+
+/* Titre mis en avant : grand, sans cadre, souligné au focus */
+.title-input {
+  font-size: 1.375rem;
+  font-weight: 600;
+  padding: 0.125rem 0 0.375rem;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+</style>

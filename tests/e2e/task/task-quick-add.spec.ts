@@ -15,7 +15,7 @@ import { API } from '../../helpers/api.helper'
  * `cleanState`), qui ferme aussi une fenêtre d'ajout rapide restée ouverte.
  */
 
-// Colonnes seedées (cf. prisma/seeds/01_initial_stages.sql)
+// Colonnes seedées (cf. prisma/seeds/fr/01_initial_stages.sql)
 const FIRST_COLUMN = 'A faire'
 const OTHER_COLUMN = 'En cours'
 

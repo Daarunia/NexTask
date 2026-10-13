@@ -20,6 +20,12 @@ export default defineConfig({
     port: 8080,
   },
   open: false,
+  // Options de compilation de vue-i18n : API Composition seule, sans outils de dev en prod
+  define: {
+    __VUE_I18N_FULL_INSTALL__: true,
+    __VUE_I18N_LEGACY_API__: false,
+    __INTLIFY_PROD_DEVTOOLS__: false,
+  },
   build: {
     outDir: path.join(__dirname, 'build', 'renderer'),
     emptyOutDir: true,

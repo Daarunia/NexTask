@@ -6,6 +6,9 @@
       <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
     </h1>
 
+    <!-- Recherche globale, propre au tableau -->
+    <BoardSearch v-if="isHome" class="mx-4" />
+
     <div class="flex items-center gap-2" ref="menuWrapper">
       <!-- Raccourcis d'apparence, masqués sur la page Paramètres qui propose les mêmes réglages -->
       <template v-if="!isSettings">
@@ -31,7 +34,7 @@
       <Button
         data-testid="btn-settings"
         icon="pi pi-cog"
-        aria-label="Paramètres"
+        :aria-label="t('header.settings')"
         @click="goSettings"
         v-if="!isSettings"
         text
@@ -47,12 +50,15 @@ import Button from 'primevue/button'
 import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
+import BoardSearch from './BoardSearch.vue'
 import { useSettingsStore } from '../stores/Settings.js'
 import { useErrorToast } from '../utils/toast.helper.js'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 // Paramètres chargés et appliqués par App.vue, l'en-tête ne fait que les lire
 const settings = useSettingsStore()
+const { t } = useI18n()
 const showError = useErrorToast()
 const palettePopover = ref<InstanceType<typeof Popover> | null>(null)
 const router = useRouter()
@@ -63,7 +69,7 @@ async function toggleTheme() {
   try {
     await settings.set('theme', settings.isDark ? 'light' : 'dark')
   } catch {
-    showError('Thème non enregistré')
+    showError(t('header.themeNotSaved'))
   }
 }
 

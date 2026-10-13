@@ -17,7 +17,7 @@ import { TAG_COLORS, createTaskViaApi, getTags, getTask, tagNames } from '../../
  * (fixture automatique `cleanState`).
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 test.describe("Menu d'édition", () => {

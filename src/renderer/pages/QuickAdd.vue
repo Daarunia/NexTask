@@ -7,8 +7,8 @@
         ref="inputRef"
         v-model="title"
         data-testid="quick-add-title"
-        aria-label="Titre de la tâche"
-        placeholder="Nouvelle tâche…"
+        :aria-label="t('quickAdd.titleLabel')"
+        :placeholder="t('quickAdd.placeholder')"
         :maxlength="LABEL_MAX_LENGTH"
         :disabled="saving"
         autofocus
@@ -30,7 +30,7 @@
     />
 
     <p v-if="error" data-testid="quick-add-error" class="quick-add-error text-sm">{{ error }}</p>
-    <p v-else class="quick-add-muted text-xs">Entrée pour ajouter · Échap pour fermer</p>
+    <p v-else class="quick-add-muted text-xs">{{ t('quickAdd.hint') }}</p>
   </form>
 </template>
 
@@ -44,10 +44,12 @@ import type { Stage } from '../types/stage.types'
 import { httpStatus } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { LABEL_MAX_LENGTH } from '../../main/shared/validation.constants'
+import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()
 const stageStore = useStageStore()
 const taskStore = useTaskStore()
+const { t } = useI18n()
 
 const formRef = ref<HTMLFormElement | null>(null)
 const inputRef = ref<{ $el: HTMLInputElement } | null>(null)
@@ -97,10 +99,7 @@ async function submit() {
     globalThis.quickAdd.notifyCreated(task)
     close()
   } catch (err) {
-    error.value =
-      httpStatus(err) === 409
-        ? 'Ajoute une colonne au tableau pour y noter la tâche.'
-        : "La tâche n'a pas été ajoutée. Réessaie avec Entrée."
+    error.value = httpStatus(err) === 409 ? t('quickAdd.noStage') : t('quickAdd.failed')
     saving.value = false
     focusTitle()
   }

@@ -14,7 +14,7 @@ import { API } from '../../helpers/api.helper'
  * Isolation : base remise à zéro avant chaque test (fixture `cleanState`).
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 /** Liens cliqués dont l'ouverture a été demandée depuis le dernier reset. */

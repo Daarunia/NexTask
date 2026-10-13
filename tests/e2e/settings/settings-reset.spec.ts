@@ -15,6 +15,12 @@ import type { SettingsPage } from '../../components/SettingsPage'
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
+/**
+ * Valeurs par défaut en mode test : interface en français quelle que soit la
+ * langue de la machine (cf. stores/settings.ts côté main).
+ */
+const TEST_DEFAULTS: AppSettings = { ...DEFAULT_SETTINGS, language: 'fr' }
+
 /** Pont des paramètres exposé par le preload. */
 type SettingsBridge = {
   getAll: () => Promise<AppSettings>
@@ -90,7 +96,7 @@ test('remet les réglages modifiés à leurs valeurs par défaut', async ({ page
 
   await expectDefaultSettings(header, settingsPage)
   await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
-  expect(await storedSettings(page)).toEqual(DEFAULT_SETTINGS)
+  expect(await storedSettings(page)).toEqual(TEST_DEFAULTS)
 
   // Valeurs par défaut toujours là au redémarrage
   await page.reload()
@@ -123,5 +129,5 @@ test('conserve la dernière taille et position de la fenêtre', async ({ page, h
   await settingsPage.confirmAcceptButton.click()
   await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
 
-  expect(await storedSettings(page)).toEqual({ ...DEFAULT_SETTINGS, windowState })
+  expect(await storedSettings(page)).toEqual({ ...TEST_DEFAULTS, windowState })
 })

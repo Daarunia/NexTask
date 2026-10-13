@@ -203,26 +203,26 @@ test.describe('Filtrage des cartes', () => {
     await expect(tagFilter.dndHint).toHaveCount(0)
   })
 
-  test('le compteur de chaque colonne suit les cartes affichées par le filtre', async ({
+  test('le compteur de chaque colonne affiche les cartes visibles sur le total sous filtre', async ({
     page,
     taskBoard,
     tagFilter,
   }) => {
     await seedBoard(page)
 
-    const expectCounts = async (counts: number[]) => {
+    const expectCounts = async (counts: string[]) => {
       for (const [index, column] of [A_FAIRE, EN_COURS, EN_ATTENTE, TERMINE].entries()) {
-        await expect(taskBoard.columnCount(column)).toHaveText(String(counts[index]))
+        await expect(taskBoard.columnCount(column)).toHaveText(counts[index])
       }
     }
 
-    await expectCounts([4, 3, 1, 0])
+    await expectCounts(['4', '3', '1', '0'])
 
     await tagFilter.select('bug')
-    await expectCounts([2, 1, 0, 0])
+    await expectCounts(['2/4', '1/3', '0/1', '0/0'])
 
     await tagFilter.unselect('bug')
-    await expectCounts([4, 3, 1, 0])
+    await expectCounts(['4', '3', '1', '0'])
   })
 })
 
@@ -417,10 +417,8 @@ test.describe('Filtre sans résultat', () => {
     await expect(tagFilter.emptyMessage).toHaveCount(0)
     await expectVisibleCards(taskBoard, { [A_FAIRE]: [title] })
 
-    // De nouveau porté par une tâche active, « doc » est proposé et coché : on vide le filtre
-    await tagFilter.open()
+    // « doc » est toujours dans le filtre : on le retire
     await tagFilter.expectSelected('doc')
-    await tagFilter.close()
     await tagFilter.unselect('doc')
 
     await expect(tagFilter.emptyMessage).toHaveCount(0)

@@ -6,6 +6,7 @@ import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import type { NotificationStyle } from '../shared/settings.constants.js'
 import { runRecurrenceGeneration } from './recurrenceGeneration.js'
+import { t, tn } from '../i18n.js'
 
 /**
  * Planificateur de notifications.
@@ -72,15 +73,15 @@ function escapeXml(text: string): string {
  * Affiche une unique notification OS regroupant toutes les tâches échues.
  *
  * @param tasks Tâches échues à annoncer
+ * @param title Titre de la notification, dans la langue de l'interface
  * @param style Style choisi dans les paramètres (seul Windows en tient compte)
  */
-function notify(tasks: { id: number; title: string }[], style: NotificationStyle): void {
+function notify(tasks: { id: number; title: string }[], title: string, style: NotificationStyle): void {
   const lines = tasks.slice(0, CAP).map((t) => `• ${t.title}`)
   if (tasks.length > CAP) {
-    lines.push(`… et ${tasks.length - CAP} autre(s)`)
+    lines.push(tn('notifications.more', tasks.length - CAP))
   }
 
-  const title = `Tâches à démarrer (${tasks.length})`
   const body = lines.join('\n')
 
   const notification = new Notification({ title, body, icon: ICON })
@@ -104,7 +105,7 @@ function notify(tasks: { id: number; title: string }[], style: NotificationStyle
           </binding>
         </visual>
         <actions>
-          <action activationType="system" arguments="dismiss" content="Fermer"/>
+          <action activationType="system" arguments="dismiss" content="${escapeXml(t('notifications.dismiss'))}"/>
         </actions>
       </toast>
     `
@@ -133,6 +134,7 @@ export interface NotificationCheckResult {
   count: number // tâches échues marquées comme notifiées
   shown: boolean // une notification OS a été envoyée
   style: NotificationStyle | null // style de la notification envoyée, null sans envoi
+  title: string | null // titre de la notification envoyée, null sans envoi
 }
 
 /**
@@ -141,7 +143,7 @@ export interface NotificationCheckResult {
  * Extrait pour être testable.
  *
  * @param now Horodatage de référence (injectable pour les tests)
- * @returns Nombre de tâches traitées, envoi ou non de la notification et son style
+ * @returns Nombre de tâches traitées, envoi ou non de la notification, son style et son titre
  */
 export async function runNotificationCheck(now: Date = new Date()): Promise<NotificationCheckResult> {
   const dueTasks = await prisma.task.findMany({
@@ -153,14 +155,16 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
     select: { id: true, title: true },
   })
 
-  if (dueTasks.length === 0) return { count: 0, shown: false, style: null }
+  if (dueTasks.length === 0) return { count: 0, shown: false, style: null, title: null }
 
   let style: NotificationStyle | null = null
+  let title: string | null = null
   if (!settingsStore.get('notificationsEnabled')) {
     Logger.info('[scheduler] Rappels désactivés, marquage sans affichage')
   } else if (Notification.isSupported()) {
     style = settingsStore.get('notificationStyle')
-    notify(dueTasks, style)
+    title = tn('notifications.title', dueTasks.length)
+    notify(dueTasks, title, style)
   } else {
     Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }
@@ -171,7 +175,7 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
   })
 
   Logger.info(`[scheduler] ${dueTasks.length} tâche(s) notifiée(s)`)
-  return { count: dueTasks.length, shown: style !== null, style }
+  return { count: dueTasks.length, shown: style !== null, style, title }
 }
 
 /**

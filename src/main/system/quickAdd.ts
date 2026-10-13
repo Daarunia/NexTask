@@ -4,6 +4,7 @@ import Logger from 'electron-log'
 import { IS_TEST } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import { QUICK_ADD_ROUTE, type QuickAddStatus } from '../shared/quickAdd.constants.js'
+import { t } from '../i18n.js'
 
 /**
  * Ajout rapide : un raccourci clavier global ouvre une petite fenêtre, au
@@ -76,7 +77,7 @@ export function openQuickAdd(): void {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    title: 'NexTask — Ajout rapide',
+    title: t('quickAdd.windowTitle'),
     webPreferences: host.webPreferences(),
   })
   quickAddWindow = win

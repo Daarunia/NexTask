@@ -11,6 +11,7 @@ export class SettingsPage {
   readonly root: Locator
   readonly nav: Locator
   readonly appearanceSection: Locator
+  readonly languageSelect: Locator
   readonly modeSelect: Locator
   readonly colorRow: Locator
   readonly interfaceScaleSelect: Locator
@@ -73,6 +74,7 @@ export class SettingsPage {
 
     // Section Apparence
     this.appearanceSection = this.root.getByTestId('settings-appearance')
+    this.languageSelect = this.appearanceSection.getByTestId('setting-language')
     this.modeSelect = this.appearanceSection.getByTestId('settings-mode')
     this.colorRow = this.appearanceSection.getByTestId('settings-row-color')
     this.interfaceScaleSelect = this.appearanceSection.getByTestId('settings-interface-scale')
@@ -329,6 +331,15 @@ export class SettingsPage {
    */
   async recurrenceTitles(): Promise<string[]> {
     return this.recurrenceItems.evaluateAll((items) => items.map((item) => item.getAttribute('data-title') ?? ''))
+  }
+
+  /**
+   * Choisit la langue de l'interface dans le sélecteur de la section Apparence.
+   * @param label Libellé exact de l'option (« Français », « English »…)
+   */
+  async chooseLanguage(label: string) {
+    await this.languageSelect.click()
+    await this.page.getByRole('option', { name: label, exact: true }).click()
   }
 
   /**

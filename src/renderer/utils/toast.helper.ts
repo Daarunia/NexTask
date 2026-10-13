@@ -1,6 +1,7 @@
 import { toRaw } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import type { ToastMessageOptions } from 'primevue/toast'
+import { t } from '../i18n'
 
 /** Durée d'affichage d'un toast d'erreur */
 const ERROR_TOAST_LIFE = 5000
@@ -34,7 +35,7 @@ const undoActions = new Map<ToastMessageOptions, UndoAction>()
 export function useErrorToast() {
   const toast = useToast()
 
-  return (summary: string, detail = "La modification n'a pas été enregistrée.") => {
+  return (summary: string, detail = t('common.notSaved')) => {
     toast.add({ severity: 'error', summary, detail, life: ERROR_TOAST_LIFE })
   }
 }
