@@ -32,12 +32,12 @@ import { infoTooltip } from '../utils/tooltip.helper'
 interface RailEntry {
   /** Nom de la route ouverte par l'entrée */
   route: string
-  /** Icône PrimeIcons (ex : `pi-cog`) */
+  /** Icône PrimeIcons, par exemple `pi-cog` */
   icon: string
   /** Libellé traduit, pour l'infobulle et l'`aria-label` */
   label: string
   /** Identifiant de test */
-  testid?: string
+  testid: string
   /** Entrée placée en bas du rail */
   bottom?: boolean
 }
@@ -47,9 +47,9 @@ const route = useRoute()
 
 // Ordre d'affichage, une nouvelle page s'ajoute ici avec sa route (libellés recalculés au changement de langue)
 const entries = computed<RailEntry[]>(() => [
-  { route: 'Home', icon: 'pi-th-large', label: t('nav.board') },
+  { route: 'Home', icon: 'pi-th-large', label: t('nav.board'), testid: 'btn-home' },
   { route: 'Archives', icon: 'pi-box', label: t('nav.archives'), testid: 'btn-archives' },
-  { route: 'Settings', icon: 'pi-cog', label: t('nav.settings'), bottom: true },
+  { route: 'Settings', icon: 'pi-cog', label: t('nav.settings'), testid: 'btn-settings', bottom: true },
 ])
 
 /**

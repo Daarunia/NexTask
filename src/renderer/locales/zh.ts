@@ -14,7 +14,6 @@ export const zh: MessageSchema = {
     save: '保存',
   },
   header: {
-    settings: '设置',
     themeNotSaved: '主题未保存',
     colorNotSaved: '颜色未保存',
   },

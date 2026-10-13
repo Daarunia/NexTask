@@ -16,7 +16,6 @@ export const fr = {
     save: 'Enregistrer',
   },
   header: {
-    settings: 'Paramètres',
     themeNotSaved: 'Thème non enregistré',
     colorNotSaved: 'Couleur non enregistrée',
   },

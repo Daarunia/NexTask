@@ -14,7 +14,6 @@ export const es: MessageSchema = {
     save: 'Guardar',
   },
   header: {
-    settings: 'Ajustes',
     themeNotSaved: 'Tema no guardado',
     colorNotSaved: 'Color no guardado',
   },

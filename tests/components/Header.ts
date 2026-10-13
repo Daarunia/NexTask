@@ -9,7 +9,9 @@ export class Header {
    */
   readonly page: Page
   readonly themeButton: Locator
+  readonly rail: Locator
   readonly homeButton: Locator
+  readonly archivesButton: Locator
   readonly settingsButton: Locator
   readonly paletteButton: Locator
   readonly palettePanel: Locator
@@ -27,9 +29,11 @@ export class Header {
     // Bouton dark / light
     this.themeButton = page.getByTestId('btn-theme')
 
-    // Navigation paramètre / acceuil
-    this.homeButton = page.getByTestId('btn-home')
-    this.settingsButton = page.getByTestId('btn-settings')
+    // Rail de navigation (tableau, archives, paramètres)
+    this.rail = page.getByTestId('app-rail')
+    this.homeButton = this.rail.getByTestId('btn-home')
+    this.archivesButton = this.rail.getByTestId('btn-archives')
+    this.settingsButton = this.rail.getByTestId('btn-settings')
 
     // Sélecteur de la couleur primaire
     this.paletteButton = page.getByTestId('btn-palette')
@@ -76,6 +80,19 @@ export class Header {
 
   async goSettings() {
     await this.settingsButton.click()
+  }
+
+  async goArchives() {
+    await this.archivesButton.click()
+  }
+
+  /**
+   * Vérifie que seule cette entrée du rail est marquée comme page courante.
+   * @param entry Entrée du rail attendue active
+   */
+  async expectActiveEntry(entry: Locator) {
+    await expect(entry).toHaveAttribute('aria-current', 'page')
+    await expect(this.rail.locator('[aria-current="page"]')).toHaveCount(1)
   }
 
   async expectDarkModeEnabled() {

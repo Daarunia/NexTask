@@ -14,7 +14,6 @@ export const en: MessageSchema = {
     save: 'Save',
   },
   header: {
-    settings: 'Settings',
     themeNotSaved: 'Theme not saved',
     colorNotSaved: 'Color not saved',
   },
