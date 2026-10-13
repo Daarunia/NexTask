@@ -17,6 +17,32 @@ export interface DataCounts {
   tasks: number
 }
 
+/** Motifs de refus d'un import, traduits par le main (cf. locales/fr.ts, `importProblems`). */
+export const IMPORT_PROBLEM_CODES = [
+  'notAnExport',
+  'unsupportedVersion',
+  'duplicateStage',
+  'duplicateTag',
+  'duplicateTagName',
+  'duplicateTask',
+  'duplicateRecurrence',
+  'recurrenceUnknownStage',
+  'recurrenceUnknownTag',
+  'taskUnknownStage',
+  'taskUnknownTag',
+  'taskUnknownRecurrence',
+  'duplicateOccurrence',
+] as const
+
+/** Motif de refus d'un import. */
+export type ImportProblemCode = (typeof IMPORT_PROBLEM_CODES)[number]
+
+/** Refus d'un import : motif et valeurs de son message (ids, noms, versions). */
+export interface ImportProblem {
+  code: ImportProblemCode
+  params: Record<string, string | number>
+}
+
 /**
  * Résultat d'un export ou d'un import lancé depuis le renderer :
  * - `canceled` : boîte de dialogue fermée sans choisir de fichier ;

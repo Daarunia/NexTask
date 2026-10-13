@@ -10,7 +10,7 @@ import { API } from '../../helpers/api.helper'
  * leur titre, comme dans les autres specs.
  */
 
-// Colonne seedée par défaut (voir prisma/seeds/01_initial_stages.sql)
+// Colonne seedée par défaut (voir prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 const TITLE_REQUIRED = 'Le titre est obligatoire'

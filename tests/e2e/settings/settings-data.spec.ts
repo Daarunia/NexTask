@@ -20,7 +20,7 @@ import { EXPORT_FORMAT, EXPORT_VERSION } from '../../../src/main/shared/data.con
  * (fixture `cleanState`).
  */
 
-// Colonnes seedées, dans l'ordre (cf. prisma/seeds/01_initial_stages.sql)
+// Colonnes seedées, dans l'ordre (cf. prisma/seeds/fr/01_initial_stages.sql)
 const SEEDED_STAGES = ['A faire', 'En cours', 'En attente', 'Terminé']
 
 /** Fichier d'export, tel que renvoyé par GET /data/export. */

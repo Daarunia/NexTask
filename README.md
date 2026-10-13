@@ -28,6 +28,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden.
 - **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
 - **Reminders** through native desktop notifications based on each task's start date.
+- **Global search** from the header (`Ctrl+F`): filter the board by text (title and description) and by tags, or jump straight to a task.
 - **Tags** with a color palette to categorize and filter tasks.
 - **Task versions** to group tasks by release or milestone.
 - **Archives** for completed tasks, with optional automatic purge after 30, 90 or 365 days.
@@ -35,6 +36,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **Automatic daily backups** of the database (the last 7 are kept).
 - **JSON import / export** of all your data.
 - **Light, dark or system theme**, custom accent color and adjustable interface scale.
+- **Available in English, French, Spanish, Portuguese and Simplified Chinese**, following the system language or chosen in the settings.
 - **System integration**: minimize to tray, launch at startup, remembers window size and position.
 - **100% offline and private**: your data never leaves your computer.
 
@@ -47,7 +49,7 @@ The interface is currently available in French.
 | Layer    | Technologies                                         |
 | -------- | ---------------------------------------------------- |
 | Desktop  | Electron, electron-builder                           |
-| Frontend | Vue 3, Pinia, PrimeVue, TailwindCSS, Vite            |
+| Frontend | Vue 3, Pinia, PrimeVue, vue-i18n, TailwindCSS, Vite  |
 | Backend  | Fastify (embedded local API), Prisma ORM, SQLite     |
 | Testing  | Playwright end-to-end tests driving the Electron app |
 

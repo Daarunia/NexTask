@@ -1,33 +1,37 @@
 <template>
-  <SettingsSection title="À propos" testId="settings-about">
-    <SettingsRow label="Version" description="Version de NexTask installée." testId="settings-row-version">
+  <SettingsSection :title="t('settings.about.title')" testId="settings-about">
+    <SettingsRow
+      :label="t('settings.about.version')"
+      :description="t('settings.about.versionDescription')"
+      testId="settings-row-version"
+    >
       <span data-testid="settings-app-version" class="font-mono">{{ version ?? '…' }}</span>
     </SettingsRow>
 
     <SettingsRow
-      label="Mise à jour automatique"
-      description="Recherche les nouvelles versions au lancement puis régulièrement, et les télécharge en arrière-plan."
+      :label="t('settings.about.autoUpdate')"
+      :description="t('settings.about.autoUpdateDescription')"
       testId="settings-row-auto-update"
     >
       <ToggleSwitch
         v-model="autoUpdateEnabled"
         data-testid="settings-auto-update-toggle"
-        ariaLabel="Mise à jour automatique"
+        :ariaLabel="t('settings.about.autoUpdate')"
       />
     </SettingsRow>
 
-    <SettingsRow label="Mises à jour" :description="updateDescription" testId="settings-row-update">
+    <SettingsRow :label="t('settings.about.updates')" :description="updateDescription" testId="settings-row-update">
       <Button
         v-if="update.status.state === 'downloaded'"
         data-testid="btn-install-update-settings"
-        label="Redémarrer"
+        :label="t('updateToast.restart')"
         icon="pi pi-refresh"
         @click="installUpdate"
       />
       <Button
         v-else
         data-testid="btn-check-update"
-        label="Rechercher"
+        :label="t('settings.about.check')"
         icon="pi pi-sync"
         severity="secondary"
         :disabled="!canCheck"
@@ -37,13 +41,13 @@
     </SettingsRow>
 
     <SettingsRow
-      label="Notes de version"
-      description="Nouveautés et corrections de chaque version, sur GitHub."
+      :label="t('settings.about.releaseNotes')"
+      :description="t('settings.about.releaseNotesDescription')"
       testId="settings-row-release-notes"
     >
       <Button
         data-testid="btn-open-release-notes"
-        label="Ouvrir"
+        :label="t('settings.data.open')"
         icon="pi pi-external-link"
         severity="secondary"
         @click="openReleaseNotes"
@@ -51,13 +55,13 @@
     </SettingsRow>
 
     <SettingsRow
-      label="Logiciels tiers"
-      description="Bibliothèques utilisées par NexTask et leurs licences, sur GitHub."
+      :label="t('settings.about.notices')"
+      :description="t('settings.about.noticesDescription')"
       testId="settings-row-notices"
     >
       <Button
         data-testid="btn-open-notices"
-        label="Ouvrir"
+        :label="t('settings.data.open')"
         icon="pi pi-external-link"
         severity="secondary"
         @click="openNotices"
@@ -76,6 +80,7 @@ import { getLogger } from '../../utils/logger'
 import { useErrorToast } from '../../utils/toast.helper'
 import { useUpdateStore } from '../../stores/Update'
 import { useSettingsStore } from '../../stores/Settings'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Section « À propos » des Paramètres : version installée, lue auprès du main,
@@ -87,12 +92,13 @@ const logger = getLogger()
 const showError = useErrorToast()
 const update = useUpdateStore()
 const settings = useSettingsStore()
+const { t } = useI18n()
 
 // Recherche en arrière-plan, coupée par l'utilisateur s'il préfère chercher lui-même
 const autoUpdateEnabled = computed({
   get: () => settings.autoUpdateEnabled,
   set: (value: boolean) => {
-    settings.set('autoUpdateEnabled', value).catch(() => showError('Paramètre non enregistré'))
+    settings.set('autoUpdateEnabled', value).catch(() => showError(t('settings.notSaved')))
   },
 })
 
@@ -112,21 +118,19 @@ const updateDescription = computed(() => {
   const { state, version, percent } = update.status
   switch (state) {
     case 'unsupported':
-      return "Disponibles seulement dans l'app installée."
+      return t('settings.about.update.unsupported')
     case 'checking':
-      return 'Recherche en cours…'
+      return t('settings.about.update.checking')
     case 'up-to-date':
-      return 'NexTask est à jour.'
+      return t('settings.about.update.upToDate')
     case 'downloading':
-      return `Téléchargement de la version ${version} (${percent ?? 0} %)…`
+      return t('settings.about.update.downloading', { version, percent: percent ?? 0 })
     case 'downloaded':
-      return `La version ${version} sera installée au redémarrage.`
+      return t('settings.about.update.downloaded', { version })
     case 'error':
-      return 'La recherche a échoué, réessayez plus tard.'
+      return t('settings.about.update.error')
     default:
-      return settings.autoUpdateEnabled
-        ? 'Aucune recherche faite depuis le lancement.'
-        : 'Recherche automatique désactivée, lancez-la à la demande.'
+      return settings.autoUpdateEnabled ? t('settings.about.update.idle') : t('settings.about.update.manual')
   }
 })
 
@@ -138,7 +142,7 @@ async function checkUpdate() {
   try {
     await update.check()
   } catch {
-    showError('Recherche impossible', "La recherche de mise à jour n'a pas pu être lancée.")
+    showError(t('settings.about.checkFailed'), t('settings.about.checkFailedDetail'))
   }
 }
 
@@ -147,7 +151,7 @@ async function installUpdate() {
   try {
     await update.install()
   } catch {
-    showError('Installation impossible', "La mise à jour n'a pas pu être installée.")
+    showError(t('updateToast.installFailed'), t('updateToast.installFailedDetail'))
   }
 }
 
@@ -160,7 +164,7 @@ async function openLink(open: () => Promise<void>) {
     await open()
   } catch (error) {
     logger.error("Erreur lors de l'ouverture d'un lien :", error)
-    showError('Ouverture impossible', "Le lien n'a pas pu être ouvert.")
+    showError(t('settings.data.openFolderFailed'), t('settings.about.linkFailedDetail'))
   }
 }
 

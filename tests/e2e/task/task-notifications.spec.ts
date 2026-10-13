@@ -198,7 +198,7 @@ test('rappels désactivés : les tâches échues sont marquées sans notificatio
 
   const res = await request.post(`${API}/test/run-notifications`, { data: {} })
   expect(res.ok()).toBeTruthy()
-  expect(await res.json()).toEqual({ count: 1, shown: false, style: null })
+  expect(await res.json()).toEqual({ count: 1, shown: false, style: null, title: null })
   expect((await getTask(request, task.id)).notifiedAt).toBeTruthy()
 
   // Réactivés : la tâche déjà marquée ne ressort pas

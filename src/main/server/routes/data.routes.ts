@@ -2,7 +2,8 @@ import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { tagKey } from '../helpers/tag.helper.js'
 import { APP_VERSION } from '../../constants.js'
-import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION } from '../../shared/data.constants.js'
+import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
+import { translate } from '../../i18n.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 import { normalizeImportedSeries } from '../helpers/recurrence.helper.js'
 
@@ -93,7 +94,8 @@ const countsSchema = {
 
 /**
  * Fichier refusé : même forme que les erreurs de validation de Fastify, le
- * détail étant dans `message`.
+ * détail étant dans `message` (en français), et le motif à traduire dans
+ * `problem` pour un refus après validation de la structure.
  */
 const importErrorSchema = {
   type: 'object',
@@ -102,6 +104,13 @@ const importErrorSchema = {
     code: { type: 'string' },
     error: { type: 'string' },
     message: { type: 'string' },
+    problem: {
+      type: 'object',
+      properties: {
+        code: { type: 'string' },
+        params: { type: 'object', additionalProperties: { type: ['string', 'number'] } },
+      },
+    },
   },
 }
 
@@ -175,21 +184,21 @@ function firstDuplicate<T>(keys: T[]): T | undefined {
  * @param data Fichier reçu
  * @returns Le motif du refus, ou `null` sans doublon
  */
-function findDuplicateProblem(data: DataImportBody): string | null {
+function findDuplicateProblem(data: DataImportBody): ImportProblem | null {
   const duplicateStage = firstDuplicate(data.stages.map((stage) => stage.id))
-  if (duplicateStage !== undefined) return `Colonne ${duplicateStage} présente plusieurs fois`
+  if (duplicateStage !== undefined) return { code: 'duplicateStage', params: { id: duplicateStage } }
 
   const duplicateTag = firstDuplicate(data.tags.map((tag) => tag.id))
-  if (duplicateTag !== undefined) return `Tag ${duplicateTag} présent plusieurs fois`
+  if (duplicateTag !== undefined) return { code: 'duplicateTag', params: { id: duplicateTag } }
 
   const duplicateName = firstDuplicate(data.tags.map((tag) => tagKey(tag.name.trim())))
-  if (duplicateName !== undefined) return `Plusieurs tags portent le nom « ${duplicateName} »`
+  if (duplicateName !== undefined) return { code: 'duplicateTagName', params: { name: duplicateName } }
 
   const duplicateTask = firstDuplicate(data.tasks.map((task) => task.id))
-  if (duplicateTask !== undefined) return `Tâche ${duplicateTask} présente plusieurs fois`
+  if (duplicateTask !== undefined) return { code: 'duplicateTask', params: { id: duplicateTask } }
 
   const duplicateRecurrence = firstDuplicate((data.recurrences ?? []).map((recurrence) => recurrence.id))
-  if (duplicateRecurrence !== undefined) return `Série ${duplicateRecurrence} présente plusieurs fois`
+  if (duplicateRecurrence !== undefined) return { code: 'duplicateRecurrence', params: { id: duplicateRecurrence } }
 
   return null
 }
@@ -201,7 +210,7 @@ function findDuplicateProblem(data: DataImportBody): string | null {
  * @param data Fichier reçu
  * @returns Le motif du refus, ou `null` si toutes les références sont connues
  */
-function findReferenceProblem(data: DataImportBody): string | null {
+function findReferenceProblem(data: DataImportBody): ImportProblem | null {
   const recurrences = data.recurrences ?? []
   const stageIds = new Set(data.stages.map((stage) => stage.id))
   const tagIds = new Set(data.tags.map((tag) => tag.id))
@@ -209,20 +218,21 @@ function findReferenceProblem(data: DataImportBody): string | null {
 
   for (const recurrence of recurrences) {
     if (recurrence.stageId != null && !stageIds.has(recurrence.stageId)) {
-      return `La série ${recurrence.id} référence une colonne absente du fichier (${recurrence.stageId})`
+      return { code: 'recurrenceUnknownStage', params: { id: recurrence.id, ref: recurrence.stageId } }
     }
     const unknownTag = (recurrence.tagIds ?? []).find((id) => !tagIds.has(id))
-    if (unknownTag !== undefined) return `La série ${recurrence.id} référence un tag absent du fichier (${unknownTag})`
+    if (unknownTag !== undefined)
+      return { code: 'recurrenceUnknownTag', params: { id: recurrence.id, ref: unknownTag } }
   }
 
   for (const task of data.tasks) {
     if (task.stageId !== null && !stageIds.has(task.stageId)) {
-      return `La tâche ${task.id} référence une colonne absente du fichier (${task.stageId})`
+      return { code: 'taskUnknownStage', params: { id: task.id, ref: task.stageId } }
     }
     const unknownTag = task.tagIds.find((id) => !tagIds.has(id))
-    if (unknownTag !== undefined) return `La tâche ${task.id} référence un tag absent du fichier (${unknownTag})`
+    if (unknownTag !== undefined) return { code: 'taskUnknownTag', params: { id: task.id, ref: unknownTag } }
     if (task.recurrenceId != null && !recurrenceIds.has(task.recurrenceId)) {
-      return `La tâche ${task.id} référence une série absente du fichier (${task.recurrenceId})`
+      return { code: 'taskUnknownRecurrence', params: { id: task.id, ref: task.recurrenceId } }
     }
   }
 
@@ -238,10 +248,10 @@ function findReferenceProblem(data: DataImportBody): string | null {
  * @param data Fichier reçu
  * @returns Le motif du refus, ou `null` si le fichier est importable
  */
-function findImportProblem(data: DataImportBody): string | null {
-  if (data.format !== EXPORT_FORMAT) return "Ce fichier n'est pas un export NexTask"
+function findImportProblem(data: DataImportBody): ImportProblem | null {
+  if (data.format !== EXPORT_FORMAT) return { code: 'notAnExport', params: {} }
   if (data.version !== EXPORT_VERSION) {
-    return `Version de format ${data.version} non prise en charge (version attendue : ${EXPORT_VERSION})`
+    return { code: 'unsupportedVersion', params: { version: data.version, expected: EXPORT_VERSION } }
   }
 
   const problem = findDuplicateProblem(data) ?? findReferenceProblem(data)
@@ -253,7 +263,7 @@ function findImportProblem(data: DataImportBody): string | null {
     .map((task) => `${task.recurrenceId}|${new Date(task.occurrenceDate as string).getTime()}`)
   const duplicateOccurrence = firstDuplicate(occurrences)
   if (duplicateOccurrence !== undefined) {
-    return `Plusieurs tâches de la série ${duplicateOccurrence.split('|')[0]} sont prévues à la même date`
+    return { code: 'duplicateOccurrence', params: { id: duplicateOccurrence.split('|')[0] } }
   }
 
   return null
@@ -364,9 +374,11 @@ export default async function dataRoutes(fastify) {
 
       const problem = findImportProblem(data)
       if (problem) {
-        Logger.warn(`Import refusé : ${problem}`)
+        // Message en français pour les journaux, motif traduit par le main pour l'affichage
+        const message = translate('fr', `importProblems.${problem.code}`, problem.params)
+        Logger.warn(`Import refusé : ${message}`)
         reply.code(400)
-        return { statusCode: 400, error: 'Bad Request', message: problem }
+        return { statusCode: 400, error: 'Bad Request', message, problem }
       }
 
       try {

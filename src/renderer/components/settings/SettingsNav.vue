@@ -1,5 +1,5 @@
 <template>
-  <nav data-testid="settings-nav" aria-label="Sections des paramètres" class="settings-nav">
+  <nav data-testid="settings-nav" :aria-label="t('settings.nav.label')" class="settings-nav">
     <ul class="flex flex-col gap-0.5">
       <li v-for="section in sections" :key="section.id">
         <button
@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Sommaire des Paramètres : un lien par section, qui fait défiler la page
@@ -38,6 +39,8 @@ const props = defineProps<{
   // Conteneur qui défile et porte les sections
   container: HTMLElement | null
 }>()
+
+const { t } = useI18n()
 
 const activeId = ref(props.sections[0]?.id ?? '')
 

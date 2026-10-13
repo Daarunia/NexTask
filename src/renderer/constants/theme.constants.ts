@@ -5,22 +5,21 @@ export type SurfaceFamily = 'slate' | 'zinc' | 'stone'
 
 /** Thème de l'application : une couleur d'accent et ses gris assortis. */
 export interface AppTheme {
-  name: string // clé persistée dans les paramètres, nom de la palette Aura (ex. "emerald")
-  label: string // libellé affiché dans le sélecteur
+  name: string // clé persistée dans les paramètres, nom de la palette Aura (ex. "emerald"), libellé dans `themes.<name>`
   surface: SurfaceFamily // gris froids (slate), neutres (zinc) ou chauds (stone)
   shade: 600 | 700 // nuance de l'accent en mode clair, la première assez sombre pour un texte blanc lisible (4,5:1)
 }
 
 /** Thèmes proposés, dans l'ordre du cercle chromatique. */
 export const APP_THEMES: AppTheme[] = [
-  { name: 'emerald', label: 'Émeraude', surface: 'zinc', shade: 700 },
-  { name: 'teal', label: 'Sarcelle', surface: 'slate', shade: 700 },
-  { name: 'sky', label: 'Ciel', surface: 'slate', shade: 700 },
-  { name: 'indigo', label: 'Indigo', surface: 'slate', shade: 600 },
-  { name: 'violet', label: 'Violet', surface: 'zinc', shade: 600 },
-  { name: 'pink', label: 'Rose vif', surface: 'stone', shade: 600 },
-  { name: 'rose', label: 'Framboise', surface: 'stone', shade: 600 },
-  { name: 'orange', label: 'Orange', surface: 'stone', shade: 700 },
+  { name: 'emerald', surface: 'zinc', shade: 700 },
+  { name: 'teal', surface: 'slate', shade: 700 },
+  { name: 'sky', surface: 'slate', shade: 700 },
+  { name: 'indigo', surface: 'slate', shade: 600 },
+  { name: 'violet', surface: 'zinc', shade: 600 },
+  { name: 'pink', surface: 'stone', shade: 600 },
+  { name: 'rose', surface: 'stone', shade: 600 },
+  { name: 'orange', surface: 'stone', shade: 700 },
 ]
 
 /** Thème par défaut, celui des paramètres par défaut. */

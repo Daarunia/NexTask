@@ -5,20 +5,22 @@
         <Button
           data-testid="btn-archives-back"
           icon="pi pi-arrow-left"
-          aria-label="Retour aux paramètres"
-          title="Retour aux paramètres"
+          :aria-label="t('archives.back')"
+          :title="t('archives.back')"
           text
           rounded
           @click="goSettings"
         />
-        <h1 class="text-2xl">Tâches archivées</h1>
+        <h1 class="text-2xl">{{ t('archives.title') }}</h1>
         <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{
           visibleTasks.length
         }}</span>
       </div>
 
       <template v-if="status === 'ready'">
-        <p v-if="!visibleTasks.length" data-testid="archives-empty" class="archives-muted">Aucune tâche archivée.</p>
+        <p v-if="!visibleTasks.length" data-testid="archives-empty" class="archives-muted">
+          {{ t('archives.empty') }}
+        </p>
 
         <!-- De la plus récemment archivée à la plus ancienne (ordre du serveur) -->
         <ul v-else class="flex flex-col gap-2">
@@ -64,8 +66,8 @@
               <Button
                 data-testid="btn-restore-task"
                 icon="pi pi-replay"
-                label="Restaurer"
-                :aria-label="`Restaurer ${task.title}`"
+                :label="t('archives.restore')"
+                :aria-label="t('archives.restoreItem', { title: task.title })"
                 severity="secondary"
                 size="small"
                 text
@@ -75,8 +77,8 @@
               <Button
                 data-testid="btn-delete-task"
                 icon="pi pi-trash"
-                :aria-label="`Supprimer définitivement ${task.title}`"
-                title="Supprimer définitivement"
+                :aria-label="t('archives.deleteForeverItem', { title: task.title })"
+                :title="t('archives.deleteForever')"
                 severity="danger"
                 size="small"
                 text
@@ -90,8 +92,8 @@
       </template>
 
       <div v-else-if="status === 'error'" data-testid="archives-load-error" class="flex flex-col items-start gap-4">
-        <p>Les tâches archivées n'ont pas pu être chargées.</p>
-        <Button label="Réessayer" icon="pi pi-refresh" data-testid="btn-archives-retry" @click="load" />
+        <p>{{ t('archives.loadFailedDetail') }}</p>
+        <Button :label="t('common.retry')" icon="pi pi-refresh" data-testid="btn-archives-retry" @click="load" />
       </div>
 
       <div v-else class="flex justify-center">
@@ -128,11 +130,14 @@ import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
+import { intlLocale } from '../i18n'
+import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()
 const router = useRouter()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
+const { t } = useI18n()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
 
@@ -156,7 +161,7 @@ async function load() {
     status.value = 'ready'
   } catch (error) {
     logger.error('Erreur lors du chargement des archives :', error)
-    showError('Chargement impossible', "Les tâches archivées n'ont pas pu être chargées.")
+    showError(t('board.loadFailed'), t('archives.loadFailedDetail'))
     status.value = 'error'
   }
 }
@@ -180,10 +185,10 @@ function isoDate(task: Task): string | undefined {
  * @param task Tâche archivée
  */
 function archivedLabel(task: Task): string {
-  if (!task.historizationDate) return "Date d'archivage inconnue"
+  if (!task.historizationDate) return t('archives.unknownDate')
 
-  const date = new Date(task.historizationDate).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
-  return `Archivée le ${date}`
+  const date = new Date(task.historizationDate).toLocaleString(intlLocale(), { dateStyle: 'long', timeStyle: 'short' })
+  return t('archives.archivedOn', { date })
 }
 
 /**
@@ -235,9 +240,9 @@ async function restore(task: Task) {
     }
   } catch (error) {
     if (httpStatus(error) === 409) {
-      showError('Restauration impossible', 'Ajoute une colonne au tableau pour y restaurer la tâche.')
+      showError(t('archives.restoreFailed'), t('archives.restoreNoStage'))
     } else {
-      showError('Restauration impossible', "La tâche n'a pas été restaurée.")
+      showError(t('archives.restoreFailed'), t('archives.restoreFailedDetail'))
     }
   } finally {
     busyIds.delete(task.id)
@@ -254,7 +259,7 @@ function deleteWithUndo(task: Task) {
   if (busyIds.has(task.id) || pendingDeletions.has(task.id)) return
   pendingDeletions.add(task.id)
 
-  showUndo('Tâche supprimée', {
+  showUndo(t('archives.deleted'), {
     detail: task.title,
     undo: () => pendingDeletions.delete(task.id),
     commit: () => deletePermanently(task),
@@ -275,7 +280,7 @@ async function deletePermanently(task: Task) {
       (task.tags ?? []).map((tag) => tag.id),
     )
   } catch {
-    showError('Suppression impossible', "La tâche n'a pas été supprimée.")
+    showError(t('archives.deleteFailed'), t('archives.deleteFailedDetail'))
   } finally {
     pendingDeletions.delete(task.id)
   }

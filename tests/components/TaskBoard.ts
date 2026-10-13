@@ -185,7 +185,7 @@ export class TaskBoard {
   }
 
   /**
-   * Efface la date de début via le bouton « Clear » de la barre de boutons
+   * Efface la date de début via le bouton « Effacer » de la barre de boutons
    * de la DatePicker (showButtonBar), qui remet le modèle à null et referme
    * l'overlay.
    */
@@ -194,7 +194,7 @@ export class TaskBoard {
     const panel = this.page.locator('.p-datepicker-panel')
     await expect(panel).toBeVisible()
 
-    await panel.getByRole('button', { name: 'Clear', exact: true }).click()
+    await panel.getByRole('button', { name: 'Effacer', exact: true }).click()
     await expect(panel).toBeHidden()
     await expect(this.startDateInput).toHaveValue('')
   }

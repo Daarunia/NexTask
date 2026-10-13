@@ -10,7 +10,7 @@
 
         <Button
           data-testid="btn-install-update"
-          label="Redémarrer"
+          :label="t('updateToast.restart')"
           icon="pi pi-refresh"
           size="small"
           @click="install"
@@ -25,6 +25,7 @@ import { watch } from 'vue'
 import Toast from 'primevue/toast'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { useUpdateStore } from '../stores/Update'
 import { useErrorToast } from '../utils/toast.helper'
 
@@ -32,6 +33,7 @@ import { useErrorToast } from '../utils/toast.helper'
 const UPDATE_TOAST_GROUP = 'update'
 
 const toast = useToast()
+const { t } = useI18n()
 const showError = useErrorToast()
 const update = useUpdateStore()
 
@@ -43,8 +45,8 @@ watch(
     toast.removeGroup(UPDATE_TOAST_GROUP)
     toast.add({
       severity: 'info',
-      summary: 'Mise à jour prête',
-      detail: `La version ${version} sera installée au redémarrage de NexTask.`,
+      summary: t('updateToast.readySummary'),
+      detail: t('updateToast.readyDetail', { version }),
       group: UPDATE_TOAST_GROUP,
     })
   },
@@ -56,7 +58,7 @@ async function install() {
   try {
     await update.install()
   } catch {
-    showError('Installation impossible', "La mise à jour n'a pas pu être installée.")
+    showError(t('updateToast.installFailed'), t('updateToast.installFailedDetail'))
   }
 }
 </script>

@@ -32,7 +32,7 @@ import {
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
-// Colonne seedée (cf. prisma/seeds/01_initial_stages.sql)
+// Colonne seedée (cf. prisma/seeds/fr/01_initial_stages.sql)
 const COLUMN = 'A faire'
 
 test.describe('Création et attente', () => {

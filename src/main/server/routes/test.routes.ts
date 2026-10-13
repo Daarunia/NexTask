@@ -1,7 +1,8 @@
 import fs from 'node:fs'
-import path from 'node:path'
 import { prisma } from '../prismaClient.js'
-import { BACKUPS_PATH, SEEDS_PATH } from '../../constants.js'
+import { BACKUPS_PATH } from '../../constants.js'
+import { readSeedFiles } from '../../seedDatabase.js'
+import { getLocale } from '../../i18n.js'
 import { handleNotificationClick, runNotificationCheck } from '../../scheduler/notificationScheduler.js'
 import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js'
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
@@ -11,6 +12,7 @@ import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system
 import { clearOpenedUrls, getOpenedUrls } from '../../system/externalLinks.js'
 import { settingsStore } from '../../stores/settings.js'
 import { closeQuickAdd, openQuickAdd } from '../../system/quickAdd.js'
+import { trayMenuLabels } from '../../system/systemIntegration.js'
 import { resetUpdateForTest, simulateUpdateStatus, wasInstallRequested } from '../../system/updater.js'
 import { UPDATE_STATES, type UpdateStatus } from '../../shared/update.constants.js'
 import Logger from 'electron-log'
@@ -35,6 +37,7 @@ import Logger from 'electron-log'
  * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
  * - POST /test/update-status      → impose un état de la mise à jour automatique (désactivée en test)
  * - GET  /test/update-install     → indique si l'installation de la mise à jour a été demandée (simulée en test)
+ * - GET  /test/tray-menu          → libellés du menu de l'icône de la zone de notification (non créée en test)
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -84,16 +87,13 @@ export default async function testRoutes(fastify) {
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
 
-      // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
-      const seedFiles = fs.existsSync(SEEDS_PATH)
-        ? fs
-            .readdirSync(SEEDS_PATH)
-            .filter((f) => f.endsWith('.sql'))
-            .sort((a, b) => a.localeCompare(b))
-        : []
+      // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
+      // relus par le renderer au rechargement qui suit le reset. Avant les
+      // seeds, pour qu'elles suivent la langue par défaut et non celle d'un test précédent
+      settingsStore.clear()
 
-      for (const file of seedFiles) {
-        const sql = fs.readFileSync(path.join(SEEDS_PATH, file), 'utf8')
+      // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
+      for (const { sql } of readSeedFiles(getLocale())) {
         // Exécute chaque instruction du fichier SQL individuellement
         const statements = sql
           .split(';')
@@ -107,10 +107,6 @@ export default async function testRoutes(fastify) {
 
       // Les tests partent d'une liste de tags vide, sauf demande explicite
       if (!seedTags) await prisma.tag.deleteMany()
-
-      // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
-      // relus par le renderer au rechargement qui suit le reset
-      settingsStore.clear()
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
@@ -141,8 +137,8 @@ export default async function testRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} [req.body] - Corps optionnel
    * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
-   * @returns {Promise<{count: number, shown: boolean, style: string|null}>} Nombre de tâches notifiées, envoi ou non
-   *   de la notification OS et son style (`reminder` ou `default`, null sans envoi)
+   * @returns {Promise<{count: number, shown: boolean, style: string|null, title: string|null}>} Nombre de tâches
+   *   notifiées, envoi ou non de la notification OS, son style (`reminder` ou `default`) et son titre (null sans envoi)
    */
   fastify.post(
     '/test/run-notifications',
@@ -161,6 +157,7 @@ export default async function testRoutes(fastify) {
               count: { type: 'integer' },
               shown: { type: 'boolean' },
               style: { type: ['string', 'null'] },
+              title: { type: ['string', 'null'] },
             },
           },
         },
@@ -424,6 +421,28 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedUrls(),
+  )
+
+  /**
+   * GET /test/tray-menu
+   *
+   * Libellés du menu de l'icône de la zone de notification, dans la langue de
+   * l'interface. L'icône n'est jamais créée en mode test.
+   *
+   * @returns {Promise<string[]>} Libellés, dans l'ordre du menu
+   */
+  fastify.get(
+    '/test/tray-menu',
+    {
+      schema: {
+        description: "Libellés du menu de l'icône de la zone de notification (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    async () => trayMenuLabels(),
   )
 
   /**

@@ -1,8 +1,9 @@
-import { app, Menu, nativeImage, Tray } from 'electron'
+import { app, Menu, type MenuItemConstructorOptions, nativeImage, Tray } from 'electron'
 import Logger from 'electron-log'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import { QUICK_ADD_ACCELERATOR } from './quickAdd.js'
+import { onLocaleChanged, t } from '../i18n.js'
 
 /**
  * Intégration système pilotée par les paramètres : icône dans la zone de
@@ -45,6 +46,41 @@ export function shouldHideOnClose(): boolean {
 }
 
 /**
+ * Menu de l'icône de la zone de notification, dans la langue active.
+ *
+ * @param showWindow Réaffiche la fenêtre principale
+ * @param openQuickAdd Ouvre la fenêtre d'ajout rapide
+ */
+function buildTrayMenu(showWindow: () => void, openQuickAdd: () => void): Menu {
+  return Menu.buildFromTemplate(trayMenuTemplate(showWindow, openQuickAdd))
+}
+
+/**
+ * Entrées du menu de l'icône, dans la langue active.
+ *
+ * @param showWindow Réaffiche la fenêtre principale
+ * @param openQuickAdd Ouvre la fenêtre d'ajout rapide
+ */
+function trayMenuTemplate(showWindow: () => void, openQuickAdd: () => void): MenuItemConstructorOptions[] {
+  return [
+    { label: t('tray.open'), click: showWindow },
+    // Raccourci affiché pour mémoire, enregistré à part (cf. quickAdd)
+    { label: t('tray.quickAdd'), click: openQuickAdd, accelerator: QUICK_ADD_ACCELERATOR, registerAccelerator: false },
+    { type: 'separator' },
+    { label: t('tray.quit'), click: () => app.quit() },
+  ]
+}
+
+/**
+ * Libellés du menu de l'icône, pour les tests (l'icône n'est pas créée en
+ * mode test, cf. /test/tray-menu).
+ */
+export function trayMenuLabels(): string[] {
+  const noop = () => {}
+  return trayMenuTemplate(noop, noop).flatMap((item) => (item.label ? [item.label] : []))
+}
+
+/**
  * Crée ou retire l'icône de la zone de notification.
  *
  * @param enabled Paramètre « garder en arrière-plan »
@@ -65,15 +101,7 @@ function syncTray(enabled: boolean, showWindow: () => void, openQuickAdd: () => 
   const icon = TRAY_ICON ? nativeImage.createFromPath(TRAY_ICON) : nativeImage.createEmpty()
   tray = new Tray(icon)
   tray.setToolTip('NexTask')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Ouvrir NexTask', click: showWindow },
-      // Raccourci affiché pour mémoire, enregistré à part (cf. quickAdd)
-      { label: 'Ajout rapide…', click: openQuickAdd, accelerator: QUICK_ADD_ACCELERATOR, registerAccelerator: false },
-      { type: 'separator' },
-      { label: 'Quitter', click: () => app.quit() },
-    ]),
-  )
+  tray.setContextMenu(buildTrayMenu(showWindow, openQuickAdd))
   // Un clic sur l'icône rouvre la fenêtre (Windows et Linux, le menu reste au clic droit)
   tray.on('click', showWindow)
   Logger.info('[system] Icône de la zone de notification créée')
@@ -118,4 +146,7 @@ export function setupSystemIntegration(showWindow: () => void, openQuickAdd: () 
   settingsStore.onDidChange('closeToTray', (enabled) => syncTray(enabled ?? false, showWindow, openQuickAdd))
   settingsStore.onDidChange('launchAtStartup', syncLoginItem)
   settingsStore.onDidChange('startMinimized', syncLoginItem)
+
+  // Menu de l'icône reconstruit dans la nouvelle langue
+  onLocaleChanged(() => tray?.setContextMenu(buildTrayMenu(showWindow, openQuickAdd)))
 }

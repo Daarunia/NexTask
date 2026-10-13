@@ -21,6 +21,7 @@ import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
+import { getLocale, setupI18n, t } from './i18n.js'
 import type { AppSettings } from './shared/settings.constants.js'
 import {
   APP_ID,
@@ -48,6 +49,10 @@ let mainWindow: BrowserWindow | null = null
 // Décalage entre les fenêtres des instances de test lancées en parallèle
 const TEST_WINDOW_OFFSET = 24
 
+// Fenêtre d'une instance de test sur le runner de la CI : écran 1024x768 moins
+// la barre des tâches (1024x728), moins la cascade de ses 2 workers
+const CI_TEST_WINDOW = { width: 1000, height: 704 }
+
 /**
  * Fenêtre d'une instance de test : presque tout l'écran, décalée en cascade selon
  * l'index du worker. Maximisées, les fenêtres des workers se recouvraient
@@ -58,12 +63,21 @@ const TEST_WINDOW_OFFSET = 24
  * La marge dépend du nombre réel de workers : sur le petit écran de la CI
  * (1024x768, 2 workers), une marge prévue pour 8 réduisait trop la hauteur des
  * colonnes, qui défilaient au milieu des glisser-déposer.
+ *
+ * La fenêtre ne dépasse jamais celle de la CI : sur un grand écran, les tests
+ * voient la même interface qu'en CI (dialogue de tâche qui défile, colonnes
+ * basses), et un échec propre au petit écran se reproduit en local.
  */
 function applyTestBounds(win: BrowserWindow) {
   const area = screen.getPrimaryDisplay().workArea
   const shift = (TEST_INDEX % TEST_SLOTS) * TEST_WINDOW_OFFSET
   const margin = (TEST_SLOTS - 1) * TEST_WINDOW_OFFSET
-  win.setBounds({ x: area.x + shift, y: area.y + shift, width: area.width - margin, height: area.height - margin })
+  win.setBounds({
+    x: area.x + shift,
+    y: area.y + shift,
+    width: Math.min(area.width - margin, CI_TEST_WINDOW.width),
+    height: Math.min(area.height - margin, CI_TEST_WINDOW.height),
+  })
   win.show()
 }
 
@@ -237,21 +251,22 @@ app.whenReady().then(async () => {
   // Dissociation prod et dev au niveau de l'id de l'app
   app.setAppUserModelId(IS_DEV ? `${APP_ID}.dev` : APP_ID)
 
+  // Langue de l'interface, avant les seeds (colonnes et tags initiaux traduits)
+  // et les fenêtres
+  setupI18n()
+
   try {
     // Migrations
     setupDatabase()
 
     // Seeds
-    applySeeds()
+    applySeeds(getLocale())
   } catch (err) {
     // La migration ou la seed fautive a été annulée : on n'ouvre pas l'app sur
     // une base qui ne correspond pas au code
     Logger.error('Erreur du lancement des migrations ou des seeds :', err)
     if (!IS_TEST) {
-      dialog.showErrorBox(
-        'NexTask ne peut pas démarrer',
-        `La mise à jour de la base de données a échoué et a été annulée.\n\n${err}`,
-      )
+      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.databaseFailed')}\n\n${err}`)
     }
     app.quit()
     return
@@ -276,7 +291,7 @@ app.whenReady().then(async () => {
     // qui occupe le port) : on n'ouvre pas l'app
     Logger.error('Erreur au démarrage du serveur Fastify :', err)
     if (!IS_TEST) {
-      dialog.showErrorBox('NexTask ne peut pas démarrer', `Le serveur local de l'app n'a pas pu démarrer.\n\n${err}`)
+      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.serverFailed')}\n\n${err}`)
     }
     app.quit()
     return
