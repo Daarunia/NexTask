@@ -455,6 +455,9 @@ export const en: MessageSchema = {
       colorShort: 'Color',
     },
   },
+  checklist: {
+    progress: '{count} items checked out of {total} | {count} item checked out of {total} | {count} items checked out of {total}',
+  },
   archives: {
     back: 'Back to settings',
     restore: 'Restore',

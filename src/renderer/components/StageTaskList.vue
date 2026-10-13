@@ -17,10 +17,14 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <strong class="task-title">{{ element.title }}</strong>
 
-          <!-- Pied de carte : tags à gauche, icônes de description et de récurrence calées à droite -->
+          <!-- Pied de carte : tags à gauche, avancement de la checklist puis icônes de
+               description et de récurrence calés à droite -->
           <div
             v-if="
-              cardTags.get(element.id)?.length || cardRecurrences.get(element.id) || hasDescription(element.description)
+              cardTags.get(element.id)?.length ||
+              element.checklist?.items.length ||
+              cardRecurrences.get(element.id) ||
+              hasDescription(element.description)
             "
             class="flex items-end gap-2"
           >
@@ -39,6 +43,9 @@
                 @remove="$emit('remove-tag', element, tag.id)"
               />
             </div>
+
+            <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point -->
+            <ChecklistBadge data-testid="task-card-checklist" :checklist="element.checklist" :tooltipDisabled="isDragging" />
 
             <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown.
                  Même texte en aria-label, nom accessible de l'icône -->
@@ -100,6 +107,7 @@ import { computed } from 'vue'
 import draggable from 'vuedraggable'
 import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
+import ChecklistBadge from './ChecklistBadge.vue'
 import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { useConfirm } from 'primevue/useconfirm'

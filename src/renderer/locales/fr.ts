@@ -460,6 +460,9 @@ export const fr = {
       colorShort: 'Couleur',
     },
   },
+  checklist: {
+    progress: '{count} point coché sur {total} | {count} point coché sur {total} | {count} points cochés sur {total}',
+  },
   archives: {
     back: 'Retour aux paramètres',
     restore: 'Restaurer',

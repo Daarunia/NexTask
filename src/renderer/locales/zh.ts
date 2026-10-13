@@ -447,6 +447,9 @@ export const zh: MessageSchema = {
       colorShort: '颜色',
     },
   },
+  checklist: {
+    progress: '已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项',
+  },
   archives: {
     back: '返回设置',
     restore: '恢复',

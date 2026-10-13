@@ -457,6 +457,9 @@ export const pt: MessageSchema = {
       colorShort: 'Cor',
     },
   },
+  checklist: {
+    progress: '{count} itens marcados de {total} | {count} item marcado de {total} | {count} itens marcados de {total}',
+  },
   archives: {
     back: 'Voltar às configurações',
     restore: 'Restaurar',

@@ -1,4 +1,5 @@
 import { Tag } from './tag.types'
+import type { TaskChecklist } from './checklist.types'
 import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
 
 /**
@@ -25,6 +26,8 @@ export interface Task {
   occurrenceDate?: Date | string | null
   // Résumé de la série. L'état le plus récent est dans le store Task (cf. getRecurrence).
   recurrence?: RecurrenceSummary | null
+  // Checklist et ses points dans l'ordre (null pour une tâche sans point, absente d'un cache antérieur)
+  checklist?: TaskChecklist | null
 }
 
 /**
