@@ -20,18 +20,19 @@ export function searchTerms(query: string): string[] {
 }
 
 /**
- * Texte d'une tâche sur lequel porte la recherche : titre et description,
- * syntaxe Markdown retirée, normalisés.
+ * Texte d'une tâche sur lequel porte la recherche, soit son titre, sa description
+ * (syntaxe Markdown retirée) et les textes des points de sa checklist, normalisés.
  * @param task Tâche à indexer
  */
-export function taskSearchText(task: Pick<Task, 'title' | 'description'>): string {
+export function taskSearchText(task: Pick<Task, 'title' | 'description' | 'checklist'>): string {
   const description = descriptionExcerpt(task.description ?? '', Infinity)
-  return normalizeSearchText(`${task.title} ${description}`)
+  const items = (task.checklist?.items ?? []).map((item) => item.text)
+  return normalizeSearchText([task.title, description, ...items].join(' '))
 }
 
 /**
  * Vrai si la tâche passe le filtre du board : elle contient tous les mots
- * (titre ou description) ET porte au moins un des tags sélectionnés.
+ * (titre, description ou points de la checklist) ET porte au moins un des tags sélectionnés.
  * Sans mots ni tags, toute tâche passe.
  * @param task Tâche à tester
  * @param terms Mots normalisés (cf. `searchTerms`)

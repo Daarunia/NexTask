@@ -77,6 +77,23 @@ describe('taskMatchesFilter', () => {
     expect(taskMatchesFilter(t, searchTerms('wiki jira'), [])).toBe(false)
   })
 
+  test('cherche dans les textes des points de la checklist, cochés ou non', () => {
+    const t = task({
+      title: 'Courses',
+      checklist: {
+        id: 1,
+        items: [
+          { id: 1, text: 'Acheter du Café', position: 0, isChecked: true, checkedAt: null },
+          { id: 2, text: 'Pain complet', position: 1, isChecked: false, checkedAt: null },
+        ],
+      },
+    })
+    expect(taskMatchesFilter(t, searchTerms('cafe'), [])).toBe(true)
+    expect(taskMatchesFilter(t, searchTerms('courses pain'), [])).toBe(true)
+    expect(taskMatchesFilter(t, searchTerms('beurre'), [])).toBe(false)
+    expect(taskMatchesFilter(task({ checklist: null }), searchTerms('cafe'), [])).toBe(false)
+  })
+
   test('tags en OU', () => {
     const t = task({ tags: [tag(2)] })
     expect(taskMatchesFilter(t, [], [1, 2])).toBe(true)
