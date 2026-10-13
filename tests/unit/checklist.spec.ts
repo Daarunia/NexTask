@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import {
-  duplicateName,
   type ExistingChecklistItem,
   planChecklistSync,
   templateItemRows,
-  templateKey,
 } from '../../src/main/server/helpers/checklist.helper'
+import { duplicateName, templateKey } from '../../src/main/shared/checklistTemplate.helper'
+import { tagKey } from '../../src/main/server/helpers/tag.helper'
 import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../src/main/shared/checklist.constants'
 
 /**
@@ -20,6 +20,15 @@ import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../src/main/shared/checkl
 function keys(...names: string[]): Set<string> {
   return new Set(names.map(templateKey))
 }
+
+describe('templateKey', () => {
+  test('compare les noms comme les tags, sans tenir compte de la casse', () => {
+    for (const name of ['Revue de code', 'ÉTÉ', 'Nouveau Modèle 2']) {
+      expect(templateKey(name)).toBe(tagKey(name))
+    }
+    expect(templateKey('Revue DE Code')).toBe(templateKey('revue de code'))
+  })
+})
 
 describe('duplicateName', () => {
   test('garde la base quand elle est libre', () => {

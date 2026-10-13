@@ -1,6 +1,9 @@
 import type { Checklist, Prisma } from '../../prisma/generated/prisma/client.js'
-import { tagKey } from './tag.helper.js'
-import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH, type ChecklistItemInput } from '../../shared/checklist.constants.js'
+import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
+import { templateKey } from '../../shared/checklistTemplate.helper.js'
+
+// Règles de nommage partagées avec le renderer, reprises ici pour les routes
+export { duplicateName, templateKey } from '../../shared/checklistTemplate.helper.js'
 
 /**
  * Helpers des checklists, partagés par les routes des modèles et des tâches.
@@ -22,14 +25,6 @@ export interface TemplateItemRow {
   isChecked: false
   checkedAt: null
 }
-
-/**
- * Clé de comparaison d'un nom de modèle, sans tenir compte de la casse. Même
- * normalisation que les tags, dont la fonction est reprise telle quelle.
- *
- * @param name Nom de modèle, déjà nettoyé
- */
-export const templateKey: (name: string) => string = tagKey
 
 /** Points renvoyés avec chaque modèle, dans l'ordre. */
 export const templateInclude = {
@@ -59,28 +54,6 @@ export async function findTemplateByName(tx: TransactionClient, name: string): P
 export async function nextTemplatePosition(tx: TransactionClient): Promise<number> {
   const { _max } = await tx.checklist.aggregate({ where: templateWhere, _max: { position: true } })
   return _max.position === null ? 0 : _max.position + 1
-}
-
-/**
- * Premier nom libre à partir de `base`, sans tenir compte de la casse. La base
- * elle-même si elle est libre, sinon « base 2 », « base 3 »… La base est
- * raccourcie si besoin pour que le numéro tienne dans la longueur maximale.
- *
- * @param base Nom souhaité, déjà nettoyé (ex. « Revue de code (copie) »)
- * @param takenKeys Clés (`templateKey`) des noms déjà pris
- * @param maxLength Longueur maximale du nom
- */
-export function duplicateName(
-  base: string,
-  takenKeys: ReadonlySet<string>,
-  maxLength = CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
-): string {
-  // Termine toujours, l'ensemble des noms pris étant fini
-  for (let rank = 1; ; rank++) {
-    const suffix = rank === 1 ? '' : ` ${rank}`
-    const candidate = base.slice(0, maxLength - suffix.length).trimEnd() + suffix
-    if (!takenKeys.has(templateKey(candidate))) return candidate
-  }
 }
 
 /**
