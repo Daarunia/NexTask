@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
+import AppRail from './components/AppRail.vue'
 import UndoToast from './components/UndoToast.vue'
 import UpdateToast from './components/UpdateToast.vue'
 import { useSettingsStore } from './stores/Settings'
@@ -76,10 +77,15 @@ onBeforeUnmount(() => {
   <div v-else class="flex flex-col h-screen">
     <Header />
 
-    <!-- Hauteur restante sous l'en-tête : chaque page gère son propre défilement -->
-    <main class="min-h-0 flex-1">
-      <router-view />
-    </main>
+    <!-- Rail de navigation à gauche, page à droite, séparés de l'en-tête par un filet -->
+    <div class="app-body flex min-h-0 flex-1">
+      <AppRail />
+
+      <!-- Hauteur et largeur restantes : chaque page gère son propre défilement -->
+      <main class="min-h-0 min-w-0 flex-1">
+        <router-view />
+      </main>
+    </div>
 
     <!-- Notifications d'erreur (cf. utils/toast.helper.ts) -->
     <Toast position="bottom-right" />
@@ -94,3 +100,9 @@ onBeforeUnmount(() => {
     <ConfirmPopup data-testid="confirm-popup" />
   </div>
 </template>
+
+<style scoped>
+.app-body {
+  border-top: 1px solid var(--p-content-border-color);
+}
+</style>
