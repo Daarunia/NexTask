@@ -49,11 +49,12 @@ function copyBaseName(name: string): string {
  * tâche). Les checklists des tâches passent par les routes des tâches, et
  * toutes les routes ci-dessous les ignorent (un id de checklist de tâche
  * répond 404).
- * - GET    /checklist-templates       → Liste les modèles dans leur ordre
- * - POST   /checklist-templates       → Crée un modèle en fin de liste
- * - PATCH  /checklist-templates/:id   → Renomme un modèle et/ou remplace ses points
- * - POST   /checklist-templates/:id/duplicate → Copie un modèle sous le nom « Nom (copie) »
- * - DELETE /checklist-templates/:id   → Supprime un modèle, sans effet sur les tâches
+ * - GET    /checklist-templates                → Liste les modèles dans leur ordre
+ * - POST   /checklist-templates                → Crée un modèle en fin de liste
+ * - PATCH  /checklist-templates/batch          → Change la position de plusieurs modèles
+ * - PATCH  /checklist-templates/:id            → Renomme un modèle et/ou remplace ses points
+ * - POST   /checklist-templates/:id/duplicate  → Copie un modèle sous le nom « Nom (copie) »
+ * - DELETE /checklist-templates/:id            → Supprime un modèle, sans effet sur les tâches
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -154,6 +155,70 @@ export default async function checklistTemplateRoutes(fastify) {
         }
         throw error
       }
+    },
+  )
+
+  /**
+   * PATCH /checklist-templates/batch
+   *
+   * Change la position de plusieurs modèles en une requête, dans une
+   * transaction (glisser-déposer de la page Checklists). Déclarée avant
+   * PATCH /checklist-templates/:id, pour que `batch` ne soit jamais lu comme
+   * un id. Un id qui ne désigne pas un modèle annule tout le lot.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Array<Object>} req.body - Modèles à déplacer
+   * @param {number} req.body[].id - ID du modèle
+   * @param {number} req.body[].position - Nouvelle position
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Array<Object>|{error: string}>} Modèles mis à jour, dans l'ordre
+   *   reçu, 400 si le tableau est vide ou désigne un modèle inconnu
+   */
+  fastify.patch(
+    '/checklist-templates/batch',
+    {
+      schema: {
+        description: 'Change la position de plusieurs modèles de checklist en une requête',
+        tags: ['ChecklistTemplate'],
+        body: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              position: { type: 'integer', minimum: 0 },
+            },
+            required: ['id', 'position'],
+          },
+        },
+        response: {
+          200: { type: 'array', items: checklistTemplateSchema },
+          400: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const moves = req.body as { id: number; position: number }[]
+      const ids = new Set(moves.map((move) => move.id))
+
+      // Transaction : aucune position n'est écrite si un id du lot est inconnu
+      return prisma.$transaction(async (tx) => {
+        const known = await tx.checklist.count({ where: { ...templateWhere, id: { in: [...ids] } } })
+        if (known !== ids.size) {
+          Logger.warn(`Réordonnancement des modèles refusé, ${ids.size - known} modèle(s) inconnu(s)`)
+          reply.code(400)
+          return { error: 'Le lot désigne un modèle inconnu' }
+        }
+
+        const updated: Prisma.ChecklistGetPayload<{ include: typeof templateInclude }>[] = []
+        for (const { id, position } of moves) {
+          updated.push(await tx.checklist.update({ where: { id }, data: { position }, include: templateInclude }))
+        }
+
+        Logger.info(`Batch : ${updated.length} modèle(s) de checklist déplacé(s)`)
+        return updated
+      })
     },
   )
 
