@@ -757,7 +757,8 @@ export async function onOccurrenceRestored(tx: TransactionClient, task: Task): P
  * (POST /data/import), quel que soit le fichier : une série terminée n'a plus
  * de prochaine date, une série « après archivage » attend son occurrence au
  * tableau ou part de son dernier archivage, une série calendaire active sans
- * prochaine date repart de maintenant.
+ * prochaine date repart de maintenant. Des points du modèle illisibles (pas une
+ * liste de textes) sont remplacés par une liste vide.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param now Maintenant
@@ -766,7 +767,7 @@ export async function normalizeImportedSeries(tx: TransactionClient, now: Date):
   const seriesList = await tx.recurrence.findMany()
 
   for (const series of seriesList) {
-    let data: { nextRunAt?: Date | null; status?: string } | null = null
+    let data: { nextRunAt?: Date | null; status?: string; checklistItems?: string[] } | null = null
     if (series.status === 'ended') {
       if (series.nextRunAt) data = { nextRunAt: null }
     } else if (series.anchor === 'completion') {
@@ -775,6 +776,7 @@ export async function normalizeImportedSeries(tx: TransactionClient, now: Date):
     } else if (series.status === 'active' && !series.nextRunAt) {
       data = scheduleState(series, now, await latestOccurrenceDate(tx, series.id))
     }
+    if (!isChecklistTexts(series.checklistItems)) data = { ...data, checklistItems: seriesChecklistTexts(series) }
 
     if (data) await tx.recurrence.update({ where: { id: series.id }, data })
   }
