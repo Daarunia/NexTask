@@ -425,22 +425,26 @@ export async function updateSeriesRule(
  * Reporte le contenu modifié d'une occurrence sur le modèle de sa série
  * (« Appliquer aux prochaines occurrences ») : seuls les champs envoyés sont
  * repris. La colonne ne l'est que si la modification la change, un simple
- * déplacement de carte ne passant pas par ici.
+ * déplacement de carte ne passant pas par ici. Les points de la checklist ne
+ * le sont que si leurs textes ont changé (point ajouté, retiré, renommé ou
+ * déplacé), cocher ou décocher ne touchant jamais au modèle.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param seriesId Id de la série
  * @param task Occurrence, une fois modifiée
- * @param changed Champs envoyés, et colonne de l'occurrence avant la modification
+ * @param changed Champs envoyés, textes des points changés, et colonne de l'occurrence avant la modification
  * @param tagIds Ids des tags de l'occurrence, s'ils ont été envoyés
  */
 async function applyToSeriesTemplate(
   tx: TransactionClient,
   seriesId: number,
   task: Task,
-  changed: { title: boolean; description: boolean; version: boolean; previousStageId: number | null },
+  changed: TaskSeriesChange['sent'] & { previousStageId: number | null },
   tagIds: number[] | undefined,
 ): Promise<void> {
   const stageChanged = task.stageId !== null && task.stageId !== changed.previousStageId
+  // Checklist déjà enregistrée, ses textes sont relus tels qu'écrits (nettoyés, sans les points vides)
+  const checklistItems = changed.checklistItems ? await taskChecklistTexts(tx, task.id) : undefined
 
   await tx.recurrence.update({
     where: { id: seriesId },
@@ -449,6 +453,7 @@ async function applyToSeriesTemplate(
       ...(changed.description && { description: task.description }),
       ...(changed.version && { version: task.version }),
       ...(stageChanged && { stageId: task.stageId }),
+      ...(checklistItems && { checklistItems }),
       ...(tagIds && { tags: { set: tagIds.map((id) => ({ id })) } }),
     },
   })
@@ -461,7 +466,9 @@ export interface TaskSeriesChange {
   recurrence: RecurrenceInput | null | undefined // règle envoyée : absente, null (arrêt) ou nouvelle
   startDate: Date | null // date de début une fois la modification appliquée
   applyToSeries: boolean // contenu reporté sur le modèle des prochaines occurrences
-  sent: { title: boolean; description: boolean; version: boolean } // champs de contenu envoyés
+  // Champs de contenu envoyés. Pour la checklist, vrai seulement si les textes de ses points ont changé,
+  // comparés avant son enregistrement (une coche seule ne part pas dans le modèle)
+  sent: { title: boolean; description: boolean; version: boolean; checklistItems: boolean }
   tagIds: number[] | undefined // ids des tags envoyés
 }
 

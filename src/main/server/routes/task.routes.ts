@@ -6,7 +6,7 @@ import { idParam, errorResponse, messageResponse, requiredLabel } from '../schem
 import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas/recurrenceSchema.js'
 import { taskChecklistItemsSchema } from '../schemas/checklistSchema.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
-import { syncTaskChecklist } from '../helpers/checklist.helper.js'
+import { sameChecklistTexts, syncTaskChecklist, taskChecklistTexts } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
   createSeries,
@@ -321,7 +321,9 @@ export default async function taskRoutes(fastify) {
    * - `null` arrête sa série, dont les occurrences sont conservées.
    * Avec `applyToSeries` (par défaut), le contenu modifié (titre, description,
    * version, tags, colonne) est aussi reporté sur le modèle des prochaines
-   * occurrences. Les occurrences existantes ne changent pas.
+   * occurrences. Les textes des points de la checklist le sont s'ils ont
+   * changé (point ajouté, retiré, renommé ou déplacé), jamais une simple
+   * coche. Les occurrences existantes ne changent pas.
    *
    * Archivage (`isHistorized: true`, daté de maintenant sans
    * `historizationDate`) et désarchivage d'une occurrence d'une série « après
@@ -420,6 +422,11 @@ export default async function taskRoutes(fastify) {
             },
           })
 
+          // Textes des points d'une occurrence avant l'enregistrement de sa checklist : seul
+          // un changement de textes part dans le modèle de la série, jamais une coche
+          const previousTexts =
+            checklistItems !== undefined && current.recurrence ? await taskChecklistTexts(tx, id) : undefined
+
           // Checklist remplacée avant la série, qui pourra en reprendre les textes
           await syncTaskChecklist(tx, id, checklistItems, now)
 
@@ -428,6 +435,8 @@ export default async function taskRoutes(fastify) {
             title: data.title !== undefined,
             description: data.description !== undefined,
             version: data.version !== undefined,
+            checklistItems:
+              previousTexts !== undefined && !sameChecklistTexts(previousTexts, await taskChecklistTexts(tx, id)),
           }
           await onTaskUpdated(tx, { current, task, recurrence, startDate, applyToSeries, sent, tagIds }, now)
 
