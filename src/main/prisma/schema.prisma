@@ -35,6 +35,8 @@ model Task {
   recurrence        Recurrence? @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
   // Date prévue de l'occurrence dans sa série (contre les doublons de génération)
   occurrenceDate    DateTime?
+  // Checklist de la tâche, créée avec son premier point (cf. Checklist)
+  checklist         Checklist?
 
   @@unique([recurrenceId, occurrenceDate])
 }
@@ -92,6 +94,38 @@ model Recurrence {
   updatedAt      DateTime  @updatedAt
 
   @@index([status, nextRunAt])
+}
+
+// entity "Checklist" : checklist d'une tâche, ou modèle si taskId est null
+model Checklist {
+  id        Int             @id @default(autoincrement())
+  // Tâche propriétaire (une checklist au plus par tâche), null = modèle
+  taskId    Int?            @unique
+  task      Task?           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  // Nom du modèle, null pour la checklist d'une tâche
+  name      String?         @unique
+  // Nom en minuscules : unicité des modèles sans tenir compte de la casse (cf. Tag.nameKey).
+  // SQLite accepte plusieurs NULL dans un index unique
+  nameKey   String?         @unique
+  // Ordre dans la liste des modèles, null pour la checklist d'une tâche
+  position  Int?
+  items     ChecklistItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+// entity "Point de checklist"
+model ChecklistItem {
+  id          Int       @id @default(autoincrement())
+  text        String
+  position    Int
+  // Toujours faux dans un modèle
+  isChecked   Boolean   @default(false)
+  checkedAt   DateTime?
+  checklistId Int
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
 }
 
 // Seed
