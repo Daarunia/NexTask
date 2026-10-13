@@ -22,7 +22,7 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
+ * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide
  *                                    et remet la mise à jour à son état de départ
@@ -46,7 +46,8 @@ export default async function testRoutes(fastify) {
    * POST /test/reset
    *
    * Remet la base dans un état propre et déterministe : suppression de toutes
-   * les tâches, de tous les tags puis de toutes les colonnes, et réapplication des seeds initiaux
+   * les checklists (modèles compris), de toutes les tâches, de tous les tags puis
+   * de toutes les colonnes, et réapplication des seeds initiaux
    * (source unique de vérité : les fichiers .sql du dossier seeds).
    *
    * Les tags par défaut sont retirés ensuite, les tests partant d'une liste de
@@ -79,8 +80,11 @@ export default async function testRoutes(fastify) {
     async (req) => {
       const { seedTags } = req.query as { seedTags?: boolean }
 
-      // Ordre important : les tâches référencent les séries et les colonnes,
-      // les séries les colonnes (clés étrangères)
+      // Ordre important, car les checklists référencent les tâches, les tâches
+      // les séries et les colonnes, les séries les colonnes (clés étrangères).
+      // Les checklists des tâches partiraient en cascade, pas les modèles (sans
+      // tâche), d'où leur suppression explicite. Les points suivent en cascade
+      await prisma.checklist.deleteMany()
       await prisma.task.deleteMany()
       await prisma.recurrence.deleteMany()
       // Les liens tâche-tag sont déjà partis en cascade avec les tâches
