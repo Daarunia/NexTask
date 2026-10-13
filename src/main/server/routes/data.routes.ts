@@ -5,7 +5,8 @@ import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { translate } from '../../i18n.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
-import { normalizeImportedSeries } from '../helpers/recurrence.helper.js'
+import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
+import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
 
 // Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
 const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
@@ -37,6 +38,34 @@ const exportedTagSchema = {
   required: ['id', 'name', 'color'],
 }
 
+/**
+ * Point de la checklist d'une tâche exporté. Pas de limite de longueur ici,
+ * un texte trop long est raccourci à l'import plutôt que de refuser le fichier.
+ */
+const exportedChecklistItemSchema = {
+  type: 'object',
+  properties: {
+    text: { type: 'string' },
+    isChecked: { type: 'boolean' },
+    checkedAt: nullableDate,
+  },
+  required: ['text'],
+}
+
+/**
+ * Modèle de checklist exporté, ses points réduits à leurs textes (jamais
+ * cochés). Comme pour les points, ni le nom ni les textes ne sont bornés ici.
+ */
+const exportedChecklistTemplateSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', pattern: String.raw`\S` },
+    position: { type: 'integer' },
+    items: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['name'],
+}
+
 /** Tâche exportée, archivée ou non, ses tags désignés par leur id. */
 const exportedTaskSchema = {
   type: 'object',
@@ -58,6 +87,8 @@ const exportedTaskSchema = {
     // Série dont la tâche est une occurrence (absente des exports antérieurs aux séries)
     recurrenceId: { type: ['integer', 'null'] },
     occurrenceDate: nullableDate,
+    // Points de la checklist dans l'ordre, absents des exports antérieurs aux checklists
+    checklistItems: { type: 'array', items: exportedChecklistItemSchema },
   },
   required: ['id', 'title', 'description', 'version', 'position', 'isHistorized', 'stageId', 'tagIds'],
 }
@@ -78,6 +109,8 @@ const exportSchema = {
     tasks: { type: 'array', items: exportedTaskSchema },
     // Séries récurrentes, facultatives : un export antérieur aux séries reste importable
     recurrences: { type: 'array', items: exportedRecurrenceSchema },
+    // Modèles de checklist, facultatifs : un export antérieur aux checklists reste importable
+    checklistTemplates: { type: 'array', items: exportedChecklistTemplateSchema },
   },
   required: ['format', 'version', 'stages', 'tags', 'tasks'],
 }
@@ -271,8 +304,9 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
 
 /**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
- * (colonnes, tâches archivées comprises, tags, séries récurrentes). Les
- * paramètres de l'app n'en font pas partie.
+ * (colonnes, tâches archivées comprises et leurs checklists, tags, séries
+ * récurrentes, modèles de checklist). Les paramètres de l'app n'en font pas
+ * partie.
  *
  * Appelées par le main (boîtes de dialogue d'enregistrement et d'ouverture,
  * cf. system/dataTransfer) et directement par les tests E2E :
@@ -286,9 +320,12 @@ export default async function dataRoutes(fastify) {
    * GET /data/export
    *
    * Renvoie toutes les colonnes, tous les tags, toutes les tâches (archivées
-   * comprises, tags désignés par leur id) et toutes les séries récurrentes
-   * (règle, état et modèle des occurrences), avec l'identifiant et la version
-   * du format. Les ids sont conservés, l'import les reprend tels quels.
+   * comprises, tags désignés par leur id, points de checklist avec leur état
+   * coché), toutes les séries récurrentes (règle, état et modèle des
+   * occurrences, textes des points compris) et tous les modèles de checklist
+   * (nom, position, textes des points), avec l'identifiant et la version du
+   * format. Les ids sont conservés, l'import les reprend tels quels, sauf ceux
+   * des checklists et de leurs points, recréés à l'import.
    *
    * @returns {Promise<Object>} Données au format d'export
    */
@@ -296,25 +333,37 @@ export default async function dataRoutes(fastify) {
     '/data/export',
     {
       schema: {
-        description: 'Exporte toutes les colonnes, tâches (archivées comprises), tags et séries récurrentes',
+        description:
+          'Exporte toutes les colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
         tags: ['Data'],
         response: { 200: exportSchema },
       },
     },
     async () => {
-      // Lecture groupée : un instantané cohérent des quatre tables
-      const [stages, tags, tasks, recurrences] = await prisma.$transaction([
+      // Lecture groupée, pour un instantané cohérent de toutes les tables
+      const [stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
         prisma.stage.findMany({
           select: { id: true, name: true, position: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
-        prisma.task.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
+        prisma.task.findMany({
+          include: {
+            tags: { select: { id: true } },
+            checklist: { include: { items: { orderBy: { position: 'asc' } } } },
+          },
+          orderBy: { id: 'asc' },
+        }),
         prisma.recurrence.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
+        prisma.checklist.findMany({
+          where: templateWhere,
+          include: templateInclude,
+          orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        }),
       ])
 
       Logger.info(
-        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s)`,
+        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
       )
 
       return {
@@ -324,13 +373,25 @@ export default async function dataRoutes(fastify) {
         exportedAt: new Date(),
         stages,
         tags,
-        tasks: tasks.map(({ tags: taskTags, ...task }) => ({
+        tasks: tasks.map(({ tags: taskTags, checklist, ...task }) => ({
           ...task,
           tagIds: taskTags.map((tag) => tag.id).sort((a, b) => a - b),
+          checklistItems: (checklist?.items ?? []).map(({ text, isChecked, checkedAt }) => ({
+            text,
+            isChecked,
+            checkedAt,
+          })),
         })),
         recurrences: recurrences.map(({ tags: recurrenceTags, ...recurrence }) => ({
           ...recurrence,
           tagIds: recurrenceTags.map((tag) => tag.id).sort((a, b) => a - b),
+          // Valeur illisible en base exportée comme une liste vide, le schéma attend des textes
+          checklistItems: seriesChecklistTexts(recurrence),
+        })),
+        checklistTemplates: templates.map((template) => ({
+          name: template.name,
+          position: template.position,
+          items: template.items.map((item) => item.text),
         })),
       }
     },
