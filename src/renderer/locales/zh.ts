@@ -18,6 +18,13 @@ export const zh: MessageSchema = {
     themeNotSaved: '主题未保存',
     colorNotSaved: '颜色未保存',
   },
+  nav: {
+    label: '导航',
+    board: '看板',
+    checklists: '清单',
+    archives: '归档',
+    settings: '设置',
+  },
   undoToast: {
     undoHint: '撤销 (Ctrl+Z)',
     undo: '撤销',

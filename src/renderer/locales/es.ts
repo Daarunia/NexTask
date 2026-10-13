@@ -18,6 +18,13 @@ export const es: MessageSchema = {
     themeNotSaved: 'Tema no guardado',
     colorNotSaved: 'Color no guardado',
   },
+  nav: {
+    label: 'Navegación',
+    board: 'Tablero',
+    checklists: 'Checklists',
+    archives: 'Archivo',
+    settings: 'Ajustes',
+  },
   undoToast: {
     undoHint: 'Deshacer (Ctrl+Z)',
     undo: 'Deshacer',

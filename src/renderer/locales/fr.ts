@@ -20,6 +20,13 @@ export const fr = {
     themeNotSaved: 'Thème non enregistré',
     colorNotSaved: 'Couleur non enregistrée',
   },
+  nav: {
+    label: 'Navigation',
+    board: 'Tableau',
+    checklists: 'Checklists',
+    archives: 'Archives',
+    settings: 'Paramètres',
+  },
   undoToast: {
     undoHint: 'Annuler (Ctrl+Z)',
     undo: 'Annuler',

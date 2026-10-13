@@ -18,6 +18,13 @@ export const en: MessageSchema = {
     themeNotSaved: 'Theme not saved',
     colorNotSaved: 'Color not saved',
   },
+  nav: {
+    label: 'Navigation',
+    board: 'Board',
+    checklists: 'Checklists',
+    archives: 'Archives',
+    settings: 'Settings',
+  },
   undoToast: {
     undoHint: 'Undo (Ctrl+Z)',
     undo: 'Undo',
