@@ -11,6 +11,7 @@ import {
   type RecurrenceRule,
 } from '../../shared/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
+import { isChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
 import Logger from 'electron-log'
 
 /**
@@ -179,6 +180,19 @@ export function occurrenceVersion(version: string): string {
 }
 
 /**
+ * Textes des points du modèle d'une série, lus dans son champ JSON. Une
+ * valeur qui n'est pas une liste de textes (base modifiée à la main, import
+ * douteux) vaut une liste vide, et se journalise.
+ *
+ * @param series Série, avec le champ JSON de ses points
+ */
+export function seriesChecklistTexts(series: Pick<Recurrence, 'id' | 'checklistItems'>): string[] {
+  if (isChecklistTexts(series.checklistItems)) return series.checklistItems
+  Logger.warn(`[recurrence] Série ${series.id} : points du modèle illisibles, checklist ignorée`, series.checklistItems)
+  return []
+}
+
+/**
  * Date de la dernière occurrence d'une série, créée peut-être en avance
  * (création anticipée), ou null si elle n'en a plus aucune.
  *
@@ -306,7 +320,9 @@ async function restartState(
 
 /**
  * Crée une série depuis sa tâche d'origine, première occurrence : le modèle
- * des occurrences reprend son contenu, sa colonne et ses tags. En mode
+ * des occurrences reprend son contenu, sa colonne, ses tags et les textes des
+ * points de sa checklist, sans leur état coché. La checklist est lue en base,
+ * elle y est donc écrite avant l'appel. En mode
  * « après archivage », la série attend l'archivage de cette tâche.
  *
  * @param tx Client Prisma de la transaction en cours
@@ -325,6 +341,7 @@ export async function createSeries(
 ): Promise<number> {
   const startDate = task.startDate as Date
   const rule = toRuleData(input, startDate)
+  const checklistItems = await taskChecklistTexts(tx, task.id)
 
   const series = await tx.recurrence.create({
     data: {
@@ -335,6 +352,7 @@ export async function createSeries(
       description: task.description,
       version: task.version,
       stageId: task.stageId,
+      checklistItems,
       tags: { connect: tagIds.map((id) => ({ id })) },
     },
   })

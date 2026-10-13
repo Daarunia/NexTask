@@ -246,3 +246,42 @@ export async function syncTaskChecklist(
     await tx.checklistItem.createMany({ data: plan.create.map((row) => ({ ...row, checklistId: checklist.id })) })
   }
 }
+
+/**
+ * Vrai si la valeur est une liste de textes de points, forme attendue du
+ * champ JSON `Recurrence.checklistItems`. Garde de type pour lire ce champ,
+ * que Prisma type en simple `JsonValue`.
+ *
+ * @param value Valeur lue en base ou importée
+ */
+export function isChecklistTexts(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((text) => typeof text === 'string')
+}
+
+/**
+ * Vrai si les deux listes portent les mêmes textes, dans le même ordre. Un
+ * point ajouté, retiré, renommé ou déplacé change la liste, l'état coché
+ * n'entre pas en compte.
+ *
+ * @param a Textes des points
+ * @param b Textes des points
+ */
+export function sameChecklistTexts(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((text, index) => text === b[index])
+}
+
+/**
+ * Textes des points de la checklist d'une tâche, dans l'ordre, `[]` si elle
+ * n'en a pas.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param taskId Id de la tâche
+ */
+export async function taskChecklistTexts(tx: TransactionClient, taskId: number): Promise<string[]> {
+  const items = await tx.checklistItem.findMany({
+    where: { checklist: { taskId } },
+    orderBy: { position: 'asc' },
+    select: { text: true },
+  })
+  return items.map((item) => item.text)
+}

@@ -10,11 +10,13 @@ import {
   type RecurrenceRule,
 } from '../../src/main/shared/recurrence.helper'
 import { describeRecurrence, monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
+import { isChecklistTexts, sameChecklistTexts } from '../../src/main/server/helpers/checklist.helper'
 
 /**
  * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`,
  * et `nextAfterCompletion` pour le mode « après archivage ») et de leurs
- * libellés, sans lancer l'app ni de navigateur (Vitest, cf. vitest.config.ts).
+ * libellés, et de la comparaison des points du modèle d'une série, sans
+ * lancer l'app ni de navigateur (Vitest, cf. vitest.config.ts).
  *
  * Les cas de changement d'heure dépendent du fuseau Europe/Paris, imposé à
  * tous les tests unitaires par vitest.config.ts.
@@ -504,5 +506,34 @@ describe('Règle illisible', () => {
     }
     expect(nextOccurrence(rule(), new Date(Number.NaN))).toBeNull()
     expect(dueOccurrence(rule(), local(2026, 10, 2), new Date(Number.NaN))).toBeNull()
+  })
+})
+
+describe('Points du modèle d’une série', () => {
+  test('mêmes textes dans le même ordre', () => {
+    expect(sameChecklistTexts([], [])).toBe(true)
+    expect(sameChecklistTexts(['Lait', 'Pain'], ['Lait', 'Pain'])).toBe(true)
+  })
+
+  test('point ajouté, retiré, renommé ou déplacé', () => {
+    const series = ['Lait', 'Pain', 'Œufs']
+    expect(sameChecklistTexts(series, [...series, 'Beurre'])).toBe(false)
+    expect(sameChecklistTexts(series, ['Lait', 'Œufs'])).toBe(false)
+    expect(sameChecklistTexts(series, ['Lait', 'Pain complet', 'Œufs'])).toBe(false)
+    expect(sameChecklistTexts(series, ['Pain', 'Lait', 'Œufs'])).toBe(false)
+    expect(sameChecklistTexts([], ['Lait'])).toBe(false)
+  })
+
+  test('sensible à la casse et aux doublons', () => {
+    expect(sameChecklistTexts(['Lait'], ['lait'])).toBe(false)
+    expect(sameChecklistTexts(['Lait', 'Lait'], ['Lait'])).toBe(false)
+  })
+
+  test('garde de type du champ JSON', () => {
+    expect(isChecklistTexts([])).toBe(true)
+    expect(isChecklistTexts(['Lait', ''])).toBe(true)
+    for (const invalid of [null, undefined, '[]', 3, { 0: 'Lait' }, ['Lait', 2], [{ text: 'Lait' }], [null]]) {
+      expect(isChecklistTexts(invalid), JSON.stringify(invalid)).toBe(false)
+    }
   })
 })
