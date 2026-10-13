@@ -11,7 +11,7 @@ import {
   type RecurrenceRule,
 } from '../../shared/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
-import { isChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
+import { isChecklistTexts, sameChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
 import Logger from 'electron-log'
 
 /**
@@ -63,6 +63,15 @@ interface SeriesState {
 
 /** Occurrence avec les ids de ses tags. */
 type TaskWithTagIds = Task & { tags: { id: number }[] }
+
+/** Occurrence avec les ids de ses tags et les points de sa checklist, dans l'ordre. */
+type OccurrenceContent = TaskWithTagIds & { checklist: { items: { text: string; isChecked: boolean }[] } | null }
+
+// Contenu d'une occurrence comparé au modèle de sa série (cf. isUntouchedOccurrence)
+const occurrenceContentInclude = {
+  tags: { select: { id: true } },
+  checklist: { select: { items: { select: { text: true, isChecked: true }, orderBy: { position: 'asc' } } } },
+} as const
 
 // Options d'une série qui ne touchent pas à son calendrier : modifiées seules,
 // la série garde son début et sa prochaine date
@@ -657,15 +666,18 @@ function sameTagIds(a: { id: number }[], b: { id: number }[]): boolean {
 
 /**
  * Vrai si une occurrence générée n'a pas été modifiée depuis sa création :
- * toujours au tableau, avec le contenu, la version, la date et les tags du
- * modèle de sa série, et dans la colonne du modèle. `updatedAt` ne suffit
+ * toujours au tableau, avec le contenu, la version, la date, les tags et les
+ * textes des points du modèle de sa série, aucun point coché, et dans la
+ * colonne du modèle. Une occurrence créée en avance et déjà entamée n'est
+ * donc jamais retirée. `updatedAt` ne suffit
  * pas : le rappel (`notifiedAt`) et les décalages de position des autres
  * cartes le changent aussi.
  *
- * @param task Occurrence, avec ses tags
+ * @param task Occurrence, avec ses tags et sa checklist
  * @param series Série, avec les tags de son modèle
  */
-function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags: { id: number }[] }): boolean {
+function isUntouchedOccurrence(task: OccurrenceContent, series: Recurrence & { tags: { id: number }[] }): boolean {
+  const items = task.checklist?.items ?? []
   return (
     !task.isHistorized &&
     task.title === series.title &&
@@ -673,7 +685,12 @@ function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags
     task.version === occurrenceVersion(series.version) &&
     (series.stageId === null || task.stageId === series.stageId) &&
     task.startDate?.getTime() === task.occurrenceDate?.getTime() &&
-    sameTagIds(task.tags, series.tags)
+    sameTagIds(task.tags, series.tags) &&
+    items.every((item) => !item.isChecked) &&
+    sameChecklistTexts(
+      items.map((item) => item.text),
+      seriesChecklistTexts(series),
+    )
   )
 }
 
@@ -683,7 +700,8 @@ function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags
  * - l'occurrence née de cet archivage (seule occurrence de la série créée
  *   depuis) est retirée si elle n'a pas été modifiée (cf.
  *   isUntouchedOccurrence), et ne compte plus dans le nombre d'occurrences ;
- *   modifiée (contenu, colonne, archivage…), elle est gardée ;
+ *   modifiée (contenu, checklist, point coché, colonne, archivage…), elle
+ *   est gardée ;
  * - la série attend de nouveau l'occurrence restaurée (`nextRunAt` null) ;
  * - une série terminée par sa règle à cause de cet archivage (date de fin
  *   dépassée, ou dernière occurrence retirée) reprend son attente. Une série
@@ -708,7 +726,7 @@ export async function onOccurrenceRestored(tx: TransactionClient, task: Task): P
   const born = archivedAt
     ? await tx.task.findMany({
         where: { recurrenceId: series.id, id: { not: task.id }, createdAt: { gte: archivedAt } },
-        include: { tags: { select: { id: true } } },
+        include: occurrenceContentInclude,
       })
     : []
   const removed = born.length === 1 && isUntouchedOccurrence(born[0], series) ? born[0] : null

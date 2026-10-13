@@ -422,7 +422,7 @@ export default async function taskRoutes(fastify) {
             },
           })
 
-          // Textes des points d'une occurrence avant l'enregistrement de sa checklist : seul
+          // Textes des points d'une occurrence avant l'enregistrement de sa checklist, car seul
           // un changement de textes part dans le modèle de la série, jamais une coche
           const previousTexts =
             checklistItems !== undefined && current.recurrence ? await taskChecklistTexts(tx, id) : undefined
