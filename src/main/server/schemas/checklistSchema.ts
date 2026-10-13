@@ -58,10 +58,34 @@ export const checklistTemplateNameSchema = {
   maxLength: CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
 }
 
+// Texte d'un point saisi, sur une seule ligne
+const checklistItemTextSchema = {
+  type: 'string',
+  maxLength: CHECKLIST_ITEM_MAX_LENGTH,
+  pattern: String.raw`^[^\r\n]*$`,
+}
+
 // Textes des points d'un modèle, sur une seule ligne. Les textes vides après
 // trim sont retirés par les routes plutôt que refusés.
 export const checklistTemplateItemsSchema = {
   type: 'array',
   maxItems: CHECKLIST_MAX_ITEMS,
-  items: { type: 'string', maxLength: CHECKLIST_ITEM_MAX_LENGTH, pattern: String.raw`^[^\r\n]*$` },
+  items: checklistItemTextSchema,
+}
+
+// Points envoyés avec une tâche (cf. ChecklistItemInput), dans l'ordre. Mêmes
+// règles de texte que les modèles, les vides sont retirés par le serveur.
+// Sans `id`, ou avec un id étranger à la tâche, le point est créé.
+export const taskChecklistItemsSchema = {
+  type: 'array',
+  maxItems: CHECKLIST_MAX_ITEMS,
+  items: {
+    type: 'object',
+    properties: {
+      id: { type: 'integer' },
+      text: checklistItemTextSchema,
+      isChecked: { type: 'boolean' },
+    },
+    required: ['text', 'isChecked'],
+  },
 }

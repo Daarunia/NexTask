@@ -4,7 +4,9 @@ import { taskSchema } from '../schemas/taskSchema.js'
 import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas/recurrenceSchema.js'
+import { taskChecklistItemsSchema } from '../schemas/checklistSchema.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
+import { syncTaskChecklist } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
   createSeries,
@@ -16,6 +18,7 @@ import {
 } from '../helpers/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
 import type { RecurrenceInput } from '../../shared/recurrence.constants.js'
+import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from 'electron-log'
 
 // Noms des tags d'une tâche, rapprochés ou créés par le serveur (cf. tag.helper)
@@ -25,7 +28,11 @@ const taskTagsBody = {
 }
 
 /** Corps de POST /tasks, une fois validé par Fastify. */
-type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[]; recurrence?: RecurrenceInput }
+type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags' | 'checklist'> & {
+  tags?: string[]
+  recurrence?: RecurrenceInput
+  checklistItems?: ChecklistItemInput[]
+}
 
 /**
  * Réponse de POST /tasks/:id/restore : la tâche restaurée, et l'id de
@@ -218,7 +225,10 @@ export default async function taskRoutes(fastify) {
    * Les tags sont transmis par leur nom : les noms connus (sans tenir compte
    * de la casse) sont réutilisés, les autres créés. Avec `recurrence`, la
    * tâche est la première occurrence d'une nouvelle série (date de début
-   * obligatoire). Tags, tâche et série sont écrits dans une même transaction.
+   * obligatoire). Avec `checklistItems`, la tâche naît avec sa checklist,
+   * textes nettoyés et vides retirés, les points cochés datés de maintenant
+   * (cf. planChecklistSync). Tags, tâche, checklist et série sont écrits dans
+   * une même transaction.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
@@ -230,9 +240,10 @@ export default async function taskRoutes(fastify) {
    * @param {string|null} [req.body.startDate] - Date de début
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche
    * @param {Object} [req.body.recurrence] - Règle de répétition (cf. RecurrenceInput)
+   * @param {Object[]} [req.body.checklistItems] - Points de la checklist, dans l'ordre (cf. ChecklistItemInput)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags et sa série,
-   *   400 si la règle de répétition est incohérente
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags, sa checklist et sa série,
+   *   400 si la règle de répétition est incohérente ou si un point est invalide
    */
   fastify.post(
     '/tasks',
@@ -251,6 +262,7 @@ export default async function taskRoutes(fastify) {
             startDate: { type: ['string', 'null'], format: 'date-time' },
             tags: taskTagsBody,
             recurrence: recurrenceInputSchema,
+            checklistItems: taskChecklistItemsSchema,
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
@@ -258,7 +270,7 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const { tags, recurrence, ...data } = req.body as TaskCreateBody
+      const { tags, recurrence, checklistItems, ...data } = req.body as TaskCreateBody
 
       if (recurrence) {
         const problem = recurrenceInputProblem(recurrence, data.startDate ? new Date(data.startDate) : null)
@@ -268,13 +280,17 @@ export default async function taskRoutes(fastify) {
         }
       }
 
+      const now = new Date()
+
       return prisma.$transaction(async (tx) => {
         const tagIds = tags ? await resolveTagIds(tx, tags) : []
         const task = await tx.task.create({
           data: { ...data, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
         })
 
-        if (recurrence) await createSeries(tx, task, recurrence, tagIds, new Date())
+        // Checklist écrite avant la série, qui pourra en reprendre les textes
+        await syncTaskChecklist(tx, task.id, checklistItems, now)
+        if (recurrence) await createSeries(tx, task, recurrence, tagIds, now)
 
         return tx.task.findUniqueOrThrow({ where: { id: task.id }, include: taskInclude })
       })
