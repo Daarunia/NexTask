@@ -12,7 +12,8 @@ import {
  *
  * Tests API purs, via `request` Playwright comme `task-batch.spec.ts` :
  * création et validation, unicité du nom sans tenir compte de la casse,
- * remplacement des points, duplication, réordonnancement et suppression.
+ * remplacement des points, duplication, réordonnancement, suppression, et
+ * checklists des tâches ignorées par toutes ces routes.
  *
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique
  * `cleanState`), modèles compris. Chaque test part donc d'une liste vide.
@@ -203,6 +204,48 @@ test('PATCH /checklist-templates/:id refuse un corps vide (400) et un id inconnu
   const [reread] = await getTemplates(request)
   expect(reread).toMatchObject({ name: 'Revue de code' })
   expect(texts(reread)).toEqual(['Tests'])
+})
+
+test("les routes des modèles ignorent la checklist d'une tâche (404)", async ({ page }) => {
+  const request = page.request
+  const stagesRes = await request.get(`${API}/stages`)
+  const [stage] = (await stagesRes.json()) as { id: number }[]
+  const taskRes = await request.post(`${API}/tasks`, {
+    data: {
+      stageId: stage.id,
+      position: 0,
+      title: 'Tâche avec checklist',
+      version: '1.0.0',
+      description: '',
+      checklistItems: [{ text: 'Point de tâche', isChecked: true }],
+    },
+  })
+  expect(taskRes.ok(), await taskRes.text()).toBeTruthy()
+  const task = (await taskRes.json()) as { id: number; checklist: { id: number; items: ChecklistItem[] } }
+  const checklistId = task.checklist.id
+  const template = await createTemplate(request, 'Modèle', ['a'])
+
+  // Jamais listée parmi les modèles
+  expect((await getTemplates(request)).map((t) => t.id)).toEqual([template.id])
+
+  const rename = await request.patch(`${API}/checklist-templates/${checklistId}`, { data: { name: 'Volé' } })
+  expect(rename.status()).toBe(404)
+  const replace = await request.patch(`${API}/checklist-templates/${checklistId}`, { data: { items: ['x'] } })
+  expect(replace.status()).toBe(404)
+  expect((await request.post(`${API}/checklist-templates/${checklistId}/duplicate`)).status()).toBe(404)
+  expect((await request.delete(`${API}/checklist-templates/${checklistId}`)).status()).toBe(404)
+  const batch = await request.patch(`${API}/checklist-templates/batch`, {
+    data: [
+      { id: checklistId, position: 0 },
+      { id: template.id, position: 1 },
+    ],
+  })
+  expect(batch.status()).toBe(400)
+
+  // La checklist de la tâche et le modèle n'ont pas bougé
+  const reread = await request.get(`${API}/tasks/${task.id}`)
+  expect(((await reread.json()) as typeof task).checklist).toEqual(task.checklist)
+  expect(await getTemplates(request)).toEqual([template])
 })
 
 test('POST /checklist-templates/:id/duplicate copie le modèle sous « Nom (copie) », numéroté si pris', async ({
