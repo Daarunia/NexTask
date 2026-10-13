@@ -1,6 +1,6 @@
 import type { Checklist, Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from './tag.helper.js'
-import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../shared/checklist.constants.js'
+import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH, type ChecklistItemInput } from '../../shared/checklist.constants.js'
 
 /**
  * Helpers des checklists, partagés par les routes des modèles et des tâches.
@@ -95,4 +95,154 @@ export function templateItemRows(texts: string[]): TemplateItemRow[] {
     .map((text) => text.trim())
     .filter((text) => text !== '')
     .map((text, position) => ({ text, position, isChecked: false, checkedAt: null }))
+}
+
+/** Point déjà en base dans la checklist d'une tâche. */
+export interface ExistingChecklistItem {
+  id: number
+  text: string
+  position: number
+  isChecked: boolean
+  checkedAt: Date | null
+}
+
+/** Point de tâche à écrire, état de coche et date compris. */
+export interface TaskItemRow {
+  text: string
+  position: number
+  isChecked: boolean
+  checkedAt: Date | null
+}
+
+/**
+ * Écritures qui amènent la checklist d'une tâche à la liste envoyée. Les
+ * points gardés tels quels n'apparaissent nulle part.
+ */
+export interface ChecklistSyncPlan {
+  deleteIds: number[] // points existants absents de la liste envoyée
+  update: (TaskItemRow & { id: number })[] // points existants modifiés (texte, position ou coche)
+  create: TaskItemRow[] // nouveaux points
+  total: number // nombre de points de la checklist une fois le plan appliqué
+}
+
+/**
+ * Date de coche d'un point après l'enregistrement. Elle est fixée par le
+ * serveur, `now` pour un point coché à l'instant, conservée pour un point
+ * déjà coché, `null` pour un point décoché.
+ *
+ * @param isChecked Point coché dans la liste envoyée
+ * @param previous Point existant correspondant, absent pour un nouveau point
+ * @param now Maintenant
+ */
+function checkedAtFor(isChecked: boolean, previous: ExistingChecklistItem | undefined, now: Date): Date | null {
+  if (!isChecked) return null
+  if (previous?.isChecked) return previous.checkedAt ?? now
+  return now
+}
+
+/**
+ * Vrai si le point existant diffère de la ligne à écrire.
+ *
+ * @param previous Point existant
+ * @param row Ligne à écrire
+ */
+function itemChanged(previous: ExistingChecklistItem, row: TaskItemRow): boolean {
+  return (
+    previous.text !== row.text ||
+    previous.position !== row.position ||
+    previous.isChecked !== row.isChecked ||
+    previous.checkedAt?.getTime() !== row.checkedAt?.getTime()
+  )
+}
+
+/**
+ * Prévoit les écritures qui remplacent la checklist d'une tâche par la liste
+ * envoyée, sans toucher à la base.
+ *
+ * Les textes sont nettoyés (trim) et les vides retirés. La position d'un
+ * point est son rang dans la liste restante. Un `id` qui ne désigne aucun
+ * point de la tâche (point d'une autre tâche, déjà supprimé, ou répété dans
+ * la liste) est traité comme un nouveau point. Les points existants absents
+ * de la liste sont à supprimer.
+ *
+ * @param existing Points actuels de la checklist de la tâche
+ * @param input Points envoyés, dans l'ordre
+ * @param now Maintenant, date de coche des points cochés à l'instant
+ */
+export function planChecklistSync(
+  existing: readonly ExistingChecklistItem[],
+  input: readonly ChecklistItemInput[],
+  now: Date,
+): ChecklistSyncPlan {
+  const remaining = new Map(existing.map((item) => [item.id, item]))
+  const plan: ChecklistSyncPlan = { deleteIds: [], update: [], create: [], total: 0 }
+
+  for (const item of input) {
+    const text = item.text.trim()
+    if (text === '') continue
+
+    // Retiré de la table une fois pris, un id répété devient un nouveau point
+    const previous = item.id === undefined ? undefined : remaining.get(item.id)
+    if (previous) remaining.delete(previous.id)
+
+    const row: TaskItemRow = {
+      text,
+      position: plan.total,
+      isChecked: item.isChecked,
+      checkedAt: checkedAtFor(item.isChecked, previous, now),
+    }
+    plan.total++
+
+    if (!previous) plan.create.push(row)
+    else if (itemChanged(previous, row)) plan.update.push({ id: previous.id, ...row })
+  }
+
+  plan.deleteIds = [...remaining.keys()]
+  return plan
+}
+
+/**
+ * Remplace la checklist d'une tâche par la liste envoyée (cf.
+ * planChecklistSync), dans la transaction de l'enregistrement de la tâche.
+ *
+ * La checklist est créée avec son premier point et supprimée avec son
+ * dernier, une tâche sans point n'en a donc jamais en base. Sans liste
+ * (`undefined`), rien ne change.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param taskId Id de la tâche
+ * @param items Points envoyés, dans l'ordre, `[]` pour vider la checklist
+ * @param now Maintenant
+ */
+export async function syncTaskChecklist(
+  tx: TransactionClient,
+  taskId: number,
+  items: readonly ChecklistItemInput[] | undefined,
+  now: Date,
+): Promise<void> {
+  if (items === undefined) return
+
+  const checklist = await tx.checklist.findUnique({ where: { taskId }, include: { items: true } })
+  const plan = planChecklistSync(checklist?.items ?? [], items, now)
+
+  if (plan.total === 0) {
+    // Les points partent avec la checklist (cascade)
+    if (checklist) await tx.checklist.delete({ where: { id: checklist.id } })
+    return
+  }
+
+  if (!checklist) {
+    await tx.checklist.create({ data: { taskId, items: { create: plan.create } } })
+    return
+  }
+
+  if (plan.deleteIds.length) {
+    await tx.checklistItem.deleteMany({ where: { checklistId: checklist.id, id: { in: plan.deleteIds } } })
+  }
+  for (const { id, ...row } of plan.update) {
+    await tx.checklistItem.update({ where: { id }, data: row })
+  }
+  if (plan.create.length) {
+    await tx.checklistItem.createMany({ data: plan.create.map((row) => ({ ...row, checklistId: checklist.id })) })
+  }
 }
