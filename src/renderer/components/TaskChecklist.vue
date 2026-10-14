@@ -24,8 +24,24 @@
         @click="toggleTemplates"
       />
 
-      <!-- Ancre invisible du popover des modèles : aligné à droite sur son bouton, comme sur la maquette -->
+      <Button
+        type="button"
+        icon="pi pi-ellipsis-h"
+        class="cl-menu-btn"
+        data-testid="btn-checklist-menu"
+        :aria-label="t('checklist.actions')"
+        :title="t('checklist.actions')"
+        aria-haspopup="true"
+        severity="secondary"
+        size="small"
+        text
+        rounded
+        @click="toggleMenu"
+      />
+
+      <!-- Ancres invisibles des popovers, alignés à droite sur leur bouton comme sur la maquette -->
       <span ref="templatesAnchor" class="pop-anchor templates-anchor" aria-hidden="true"></span>
+      <span ref="menuAnchor" class="pop-anchor menu-anchor" aria-hidden="true"></span>
     </div>
 
     <!-- Barre de progression, verte quand tout est coché -->
@@ -47,12 +63,31 @@
       ref="editor"
       :modelValue="modelValue"
       checkable
+      :hideChecked="hideChecked"
       @update:modelValue="(items) => emit('update:modelValue', items)"
-    />
+    >
+      <template #after-items>
+        <p v-if="hideChecked && progress.done" class="hidden-note" data-testid="task-checklist-hidden-note">
+          {{ t('checklist.hiddenNote', { count: progress.done }, progress.done) }} ·
+          <button type="button" @click="hideChecked = false">{{ t('checklist.show') }}</button>
+        </p>
+      </template>
+    </ChecklistItemsEditor>
 
     <Message v-if="error" severity="error" size="small" variant="simple" data-testid="task-checklist-error">
       {{ error }}
     </Message>
+
+    <!-- Actions de la checklist (parcours P3). Échap referme le menu sans fermer le dialogue. -->
+    <Menu
+      ref="menu"
+      :model="menuItems"
+      popup
+      class="checklist-menu"
+      data-testid="checklist-menu"
+      @show="onOverlayShow"
+      @hide="onOverlayHide"
+    />
 
     <!-- Points d'un modèle à ajouter (parcours P2), dans l'ordre de la page Checklists -->
     <Popover ref="templatesPop" class="checklist-pop" @show="onTemplatesShow" @hide="onTemplatesHide">
@@ -114,6 +149,8 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Popover from 'primevue/popover'
+import Menu from 'primevue/menu'
+import type { MenuItem } from 'primevue/menuitem'
 import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
@@ -132,6 +169,9 @@ import { useErrorToast } from '../utils/toast.helper'
  * « Depuis un modèle » (parcours P2) copie les points d'un modèle à la fin de
  * la liste, décochés, sans garder de lien. Les modèles sans point ne sont pas
  * proposés, une recherche apparaît au-delà de `SEARCH_THRESHOLD` modèles.
+ *
+ * Le menu ⋯ coche ou décoche tout, masque les points cochés (réglage de
+ * l'affichage seulement, oublié à la fermeture du dialogue) et vide la liste.
  */
 
 /** Nombre de modèles au-delà duquel le popover propose une recherche. */
@@ -165,6 +205,11 @@ const templatesOpen = ref(false)
 const loaded = ref(false)
 const search = ref('')
 
+// Menu ⋯ et affichage des points cochés
+const menu = ref<InstanceType<typeof Menu> | null>(null)
+const menuAnchor = ref<HTMLElement | null>(null)
+const hideChecked = ref(false)
+
 // Modèles proposés, dans l'ordre de la page Checklists, sans ceux qui n'ont aucun point
 const usableTemplates = computed(() => templateStore.getAllTemplates.filter((template) => template.items.length))
 
@@ -180,6 +225,39 @@ const shownTemplates = computed(() => {
 const progress = computed(() => checklistProgress(props.modelValue))
 const complete = computed(() => progress.value.total > 0 && progress.value.done === progress.value.total)
 const percent = computed(() => progressPercent(progress.value))
+
+// Calculé pour suivre la langue de l'interface et l'état de la liste
+const menuItems = computed<MenuItem[]>(() => {
+  const empty = !props.modelValue.length
+  return [
+    {
+      label: t('checklist.checkAll'),
+      icon: 'pi pi-check-square',
+      disabled: empty,
+      command: () => setAllChecked(true),
+    },
+    {
+      label: t('checklist.uncheckAll'),
+      icon: 'pi pi-stop',
+      disabled: empty,
+      command: () => setAllChecked(false),
+    },
+    {
+      label: hideChecked.value ? t('checklist.showChecked') : t('checklist.hideChecked'),
+      icon: hideChecked.value ? 'pi pi-eye' : 'pi pi-eye-slash',
+      disabled: empty && !hideChecked.value,
+      command: () => (hideChecked.value = !hideChecked.value),
+    },
+    { separator: true },
+    {
+      label: t('checklist.clear'),
+      icon: 'pi pi-eraser',
+      class: 'checklist-menu-danger',
+      disabled: empty,
+      command: () => emit('update:modelValue', []),
+    },
+  ]
+})
 
 /**
  * Bouton « Depuis un modèle », point d'ancrage des confirmations et retour du focus
@@ -215,11 +293,11 @@ async function toggleTemplates(event: MouseEvent) {
   }
 }
 
-// Overlays ouverts (popover des modèles), qu'Échap doit refermer seuls
+// Overlays ouverts (popover des modèles, menu ⋯), qu'Échap doit refermer seuls
 let openOverlays = 0
 
 /**
- * Échap avec le popover des modèles ouvert. Écouté en capture
+ * Échap avec le popover des modèles ou le menu ⋯ ouvert. Écouté en capture
  * sur la fenêtre, avant le `Dialog` qui se fermerait sinon avec eux : seul
  * l'overlay se ferme, et le focus revient à son bouton.
  * @param event Touche pressée
@@ -229,8 +307,11 @@ function onOverlayEscape(event: KeyboardEvent) {
   event.preventDefault()
   event.stopPropagation()
 
-  const button = fromTemplateButton()
+  const button = templatesOpen.value
+    ? fromTemplateButton()
+    : document.querySelector<HTMLElement>('[data-testid="btn-checklist-menu"]')
   templatesPop.value?.hide()
+  menu.value?.hide()
   void nextTick(() => button?.focus())
 }
 
@@ -303,6 +384,25 @@ function openChecklistsPage() {
     acceptProps: { label: t('checklist.leave'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: leave,
   })
+}
+
+/**
+ * Coche ou décoche tous les points
+ * @param checked Nouvel état de tous les points
+ */
+function setAllChecked(checked: boolean) {
+  emit(
+    'update:modelValue',
+    props.modelValue.map((item) => (item.isChecked === checked ? item : { ...item, isChecked: checked })),
+  )
+}
+
+/**
+ * Ouvre ou ferme le menu ⋯, aligné sur le bord droit de son bouton
+ * @param event Clic sur le bouton
+ */
+function toggleMenu(event: MouseEvent) {
+  menu.value?.toggle(event, menuAnchor.value ?? undefined)
 }
 
 // Modèles chargés dès l'ouverture du dialogue, le popover s'affiche ainsi complet
@@ -393,6 +493,30 @@ defineExpose({ commitPending })
   gap: 6px !important;
 }
 
+/* Bouton ⋯ aussi compact que les icônes de la maquette */
+.cl-menu-btn {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Note des points cochés masqués, alignée sur le texte des points */
+.hidden-note {
+  @apply m-0;
+  padding-left: 48px;
+  font-size: 12.5px;
+  color: var(--p-text-muted-color);
+}
+
+.hidden-note button {
+  @apply cursor-pointer border-0 bg-transparent p-0;
+  font: inherit;
+  color: var(--p-primary-color);
+}
+
+.hidden-note button:hover {
+  text-decoration: underline;
+}
+
 /* Ancres des popovers, de la largeur du popover, calées sur le bord droit de leur bouton */
 .pop-anchor {
   @apply pointer-events-none invisible absolute top-0 h-7;
@@ -401,6 +525,11 @@ defineExpose({ commitPending })
 .templates-anchor {
   right: 36px;
   width: 280px;
+}
+
+.menu-anchor {
+  right: 0;
+  width: 250px;
 }
 
 /* Contenu des popovers (rendu dans le body, le style scoped s'applique au contenu du slot) */
@@ -525,5 +654,44 @@ defineExpose({ commitPending })
 
 .checklist-pop .p-popover-content {
   padding: 6px;
+}
+
+/* Menu ⋯, mêmes lignes que les popovers de la maquette */
+.checklist-menu.p-menu {
+  min-width: 250px;
+  margin-top: 4px;
+  padding: 6px;
+  border-color: var(--p-content-border-color);
+  border-radius: 8px;
+  box-shadow: 0 16px 32px -12px rgb(0 0 0 / 0.45);
+}
+
+.checklist-menu .p-menu-list {
+  padding: 0;
+}
+
+.checklist-menu .p-menu-item-link {
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+.checklist-menu .p-menu-item-icon {
+  font-size: 0.875rem;
+}
+
+.checklist-menu .p-menu-separator {
+  margin: 4px 2px;
+  border-top-color: var(--p-content-border-color);
+}
+
+.checklist-menu .checklist-menu-danger .p-menu-item-icon,
+.checklist-menu .checklist-menu-danger .p-menu-item-label {
+  color: var(--p-red-600);
+}
+
+.app-dark .checklist-menu .checklist-menu-danger .p-menu-item-icon,
+.app-dark .checklist-menu .checklist-menu-danger .p-menu-item-label {
+  color: var(--p-red-400);
 }
 </style>

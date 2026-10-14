@@ -14,6 +14,7 @@
     >
       <template #item="{ element, index }">
         <li
+          v-show="isVisible(element)"
           data-testid="checklist-item"
           :data-item-key="element.key"
           :class="['item', { checked: checkable && element.isChecked }]"
@@ -62,6 +63,9 @@
         </li>
       </template>
     </draggable>
+
+    <!-- Contenu du parent entre les points et la saisie (note des points cochés masqués) -->
+    <slot name="after-items"></slot>
 
     <!-- Saisie d'un nouveau point, ajouté en fin de liste -->
     <label v-if="canAdd" class="new-item">
@@ -140,8 +144,9 @@ const props = withDefaults(
   defineProps<{
     modelValue: ChecklistEditorItem[]
     checkable?: boolean // cases à cocher (checklist d'une tâche), absentes pour un modèle
+    hideChecked?: boolean // points cochés masqués, mais gardés dans la liste et à leur place
   }>(),
-  { checkable: false },
+  { checkable: false, hideChecked: false },
 )
 
 const emit = defineEmits<{
@@ -161,6 +166,14 @@ const inputs = new Map<number, HTMLInputElement>()
 const editStart = new Map<number, string>()
 
 const canAdd = computed(() => props.modelValue.length < CHECKLIST_MAX_ITEMS)
+
+/**
+ * Vrai si le point est affiché (les points cochés peuvent être masqués)
+ * @param item Point
+ */
+function isVisible(item: ChecklistEditorItem): boolean {
+  return !(props.checkable && props.hideChecked && item.isChecked)
+}
 
 /**
  * Mémorise le champ d'un point (callback de `ref` dans le v-for)
@@ -252,7 +265,9 @@ function onItemKeydown(event: KeyboardEvent, index: number) {
   } else if (event.key === 'Backspace' && item.text === '') {
     event.preventDefault()
     event.stopPropagation()
-    const neighbor = props.modelValue[index - 1] ?? props.modelValue[index + 1]
+    // Voisin affiché le plus proche, le précédent d'abord
+    const before = props.modelValue.slice(0, index).findLast(isVisible)
+    const neighbor = before ?? props.modelValue.slice(index + 1).find(isVisible)
     removeItem(index)
     if (neighbor) focusItem(neighbor.key)
     else focusNew()
