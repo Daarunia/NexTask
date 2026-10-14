@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -213,6 +213,12 @@ const router = useRouter()
 const confirm = useConfirm()
 const showError = useErrorToast()
 const templateStore = useChecklistTemplateStore()
+
+// Les champs PrimeVue de la section (cases des points, nom du modèle) ne sont
+// pas des champs du formulaire de tâche. Sans cela, ils s'enregistreraient
+// auprès du FormField parent et y écriraient leur propre valeur à la place des points.
+provide('$pcForm', undefined)
+provide('$pcFormField', undefined)
 
 const editor = ref<InstanceType<typeof ChecklistItemsEditor> | null>(null)
 
