@@ -76,6 +76,7 @@
           ref="checklistRef"
           :modelValue="$field.value ?? []"
           :error="$field.invalid ? $field.error?.message : undefined"
+          :hasPendingChanges="hasPendingChanges"
           @update:modelValue="(value: ChecklistEditorItem[]) => $field.props.onChange({ value })"
         />
       </FormField>
@@ -349,8 +350,9 @@ const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 // Checklist, pour ajouter le point en cours de saisie avant un enregistrement au clavier
 const checklistRef = ref<InstanceType<typeof TaskChecklist> | null>(null)
 
-// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Enregistrer)
-const formRef = ref<{ submit: () => void } | null>(null)
+// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton
+// Enregistrer). Ses valeurs courantes (`states`) disent si une saisie est en cours.
+const formRef = ref<{ submit: () => void; states: Record<string, { value: unknown } | undefined> } | null>(null)
 
 // Sauvegarde en cours
 const saving = ref(false)
@@ -484,6 +486,21 @@ function toTagNames(selection: TagSelection[]): string[] {
     if (tagStore.wasDeleted(selected.id)) return []
 
     return [tagStore.getTagById(selected.id)?.name ?? selected.name]
+  })
+}
+
+/**
+ * Vrai si le formulaire ouvert diffère de ses valeurs de départ, donc si
+ * quitter le tableau ferait perdre une saisie. Faux une fois le dialogue
+ * fermé. Réactif, il peut être lu dans un rendu (toast d'un modèle créé, P6).
+ */
+function hasPendingChanges(): boolean {
+  const states = formRef.value?.states
+  if (!states) return false
+
+  return Object.entries(initialValues.value).some(([name, initial]) => {
+    const state = states[name]
+    return state !== undefined && JSON.stringify(state.value ?? null) !== JSON.stringify(initial ?? null)
   })
 }
 

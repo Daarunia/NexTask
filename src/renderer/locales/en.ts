@@ -505,6 +505,13 @@ export const en: MessageSchema = {
       '{count} items checked out of {total} | {count} item checked out of {total} | {count} items checked out of {total}',
     title: 'Checklist',
     progressBar: 'Checklist progress',
+    fromTemplate: 'From a template',
+    templatesTitle: 'Add the items of a template',
+    noTemplates: 'No template with items.',
+    manageTemplates: 'Manage templates',
+    createTemplate: 'Create a template',
+    leaveConfirm: 'Leave the task without saving its changes?',
+    leave: 'Leave',
   },
   archives: {
     back: 'Back to settings',

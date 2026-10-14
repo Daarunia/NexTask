@@ -506,6 +506,13 @@ export const pt: MessageSchema = {
     progress: '{count} itens marcados de {total} | {count} item marcado de {total} | {count} itens marcados de {total}',
     title: 'Checklist',
     progressBar: 'Progresso da checklist',
+    fromTemplate: 'De um modelo',
+    templatesTitle: 'Adicionar os itens de um modelo',
+    noTemplates: 'Nenhum modelo com itens.',
+    manageTemplates: 'Gerenciar os modelos',
+    createTemplate: 'Criar um modelo',
+    leaveConfirm: 'Sair da tarefa sem salvar as alterações?',
+    leave: 'Sair',
   },
   archives: {
     back: 'Voltar às configurações',

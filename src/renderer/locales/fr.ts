@@ -513,6 +513,13 @@ export const fr = {
     // Section Checklist du dialogue de tâche
     title: 'Checklist',
     progressBar: 'Avancement de la checklist',
+    fromTemplate: 'Depuis un modèle',
+    templatesTitle: "Ajouter les points d'un modèle",
+    noTemplates: 'Aucun modèle avec des points.',
+    manageTemplates: 'Gérer les modèles',
+    createTemplate: 'Créer un modèle',
+    leaveConfirm: 'Quitter la tâche sans enregistrer ses modifications ?',
+    leave: 'Quitter',
   },
   archives: {
     back: 'Retour aux paramètres',

@@ -508,6 +508,13 @@ export const es: MessageSchema = {
       '{count} puntos marcados de {total} | {count} punto marcado de {total} | {count} puntos marcados de {total}',
     title: 'Checklist',
     progressBar: 'Progreso de la checklist',
+    fromTemplate: 'Desde una plantilla',
+    templatesTitle: 'Añadir los puntos de una plantilla',
+    noTemplates: 'Ninguna plantilla con puntos.',
+    manageTemplates: 'Gestionar las plantillas',
+    createTemplate: 'Crear una plantilla',
+    leaveConfirm: '¿Salir de la tarea sin guardar sus cambios?',
+    leave: 'Salir',
   },
   archives: {
     back: 'Volver a los ajustes',

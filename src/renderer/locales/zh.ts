@@ -496,6 +496,13 @@ export const zh: MessageSchema = {
     progress: '已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项',
     title: '清单',
     progressBar: '清单进度',
+    fromTemplate: '从模板添加',
+    templatesTitle: '添加模板中的事项',
+    noTemplates: '没有包含事项的模板。',
+    manageTemplates: '管理模板',
+    createTemplate: '创建模板',
+    leaveConfirm: '不保存更改并离开此任务？',
+    leave: '离开',
   },
   archives: {
     back: '返回设置',
