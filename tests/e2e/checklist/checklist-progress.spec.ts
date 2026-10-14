@@ -133,6 +133,8 @@ test("la recherche trouve une tâche par le texte d'un point", async ({ page, ta
   await tagFilter.search('CAFE')
   await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Courses'])
   await expect(tagFilter.taskOption('Courses')).toBeVisible()
+  // Le point trouvé sert d'extrait, la description étant vide
+  await expect(tagFilter.taskOption('Courses')).toContainText('Acheter du café')
 
   await tagFilter.search('aspirateur')
   await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Ménage'])

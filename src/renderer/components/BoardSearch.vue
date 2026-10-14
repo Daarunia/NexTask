@@ -131,7 +131,13 @@ import { useStageStore } from '../stores/Stage'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
-import { highlightParts, matchExcerpt, normalizeSearchText, searchTerms, taskSearchText } from '../utils/search.helper'
+import {
+  highlightParts,
+  normalizeSearchText,
+  searchTerms,
+  taskMatchExcerpt,
+  taskSearchText,
+} from '../utils/search.helper'
 import type { Tag } from '../types/tag.types'
 
 /**
@@ -197,7 +203,7 @@ const tagItems = computed<SearchItem[]>(() => {
 /**
  * Tâches proposées : celles qui passent le filtre (tags compris) et
  * contiennent les mots saisis, avec un extrait si la correspondance est dans
- * la description.
+ * la description ou dans un point de la checklist.
  */
 const taskItems = computed<SearchItem[]>(() => {
   if (tagMode.value || !terms.value.length) return []
@@ -215,7 +221,7 @@ const taskItems = computed<SearchItem[]>(() => {
         kind: 'task',
         id: task.id,
         label: task.title,
-        excerpt: inTitle ? '' : matchExcerpt(task.description, terms.value),
+        excerpt: inTitle ? '' : taskMatchExcerpt(task, terms.value),
         stage: stageStore.getAllStages.find((stage) => stage.id === task.stageId)?.name ?? '',
       }
     })

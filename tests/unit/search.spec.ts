@@ -4,6 +4,7 @@ import {
   matchExcerpt,
   normalizeSearchText,
   searchTerms,
+  taskMatchExcerpt,
   taskMatchesFilter,
 } from '../../src/renderer/utils/search.helper'
 import type { Task } from '../../src/renderer/types/task.types'
@@ -143,5 +144,35 @@ describe('matchExcerpt', () => {
 
   test('vide si le mot est absent', () => {
     expect(matchExcerpt('rien ici', ['redmine'])).toBe('')
+  })
+})
+
+describe('taskMatchExcerpt', () => {
+  const checklist = (...texts: string[]): Task['checklist'] => ({
+    id: 1,
+    items: texts.map((text, position) => ({ id: position + 1, text, position, isChecked: false, checkedAt: null })),
+  })
+
+  test('extrait de la description quand le mot y figure', () => {
+    const t = task({ description: 'Voir le **wiki**', checklist: checklist('Relire le wiki') })
+    expect(taskMatchExcerpt(t, ['wiki'])).toBe('Voir le wiki')
+  })
+
+  test('sinon le premier point de la checklist qui contient un mot, sans tenir compte des accents', () => {
+    const t = task({
+      description: 'Rien à voir',
+      checklist: checklist('Pain complet', 'Acheter du Café', 'Café moulu'),
+    })
+    expect(taskMatchExcerpt(t, ['cafe'])).toBe('Acheter du Café')
+  })
+
+  test("extrait d'un long point centré sur le mot trouvé", () => {
+    const t = task({ checklist: checklist(`${'a'.repeat(50)} vers Redmine ${'b'.repeat(50)}`) })
+    expect(taskMatchExcerpt(t, ['redmine'], 10)).toMatch(/^….*Redmine.*…$/)
+  })
+
+  test('vide si le mot ne figure ni dans la description ni dans les points', () => {
+    expect(taskMatchExcerpt(task({ description: 'rien', checklist: checklist('ici non plus') }), ['redmine'])).toBe('')
+    expect(taskMatchExcerpt(task({ checklist: null }), ['redmine'])).toBe('')
   })
 })

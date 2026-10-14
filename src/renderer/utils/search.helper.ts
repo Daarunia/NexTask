@@ -88,14 +88,14 @@ export function highlightParts(text: string, terms: string[]): HighlightPart[] {
 }
 
 /**
- * Extrait d'une description centré sur le premier mot trouvé, sur une ligne,
- * pour la liste de suggestions. Vide si aucun mot n'y figure.
- * @param description Description Markdown
+ * Extrait d'un texte brut centré sur le premier mot trouvé, sur une ligne.
+ * Vide si aucun mot n'y figure.
+ * @param plainText Texte sans syntaxe Markdown
  * @param terms Mots normalisés
  * @param radius Nombre de caractères gardés de part et d'autre
  */
-export function matchExcerpt(description: string, terms: string[], radius = 30): string {
-  const text = descriptionExcerpt(description ?? '', Infinity).replaceAll(/\s+/g, ' ')
+function centeredExcerpt(plainText: string, terms: string[], radius: number): string {
+  const text = plainText.replaceAll(/s+/g, ' ')
   const haystack = [...text].map((char) => normalizeSearchText(char) || ' ').join('')
   const positions = terms.map((term) => haystack.indexOf(term)).filter((index) => index !== -1)
   if (!positions.length) return ''
@@ -104,4 +104,34 @@ export function matchExcerpt(description: string, terms: string[], radius = 30):
   const start = Math.max(0, at - radius)
   const end = Math.min(text.length, at + radius)
   return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`
+}
+
+/**
+ * Extrait d'une description centré sur le premier mot trouvé, sur une ligne,
+ * pour la liste de suggestions. Vide si aucun mot n'y figure.
+ * @param description Description Markdown
+ * @param terms Mots normalisés
+ * @param radius Nombre de caractères gardés de part et d'autre
+ */
+export function matchExcerpt(description: string, terms: string[], radius = 30): string {
+  return centeredExcerpt(descriptionExcerpt(description ?? '', Infinity), terms, radius)
+}
+
+/**
+ * Extrait d'une tâche pour la liste de suggestions, pris dans la description si
+ * un mot y figure, sinon dans le premier point de la checklist qui en contient
+ * un. Vide si aucun mot n'apparaît ni dans l'une ni dans les autres.
+ * @param task Tâche trouvée
+ * @param terms Mots normalisés
+ * @param radius Nombre de caractères gardés de part et d'autre
+ */
+export function taskMatchExcerpt(task: Pick<Task, 'description' | 'checklist'>, terms: string[], radius = 30): string {
+  const inDescription = matchExcerpt(task.description, terms, radius)
+  if (inDescription) return inDescription
+
+  for (const item of task.checklist?.items ?? []) {
+    const inItem = centeredExcerpt(item.text, terms, radius)
+    if (inItem) return inItem
+  }
+  return ''
 }
