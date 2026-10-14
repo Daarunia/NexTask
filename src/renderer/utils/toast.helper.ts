@@ -109,7 +109,7 @@ export interface ToastAction {
   label: string // libellé du bouton
   run: () => unknown // clic sur le bouton, le toast se referme
   // Vrai si le bouton peut être proposé. Lu pendant le rendu du toast, donc
-  // réactif : le bouton apparaît ou disparaît avec lui.
+  // réactif, le bouton apparaît ou disparaît avec lui.
   available?: () => boolean
 }
 

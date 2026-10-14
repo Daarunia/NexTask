@@ -1,5 +1,5 @@
 <template>
-  <!-- Échap géré ici : PrimeVue fermerait aussi le dialogue de tâche, ouvert dessous -->
+  <!-- Échap géré ici, car PrimeVue fermerait aussi le dialogue de tâche ouvert dessous -->
   <Dialog
     v-model:visible="visible"
     :modal="true"

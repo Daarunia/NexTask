@@ -70,7 +70,7 @@
         />
       </FormField>
 
-      <!-- Checklist : valeur du formulaire = ChecklistEditorItem[], envoyée au serveur à l'enregistrement -->
+      <!-- Checklist, valeur du formulaire = ChecklistEditorItem[], envoyée au serveur à l'enregistrement -->
       <FormField v-slot="$field" name="checklistItems">
         <TaskChecklist
           ref="checklistRef"
@@ -589,7 +589,7 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
         tags: tagNames,
-        // Toujours envoyée : seule une liste de textes modifiée part dans la série (applyToSeries)
+        // Toujours envoyée, seule une liste de textes modifiée part dans la série (applyToSeries)
         checklistItems: toChecklistInput(values.checklistItems),
         recurrence: recurrenceChange(recurrenceInput),
         applyToSeries: values.applyToSeries,

@@ -1,13 +1,9 @@
 <template>
   <section class="task-checklist" data-testid="task-checklist" :aria-label="t('checklist.title')">
-    <!-- En-tête : libellé, avancement, actions -->
+    <!-- En-tête avec libellé, avancement et actions -->
     <div class="cl-head">
       <span class="field-label"><i class="pi pi-check-square" aria-hidden="true"></i>{{ t('checklist.title') }}</span>
-      <span
-        v-if="progress.total"
-        data-testid="task-checklist-progress"
-        :class="['cl-progress', { done: complete }]"
-      >
+      <span v-if="progress.total" data-testid="task-checklist-progress" :class="['cl-progress', { done: complete }]">
         {{ progress.done }}/{{ progress.total }}
       </span>
       <span class="flex-1"></span>
@@ -99,7 +95,12 @@
 
     <!-- Points d'un modèle à ajouter (parcours P2), dans l'ordre de la page Checklists -->
     <Popover ref="templatesPop" class="checklist-pop" @show="onTemplatesShow" @hide="onTemplatesHide">
-      <div class="pop templates-pop" data-testid="checklist-templates" role="dialog" :aria-label="t('checklist.templatesTitle')">
+      <div
+        class="pop templates-pop"
+        data-testid="checklist-templates"
+        role="dialog"
+        :aria-label="t('checklist.templatesTitle')"
+      >
         <div class="pop-title">{{ t('checklist.templatesTitle') }}</div>
 
         <label v-if="usableTemplates.length > SEARCH_THRESHOLD" class="pop-search">
@@ -128,7 +129,9 @@
           >
             <i class="pi pi-list-check" aria-hidden="true"></i>
             <span class="pop-item-label" data-testid="checklist-template-name">{{ template.name }}</span>
-            <span class="n">{{ t('checklists.itemCount', { count: template.items.length }, template.items.length) }}</span>
+            <span class="n">{{
+              t('checklists.itemCount', { count: template.items.length }, template.items.length)
+            }}</span>
           </button>
         </div>
 
@@ -329,7 +332,7 @@ let openOverlays = 0
 
 /**
  * Échap avec le popover des modèles ou le menu ⋯ ouvert. Écouté en capture
- * sur la fenêtre, avant le `Dialog` qui se fermerait sinon avec eux : seul
+ * sur la fenêtre, avant le `Dialog` qui se fermerait sinon avec eux. Seul
  * l'overlay se ferme, et le focus revient à son bouton.
  * @param event Touche pressée
  */
@@ -356,7 +359,8 @@ function onOverlayHide() {
 }
 
 /**
- * Popover des modèles affiché, le clavier passe au premier champ ou modèle
+ * Popover des modèles affiché, le clavier passe au premier champ ou modèle.
+ * Sans défilement, car le dialogue défilerait et un défilement referme le popover.
  */
 function onTemplatesShow() {
   templatesOpen.value = true
@@ -366,7 +370,7 @@ function onTemplatesShow() {
       .querySelector<HTMLElement>(
         '[data-testid="checklist-template-search"], [data-testid="checklist-template-option"], [data-testid="btn-manage-templates"]',
       )
-      ?.focus(),
+      ?.focus({ preventScroll: true }),
   )
 }
 
@@ -402,19 +406,22 @@ function openChecklistsPage() {
     return
   }
 
-  confirm.require({
-    target,
-    message: t('checklist.leaveConfirm'),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('checklist.leave'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
-    accept: leave,
-  })
+  // Ouverte pendant le clic, la confirmation le prendrait pour un clic à côté et se refermerait aussitôt
+  setTimeout(() =>
+    confirm.require({
+      target,
+      message: t('checklist.leaveConfirm'),
+      icon: 'pi pi-exclamation-triangle',
+      rejectProps: {
+        label: t('common.cancel'),
+        severity: 'secondary',
+        outlined: true,
+        'data-testid': 'btn-confirm-reject',
+      },
+      acceptProps: { label: t('checklist.leave'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+      accept: leave,
+    }),
+  )
 }
 
 /**
@@ -569,7 +576,7 @@ defineExpose({ commitPending })
 }
 
 .templates-pop {
-  width: 280px;
+  width: 266px; /* 280 px avec la marge intérieure du popover */
 }
 
 .pop-title {
@@ -607,6 +614,7 @@ defineExpose({ commitPending })
   @apply flex w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent text-left;
   padding: 7px 8px;
   font: inherit;
+  font-size: 14px;
   color: var(--p-text-color);
 }
 
@@ -665,7 +673,7 @@ defineExpose({ commitPending })
 </style>
 
 <style>
-/* Popovers de la checklist, ajoutés au body : sans flèche, collés à leur
+/* Popovers de la checklist, ajoutés au body, sans flèche, collés à leur
    bouton, bordure et ombre de la maquette */
 .checklist-pop.p-popover {
   margin-top: 4px;
