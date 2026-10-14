@@ -138,6 +138,8 @@ const countsSchema = {
     stages: { type: 'integer' },
     tags: { type: 'integer' },
     tasks: { type: 'integer' },
+    // Modèles réellement créés, sans ceux du fichier dont le nom était déjà pris
+    checklistTemplates: { type: 'integer' },
     // Textes raccourcis, points en trop, modèles en double, importés quand même une fois corrigés
     warnings: { type: 'array', items: importProblemSchema },
   },
@@ -432,7 +434,7 @@ export default async function dataRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Fichier d'export (cf. GET /data/export)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object>} Nombre de colonnes, tags et tâches importés et anomalies
+   * @returns {Promise<Object>} Nombre de colonnes, tags, tâches et modèles importés et anomalies
    *   corrigées, 400 si le fichier est refusé (détail dans `message`), 500 si l'écriture échoue
    */
   fastify.post(
@@ -590,9 +592,14 @@ export default async function dataRoutes(fastify) {
         Logger.warn(`Import corrigé : ${translate('fr', `importProblems.${warning.code}`, warning.params)}`)
       }
 
-      const counts: DataCounts = { stages: data.stages.length, tags: data.tags.length, tasks: data.tasks.length }
+      const counts: DataCounts = {
+        stages: data.stages.length,
+        tags: data.tags.length,
+        tasks: data.tasks.length,
+        checklistTemplates: templatePlan.templates.length,
+      }
       Logger.info(
-        `Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${templatePlan.templates.length} modèle(s) de checklist`,
+        `Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist`,
       )
       return { ...counts, warnings }
     },

@@ -377,6 +377,7 @@ export const zh: MessageSchema = {
         stages: '{count} 列 | {count} 列 | {count} 列',
         tasks: '{count} 个任务 | {count} 个任务 | {count} 个任务',
         tags: '{count} 个标签 | {count} 个标签 | {count} 个标签',
+        checklistTemplates: '{count} 个清单模板 | {count} 个清单模板 | {count} 个清单模板',
       },
     },
     title: '设置',

@@ -385,6 +385,8 @@ export const es: MessageSchema = {
         stages: '{count} columna | {count} columna | {count} columnas',
         tasks: '{count} tarea | {count} tarea | {count} tareas',
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',
+        checklistTemplates:
+          '{count} plantilla de checklist | {count} plantilla de checklist | {count} plantillas de checklist',
       },
     },
     title: 'Ajustes',
@@ -458,7 +460,8 @@ export const es: MessageSchema = {
     },
   },
   checklist: {
-    progress: '{count} puntos marcados de {total} | {count} punto marcado de {total} | {count} puntos marcados de {total}',
+    progress:
+      '{count} puntos marcados de {total} | {count} punto marcado de {total} | {count} puntos marcados de {total}',
   },
   archives: {
     back: 'Volver a los ajustes',

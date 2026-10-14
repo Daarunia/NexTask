@@ -383,6 +383,7 @@ export const en: MessageSchema = {
         stages: '{count} column | {count} column | {count} columns',
         tasks: '{count} task | {count} task | {count} tasks',
         tags: '{count} tag | {count} tag | {count} tags',
+        checklistTemplates: '{count} checklist template | {count} checklist template | {count} checklist templates',
       },
     },
     title: 'Settings',
@@ -456,7 +457,8 @@ export const en: MessageSchema = {
     },
   },
   checklist: {
-    progress: '{count} items checked out of {total} | {count} item checked out of {total} | {count} items checked out of {total}',
+    progress:
+      '{count} items checked out of {total} | {count} item checked out of {total} | {count} items checked out of {total}',
   },
   archives: {
     back: 'Back to settings',

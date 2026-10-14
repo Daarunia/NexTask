@@ -18,12 +18,13 @@ export async function reloadDataAfterImport(): Promise<void> {
 
 /**
  * Résumé du nombre d'éléments exportés ou importés.
- * @param counts Nombre de colonnes, tâches et tags
+ * @param counts Nombre de colonnes, tâches, tags et modèles de checklist
  */
 export function describeCounts(counts: DataCounts): string {
   return [
     t('settings.data.counts.stages', { count: counts.stages }, counts.stages),
     t('settings.data.counts.tasks', { count: counts.tasks }, counts.tasks),
     t('settings.data.counts.tags', { count: counts.tags }, counts.tags),
+    t('settings.data.counts.checklistTemplates', { count: counts.checklistTemplates }, counts.checklistTemplates),
   ].join(', ')
 }

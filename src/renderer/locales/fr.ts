@@ -388,6 +388,7 @@ export const fr = {
         stages: '{count} colonne | {count} colonne | {count} colonnes',
         tasks: '{count} tâche | {count} tâche | {count} tâches',
         tags: '{count} tag | {count} tag | {count} tags',
+        checklistTemplates: '{count} modèle de checklist | {count} modèle de checklist | {count} modèles de checklist',
       },
     },
     title: 'Paramètres',

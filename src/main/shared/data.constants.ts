@@ -10,11 +10,15 @@ export const EXPORT_FORMAT = 'nextask-export'
 /** Version du format d'export. À incrémenter à chaque changement incompatible du fichier. */
 export const EXPORT_VERSION = 1
 
-/** Nombre d'éléments exportés ou importés (les séries récurrentes suivent leurs tâches). */
+/**
+ * Nombre d'éléments exportés ou importés (les séries récurrentes suivent leurs
+ * tâches, les checklists des tâches aussi).
+ */
 export interface DataCounts {
   stages: number
   tags: number
   tasks: number
+  checklistTemplates: number
 }
 
 /**

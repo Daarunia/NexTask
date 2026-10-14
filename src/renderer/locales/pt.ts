@@ -386,6 +386,7 @@ export const pt: MessageSchema = {
         stages: '{count} coluna | {count} coluna | {count} colunas',
         tasks: '{count} tarefa | {count} tarefa | {count} tarefas',
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',
+        checklistTemplates: '{count} modelo de checklist | {count} modelo de checklist | {count} modelos de checklist',
       },
     },
     title: 'Configurações',
