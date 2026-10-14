@@ -284,8 +284,9 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Création d'une tâche
-     * @param task Tâche à créer (tags par nom)
-     * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus)
+     * @param task Tâche à créer (tags par nom, points de checklist sans id)
+     * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus,
+     *   checklist avec les ids des points créés)
      */
     async saveTask(task: TaskInput): Promise<Task> {
       try {
@@ -305,9 +306,11 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Mise à jour complète d'une tâche
-     * @param task Tâche avec un id existant (tags par nom, absents = inchangés)
+     * @param task Tâche avec un id existant (tags par nom, absents = inchangés,
+     *   de même pour les points de checklist)
      * @returns La tâche mise à jour, telle que renvoyée par le serveur (seule à
-     *   contenir les tags résolus), ou une erreur si la mise à jour échoue
+     *   contenir les tags résolus et les ids des nouveaux points, repris par le
+     *   cache), ou une erreur si la mise à jour échoue
      */
     async updateTask(task: TaskUpdateInput): Promise<Task> {
       const { id, ...payload } = task

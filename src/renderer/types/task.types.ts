@@ -1,6 +1,7 @@
 import { Tag } from './tag.types'
 import type { TaskChecklist } from './checklist.types'
 import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type { ChecklistItemInput } from '../../main/shared/checklist.constants'
 
 /**
  * Entité 'Tâches'
@@ -39,9 +40,14 @@ export interface Task {
  * Répétition : `recurrence` absent laisse la série inchangée, un objet la crée
  * ou modifie sa règle, `null` l'arrête. `applyToSeries` reporte le contenu
  * modifié sur les prochaines occurrences (mise à jour seulement, vrai par défaut).
+ *
+ * Checklist : `checklistItems` absent la laisse inchangée, `[]` la vide, une
+ * liste la remplace dans cet ordre (points sans `id` créés). La tâche renvoyée
+ * porte `checklist` avec les ids des points créés.
  */
-export type TaskInput = Omit<Task, 'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence'> & {
+export type TaskInput = Omit<Task, 'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence' | 'checklist'> & {
   tags?: string[]
+  checklistItems?: ChecklistItemInput[]
   recurrence?: RecurrenceInput | null
   applyToSeries?: boolean
 }
