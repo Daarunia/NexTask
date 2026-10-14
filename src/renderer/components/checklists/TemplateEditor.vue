@@ -18,6 +18,7 @@
       />
       <Button
         icon="pi pi-ellipsis-h"
+        class="tpl-menu-btn"
         data-testid="btn-template-menu"
         :aria-label="t('checklists.actions')"
         :title="t('checklists.actions')"
@@ -415,6 +416,13 @@ defineExpose({ flush, discard, focusName })
 
 .app-dark .tpl-title.invalid {
   border-bottom-color: var(--p-red-400);
+}
+
+/* Bouton ⋯ aussi compact que les icônes de la maquette */
+.tpl-menu-btn {
+  width: 28px !important;
+  height: 28px !important;
+  margin-top: 6px;
 }
 
 .tpl-error {
