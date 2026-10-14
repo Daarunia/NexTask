@@ -589,7 +589,8 @@ export default async function dataRoutes(fastify) {
       }
 
       for (const warning of warnings) {
-        Logger.warn(`Import corrigé : ${translate('fr', `importProblems.${warning.code}`, warning.params)}`)
+        const problem = translate('fr', `importProblems.${warning.code}`, warning.params)
+        Logger.warn(`Import corrigé : ${problem}`)
       }
 
       const counts: DataCounts = {

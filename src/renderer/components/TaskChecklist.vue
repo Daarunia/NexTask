@@ -399,10 +399,12 @@ function applyTemplate(template: ChecklistTemplate) {
  */
 function openChecklistsPage() {
   templatesPop.value?.hide()
-  const leave = () => void router.push({ name: 'Checklists' })
+  const leave = async () => {
+    await router.push({ name: 'Checklists' })
+  }
   const target = fromTemplateButton()
   if (!props.hasPendingChanges() || !target) {
-    leave()
+    void leave()
     return
   }
 

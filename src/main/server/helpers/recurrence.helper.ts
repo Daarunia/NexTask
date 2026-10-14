@@ -753,6 +753,30 @@ export async function onOccurrenceRestored(tx: TransactionClient, task: Task): P
 }
 
 /**
+ * Prochaine date et état à écrire pour une série importée, null s'ils sont
+ * déjà cohérents (cf. normalizeImportedSeries).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param series Série importée
+ * @param now Maintenant
+ */
+async function importedSeriesState(
+  tx: TransactionClient,
+  series: Recurrence,
+  now: Date,
+): Promise<{ nextRunAt?: Date | null; status?: string } | null> {
+  if (series.status === 'ended') return series.nextRunAt ? { nextRunAt: null } : null
+  if (series.anchor === 'completion') {
+    const state = await completionState(tx, series, now)
+    return { nextRunAt: state.nextRunAt, status: series.status === 'paused' ? 'paused' : state.status }
+  }
+  if (series.status === 'active' && !series.nextRunAt) {
+    return scheduleState(series, now, await latestOccurrenceDate(tx, series.id))
+  }
+  return null
+}
+
+/**
  * Remet en cohérence la prochaine date et l'état des séries importées
  * (POST /data/import), quel que soit le fichier : une série terminée n'a plus
  * de prochaine date, une série « après archivage » attend son occurrence au
@@ -767,15 +791,8 @@ export async function normalizeImportedSeries(tx: TransactionClient, now: Date):
   const seriesList = await tx.recurrence.findMany()
 
   for (const series of seriesList) {
-    let data: { nextRunAt?: Date | null; status?: string; checklistItems?: string[] } | null = null
-    if (series.status === 'ended') {
-      if (series.nextRunAt) data = { nextRunAt: null }
-    } else if (series.anchor === 'completion') {
-      const state = await completionState(tx, series, now)
-      data = { nextRunAt: state.nextRunAt, status: series.status === 'paused' ? 'paused' : state.status }
-    } else if (series.status === 'active' && !series.nextRunAt) {
-      data = scheduleState(series, now, await latestOccurrenceDate(tx, series.id))
-    }
+    let data: { nextRunAt?: Date | null; status?: string; checklistItems?: string[] } | null =
+      await importedSeriesState(tx, series, now)
     if (!isChecklistTexts(series.checklistItems)) data = { ...data, checklistItems: seriesChecklistTexts(series) }
 
     if (data) await tx.recurrence.update({ where: { id: series.id }, data })

@@ -43,7 +43,7 @@
             :maxlength="CHECKLIST_ITEM_MAX_LENGTH"
             :aria-label="t('checklists.editor.item', { n: index + 1 })"
             @input="replaceItem(index, { text: ($event.target as HTMLInputElement).value })"
-            @focus="editStart.set(element.key, element.text)"
+            @focus="rememberText(element)"
             @blur="dropIfEmpty(element.key)"
             @keydown="onItemKeydown($event, index)"
           />
@@ -220,6 +220,15 @@ async function focusItem(key: number) {
 }
 
 /**
+ * Retient le texte d'un point quand son champ prend le focus, pour que Échap
+ * puisse le rétablir.
+ * @param item Point dont l'édition commence
+ */
+function rememberText(item: ChecklistEditorItem) {
+  editStart.set(item.key, item.text)
+}
+
+/**
  * Retire un point resté vide quand on quitte son champ. Lu après le rendu,
  * car Échap rétablit le texte juste avant de quitter le champ. Ignoré quand
  * c'est la fenêtre qui perd le focus, la saisie reprendra au retour.
@@ -276,8 +285,9 @@ function onItemKeydown(event: KeyboardEvent, index: number) {
     event.preventDefault()
     event.stopPropagation()
     const before = editStart.get(item.key)
+    const input = event.target as HTMLInputElement
     if (before !== undefined && before !== item.text) replaceItem(index, { text: before })
-    ;(event.target as HTMLInputElement).blur()
+    input.blur()
   }
 }
 

@@ -45,10 +45,11 @@
     <div class="tpl-meta">
       <span data-testid="template-item-count">{{ t('checklists.itemCount', { count: itemCount }, itemCount) }}</span>
       <span aria-hidden="true">·</span>
-      <span data-testid="template-save-status" :data-status="status" :class="['saved', `is-${status}`]" role="status">
+      <!-- <output> porte le rôle status, l'état est annoncé sans déplacer le focus -->
+      <output data-testid="template-save-status" :data-status="status" :class="['saved', `is-${status}`]">
         <i v-if="status === 'saved'" class="pi pi-check" aria-hidden="true"></i>
         {{ statusLabel }}
-      </span>
+      </output>
     </div>
 
     <ChecklistItemsEditor ref="itemsEditor" :modelValue="items" @update:modelValue="onItems" />
@@ -363,12 +364,13 @@ async function focusName() {
   nameInput.value?.select()
 }
 
-onMounted(() => {
+onMounted(async () => {
   globalThis.addEventListener('beforeunload', flushOnUnload)
   document.addEventListener('visibilitychange', onVisibilityChange)
 
   if (props.autofocusName) {
-    void focusName().then(() => emit('focused'))
+    await focusName()
+    emit('focused')
   }
 })
 
