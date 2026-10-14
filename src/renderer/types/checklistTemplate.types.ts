@@ -1,14 +1,4 @@
-/**
- * Point d'un modèle de checklist, tel que renvoyé par les routes
- * `/checklist-templates`. Toujours décoché dans un modèle.
- */
-export interface ChecklistTemplateItem {
-  id: number
-  text: string
-  position: number
-  isChecked: boolean
-  checkedAt: string | null
-}
+import type { ChecklistItem } from './checklist.types'
 
 /**
  * Entité 'Modèle de checklist' (une `Checklist` sans tâche). Ses points sont
@@ -18,7 +8,7 @@ export interface ChecklistTemplate {
   id: number
   name: string
   position: number // ordre dans la page Checklists et dans le menu du dialogue de tâche
-  items: ChecklistTemplateItem[] // dans l'ordre
+  items: ChecklistItem[] // dans l'ordre, jamais cochés dans un modèle
 }
 
 /** Modification envoyée par `PATCH /checklist-templates/:id`, au moins un champ. */
