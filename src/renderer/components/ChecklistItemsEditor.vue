@@ -26,6 +26,7 @@
             v-if="checkable"
             :modelValue="element.isChecked"
             binary
+            class="item-check"
             data-testid="checklist-item-check"
             :aria-label="t('checklists.editor.checkItem', { text: element.text })"
             @update:modelValue="(checked: boolean) => replaceItem(index, { isChecked: checked })"
@@ -335,6 +336,14 @@ defineExpose({ commitPending, focusNew })
 .item:hover .item-grip,
 .item:focus-within .item-grip {
   opacity: 0.8;
+}
+
+/* Case à cocher compacte, 18 px comme sur la maquette */
+.item-check {
+  --p-checkbox-width: 18px;
+  --p-checkbox-height: 18px;
+  --p-checkbox-icon-size: 12px;
+  flex: none;
 }
 
 /* Texte du point, champ sans cadre qui se lit comme du texte */

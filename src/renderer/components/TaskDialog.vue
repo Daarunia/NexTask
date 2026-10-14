@@ -70,6 +70,16 @@
         />
       </FormField>
 
+      <!-- Checklist : valeur du formulaire = ChecklistEditorItem[], envoyée au serveur à l'enregistrement -->
+      <FormField v-slot="$field" name="checklistItems">
+        <TaskChecklist
+          ref="checklistRef"
+          :modelValue="$field.value ?? []"
+          :error="$field.invalid ? $field.error?.message : undefined"
+          @update:modelValue="(value: ChecklistEditorItem[]) => $field.props.onChange({ value })"
+        />
+      </FormField>
+
       <!-- Réglages secondaires, sur deux colonnes -->
       <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
         <!-- Tags : valeur du formulaire = TagSelection[] -->
@@ -204,6 +214,8 @@ import Message from 'primevue/message'
 import Checkbox from 'primevue/checkbox'
 import TagSelect from './TagSelect.vue'
 import RecurrenceFields from './RecurrenceFields.vue'
+import TaskChecklist from './TaskChecklist.vue'
+import { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
 import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
 import { TagSelection } from '../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
@@ -216,6 +228,7 @@ import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
+import { toChecklistInput } from '../utils/checklist.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
@@ -333,6 +346,9 @@ function onArchive() {
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
 const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
 
+// Checklist, pour ajouter le point en cours de saisie avant un enregistrement au clavier
+const checklistRef = ref<InstanceType<typeof TaskChecklist> | null>(null)
+
 // Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Enregistrer)
 const formRef = ref<{ submit: () => void } | null>(null)
 
@@ -358,6 +374,7 @@ watch(
           version: props.editTask.version,
           startDate,
           tags: toTagSelection(props.editTask),
+          checklistItems: toChecklistItems(props.editTask),
           recurrence: toRecurrenceValue(series.value, startDate),
           applyToSeries: true,
         }
@@ -387,6 +404,7 @@ function defaultValues(): TaskFormValues {
     version: settings.defaultTaskVersion,
     startDate: null,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
+    checklistItems: [],
     recurrence: defaultRecurrenceValue(),
     applyToSeries: true,
   }
@@ -442,6 +460,17 @@ function toTagSelection(task: Task): TagSelection[] {
 }
 
 /**
+ * Points de la checklist d'une tâche existante en valeur de formulaire, dans
+ * leur ordre, avec une nouvelle clé de rendu à chaque ouverture
+ * @param task Tâche éditée
+ */
+function toChecklistItems(task: Task): ChecklistEditorItem[] {
+  return (task.checklist?.items ?? []).map((item) =>
+    newChecklistEditorItem(item.text, { id: item.id, isChecked: item.isChecked }),
+  )
+}
+
+/**
  * Noms des tags à envoyer au serveur. Un tag existant est converti en son nom
  * actuel (il a pu être renommé depuis le menu d'édition, renvoyer l'ancien nom
  * recréerait un tag) et un tag supprimé entre-temps est ignoré. Un tag sans id,
@@ -470,7 +499,11 @@ function onSaveShortcut(event: KeyboardEvent) {
   // Ni enregistrement de la page par le navigateur, ni nouvelle ligne dans l'éditeur
   event.preventDefault()
   event.stopPropagation()
-  if (!event.repeat) formRef.value?.submit()
+  if (event.repeat) return
+
+  // Le champ « Ajouter un point » garde le focus, son texte n'est pas encore dans la liste
+  checklistRef.value?.commitPending()
+  formRef.value?.submit()
 }
 
 // Soumission, sachant que <Form> émet submit même si la validation échoue
@@ -519,6 +552,7 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: undefined,
         startDate: values.startDate,
         tags: tagNames,
+        checklistItems: toChecklistInput(values.checklistItems),
         ...(recurrenceInput && { recurrence: recurrenceInput }),
       }
 
@@ -537,6 +571,8 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
         tags: tagNames,
+        // Toujours envoyée : seule une liste de textes modifiée part dans la série (applyToSeries)
+        checklistItems: toChecklistInput(values.checklistItems),
         recurrence: recurrenceChange(recurrenceInput),
         applyToSeries: values.applyToSeries,
       }

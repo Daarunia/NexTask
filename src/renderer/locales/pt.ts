@@ -155,6 +155,8 @@ export const pt: MessageSchema = {
       endDateBeforeStart: 'A data de término deve ser posterior à data de início',
       countRange: 'O número de ocorrências deve estar entre 1 e {max}',
       leadDaysRange: 'O número de dias deve estar entre 1 e {max}',
+      checklistTooLong: '{max} itens no máximo',
+      checklistItemTooLong: 'Um item tem no máximo {max} caracteres',
     },
   },
   tags: {
@@ -502,6 +504,8 @@ export const pt: MessageSchema = {
   },
   checklist: {
     progress: '{count} itens marcados de {total} | {count} item marcado de {total} | {count} itens marcados de {total}',
+    title: 'Checklist',
+    progressBar: 'Progresso da checklist',
   },
   archives: {
     back: 'Voltar às configurações',

@@ -155,6 +155,8 @@ export const es: MessageSchema = {
       endDateBeforeStart: 'La fecha de fin debe ser posterior a la fecha de inicio',
       countRange: 'El número de repeticiones debe estar entre 1 y {max}',
       leadDaysRange: 'El número de días debe estar entre 1 y {max}',
+      checklistTooLong: '{max} puntos como máximo',
+      checklistItemTooLong: 'Un punto tiene {max} caracteres como máximo',
     },
   },
   tags: {
@@ -504,6 +506,8 @@ export const es: MessageSchema = {
   checklist: {
     progress:
       '{count} puntos marcados de {total} | {count} punto marcado de {total} | {count} puntos marcados de {total}',
+    title: 'Checklist',
+    progressBar: 'Progreso de la checklist',
   },
   archives: {
     back: 'Volver a los ajustes',

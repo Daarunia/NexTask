@@ -155,6 +155,8 @@ export const zh: MessageSchema = {
       endDateBeforeStart: '结束日期必须晚于开始日期',
       countRange: '重复次数必须在 1 到 {max} 之间',
       leadDaysRange: '天数必须在 1 到 {max} 之间',
+      checklistTooLong: '最多 {max} 项',
+      checklistItemTooLong: '每项最多 {max} 个字符',
     },
   },
   tags: {
@@ -492,6 +494,8 @@ export const zh: MessageSchema = {
   },
   checklist: {
     progress: '已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项 | 已勾选 {count}/{total} 项',
+    title: '清单',
+    progressBar: '清单进度',
   },
   archives: {
     back: '返回设置',

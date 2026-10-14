@@ -155,6 +155,8 @@ export const en: MessageSchema = {
       endDateBeforeStart: 'The end date must come after the start date',
       countRange: 'The number of occurrences must be between 1 and {max}',
       leadDaysRange: 'The number of days must be between 1 and {max}',
+      checklistTooLong: '{max} items maximum',
+      checklistItemTooLong: 'An item is {max} characters maximum',
     },
   },
   tags: {
@@ -501,6 +503,8 @@ export const en: MessageSchema = {
   checklist: {
     progress:
       '{count} items checked out of {total} | {count} item checked out of {total} | {count} items checked out of {total}',
+    title: 'Checklist',
+    progressBar: 'Checklist progress',
   },
   archives: {
     back: 'Back to settings',

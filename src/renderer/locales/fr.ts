@@ -160,6 +160,8 @@ export const fr = {
       endDateBeforeStart: 'La date de fin doit suivre la date de début',
       countRange: "Le nombre d'occurrences doit être compris entre 1 et {max}",
       leadDaysRange: 'Le nombre de jours doit être compris entre 1 et {max}',
+      checklistTooLong: '{max} points maximum',
+      checklistItemTooLong: 'Un point fait {max} caractères maximum',
     },
   },
   tags: {
@@ -508,6 +510,9 @@ export const fr = {
   },
   checklist: {
     progress: '{count} point coché sur {total} | {count} point coché sur {total} | {count} points cochés sur {total}',
+    // Section Checklist du dialogue de tâche
+    title: 'Checklist',
+    progressBar: 'Avancement de la checklist',
   },
   archives: {
     back: 'Retour aux paramètres',
