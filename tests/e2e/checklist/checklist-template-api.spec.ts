@@ -16,7 +16,8 @@ import {
  * checklists des tâches ignorées par toutes ces routes.
  *
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique
- * `cleanState`), modèles compris. Chaque test part donc d'une liste vide.
+ * `cleanState`), modèles compris. Chaque test part donc d'une liste vide. Seuls
+ * les tests des modèles par défaut rejouent le reset en conservant les modèles seedés.
  */
 
 // API pure : pas de rechargement de la page après le reset
@@ -361,4 +362,40 @@ test('DELETE /checklist-templates/:id supprime le modèle et ses points', async 
 
   // Le nom est de nouveau libre
   await createTemplate(request, 'préparer une release')
+})
+
+test.describe('Modèles par défaut', () => {
+  // Le reset standard retire les modèles seedés, on les réclame explicitement
+  test.beforeEach(async ({ page }) => {
+    const res = await page.request.post(`${API}/test/reset?seedTemplates=true`)
+    expect(res.ok()).toBeTruthy()
+  })
+
+  test('la base démarre avec les 2 modèles seedés et leurs points décochés', async ({ page }) => {
+    const templates = await getTemplates(page.request)
+
+    expect(templates.map((t) => [t.name, t.position, t.items.length])).toEqual([
+      ['Préparer une release', 0, 5],
+      ['Revue de code', 1, 4],
+    ])
+    expect(texts(templates[1])).toEqual([
+      'Relire la description de la demande',
+      'Vérifier que les tests couvrent le changement',
+      'Contrôler la gestion des erreurs',
+      'Relever les noms peu clairs',
+    ])
+    for (const template of templates) {
+      expect(template.items.map((item) => item.position)).toEqual(template.items.map((_, rank) => rank))
+      expect(template.items.every((item) => !item.isChecked && item.checkedAt === null)).toBeTruthy()
+    }
+  })
+
+  test('la clé des noms seedés suit la normalisation du serveur', async ({ page }) => {
+    // Une clé mal écrite dans la seed laisserait passer ces doublons
+    for (const name of ['PRÉPARER UNE RELEASE', 'revue de code']) {
+      const res = await postTemplate(page.request, { name })
+      expect(res.status()).toBe(409)
+      expect(await res.json()).toEqual({ error: NAME_TAKEN })
+    }
+  })
 })

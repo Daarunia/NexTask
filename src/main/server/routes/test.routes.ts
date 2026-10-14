@@ -22,7 +22,8 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags et les colonnes puis rejoue les seeds (sans les tags par défaut),
+ * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags et les colonnes puis rejoue les seeds
+ *                                    (sans les tags ni les modèles de checklist par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide
  *                                    et remet la mise à jour à son état de départ
@@ -51,12 +52,13 @@ export default async function testRoutes(fastify) {
    * de toutes les colonnes, et réapplication des seeds initiaux
    * (source unique de vérité : les fichiers .sql du dossier seeds).
    *
-   * Les tags par défaut sont retirés ensuite, les tests partant d'une liste de
-   * tags vide, sauf si `seedTags` est demandé.
+   * Les tags et les modèles de checklist par défaut sont retirés ensuite, les
+   * tests partant de listes vides, sauf si `seedTags` ou `seedTemplates` est demandé.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.query - Paramètres de requête
    * @param {boolean} [req.query.seedTags] - Conserve les tags par défaut (défaut : false)
+   * @param {boolean} [req.query.seedTemplates] - Conserve les modèles de checklist par défaut (défaut : false)
    * @returns {Promise<{message: string}>} Confirmation du reset
    */
   fastify.post(
@@ -68,7 +70,10 @@ export default async function testRoutes(fastify) {
         // En query plutôt qu'en corps : le reset est le plus souvent appelé sans corps
         querystring: {
           type: 'object',
-          properties: { seedTags: { type: 'boolean' } },
+          properties: {
+            seedTags: { type: 'boolean' },
+            seedTemplates: { type: 'boolean' },
+          },
         },
         response: {
           200: {
@@ -79,7 +84,7 @@ export default async function testRoutes(fastify) {
       },
     },
     async (req) => {
-      const { seedTags } = req.query as { seedTags?: boolean }
+      const { seedTags, seedTemplates } = req.query as { seedTags?: boolean; seedTemplates?: boolean }
 
       // Ordre important, car les checklists référencent les tâches, les tâches
       // les séries et les colonnes, les séries les colonnes (clés étrangères).
@@ -112,6 +117,9 @@ export default async function testRoutes(fastify) {
 
       // Les tests partent d'une liste de tags vide, sauf demande explicite
       if (!seedTags) await prisma.tag.deleteMany()
+      // De même pour les modèles de checklist, leurs points suivant en cascade.
+      // Aucune checklist de tâche n'existe encore à ce stade
+      if (!seedTemplates) await prisma.checklist.deleteMany({ where: { taskId: null } })
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
