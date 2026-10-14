@@ -7,6 +7,7 @@ import { TagFilter } from '../components/TagFilter'
 import { SettingsPage } from '../components/SettingsPage'
 import { ArchivesPage } from '../components/ArchivesPage'
 import { ChecklistsPage } from '../components/ChecklistsPage'
+import { TaskChecklist } from '../components/TaskChecklist'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
 import { electronArgs } from '../../scripts/server-utils.js'
@@ -26,6 +27,7 @@ type Fixtures = {
   settingsPage: SettingsPage
   archivesPage: ArchivesPage
   checklistsPage: ChecklistsPage
+  taskChecklist: TaskChecklist
   undoToast: UndoToast
   recurrenceFields: RecurrenceFields
 }
@@ -105,6 +107,10 @@ export const test = base.extend<Fixtures>({
 
   checklistsPage: async ({ page }, use) => {
     await use(new ChecklistsPage(page))
+  },
+
+  taskChecklist: async ({ page }, use) => {
+    await use(new TaskChecklist(page))
   },
 
   undoToast: async ({ page }, use) => {
