@@ -10,7 +10,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/board-dark.png">
-    <img alt="NexTask Kanban board with tasks, colored tags and recurring tasks" src="docs/screenshots/board-light.png">
+    <img alt="NexTask Kanban board with tasks, colored tags, checklist progress and recurring tasks" src="docs/screenshots/board-light.png">
   </picture>
 </p>
 
@@ -22,7 +22,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 
 ## Features
 
-<img align="right" width="300" alt="Task editor with a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
+<img align="right" width="300" alt="Task editor with a checklist and a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
 
 - **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns.
 - **Checklists** to split a task into steps, with progress shown on its card, and reusable templates managed from their own page.
