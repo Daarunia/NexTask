@@ -416,7 +416,8 @@ export const es: MessageSchema = {
       exportedDetail: '{counts} en {path}',
       exportFailed: 'Exportación imposible',
       exportFailedDetail: 'El archivo no se ha escrito.',
-      importConfirm: 'Todas las columnas, tareas y etiquetas actuales se sustituirán por las del archivo. ¿Continuar?',
+      importConfirm:
+        'Todas las columnas, tareas, etiquetas y plantillas de checklist actuales se sustituirán por las del archivo. ¿Continuar?',
       chooseFile: 'Elegir el archivo',
       importRejected: 'Importación rechazada',
       importRejectedDetail: '{reason}. No se ha modificado ningún dato.',
@@ -524,7 +525,8 @@ export const es: MessageSchema = {
     hiddenNote: '{count} puntos marcados ocultos | {count} punto marcado oculto | {count} puntos marcados ocultos',
     show: 'Mostrar',
     saveAsTemplate: 'Guardar como plantilla',
-    saveHint: '{count} puntos, guardados sin su estado marcado. | {count} punto, guardado sin su estado marcado. | {count} puntos, guardados sin su estado marcado.',
+    saveHint:
+      '{count} puntos, guardados sin su estado marcado. | {count} punto, guardado sin su estado marcado. | {count} puntos, guardados sin su estado marcado.',
     createTemplateConfirm: 'Crear la plantilla',
     templateCreated: 'Plantilla creada',
     templateCreatedDetail: '«{name}» está en la página Checklists.',

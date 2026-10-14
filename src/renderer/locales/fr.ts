@@ -422,7 +422,8 @@ export const fr = {
       exportedDetail: '{counts} dans {path}',
       exportFailed: 'Export impossible',
       exportFailedDetail: "Le fichier n'a pas été écrit.",
-      importConfirm: 'Toutes les colonnes, tâches et tags actuels seront remplacés par ceux du fichier. Continuer ?',
+      importConfirm:
+        'Toutes les colonnes, tâches, tags et modèles de checklist actuels seront remplacés par ceux du fichier. Continuer ?',
       chooseFile: 'Choisir le fichier',
       importRejected: 'Import refusé',
       importRejectedDetail: "{reason}. Aucune donnée n'a été modifiée.",
@@ -529,7 +530,8 @@ export const fr = {
     hiddenNote: '{count} point coché masqué | {count} point coché masqué | {count} points cochés masqués',
     show: 'Afficher',
     saveAsTemplate: 'Enregistrer comme modèle',
-    saveHint: '{count} point, enregistré sans son état coché. | {count} point, enregistré sans son état coché. | {count} points, enregistrés sans leur état coché.',
+    saveHint:
+      '{count} point, enregistré sans son état coché. | {count} point, enregistré sans son état coché. | {count} points, enregistrés sans leur état coché.',
     createTemplateConfirm: 'Créer le modèle',
     templateCreated: 'Modèle créé',
     templateCreatedDetail: '« {name} » est dans la page Checklists.',

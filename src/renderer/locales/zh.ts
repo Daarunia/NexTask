@@ -408,7 +408,7 @@ export const zh: MessageSchema = {
       exportedDetail: '{counts}，位于 {path}',
       exportFailed: '无法导出',
       exportFailedDetail: '文件未写入。',
-      importConfirm: '当前所有的列、任务和标签都将被文件中的内容替换。继续？',
+      importConfirm: '当前所有的列、任务、标签和清单模板都将被文件中的内容替换。继续？',
       chooseFile: '选择文件',
       importRejected: '导入被拒绝',
       importRejectedDetail: '{reason}。没有数据被更改。',
@@ -512,7 +512,8 @@ export const zh: MessageSchema = {
     hiddenNote: '已隐藏 {count} 个已勾选事项 | 已隐藏 {count} 个已勾选事项 | 已隐藏 {count} 个已勾选事项',
     show: '显示',
     saveAsTemplate: '保存为模板',
-    saveHint: '{count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。',
+    saveHint:
+      '{count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。',
     createTemplateConfirm: '创建模板',
     templateCreated: '模板已创建',
     templateCreatedDetail: '“{name}”已在清单页面中。',

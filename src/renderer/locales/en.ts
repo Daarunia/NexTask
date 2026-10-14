@@ -414,7 +414,8 @@ export const en: MessageSchema = {
       exportedDetail: '{counts} in {path}',
       exportFailed: 'Export failed',
       exportFailedDetail: 'The file was not written.',
-      importConfirm: 'All current columns, tasks and tags will be replaced by those of the file. Continue?',
+      importConfirm:
+        'All current columns, tasks, tags and checklist templates will be replaced by those of the file. Continue?',
       chooseFile: 'Choose the file',
       importRejected: 'Import rejected',
       importRejectedDetail: '{reason}. No data was changed.',
@@ -521,7 +522,8 @@ export const en: MessageSchema = {
     hiddenNote: '{count} checked items hidden | {count} checked item hidden | {count} checked items hidden',
     show: 'Show',
     saveAsTemplate: 'Save as template',
-    saveHint: '{count} items, saved without their checked state. | {count} item, saved without its checked state. | {count} items, saved without their checked state.',
+    saveHint:
+      '{count} items, saved without their checked state. | {count} item, saved without its checked state. | {count} items, saved without their checked state.',
     createTemplateConfirm: 'Create the template',
     templateCreated: 'Template created',
     templateCreatedDetail: '“{name}” is on the Checklists page.',
