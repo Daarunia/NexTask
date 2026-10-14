@@ -25,10 +25,11 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 <img align="right" width="300" alt="Task editor with a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
 
 - **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns.
+- **Checklists** to split a task into steps, with progress shown on its card, and reusable templates managed from their own page.
 - **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden.
 - **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
 - **Reminders** through native desktop notifications based on each task's start date.
-- **Global search** from the header (`Ctrl+F`): filter the board by text (title and description) and by tags, or jump straight to a task.
+- **Global search** from the header (`Ctrl+F`): filter the board by text (title, description and checklist items) and by tags, or jump straight to a task.
 - **Tags** with a color palette to categorize and filter tasks.
 - **Task versions** to group tasks by release or milestone.
 - **Archives** for completed tasks, with optional automatic purge after 30, 90 or 365 days.
