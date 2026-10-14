@@ -22,9 +22,19 @@ async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promi
 }
 
 test.describe('Rail de navigation', () => {
-  test('chaque entrée mène à sa page et devient active', async ({ page, header, settingsPage, archivesPage }) => {
+  test('chaque entrée mène à sa page et devient active', async ({
+    page,
+    header,
+    settingsPage,
+    archivesPage,
+    checklistsPage,
+  }) => {
     // Tableau par défaut au lancement
     await header.expectActiveEntry(header.homeButton)
+
+    await header.goChecklists()
+    await checklistsPage.expectVisible()
+    await header.expectActiveEntry(header.checklistsButton)
 
     await header.goArchives()
     await archivesPage.expectVisible()
@@ -56,6 +66,7 @@ test.describe('Rail de navigation', () => {
   test('affiche des libellés et des infobulles traduits', async ({ page, header }) => {
     await expect(header.rail).toHaveAttribute('aria-label', 'Navigation')
     await expect(header.homeButton).toHaveAttribute('aria-label', 'Tableau')
+    await expect(header.checklistsButton).toHaveAttribute('aria-label', 'Checklists')
     await expect(header.archivesButton).toHaveAttribute('aria-label', 'Archives')
     await expect(header.settingsButton).toHaveAttribute('aria-label', 'Paramètres')
 
@@ -63,12 +74,13 @@ test.describe('Rail de navigation', () => {
     await expect(page.getByRole('tooltip')).toHaveText('Archives')
   })
 
-  test('garde le tableau, les archives puis les paramètres en bas', async ({ header }) => {
+  test('garde le tableau, les checklists, les archives puis les paramètres en bas', async ({ header }) => {
     const links = header.rail.getByRole('link')
-    await expect(links).toHaveCount(3)
+    await expect(links).toHaveCount(4)
     await expect(links.nth(0)).toHaveAttribute('data-testid', 'btn-home')
-    await expect(links.nth(1)).toHaveAttribute('data-testid', 'btn-archives')
-    await expect(links.nth(2)).toHaveAttribute('data-testid', 'btn-settings')
+    await expect(links.nth(1)).toHaveAttribute('data-testid', 'btn-checklists')
+    await expect(links.nth(2)).toHaveAttribute('data-testid', 'btn-archives')
+    await expect(links.nth(3)).toHaveAttribute('data-testid', 'btn-settings')
 
     // Paramètres poussés au bas du rail
     const rail = await header.rail.boundingBox()

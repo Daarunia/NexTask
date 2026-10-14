@@ -11,6 +11,7 @@ export class Header {
   readonly themeButton: Locator
   readonly rail: Locator
   readonly homeButton: Locator
+  readonly checklistsButton: Locator
   readonly archivesButton: Locator
   readonly settingsButton: Locator
   readonly paletteButton: Locator
@@ -29,9 +30,10 @@ export class Header {
     // Bouton dark / light
     this.themeButton = page.getByTestId('btn-theme')
 
-    // Rail de navigation (tableau, archives, paramètres)
+    // Rail de navigation (tableau, checklists, archives, paramètres)
     this.rail = page.getByTestId('app-rail')
     this.homeButton = this.rail.getByTestId('btn-home')
+    this.checklistsButton = this.rail.getByTestId('btn-checklists')
     this.archivesButton = this.rail.getByTestId('btn-archives')
     this.settingsButton = this.rail.getByTestId('btn-settings')
 
@@ -80,6 +82,10 @@ export class Header {
 
   async goSettings() {
     await this.settingsButton.click()
+  }
+
+  async goChecklists() {
+    await this.checklistsButton.click()
   }
 
   async goArchives() {
