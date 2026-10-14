@@ -511,6 +511,12 @@ export const zh: MessageSchema = {
     clear: '清空清单',
     hiddenNote: '已隐藏 {count} 个已勾选事项 | 已隐藏 {count} 个已勾选事项 | 已隐藏 {count} 个已勾选事项',
     show: '显示',
+    saveAsTemplate: '保存为模板',
+    saveHint: '{count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。 | {count} 个事项，保存时不含勾选状态。',
+    createTemplateConfirm: '创建模板',
+    templateCreated: '模板已创建',
+    templateCreatedDetail: '“{name}”已在清单页面中。',
+    open: '打开',
   },
   archives: {
     back: '返回设置',

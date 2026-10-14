@@ -77,6 +77,7 @@
           :modelValue="$field.value ?? []"
           :error="$field.invalid ? $field.error?.message : undefined"
           :hasPendingChanges="hasPendingChanges"
+          :taskTitle="$form.title?.value ?? ''"
           @update:modelValue="(value: ChecklistEditorItem[]) => $field.props.onChange({ value })"
         />
       </FormField>

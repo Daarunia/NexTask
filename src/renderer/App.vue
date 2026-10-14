@@ -7,6 +7,7 @@ import Header from './components/Header.vue'
 import AppRail from './components/AppRail.vue'
 import UndoToast from './components/UndoToast.vue'
 import UpdateToast from './components/UpdateToast.vue'
+import ActionToast from './components/ActionToast.vue'
 import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useTagStore } from './stores/Tag'
@@ -92,6 +93,9 @@ onBeforeUnmount(() => {
 
     <!-- Annulation d'une action qui vient d'être faite (cf. useUndoToast) -->
     <UndoToast />
+
+    <!-- Confirmation qui propose une suite, ex. ouvrir un modèle créé (cf. useActionToast) -->
+    <ActionToast />
 
     <!-- Nouvelle version téléchargée, redémarrage proposé (cf. stores/Update) -->
     <UpdateToast />

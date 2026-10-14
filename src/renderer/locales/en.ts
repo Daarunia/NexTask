@@ -520,6 +520,12 @@ export const en: MessageSchema = {
     clear: 'Clear the checklist',
     hiddenNote: '{count} checked items hidden | {count} checked item hidden | {count} checked items hidden',
     show: 'Show',
+    saveAsTemplate: 'Save as template',
+    saveHint: '{count} items, saved without their checked state. | {count} item, saved without its checked state. | {count} items, saved without their checked state.',
+    createTemplateConfirm: 'Create the template',
+    templateCreated: 'Template created',
+    templateCreatedDetail: '“{name}” is on the Checklists page.',
+    open: 'Open',
   },
   archives: {
     back: 'Back to settings',

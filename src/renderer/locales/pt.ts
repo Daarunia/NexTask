@@ -521,6 +521,12 @@ export const pt: MessageSchema = {
     clear: 'Esvaziar a checklist',
     hiddenNote: '{count} itens marcados ocultos | {count} item marcado oculto | {count} itens marcados ocultos',
     show: 'Mostrar',
+    saveAsTemplate: 'Salvar como modelo',
+    saveHint: '{count} itens, salvos sem o estado marcado. | {count} item, salvo sem o estado marcado. | {count} itens, salvos sem o estado marcado.',
+    createTemplateConfirm: 'Criar o modelo',
+    templateCreated: 'Modelo criado',
+    templateCreatedDetail: '“{name}” está na página Checklists.',
+    open: 'Abrir',
   },
   archives: {
     back: 'Voltar às configurações',

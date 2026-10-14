@@ -78,6 +78,14 @@
       {{ error }}
     </Message>
 
+    <!-- Nouveau modèle créé tout de suite avec les textes des points (parcours P6) -->
+    <SaveAsTemplateDialog
+      v-model:visible="saveOpen"
+      :items="modelValue"
+      :taskTitle="taskTitle"
+      :hasPendingChanges="hasPendingChanges"
+    />
+
     <!-- Actions de la checklist (parcours P3). Échap referme le menu sans fermer le dialogue. -->
     <Menu
       ref="menu"
@@ -154,9 +162,16 @@ import type { MenuItem } from 'primevue/menuitem'
 import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
+import SaveAsTemplateDialog from './SaveAsTemplateDialog.vue'
 import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
-import { appendTemplateItems, checklistProgress, progressLabel, progressPercent } from '../utils/checklist.helper'
+import {
+  appendTemplateItems,
+  checklistProgress,
+  progressLabel,
+  progressPercent,
+  toTemplateItems,
+} from '../utils/checklist.helper'
 import { normalizeSearchText } from '../utils/search.helper'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
@@ -171,7 +186,9 @@ import { useErrorToast } from '../utils/toast.helper'
  * proposés, une recherche apparaît au-delà de `SEARCH_THRESHOLD` modèles.
  *
  * Le menu ⋯ coche ou décoche tout, masque les points cochés (réglage de
- * l'affichage seulement, oublié à la fermeture du dialogue) et vide la liste.
+ * l'affichage seulement, oublié à la fermeture du dialogue), enregistre la
+ * liste comme nouveau modèle (P6, seule action écrite sans attendre la tâche)
+ * et vide la liste.
  */
 
 /** Nombre de modèles au-delà duquel le popover propose une recherche. */
@@ -180,6 +197,7 @@ const SEARCH_THRESHOLD = 8
 const props = defineProps<{
   modelValue: ChecklistEditorItem[]
   error?: string // erreur de validation du champ
+  taskTitle: string // titre saisi, nom proposé pour « Enregistrer comme modèle »
   // Vrai si le dialogue de tâche a des modifications non enregistrées, que
   // quitter le tableau ferait perdre
   hasPendingChanges: () => boolean
@@ -209,6 +227,7 @@ const search = ref('')
 const menu = ref<InstanceType<typeof Menu> | null>(null)
 const menuAnchor = ref<HTMLElement | null>(null)
 const hideChecked = ref(false)
+const saveOpen = ref(false)
 
 // Modèles proposés, dans l'ordre de la page Checklists, sans ceux qui n'ont aucun point
 const usableTemplates = computed(() => templateStore.getAllTemplates.filter((template) => template.items.length))
@@ -249,6 +268,12 @@ const menuItems = computed<MenuItem[]>(() => {
       command: () => (hideChecked.value = !hideChecked.value),
     },
     { separator: true },
+    {
+      label: t('checklist.saveAsTemplate'),
+      icon: 'pi pi-file-plus',
+      disabled: !toTemplateItems(props.modelValue).length,
+      command: () => (saveOpen.value = true),
+    },
     {
       label: t('checklist.clear'),
       icon: 'pi pi-eraser',

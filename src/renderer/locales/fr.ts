@@ -528,6 +528,12 @@ export const fr = {
     clear: 'Vider la checklist',
     hiddenNote: '{count} point coché masqué | {count} point coché masqué | {count} points cochés masqués',
     show: 'Afficher',
+    saveAsTemplate: 'Enregistrer comme modèle',
+    saveHint: '{count} point, enregistré sans son état coché. | {count} point, enregistré sans son état coché. | {count} points, enregistrés sans leur état coché.',
+    createTemplateConfirm: 'Créer le modèle',
+    templateCreated: 'Modèle créé',
+    templateCreatedDetail: '« {name} » est dans la page Checklists.',
+    open: 'Ouvrir',
   },
   archives: {
     back: 'Retour aux paramètres',

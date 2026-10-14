@@ -523,6 +523,12 @@ export const es: MessageSchema = {
     clear: 'Vaciar la checklist',
     hiddenNote: '{count} puntos marcados ocultos | {count} punto marcado oculto | {count} puntos marcados ocultos',
     show: 'Mostrar',
+    saveAsTemplate: 'Guardar como plantilla',
+    saveHint: '{count} puntos, guardados sin su estado marcado. | {count} punto, guardado sin su estado marcado. | {count} puntos, guardados sin su estado marcado.',
+    createTemplateConfirm: 'Crear la plantilla',
+    templateCreated: 'Plantilla creada',
+    templateCreatedDetail: '«{name}» está en la página Checklists.',
+    open: 'Abrir',
   },
   archives: {
     back: 'Volver a los ajustes',
