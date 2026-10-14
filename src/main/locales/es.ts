@@ -46,5 +46,13 @@ export const es: MainMessages = {
     taskUnknownTag: 'La tarea {id} hace referencia a una etiqueta que no está en el archivo ({ref})',
     taskUnknownRecurrence: 'La tarea {id} hace referencia a una serie que no está en el archivo ({ref})',
     duplicateOccurrence: 'Varias tareas de la serie {id} están previstas en la misma fecha',
+    taskChecklistClamped:
+      'Checklist de la tarea {id} reducida a {maxItems} elementos de {maxLength} caracteres como máximo',
+    recurrenceChecklistClamped:
+      'Checklist de la serie {id} reducida a {maxItems} elementos de {maxLength} caracteres como máximo',
+    templateChecklistClamped:
+      'Plantilla «{name}» reducida a {maxItems} elementos de {maxLength} caracteres como máximo',
+    templateNameTruncated: 'Nombre de plantilla acortado a {maxLength} caracteres («{name}»)',
+    duplicateTemplateName: 'Varias plantillas se llaman «{name}», solo se importa la primera',
   },
 }

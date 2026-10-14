@@ -7,6 +7,13 @@ import { translate } from '../../i18n.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
 import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
+import {
+  type ExportedChecklistItem,
+  type ExportedChecklistTemplate,
+  importedSeriesChecklist,
+  importedTaskChecklist,
+  planTemplateImport,
+} from '../helpers/dataImport.helper.js'
 
 // Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
 const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
@@ -115,13 +122,24 @@ const exportSchema = {
   required: ['format', 'version', 'stages', 'tags', 'tasks'],
 }
 
-/** Nombre d'éléments importés. */
+/** Motif de refus ou anomalie d'un import (cf. ImportProblem). */
+const importProblemSchema = {
+  type: 'object',
+  properties: {
+    code: { type: 'string' },
+    params: { type: 'object', additionalProperties: { type: ['string', 'number'] } },
+  },
+}
+
+/** Nombre d'éléments importés, et anomalies corrigées en chemin. */
 const countsSchema = {
   type: 'object',
   properties: {
     stages: { type: 'integer' },
     tags: { type: 'integer' },
     tasks: { type: 'integer' },
+    // Textes raccourcis, points en trop, modèles en double, importés quand même une fois corrigés
+    warnings: { type: 'array', items: importProblemSchema },
   },
 }
 
@@ -137,13 +155,7 @@ const importErrorSchema = {
     code: { type: 'string' },
     error: { type: 'string' },
     message: { type: 'string' },
-    problem: {
-      type: 'object',
-      properties: {
-        code: { type: 'string' },
-        params: { type: 'object', additionalProperties: { type: ['string', 'number'] } },
-      },
-    },
+    problem: importProblemSchema,
   },
 }
 
@@ -169,6 +181,7 @@ interface DataImportBody {
     tagIds: number[]
     recurrenceId?: number | null
     occurrenceDate?: string | null
+    checklistItems?: ExportedChecklistItem[]
   }[]
   recurrences?: {
     id: number
@@ -194,7 +207,9 @@ interface DataImportBody {
     createdAt?: string
     updatedAt?: string
     tagIds?: number[]
+    checklistItems?: string[]
   }[]
+  checklistTemplates?: ExportedChecklistTemplate[]
 }
 
 /**
@@ -400,9 +415,14 @@ export default async function dataRoutes(fastify) {
   /**
    * POST /data/import
    *
-   * Remplace toutes les colonnes, tâches, tags et séries par ceux d'un export
-   * (sans clé `recurrences`, la base n'a plus aucune série ; sans `anchor`,
-   * une série suit le calendrier). La prochaine date et l'état des séries sont
+   * Remplace toutes les colonnes, tâches, tags, séries et modèles de checklist
+   * par ceux d'un export (sans clé `recurrences`, la base n'a plus aucune
+   * série ; sans `anchor`, une série suit le calendrier ; sans
+   * `checklistTemplates` ni `checklistItems`, ni modèle ni checklist). Les
+   * checklists sont ramenées aux limites partagées et un modèle dont le nom
+   * est déjà pris par un modèle précédent du fichier n'est pas recréé, ces
+   * corrections étant renvoyées dans `warnings` (cf. dataImport.helper). La
+   * prochaine date et l'état des séries sont
    * remis en cohérence avec leurs occurrences (cf. normalizeImportedSeries). Le
    * fichier est entièrement contrôlé avant toute écriture (structure, format,
    * version, cohérence des références), puis l'import se fait dans une seule
@@ -412,15 +432,16 @@ export default async function dataRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Fichier d'export (cf. GET /data/export)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object>} Nombre de colonnes, tags et tâches importés, 400 si le
-   *   fichier est refusé (détail dans `message`), 500 si l'écriture échoue
+   * @returns {Promise<Object>} Nombre de colonnes, tags et tâches importés et anomalies
+   *   corrigées, 400 si le fichier est refusé (détail dans `message`), 500 si l'écriture échoue
    */
   fastify.post(
     '/data/import',
     {
       bodyLimit: IMPORT_BODY_LIMIT,
       schema: {
-        description: 'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries)',
+        description:
+          'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries, modèles de checklist)',
         tags: ['Data'],
         body: exportSchema,
         response: {
@@ -442,12 +463,26 @@ export default async function dataRoutes(fastify) {
         return { statusCode: 400, error: 'Bad Request', message, problem }
       }
 
+      // Corrections des checklists, prévues avant toute écriture
+      const templatePlan = planTemplateImport(data.checklistTemplates)
+      const seriesChecklists = (data.recurrences ?? []).map((recurrence) =>
+        importedSeriesChecklist(recurrence.id, recurrence.checklistItems),
+      )
+      const taskChecklists = data.tasks.map((task) => importedTaskChecklist(task.id, task.checklistItems))
+      const warnings: ImportProblem[] = [
+        ...templatePlan.problems,
+        ...seriesChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
+        ...taskChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
+      ]
+
       try {
         // Ordre des suppressions : les tâches référencent les séries et les
         // colonnes, les séries les colonnes (clés étrangères), leurs liens avec
-        // les tags partent en cascade
+        // les tags partent en cascade. Toutes les checklists d'abord, modèles
+        // compris, leurs points partant en cascade
         await prisma.$transaction(
           async (tx) => {
+            await tx.checklist.deleteMany()
             await tx.task.deleteMany()
             await tx.recurrence.deleteMany()
             await tx.tag.deleteMany()
@@ -464,8 +499,26 @@ export default async function dataRoutes(fastify) {
               }),
             })
 
+            for (const template of templatePlan.templates) {
+              await tx.checklist.create({
+                data: {
+                  name: template.name,
+                  nameKey: template.nameKey,
+                  position: template.position,
+                  items: {
+                    create: template.items.map((text, position) => ({
+                      text,
+                      position,
+                      isChecked: false,
+                      checkedAt: null,
+                    })),
+                  },
+                },
+              })
+            }
+
             // Séries avant les tâches, qui les référencent
-            for (const recurrence of data.recurrences ?? []) {
+            for (const [index, recurrence] of (data.recurrences ?? []).entries()) {
               await tx.recurrence.create({
                 data: {
                   id: recurrence.id,
@@ -490,12 +543,14 @@ export default async function dataRoutes(fastify) {
                   stageId: recurrence.stageId,
                   createdAt: recurrence.createdAt,
                   updatedAt: recurrence.updatedAt,
+                  checklistItems: seriesChecklists[index].texts,
                   tags: { connect: (recurrence.tagIds ?? []).map((id) => ({ id })) },
                 },
               })
             }
 
-            for (const task of data.tasks) {
+            for (const [index, task] of data.tasks.entries()) {
+              const { rows } = taskChecklists[index]
               await tx.task.create({
                 data: {
                   id: task.id,
@@ -513,6 +568,8 @@ export default async function dataRoutes(fastify) {
                   recurrenceId: task.recurrenceId,
                   occurrenceDate: task.occurrenceDate,
                   tags: { connect: task.tagIds.map((id) => ({ id })) },
+                  // Pas de checklist sans point, comme à l'enregistrement d'une tâche
+                  ...(rows.length > 0 && { checklist: { create: { items: { create: rows } } } }),
                 },
               })
             }
@@ -529,9 +586,15 @@ export default async function dataRoutes(fastify) {
         return { statusCode: 500, error: 'Internal Server Error', message: "L'import a échoué, aucune donnée modifiée" }
       }
 
+      for (const warning of warnings) {
+        Logger.warn(`Import corrigé : ${translate('fr', `importProblems.${warning.code}`, warning.params)}`)
+      }
+
       const counts: DataCounts = { stages: data.stages.length, tags: data.tags.length, tasks: data.tasks.length }
-      Logger.info(`Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s)`)
-      return counts
+      Logger.info(
+        `Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${templatePlan.templates.length} modèle(s) de checklist`,
+      )
+      return { ...counts, warnings }
     },
   )
 }

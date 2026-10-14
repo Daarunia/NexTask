@@ -17,7 +17,11 @@ export interface DataCounts {
   tasks: number
 }
 
-/** Motifs de refus d'un import, traduits par le main (cf. locales/fr.ts, `importProblems`). */
+/**
+ * Motifs de refus d'un import, puis anomalies corrigées sans refuser le
+ * fichier (checklists ramenées aux limites, modèles en double), traduits par
+ * le main (cf. locales/fr.ts, `importProblems`).
+ */
 export const IMPORT_PROBLEM_CODES = [
   'notAnExport',
   'unsupportedVersion',
@@ -32,12 +36,17 @@ export const IMPORT_PROBLEM_CODES = [
   'taskUnknownTag',
   'taskUnknownRecurrence',
   'duplicateOccurrence',
+  'taskChecklistClamped',
+  'recurrenceChecklistClamped',
+  'templateChecklistClamped',
+  'templateNameTruncated',
+  'duplicateTemplateName',
 ] as const
 
 /** Motif de refus d'un import. */
 export type ImportProblemCode = (typeof IMPORT_PROBLEM_CODES)[number]
 
-/** Refus d'un import : motif et valeurs de son message (ids, noms, versions). */
+/** Refus ou anomalie d'un import : motif et valeurs de son message (ids, noms, versions, limites). */
 export interface ImportProblem {
   code: ImportProblemCode
   params: Record<string, string | number>

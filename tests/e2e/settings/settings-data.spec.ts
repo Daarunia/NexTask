@@ -121,7 +121,7 @@ test.describe('POST /data/import', () => {
     // … puis l'import les remplace toutes
     const res = await importData(page.request, original)
     expect(res.ok(), await res.text()).toBeTruthy()
-    expect(await res.json()).toEqual({ stages: 5, tags: 2, tasks: 2 })
+    expect(await res.json()).toEqual({ stages: 5, tags: 2, tasks: 2, warnings: [] })
 
     expect(comparable(await exportData(page.request))).toEqual(comparable(original))
 

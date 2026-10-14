@@ -118,7 +118,8 @@ export async function importDataFromFile(window: BrowserWindow | null): Promise<
   }
   if (!response.ok) throw new Error(`Import impossible : ${await errorMessage(response)}`)
 
-  const counts = (await response.json()) as DataCounts
-  Logger.info(`Données importées depuis ${filePath}`, counts)
+  // Anomalies corrigées par le serveur, déjà journalisées par la route, hors du résumé affiché
+  const { warnings = [], ...counts } = (await response.json()) as DataCounts & { warnings?: ImportProblem[] }
+  Logger.info(`Données importées depuis ${filePath}, ${warnings.length} anomalie(s) corrigée(s)`, counts)
   return { status: 'done', filePath, counts }
 }
