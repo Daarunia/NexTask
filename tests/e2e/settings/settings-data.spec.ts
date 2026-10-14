@@ -5,13 +5,20 @@ import type { APIRequestContext } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
 import { createTaskViaApi } from '../../helpers/tag.helper'
 import { restoreDialogs, stubOpenDialog, stubSaveDialog } from '../../helpers/dialog.helper'
+import { createRecurringTask, DAILY, getTask, localDate, stageIds } from '../../helpers/recurrence.helper'
 import { EXPORT_FORMAT, EXPORT_VERSION } from '../../../src/main/shared/data.constants'
+import {
+  CHECKLIST_ITEM_MAX_LENGTH,
+  CHECKLIST_MAX_ITEMS,
+  CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
+} from '../../../src/main/shared/checklist.constants'
 
 /**
  * Tests E2E de l'export / import des données et de la sauvegarde automatique.
  *
  * Les routes GET /data/export et POST /data/import, qu'utilise le main, sont
- * testées directement, aller-retour compris. Les boutons de la page
+ * testées directement, aller-retour compris, checklists et modèles aussi
+ * (fichier antérieur aux checklists, textes trop longs raccourcis). Les boutons de la page
  * Paramètres sont testés avec des boîtes de dialogue natives remplacées dans
  * le main (cf. dialog.helper). La sauvegarde, quotidienne en temps normal,
  * est déclenchée à la demande via POST /test/run-backup.
@@ -238,6 +245,196 @@ test.describe('POST /data/import', () => {
   })
 })
 
+test.describe('Checklists dans l’export et l’import', () => {
+  test.use({ ui: false })
+
+  /** Export réduit aux checklists, tel que renvoyé par GET /data/export. */
+  interface ChecklistExport {
+    checklistTemplates: { name: string; position: number; items: string[] }[]
+    tasks: {
+      id: number
+      title: string
+      updatedAt: string
+      checklistItems?: { text: string; isChecked: boolean; checkedAt: string | null }[]
+    }[]
+    recurrences: { id: number; updatedAt: string; checklistItems?: string[] }[]
+  }
+
+  /** Export courant, lu avec ses checklists. */
+  const exportChecklists = async (request: APIRequestContext) =>
+    (await exportData(request)) as unknown as ExportFile & ChecklistExport
+
+  /**
+   * Contenu comparable des checklists de deux exports, sans les dates de
+   * dernière modification (gérées par Prisma).
+   * @param data Export
+   */
+  const comparableChecklists = (data: ChecklistExport) => ({
+    checklistTemplates: data.checklistTemplates,
+    tasks: data.tasks.map(({ updatedAt: _updatedAt, ...task }) => task),
+    recurrences: data.recurrences.map(({ updatedAt: _updatedAt, ...series }) => series),
+  })
+
+  /**
+   * Crée un modèle de checklist via POST /checklist-templates.
+   * @param request Contexte de requête Playwright
+   * @param name Nom du modèle
+   * @param items Textes des points
+   */
+  async function createTemplate(request: APIRequestContext, name: string, items: string[]) {
+    const res = await request.post(`${API}/checklist-templates`, { data: { name, items } })
+    expect(res.ok(), await res.text()).toBeTruthy()
+  }
+
+  /** Modèles de checklist via GET /checklist-templates, réduits à leur nom et leurs textes. */
+  async function templates(request: APIRequestContext) {
+    const res = await request.get(`${API}/checklist-templates`)
+    expect(res.ok()).toBeTruthy()
+    const list = (await res.json()) as { name: string; items: { text: string; isChecked: boolean }[] }[]
+    return list.map((template) => ({ name: template.name, items: template.items.map((item) => item.text) }))
+  }
+
+  /**
+   * Décor des checklists : deux modèles, une tâche à un point coché sur deux,
+   * une tâche sans point et une série quotidienne à deux points.
+   * @param request Contexte de requête Playwright
+   */
+  async function seedChecklists(request: APIRequestContext) {
+    await createTemplate(request, 'Revue de code', ['Relire le diff', 'Lancer les tests'])
+    await createTemplate(request, 'Release', ['Taguer la version'])
+
+    const res = await request.post(`${API}/tasks`, {
+      data: {
+        stageId: (await stageIds(request))['A faire'],
+        position: 0,
+        title: 'Avec points',
+        version: '1.0.0',
+        description: '',
+        tags: [],
+        checklistItems: [
+          { text: 'Écrire le test', isChecked: true },
+          { text: 'Corriger le bug', isChecked: false },
+        ],
+      },
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    await createTaskViaApi(request, 'Sans point')
+
+    await createRecurringTask(request, {
+      title: 'Routine',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      checklistItems: [
+        { text: 'Arroser les plantes', isChecked: false },
+        { text: 'Sortir les poubelles', isChecked: false },
+      ],
+    })
+  }
+
+  test("l'aller-retour sur une base vidée restitue modèles, points cochés et points des séries", async ({ page }) => {
+    await seedChecklists(page.request)
+    const original = await exportChecklists(page.request)
+
+    expect(original.checklistTemplates).toEqual([
+      { name: 'Revue de code', position: 0, items: ['Relire le diff', 'Lancer les tests'] },
+      { name: 'Release', position: 1, items: ['Taguer la version'] },
+    ])
+    const withItems = original.tasks.find((task) => task.title === 'Avec points')!
+    expect(withItems.checklistItems).toMatchObject([
+      { text: 'Écrire le test', isChecked: true },
+      { text: 'Corriger le bug', isChecked: false, checkedAt: null },
+    ])
+    expect(withItems.checklistItems![0].checkedAt).toBeTruthy()
+    expect(original.tasks.find((task) => task.title === 'Sans point')!.checklistItems).toEqual([])
+    expect(original.recurrences[0].checklistItems).toEqual(['Arroser les plantes', 'Sortir les poubelles'])
+
+    // Base vidée par un export vide, modèles compris
+    const empty = { ...original, stages: [], tags: [], tasks: [], recurrences: [], checklistTemplates: [] }
+    expect((await importData(page.request, empty)).ok()).toBeTruthy()
+    expect(await templates(page.request)).toEqual([])
+
+    const res = await importData(page.request, original)
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect(await res.json()).toMatchObject({ tasks: 3, checklistTemplates: 2, warnings: [] })
+
+    expect(comparableChecklists(await exportChecklists(page.request))).toEqual(comparableChecklists(original))
+    expect(await templates(page.request)).toEqual([
+      { name: 'Revue de code', items: ['Relire le diff', 'Lancer les tests'] },
+      { name: 'Release', items: ['Taguer la version'] },
+    ])
+    const task = await getTask(page.request, withItems.id)
+    expect(task.checklist?.items.map((item) => [item.text, item.isChecked])).toEqual([
+      ['Écrire le test', true],
+      ['Corriger le bug', false],
+    ])
+  })
+
+  test('un fichier sans les champs des checklists s’importe sans modèle ni point', async ({ page }) => {
+    await seedChecklists(page.request)
+    const { checklistTemplates: _templates, ...exported } = await exportChecklists(page.request)
+    const legacy = {
+      ...exported,
+      tasks: exported.tasks.map(({ checklistItems: _items, ...task }) => task),
+      recurrences: exported.recurrences.map(({ checklistItems: _items, ...series }) => series),
+    }
+
+    const res = await importData(page.request, legacy)
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect(await res.json()).toMatchObject({ tasks: 3, checklistTemplates: 0, warnings: [] })
+
+    const after = await exportChecklists(page.request)
+    expect(after.checklistTemplates).toEqual([])
+    expect(after.tasks.map((task) => task.checklistItems)).toEqual([[], [], []])
+    expect(after.recurrences.map((series) => series.checklistItems)).toEqual([[]])
+    expect(await templates(page.request)).toEqual([])
+  })
+
+  test('les textes trop longs et les points en trop sont raccourcis et signalés', async ({ page }) => {
+    await seedChecklists(page.request)
+    const exported = await exportChecklists(page.request)
+    const tooLong = 'x'.repeat(CHECKLIST_ITEM_MAX_LENGTH + 50)
+    const tooMany = Array.from({ length: CHECKLIST_MAX_ITEMS + 3 }, (_, index) => `Point ${index + 1}`)
+    const longName = 'N'.repeat(CHECKLIST_TEMPLATE_NAME_MAX_LENGTH + 10)
+    const task = exported.tasks.find((item) => item.title === 'Avec points')!
+    const series = exported.recurrences[0]
+
+    const res = await importData(page.request, {
+      ...exported,
+      checklistTemplates: [
+        { name: longName, position: 0, items: tooMany },
+        // Même nom que le précédent une fois raccourci, casse mise à part
+        { name: longName.toLowerCase(), position: 1, items: ['Ignoré'] },
+      ],
+      tasks: exported.tasks.map((item) =>
+        item.id === task.id ? { ...item, checklistItems: [{ text: tooLong, isChecked: false }] } : item,
+      ),
+      recurrences: [{ ...series, checklistItems: [tooLong] }],
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+
+    const limits = { maxItems: CHECKLIST_MAX_ITEMS, maxLength: CHECKLIST_ITEM_MAX_LENGTH }
+    const name = longName.slice(0, CHECKLIST_TEMPLATE_NAME_MAX_LENGTH)
+    expect(await res.json()).toMatchObject({
+      checklistTemplates: 1,
+      warnings: [
+        { code: 'templateNameTruncated', params: { name, maxLength: CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } },
+        { code: 'templateChecklistClamped', params: { name, ...limits } },
+        { code: 'templateNameTruncated', params: { name: name.toLowerCase() } },
+        { code: 'duplicateTemplateName', params: { name: name.toLowerCase() } },
+        { code: 'recurrenceChecklistClamped', params: { id: series.id, ...limits } },
+        { code: 'taskChecklistClamped', params: { id: task.id, ...limits } },
+      ],
+    })
+
+    const after = await exportChecklists(page.request)
+    expect(after.checklistTemplates).toEqual([{ name, position: 0, items: tooMany.slice(0, CHECKLIST_MAX_ITEMS) }])
+    expect(after.tasks.find((item) => item.id === task.id)!.checklistItems).toEqual([
+      { text: tooLong.slice(0, CHECKLIST_ITEM_MAX_LENGTH), isChecked: false, checkedAt: null },
+    ])
+    expect(after.recurrences[0].checklistItems).toEqual([tooLong.slice(0, CHECKLIST_ITEM_MAX_LENGTH)])
+  })
+})
+
 test.describe('Export et import depuis les Paramètres', () => {
   test.afterEach(async ({ electronApp }) => {
     await restoreDialogs(electronApp)
@@ -253,6 +450,7 @@ test.describe('Export et import depuis les Paramètres', () => {
     await settingsPage.exportButton.click()
 
     await expect(page.getByText('Données exportées', { exact: true })).toBeVisible()
+    await expect(page.getByText(/^5 colonnes, 2 tâches, 2 tags, 0 modèle de checklist dans /)).toBeVisible()
     const written = JSON.parse(fs.readFileSync(file, 'utf8')) as ExportFile
     expect(written.format).toBe(EXPORT_FORMAT)
     expect(comparable(written)).toEqual(comparable(await exportData(page.request)))
@@ -267,6 +465,9 @@ test.describe('Export et import depuis les Paramètres', () => {
   }, testInfo) => {
     // Fichier exporté depuis un premier état…
     await createTaskViaApi(page.request, 'Importée', ['bug'])
+    expect(
+      (await page.request.post(`${API}/checklist-templates`, { data: { name: 'Release', items: ['Taguer'] } })).ok(),
+    ).toBeTruthy()
     const file = testInfo.outputPath('import.json')
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, JSON.stringify(await exportData(page.request)))
@@ -291,6 +492,7 @@ test.describe('Export et import depuis les Paramètres', () => {
     await settingsPage.askImport()
     await settingsPage.confirmAcceptButton.click()
     await expect(page.getByText('Données importées', { exact: true })).toBeVisible()
+    await expect(page.getByText('4 colonnes, 1 tâche, 1 tag, 1 modèle de checklist', { exact: true })).toBeVisible()
     await expect.poll(() => settingsPage.tagNames()).toEqual(['bug'])
 
     await header.goHome()
