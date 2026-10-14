@@ -48,6 +48,7 @@ const route = useRoute()
 // Ordre d'affichage, une nouvelle page s'ajoute ici avec sa route (libellés recalculés au changement de langue)
 const entries = computed<RailEntry[]>(() => [
   { route: 'Home', icon: 'pi-th-large', label: t('nav.board'), testid: 'btn-home' },
+  { route: 'Checklists', icon: 'pi-list-check', label: t('nav.checklists'), testid: 'btn-checklists' },
   { route: 'Archives', icon: 'pi-box', label: t('nav.archives'), testid: 'btn-archives' },
   { route: 'Settings', icon: 'pi-cog', label: t('nav.settings'), testid: 'btn-settings', bottom: true },
 ])
