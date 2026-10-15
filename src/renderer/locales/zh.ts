@@ -561,6 +561,8 @@ export const zh: MessageSchema = {
     allDone: '清单已完成',
   },
   archives: {
+    itemChecked: '已勾选',
+    itemUnchecked: '未勾选',
     back: '返回设置',
     restore: '恢复',
     deleteForever: '永久删除',

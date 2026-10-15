@@ -257,6 +257,51 @@ test.describe('Page des archives', () => {
     await expect(archivesPage.count).toHaveText('3')
   })
 
+  test('déplie le détail d’une tâche : description sans Markdown et points cochés', async ({
+    page,
+    header,
+    settingsPage,
+    archivesPage,
+  }) => {
+    const courses = await createArchived(page.request, 'Courses')
+    await page.request.patch(`${API}/tasks/${courses.id}`, {
+      data: {
+        description: ['## Liste', '', '- **pain** frais', '- lait'].join('\n'),
+        checklistItems: [
+          { text: 'Boulangerie', isChecked: true },
+          { text: 'Épicerie', isChecked: false },
+        ],
+      },
+    })
+    await createArchived(page.request, 'Sans détail')
+
+    await header.goSettings()
+    await settingsPage.openArchivesButton.click()
+
+    // Rien à déplier sans description ni point
+    await expect(archivesPage.item('Sans détail').getByTestId('archived-task-toggle')).toHaveCount(0)
+
+    const toggle = archivesPage.item('Courses').getByTestId('archived-task-toggle')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    const details = archivesPage.item('Courses').getByTestId('archived-task-details')
+    await expect(details.getByTestId('archived-task-description')).toHaveText(
+      ['Liste', '• pain frais', '• lait'].join('\n'),
+      {
+        useInnerText: true,
+      },
+    )
+    const items = details.getByTestId('archived-task-item')
+    await expect(items).toHaveText(['Boulangerie', 'Épicerie'])
+    await expect(items.first()).toHaveAttribute('data-checked', 'true')
+    await expect(items.last()).toHaveAttribute('data-checked', 'false')
+
+    await toggle.click()
+    await expect(details).toHaveCount(0)
+  })
+
   test('restaurer remet la tâche en bas de la première colonne du tableau', async ({
     page,
     header,

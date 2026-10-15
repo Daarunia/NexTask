@@ -571,6 +571,8 @@ export const en: MessageSchema = {
     allDone: 'Checklist complete',
   },
   archives: {
+    itemChecked: 'Checked',
+    itemUnchecked: 'Not checked',
     back: 'Back to settings',
     restore: 'Restore',
     deleteForever: 'Delete permanently',
