@@ -131,7 +131,6 @@ import TagChip from './TagChip.vue'
 import CardChecklist from './CardChecklist.vue'
 import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
-import { useConfirm } from 'primevue/useconfirm'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { compareTagNames } from '../utils/tag.helper'
@@ -144,6 +143,7 @@ import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { isDragging, setDragging } from '../utils/dnd.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
@@ -167,7 +167,7 @@ function onDragEnd() {
 const tagStore = useTagStore()
 const taskStore = useTaskStore()
 const settings = useSettingsStore()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const { t } = useI18n()
 const now = useNow()
 
@@ -220,17 +220,10 @@ function onArchiveClick(event: MouseEvent, task: Task) {
     return
   }
 
-  confirm.require({
+  confirmDanger({
     target: event.currentTarget as HTMLElement,
     message: t('board.archiveConfirm'),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('common.archive'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('common.archive'),
     accept: () => emit('archive-task', task),
   })
 }

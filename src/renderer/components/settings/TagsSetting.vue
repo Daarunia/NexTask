@@ -126,7 +126,6 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Popover from 'primevue/popover'
 import ProgressSpinner from 'primevue/progressspinner'
-import { useConfirm } from 'primevue/useconfirm'
 import TagChip from '../TagChip.vue'
 import TagColorOptions from '../TagColorOptions.vue'
 import { useTagStore } from '../../stores/Tag'
@@ -135,6 +134,7 @@ import { TAG_NAME_MAX_LENGTH } from '../../../main/shared/validation.constants'
 import { renameRejection, tagDeleteQuestion, tagUsageLabel, validateTagName } from '../../utils/tag.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast } from '../../utils/toast.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -147,7 +147,7 @@ import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()
 const tagStore = useTagStore()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const { t } = useI18n()
 
@@ -274,17 +274,10 @@ async function applyColor(color: TagColor) {
  * @param tag Tag à supprimer
  */
 function askDelete(event: MouseEvent, tag: Tag) {
-  confirm.require({
+  confirmDanger({
     target: event.currentTarget as HTMLElement,
     message: tagDeleteQuestion(tag),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('common.delete'),
     accept: () => deleteTag(tag),
   })
 }

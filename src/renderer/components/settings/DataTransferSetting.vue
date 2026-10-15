@@ -34,11 +34,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Button from 'primevue/button'
-import { useConfirm } from 'primevue/useconfirm'
 import SettingsRow from './SettingsRow.vue'
 import { describeCounts, reloadDataAfterImport } from '../../utils/data.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast, useSuccessToast } from '../../utils/toast.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -48,7 +48,7 @@ import { useI18n } from 'vue-i18n'
  */
 
 const logger = getLogger()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const showSuccess = useSuccessToast()
 const { t } = useI18n()
@@ -84,17 +84,10 @@ async function exportData() {
  * @param event Clic sur le bouton
  */
 function askImport(event: MouseEvent) {
-  confirm.require({
+  confirmDanger({
     target: event.currentTarget as HTMLElement,
     message: t('settings.data.importConfirm'),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('settings.data.chooseFile'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('settings.data.chooseFile'),
     accept: importData,
   })
 }

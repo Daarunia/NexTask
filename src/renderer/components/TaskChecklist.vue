@@ -162,7 +162,6 @@ import Message from 'primevue/message'
 import Popover from 'primevue/popover'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
-import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
 import SaveAsTemplateDialog from './SaveAsTemplateDialog.vue'
@@ -178,6 +177,7 @@ import {
 import { normalizeSearchText } from '../utils/search.helper'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
 
 /**
  * Section « Checklist » du dialogue de tâche (parcours P1 et P3), sous la
@@ -213,7 +213,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const logger = getLogger()
 const router = useRouter()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const templateStore = useChecklistTemplateStore()
 
@@ -410,17 +410,10 @@ function openChecklistsPage() {
 
   // Ouverte pendant le clic, la confirmation le prendrait pour un clic à côté et se refermerait aussitôt
   setTimeout(() =>
-    confirm.require({
+    confirmDanger({
       target,
       message: t('checklist.leaveConfirm'),
-      icon: 'pi pi-exclamation-triangle',
-      rejectProps: {
-        label: t('common.cancel'),
-        severity: 'secondary',
-        outlined: true,
-        'data-testid': 'btn-confirm-reject',
-      },
-      acceptProps: { label: t('checklist.leave'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+      acceptLabel: t('checklist.leave'),
       accept: leave,
     }),
   )

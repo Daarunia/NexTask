@@ -110,7 +110,6 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive, watch } 
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
-import { useConfirm } from 'primevue/useconfirm'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
 import { useTaskStore } from '../stores/Task'
@@ -130,6 +129,7 @@ import { sortByStartDate } from '../utils/date.helper'
 import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -147,7 +147,7 @@ const { t } = useI18n()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
 const showAction = useActionToast()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -742,17 +742,10 @@ function askDeleteStage() {
     return
   }
 
-  confirm.require({
+  confirmDanger({
     target: stageMenuTrigger.value ?? undefined,
     message: t('board.stageDeleteConfirm', { name: stage.name, count }, count),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('common.delete'),
     accept: () => deleteStage(stage),
   })
 }
@@ -808,17 +801,10 @@ function askArchiveStageTasks() {
   const count = stage ? (taskLists.get(stage.id)?.length ?? 0) : 0
   if (!stage || count === 0) return
 
-  confirm.require({
+  confirmDanger({
     target: stageMenuTrigger.value ?? undefined,
     message: t('board.archiveStageTasksConfirm', { name: stage.name, count }, count),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('common.archive'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('common.archive'),
     accept: () => archiveStageTasks(stage),
   })
 }
