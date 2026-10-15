@@ -145,6 +145,10 @@ describe('matchExcerpt', () => {
   test('vide si le mot est absent', () => {
     expect(matchExcerpt('rien ici', ['redmine'])).toBe('')
   })
+
+  test('garde les « s » et réduit les blancs à une espace', () => {
+    expect(matchExcerpt('Les  tasses\n\nsont sales', ['tasses'])).toBe('Les tasses sont sales')
+  })
 })
 
 describe('taskMatchExcerpt', () => {
@@ -169,6 +173,10 @@ describe('taskMatchExcerpt', () => {
   test("extrait d'un long point centré sur le mot trouvé", () => {
     const t = task({ checklist: checklist(`${'a'.repeat(50)} vers Redmine ${'b'.repeat(50)}`) })
     expect(taskMatchExcerpt(t, ['redmine'], 10)).toMatch(/^….*Redmine.*…$/)
+  })
+
+  test("un point garde ses « s » dans l'extrait", () => {
+    expect(taskMatchExcerpt(task({ checklist: checklist('Laver les tasses') }), ['tasses'])).toBe('Laver les tasses')
   })
 
   test('vide si le mot ne figure ni dans la description ni dans les points', () => {

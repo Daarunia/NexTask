@@ -95,7 +95,7 @@ export function highlightParts(text: string, terms: string[]): HighlightPart[] {
  * @param radius Nombre de caractères gardés de part et d'autre
  */
 function centeredExcerpt(plainText: string, terms: string[], radius: number): string {
-  const text = plainText.replaceAll(/s+/g, ' ')
+  const text = plainText.replaceAll(/\s+/g, ' ')
   const haystack = [...text].map((char) => normalizeSearchText(char) || ' ').join('')
   const positions = terms.map((term) => haystack.indexOf(term)).filter((index) => index !== -1)
   if (!positions.length) return ''
