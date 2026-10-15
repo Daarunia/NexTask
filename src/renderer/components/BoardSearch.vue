@@ -3,6 +3,22 @@
     <div :class="['search-box', { 'is-focused': focused }]" @mousedown.self.prevent="input?.focus()">
       <i class="pi pi-search search-icon" aria-hidden="true"></i>
 
+      <!-- Filtres rapides sur l'état des tâches (OU logique) -->
+      <span v-for="status in boardFilter.statuses" :key="status" data-testid="search-status-chip" class="status-chip">
+        <i :class="STATUS_ICONS[status]" aria-hidden="true"></i>
+        <span class="truncate">{{ statusLabel(status) }}</span>
+        <button
+          type="button"
+          data-testid="search-status-chip-remove"
+          class="status-chip-remove"
+          :aria-label="t('board.statusRemove', { name: statusLabel(status) })"
+          @mousedown.prevent
+          @click="boardFilter.removeStatus(status)"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      </span>
+
       <!-- Tags du filtre (OU logique) -->
       <TagChip
         v-for="tagId in boardFilter.tagIds"
@@ -27,8 +43,9 @@
         :aria-expanded="listOpen"
         aria-controls="board-search-list"
         :aria-activedescendant="listOpen && activeItem ? optionId(activeItem) : undefined"
-        :placeholder="boardFilter.tagIds.length ? '' : t('board.searchPlaceholder')"
+        :placeholder="boardFilter.tagIds.length || boardFilter.statuses.length ? '' : t('board.searchPlaceholder')"
         @focus="onFocus"
+        @click="listDismissed = false"
         @blur="onBlur"
         @keydown="onKeydown"
       />
@@ -91,6 +108,12 @@
             <span class="option-meta">↵</span>
           </template>
 
+          <template v-else-if="item.kind === 'status'">
+            <i :class="[STATUS_ICONS[item.status], 'option-icon']" aria-hidden="true"></i>
+            <span class="truncate">{{ item.label }}</span>
+            <span class="option-meta">{{ item.count }}</span>
+          </template>
+
           <template v-else-if="item.kind === 'tag'">
             <i class="pi pi-tag option-icon" aria-hidden="true"></i>
             <TagChip :tagId="item.id" size="small" />
@@ -135,8 +158,11 @@ import {
   highlightParts,
   normalizeSearchText,
   searchTerms,
+  taskHasStatus,
+  taskMatchesFilter,
   taskMatchExcerpt,
-  taskSearchText,
+  TASK_STATUSES,
+  type TaskStatus,
 } from '../utils/search.helper'
 import type { Tag } from '../types/tag.types'
 
@@ -148,10 +174,15 @@ import type { Tag } from '../types/tag.types'
  * liste propose de garder la recherche texte, les tags dont le nom correspond
  * et les tâches trouvées (ouvertes au clic). Avec `#`, seuls les tags sont
  * proposés et le board n'est pas filtré sur ce texte.
+ *
+ * Les filtres rapides (en retard, aujourd'hui, checklist à terminer) sont
+ * proposés dès le focus, puis tant que la saisie correspond à leur nom. Ils
+ * s'affichent en chips devant celles des tags.
  */
 
 type SearchItem =
   | { kind: 'text'; label: string }
+  | { kind: 'status'; status: TaskStatus; label: string; count: number }
   | { kind: 'tag'; id: number; label: string }
   | { kind: 'task'; id: number; label: string; excerpt: string; stage: string }
 
@@ -159,6 +190,13 @@ type SearchItem =
 const SEARCH_DEBOUNCE_MS = 150
 // Nombre maximal de tâches proposées
 const MAX_TASK_SUGGESTIONS = 5
+
+// Icône de chaque filtre rapide, dans la liste et sur sa chip
+const STATUS_ICONS: Record<TaskStatus, string> = {
+  overdue: 'pi pi-exclamation-circle',
+  today: 'pi pi-calendar',
+  checklist: 'pi pi-check-square',
+}
 
 const { t } = useI18n()
 const boardFilter = useBoardFilterStore()
@@ -171,7 +209,7 @@ const root = ref<HTMLElement | null>(null)
 const input = ref<HTMLInputElement | null>(null)
 const text = ref(boardFilter.query)
 const focused = ref(false)
-const listDismissed = ref(false) // liste fermée par Échap ou un choix, rouverte à la frappe
+const listDismissed = ref(false) // liste fermée par Échap ou un choix, rouverte à la frappe ou au clic
 const activeIndex = ref(0)
 
 const shortcutLabel = navigator.userAgent.includes('Mac') ? '⌘F' : 'Ctrl F'
@@ -201,19 +239,40 @@ const tagItems = computed<SearchItem[]>(() => {
 })
 
 /**
- * Tâches proposées : celles qui passent le filtre (tags compris) et
- * contiennent les mots saisis, avec un extrait si la correspondance est dans
- * la description ou dans un point de la checklist.
+ * Nom d'un filtre rapide dans la langue active.
+ * @param status Filtre rapide
+ */
+function statusLabel(status: TaskStatus): string {
+  return t(`board.status.${status}`)
+}
+
+/**
+ * Filtres rapides proposés, pas encore sélectionnés, dont le nom contient la
+ * saisie (tous sur une saisie vide), et qui gardent au moins une tâche. Le
+ * nombre de tâches concernées est affiché à droite.
+ */
+const statusItems = computed<SearchItem[]>(() => {
+  if (tagMode.value) return []
+
+  const now = new Date()
+  return TASK_STATUSES.filter((status) => !boardFilter.statuses.includes(status)).flatMap((status) => {
+    const label = statusLabel(status)
+    if (!normalizeSearchText(label).includes(needle.value)) return []
+    const count = taskStore.getAllTasks.filter((task) => taskHasStatus(task, status, now)).length
+    return count ? [{ kind: 'status' as const, status, label, count }] : []
+  })
+})
+
+/**
+ * Tâches proposées : celles qui passent le filtre (tags et filtres rapides
+ * compris) et contiennent les mots saisis, avec un extrait si la
+ * correspondance est dans la description ou dans un point de la checklist.
  */
 const taskItems = computed<SearchItem[]>(() => {
   if (tagMode.value || !terms.value.length) return []
 
   return taskStore.getAllTasks
-    .filter((task) => {
-      if (boardFilter.tagIds.length && !task.tags?.some((tag) => boardFilter.tagIds.includes(tag.id))) return false
-      const haystack = taskSearchText(task)
-      return terms.value.every((term) => haystack.includes(term))
-    })
+    .filter((task) => taskMatchesFilter(task, terms.value, boardFilter.tagIds, boardFilter.statuses))
     .slice(0, MAX_TASK_SUGGESTIONS)
     .map((task) => {
       const inTitle = terms.value.every((term) => normalizeSearchText(task.title).includes(term))
@@ -232,6 +291,9 @@ const groups = computed(() => {
   const result: { kind: string; label: string; items: SearchItem[] }[] = []
   if (!tagMode.value && terms.value.length) {
     result.push({ kind: 'text', label: '', items: [{ kind: 'text', label: text.value.trim() }] })
+  }
+  if (statusItems.value.length) {
+    result.push({ kind: 'status', label: t('board.quickFilters'), items: statusItems.value })
   }
   if (tagItems.value.length && (tagMode.value || needle.value)) {
     result.push({ kind: 'tag', label: t('board.searchTags'), items: tagItems.value })
@@ -255,7 +317,8 @@ const listOpen = computed(() => focused.value && !listDismissed.value && items.v
  * @param item Option
  */
 function optionId(item: SearchItem): string {
-  return item.kind === 'text' ? 'search-option-text' : `search-option-${item.kind}-${item.id}`
+  if (item.kind === 'text') return 'search-option-text'
+  return `search-option-${item.kind}-${item.kind === 'status' ? item.status : item.id}`
 }
 
 // Filtre texte du board, appliqué après un court délai (pas en mode `#`)
@@ -298,6 +361,9 @@ function saveFilter(save: Promise<void>) {
 function choose(item: SearchItem) {
   if (item.kind === 'tag') {
     saveFilter(boardFilter.addTag(item.id))
+    setText('')
+  } else if (item.kind === 'status') {
+    boardFilter.addStatus(item.status)
     setText('')
   } else if (item.kind === 'task') {
     taskStore.requestOpenTask(item.id)
@@ -360,8 +426,12 @@ function onKeydown(event: KeyboardEvent) {
       }
       break
     case 'Backspace': {
-      const last = boardFilter.tagIds.at(-1)
-      if (!text.value && last !== undefined) removeTag(last)
+      // Dernière chip affichée : un tag, sinon un filtre rapide
+      if (text.value) break
+      const lastTag = boardFilter.tagIds.at(-1)
+      const lastStatus = boardFilter.statuses.at(-1)
+      if (lastTag !== undefined) removeTag(lastTag)
+      else if (lastStatus) boardFilter.removeStatus(lastStatus)
       break
     }
   }
@@ -521,6 +591,39 @@ defineExpose({ focus: () => input.value?.focus() })
   margin-left: auto;
   max-width: 35%;
   flex-shrink: 0;
+}
+
+/* Chip d'un filtre rapide, à l'accent pour la distinguer des tags */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 1px 0.375rem;
+  border-radius: var(--p-border-radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  background: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
+  color: var(--p-primary-color);
+}
+
+.status-chip .pi {
+  font-size: 0.7rem;
+}
+
+.status-chip-remove {
+  display: inline-flex;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.status-chip-remove:hover {
+  opacity: 1;
+}
+
+.status-chip-remove .pi {
+  font-weight: 700;
 }
 
 mark {

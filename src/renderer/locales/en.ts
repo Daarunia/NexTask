@@ -93,6 +93,13 @@ export const en: MessageSchema = {
     searchTags: 'Tags',
     searchTasks: 'Tasks',
     searchClear: 'Clear search',
+    quickFilters: 'Filters',
+    statusRemove: 'Remove the {name} filter',
+    status: {
+      overdue: 'Overdue',
+      today: 'Today',
+      checklist: 'Unfinished checklist',
+    },
     searchLabel: 'Search',
     filterDndHint: 'Moving is disabled while filtering',
     filterNotSaved: 'Filter not remembered',

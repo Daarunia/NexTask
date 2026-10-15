@@ -4,6 +4,7 @@ import {
   matchExcerpt,
   normalizeSearchText,
   searchTerms,
+  taskHasStatus,
   taskMatchExcerpt,
   taskMatchesFilter,
 } from '../../src/renderer/utils/search.helper'
@@ -107,6 +108,48 @@ describe('taskMatchesFilter', () => {
     expect(taskMatchesFilter(t, searchTerms('redm'), [1])).toBe(true)
     expect(taskMatchesFilter(t, searchTerms('redm'), [2])).toBe(false)
     expect(taskMatchesFilter(t, searchTerms('jira'), [1])).toBe(false)
+  })
+})
+
+describe('taskHasStatus', () => {
+  // Jeudi 15 octobre 2026, 14 h 30, heure de Paris (cf. vitest.config.ts)
+  const now = new Date(2026, 9, 15, 14, 30)
+  const at = (day: number, hours = 9) => new Date(2026, 9, day, hours)
+  const items = (...checked: boolean[]): Task['checklist'] => ({
+    id: 1,
+    items: checked.map((isChecked, i) => ({ id: i + 1, text: `p${i}`, position: i, isChecked, checkedAt: null })),
+  })
+
+  test('en retard dès la veille, pas le jour même', () => {
+    expect(taskHasStatus(task({ startDate: at(14, 23) }), 'overdue', now)).toBe(true)
+    expect(taskHasStatus(task({ startDate: at(15, 8) }), 'overdue', now)).toBe(false)
+    expect(taskHasStatus(task({ startDate: null }), 'overdue', now)).toBe(false)
+  })
+
+  test("aujourd'hui toute la journée, heure passée ou non", () => {
+    expect(taskHasStatus(task({ startDate: at(15, 8) }), 'today', now)).toBe(true)
+    expect(taskHasStatus(task({ startDate: at(15, 22) }), 'today', now)).toBe(true)
+    expect(taskHasStatus(task({ startDate: at(16, 8) }), 'today', now)).toBe(false)
+  })
+
+  test('date reçue du serveur en texte ISO', () => {
+    const iso = at(15).toISOString() as unknown as Date
+    expect(taskHasStatus(task({ startDate: iso }), 'today', now)).toBe(true)
+  })
+
+  test('checklist à terminer, au moins un point décoché', () => {
+    expect(taskHasStatus(task({ checklist: items(true, false) }), 'checklist', now)).toBe(true)
+    expect(taskHasStatus(task({ checklist: items(true, true) }), 'checklist', now)).toBe(false)
+    expect(taskHasStatus(task({ checklist: null }), 'checklist', now)).toBe(false)
+  })
+
+  test('filtres rapides en OU, ET avec les tags et le texte', () => {
+    const late = task({ title: 'Relancer', startDate: at(10), tags: [tag(1)] })
+    expect(taskMatchesFilter(late, [], [], ['today', 'overdue'], now)).toBe(true)
+    expect(taskMatchesFilter(late, [], [], ['today'], now)).toBe(false)
+    expect(taskMatchesFilter(late, [], [2], ['overdue'], now)).toBe(false)
+    expect(taskMatchesFilter(late, searchTerms('relancer'), [1], ['overdue'], now)).toBe(true)
+    expect(taskMatchesFilter(late, searchTerms('autre'), [1], ['overdue'], now)).toBe(false)
   })
 })
 

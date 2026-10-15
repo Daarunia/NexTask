@@ -1,5 +1,6 @@
 import type { Task } from '../types/task.types'
 import { descriptionExcerpt } from './description.helper'
+import { dayState } from './date.helper'
 
 /**
  * Texte comparable par la recherche : minuscules, sans accents
@@ -30,16 +31,48 @@ export function taskSearchText(task: Pick<Task, 'title' | 'description' | 'check
   return normalizeSearchText([task.title, description, ...items].join(' '))
 }
 
+/** Filtres rapides du board, sur l'état d'une tâche plutôt que sur son texte. */
+export const TASK_STATUSES = ['overdue', 'today', 'checklist'] as const
+export type TaskStatus = (typeof TASK_STATUSES)[number]
+
 /**
- * Vrai si la tâche passe le filtre du board : elle contient tous les mots
- * (titre, description ou points de la checklist) ET porte au moins un des tags sélectionnés.
- * Sans mots ni tags, toute tâche passe.
+ * Vrai si la tâche est dans l'état demandé, soit une date de début passée
+ * depuis la veille ou plus (`overdue`), une date de début aujourd'hui
+ * (`today`), ou une checklist avec au moins un point à cocher (`checklist`).
+ * @param task Tâche à tester
+ * @param status État recherché
+ * @param now Maintenant
+ */
+export function taskHasStatus(task: Pick<Task, 'startDate' | 'checklist'>, status: TaskStatus, now: Date): boolean {
+  if (status === 'checklist') {
+    const items = task.checklist?.items ?? []
+    return items.some((item) => !item.isChecked)
+  }
+
+  if (!task.startDate) return false
+  return dayState(new Date(task.startDate), now) === (status === 'overdue' ? 'past' : 'today')
+}
+
+/**
+ * Vrai si la tâche passe le filtre du board. Elle contient tous les mots
+ * (titre, description ou points de la checklist), ET porte au moins un des
+ * tags sélectionnés, ET est dans au moins un des états sélectionnés. Sans
+ * mots, tags ni états, toute tâche passe.
  * @param task Tâche à tester
  * @param terms Mots normalisés (cf. `searchTerms`)
  * @param tagIds Ids des tags sélectionnés (OU logique)
+ * @param statuses États sélectionnés (OU logique)
+ * @param now Maintenant, pour les états liés à la date de début
  */
-export function taskMatchesFilter(task: Task, terms: string[], tagIds: readonly number[]): boolean {
+export function taskMatchesFilter(
+  task: Task,
+  terms: string[],
+  tagIds: readonly number[],
+  statuses: readonly TaskStatus[] = [],
+  now = new Date(),
+): boolean {
   if (tagIds.length && !task.tags?.some((tag) => tagIds.includes(tag.id))) return false
+  if (statuses.length && !statuses.some((status) => taskHasStatus(task, status, now))) return false
   if (!terms.length) return true
 
   const text = taskSearchText(task)

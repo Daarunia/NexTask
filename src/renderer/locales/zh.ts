@@ -93,6 +93,13 @@ export const zh: MessageSchema = {
     searchTags: '标签',
     searchTasks: '任务',
     searchClear: '清除搜索',
+    quickFilters: '筛选',
+    statusRemove: '移除筛选 {name}',
+    status: {
+      overdue: '已逾期',
+      today: '今天',
+      checklist: '清单未完成',
+    },
     searchLabel: '搜索',
     filterDndHint: '筛选时无法移动',
     filterNotSaved: '筛选未记住',

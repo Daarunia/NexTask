@@ -98,6 +98,13 @@ export const fr = {
     searchTags: 'Tags',
     searchTasks: 'Tâches',
     searchClear: 'Effacer la recherche',
+    quickFilters: 'Filtres',
+    statusRemove: 'Retirer le filtre {name}',
+    status: {
+      overdue: 'En retard',
+      today: 'Aujourd’hui',
+      checklist: 'Checklist à terminer',
+    },
     searchLabel: 'Recherche',
     filterDndHint: 'Déplacement désactivé pendant le filtrage',
     filterNotSaved: 'Filtre non mémorisé',
