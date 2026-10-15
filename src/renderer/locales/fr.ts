@@ -131,6 +131,7 @@ export const fr = {
     stageDeleteFailedDetail: "La liste n'a pas été supprimée.",
     renameCanceled: 'Renommage annulé',
     addTask: 'Ajouter une tâche',
+    addTaskShortcut: 'Raccourci : N',
     copyTitle: '{title} (copie)',
     duplicateFailed: 'Duplication impossible',
     taskDuplicated: 'Tâche dupliquée',

@@ -128,7 +128,14 @@
       </template>
     </draggable>
 
-    <Button class="btn-edit-task mt-3" data-testid="btn-add-task" text @click="$emit('create-task')">
+    <Button
+      class="btn-edit-task mt-3"
+      data-testid="btn-add-task"
+      text
+      aria-keyshortcuts="N"
+      v-tooltip.bottom="infoTooltip(t('board.addTaskShortcut'), isDragging)"
+      @click="$emit('create-task')"
+    >
       <i class="pi pi-plus absolute left-3"></i>
       <span>{{ t('board.addTask') }}</span>
     </Button>

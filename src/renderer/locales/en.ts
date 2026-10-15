@@ -126,6 +126,7 @@ export const en: MessageSchema = {
     stageDeleteFailedDetail: 'The list was not deleted.',
     renameCanceled: 'Rename canceled',
     addTask: 'Add a task',
+    addTaskShortcut: 'Shortcut: N',
     copyTitle: '{title} (copy)',
     duplicateFailed: 'Duplication failed',
     taskDuplicated: 'Task duplicated',

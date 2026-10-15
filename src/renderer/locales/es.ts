@@ -126,6 +126,7 @@ export const es: MessageSchema = {
     stageDeleteFailedDetail: 'La lista no se ha eliminado.',
     renameCanceled: 'Cambio de nombre cancelado',
     addTask: 'Añadir una tarea',
+    addTaskShortcut: 'Atajo: N',
     copyTitle: '{title} (copia)',
     duplicateFailed: 'No se pudo duplicar',
     taskDuplicated: 'Tarea duplicada',

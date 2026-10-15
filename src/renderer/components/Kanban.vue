@@ -18,6 +18,7 @@
       <template #item="{ element: stage }">
         <div
           data-testid="stage-column"
+          :data-stage-id="stage.id"
           :data-collapsed="isCollapsed(stage.id)"
           :class="['stages-container', { collapsed: isCollapsed(stage.id) }]"
         >
@@ -162,6 +163,7 @@ import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useDangerConfirm } from '../utils/confirm.helper'
+import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -1108,6 +1110,27 @@ const toggleStageMenu = (event: Event, stage: Stage) => {
   stageMenuTrigger.value = event.currentTarget as HTMLElement
   stageMenu.value.toggle(event)
 }
+
+/**
+ * Raccourci N : nouvelle tâche dans la colonne de l'élément qui a le focus (une
+ * carte, un bouton de la colonne), sinon dans la première colonne dépliée.
+ * Ignoré pendant une saisie, dans un menu ou un dialogue ouvert.
+ * @param event Touche pressée
+ */
+function onBoardKeydown(event: KeyboardEvent) {
+  if (event.key.toLowerCase() !== 'n' || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
+  if (event.defaultPrevented || showDialog.value || isEditableTarget(event.target) || isInOverlay(event.target)) return
+
+  const focused = document.activeElement?.closest<HTMLElement>('[data-stage-id]')?.dataset.stageId
+  const stageId = focused ? Number(focused) : stagesLocal.value.find((stage) => !isCollapsed(stage.id))?.id
+  if (stageId === undefined || isCollapsed(stageId)) return
+
+  event.preventDefault()
+  openCreateTaskDialog(stageId)
+}
+
+onMounted(() => globalThis.addEventListener('keydown', onBoardKeydown))
+onBeforeUnmount(() => globalThis.removeEventListener('keydown', onBoardKeydown))
 
 // Tâches créées depuis la fenêtre d'ajout rapide, insérées sans recharger le tableau
 const stopQuickAddListener = globalThis.quickAdd.onTaskCreated(insertTaskLocally)

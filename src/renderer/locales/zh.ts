@@ -126,6 +126,7 @@ export const zh: MessageSchema = {
     stageDeleteFailedDetail: '列表未删除。',
     renameCanceled: '重命名已取消',
     addTask: '添加任务',
+    addTaskShortcut: '快捷键：N',
     copyTitle: '{title}（副本）',
     duplicateFailed: '无法复制',
     taskDuplicated: '任务已复制',
