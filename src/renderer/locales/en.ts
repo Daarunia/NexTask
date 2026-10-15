@@ -560,6 +560,8 @@ export const en: MessageSchema = {
     deleteForever: 'Delete permanently',
     title: 'Archived tasks',
     empty: 'No archived tasks.',
+    search: 'Search the archives',
+    noMatch: 'No archived task matches the search.',
     restoreItem: 'Restore {title}',
     deleteForeverItem: 'Delete {title} permanently',
     loadFailedDetail: 'Archived tasks could not be loaded.',

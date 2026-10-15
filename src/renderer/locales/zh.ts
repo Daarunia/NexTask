@@ -550,6 +550,8 @@ export const zh: MessageSchema = {
     deleteForever: '永久删除',
     title: '已归档任务',
     empty: '没有已归档的任务。',
+    search: '搜索归档',
+    noMatch: '没有与搜索匹配的已归档任务。',
     restoreItem: '恢复 {title}',
     deleteForeverItem: '永久删除 {title}',
     loadFailedDetail: '无法加载已归档的任务。',

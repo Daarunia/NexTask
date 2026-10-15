@@ -12,9 +12,8 @@
           @click="goSettings"
         />
         <h1 class="text-2xl">{{ t('archives.title') }}</h1>
-        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{
-          visibleTasks.length
-        }}</span>
+        <!-- Nombre de tâches, sur le total pendant une recherche -->
+        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{ countLabel }}</span>
       </div>
 
       <template v-if="status === 'ready'">
@@ -22,10 +21,25 @@
           {{ t('archives.empty') }}
         </p>
 
+        <!-- Recherche dans le titre, la description et les points de la checklist, comme au tableau -->
+        <InputText
+          v-else
+          v-model="query"
+          data-testid="archives-search"
+          type="search"
+          :placeholder="t('archives.search')"
+          :aria-label="t('archives.search')"
+          spellcheck="false"
+        />
+
+        <p v-if="visibleTasks.length && !shownTasks.length" data-testid="archives-no-match" class="archives-muted">
+          {{ t('archives.noMatch') }}
+        </p>
+
         <!-- De la plus récemment archivée à la plus ancienne (ordre du serveur) -->
-        <ul v-else class="flex flex-col gap-2">
+        <ul v-if="shownTasks.length" class="flex flex-col gap-2">
           <li
-            v-for="task in visibleTasks"
+            v-for="task in shownTasks"
             :key="task.id"
             data-testid="archived-task"
             :data-task-id="task.id"
@@ -121,6 +135,7 @@ const pendingDeletions = reactive(new Set<number>())
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TagChip from '../components/TagChip.vue'
 import ChecklistBadge from '../components/ChecklistBadge.vue'
@@ -130,6 +145,7 @@ import type { Tag } from '../types/tag.types'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
+import { searchTerms, taskMatchesFilter } from '../utils/search.helper'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'
@@ -147,6 +163,17 @@ const tagStore = useTagStore()
 
 // Tâches affichées : sans celles dont la suppression est en attente
 const visibleTasks = computed(() => tasks.value.filter((task) => !pendingDeletions.has(task.id)))
+
+// Recherche, vidée en quittant la page
+const query = ref('')
+const terms = computed(() => searchTerms(query.value))
+
+// Tâches qui contiennent tous les mots recherchés
+const shownTasks = computed(() => visibleTasks.value.filter((task) => taskMatchesFilter(task, terms.value, [])))
+
+const countLabel = computed(() =>
+  terms.value.length ? `${shownTasks.value.length}/${visibleTasks.value.length}` : String(visibleTasks.value.length),
+)
 
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 

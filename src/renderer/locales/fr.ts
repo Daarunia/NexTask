@@ -569,6 +569,8 @@ export const fr = {
     deleteForever: 'Supprimer définitivement',
     title: 'Tâches archivées',
     empty: 'Aucune tâche archivée.',
+    search: 'Rechercher dans les archives',
+    noMatch: 'Aucune tâche archivée ne correspond à la recherche.',
     restoreItem: 'Restaurer {title}',
     deleteForeverItem: 'Supprimer définitivement {title}',
     loadFailedDetail: "Les tâches archivées n'ont pas pu être chargées.",

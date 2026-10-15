@@ -561,6 +561,8 @@ export const pt: MessageSchema = {
     deleteForever: 'Excluir definitivamente',
     title: 'Tarefas arquivadas',
     empty: 'Nenhuma tarefa arquivada.',
+    search: 'Pesquisar no arquivo',
+    noMatch: 'Nenhuma tarefa arquivada corresponde à pesquisa.',
     restoreItem: 'Restaurar {title}',
     deleteForeverItem: 'Excluir {title} definitivamente',
     loadFailedDetail: 'Não foi possível carregar as tarefas arquivadas.',

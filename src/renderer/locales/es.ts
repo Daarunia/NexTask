@@ -563,6 +563,8 @@ export const es: MessageSchema = {
     deleteForever: 'Eliminar definitivamente',
     title: 'Tareas archivadas',
     empty: 'No hay tareas archivadas.',
+    search: 'Buscar en el archivo',
+    noMatch: 'Ninguna tarea archivada coincide con la búsqueda.',
     restoreItem: 'Restaurar {title}',
     deleteForeverItem: 'Eliminar definitivamente {title}',
     loadFailedDetail: 'No se han podido cargar las tareas archivadas.',
