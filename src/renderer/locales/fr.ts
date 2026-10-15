@@ -137,6 +137,11 @@ export const fr = {
     openCopy: 'Ouvrir la copie',
     startDateTooltip: 'Début le {date}',
     archiveConfirm: 'Archiver cette tâche ?',
+    archiveStageTasks: 'Archiver les tâches',
+    archiveStageTasksConfirm:
+      'Archiver la tâche de la liste « {name} » ? | Archiver la tâche de la liste « {name} » ? | Archiver les {count} tâches de la liste « {name} » ?',
+    archiveStageTasksFailedDetail: "Les tâches n'ont pas été archivées.",
+    stageTasksArchived: '{count} tâche archivée | {count} tâche archivée | {count} tâches archivées',
   },
   task: {
     dialog: {

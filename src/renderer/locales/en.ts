@@ -132,6 +132,11 @@ export const en: MessageSchema = {
     openCopy: 'Open the copy',
     startDateTooltip: 'Starts {date}',
     archiveConfirm: 'Archive this task?',
+    archiveStageTasks: 'Archive the tasks',
+    archiveStageTasksConfirm:
+      'Archive the task of the list “{name}”? | Archive the task of the list “{name}”? | Archive the {count} tasks of the list “{name}”?',
+    archiveStageTasksFailedDetail: 'The tasks were not archived.',
+    stageTasksArchived: '{count} tasks archived | {count} task archived | {count} tasks archived',
   },
   task: {
     dialog: {

@@ -208,6 +208,13 @@ function stageCount(stageId: number): string {
 // Calculé pour suivre la langue de l'interface
 const stageMenuItems = computed(() => [
   {
+    label: t('board.archiveStageTasks'),
+    icon: 'pi pi-box',
+    command: () => setTimeout(askArchiveStageTasks),
+    // Colonne vide, rien à archiver
+    disabled: !taskLists.get(selectedStage.value?.id ?? -1)?.length,
+  },
+  {
     label: t('common.delete'),
     icon: 'pi pi-trash',
     command: () => setTimeout(askDeleteStage),
@@ -739,6 +746,66 @@ function askDeleteStage() {
     },
     acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: () => deleteStage(stage),
+  })
+}
+
+/**
+ * Archivage de toutes les tâches de la colonne du menu, filtrées comprises,
+ * après confirmation dans une bulle ancrée sur son bouton de menu.
+ */
+function askArchiveStageTasks() {
+  const stage = selectedStage.value
+  const count = stage ? (taskLists.get(stage.id)?.length ?? 0) : 0
+  if (!stage || count === 0) return
+
+  confirm.require({
+    target: stageMenuTrigger.value ?? undefined,
+    message: t('board.archiveStageTasksConfirm', { name: stage.name, count }, count),
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: t('common.cancel'),
+      severity: 'secondary',
+      outlined: true,
+      'data-testid': 'btn-confirm-reject',
+    },
+    acceptProps: { label: t('common.archive'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    accept: () => archiveStageTasks(stage),
+  })
+}
+
+/**
+ * Archive toutes les tâches d'une colonne en une requête, annulable depuis le
+ * toast. L'annulation remet chaque carte à sa place, dans l'ordre de la colonne.
+ * @param stage Colonne vidée
+ */
+async function archiveStageTasks(stage: Stage) {
+  const tasks = taskLists.get(stage.id) ?? []
+  if (!tasks.length) return
+
+  // Places enregistrées, reprises dans l'ordre si l'archivage est annulé
+  const places = tasks
+    .map((task) => ({ id: task.id, place: { stageId: stage.id, position: task.position } }))
+    .sort((a, b) => a.place.position - b.place.position)
+
+  try {
+    await taskStore.archiveTasks(tasks.map((task) => task.id))
+  } catch {
+    showError(t('board.archiveFailed'), t('board.archiveStageTasksFailedDetail'))
+    return
+  }
+
+  const archivedIds = new Set(places.map(({ id }) => id))
+  taskLists.set(
+    stage.id,
+    (taskLists.get(stage.id) ?? []).filter((task) => !archivedIds.has(task.id)),
+  )
+  logger.debug('Tâches de la colonne archivées', { stageId: stage.id, count: places.length })
+
+  showUndo(t('board.stageTasksArchived', { count: places.length }, places.length), {
+    detail: stage.name,
+    undo: async () => {
+      for (const { id, place } of places) await undoArchive(id, place)
+    },
   })
 }
 

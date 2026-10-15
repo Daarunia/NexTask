@@ -132,6 +132,11 @@ export const pt: MessageSchema = {
     openCopy: 'Abrir a cópia',
     startDateTooltip: 'Começa em {date}',
     archiveConfirm: 'Arquivar esta tarefa?',
+    archiveStageTasks: 'Arquivar as tarefas',
+    archiveStageTasksConfirm:
+      'Arquivar a tarefa da lista «{name}»? | Arquivar a tarefa da lista «{name}»? | Arquivar as {count} tarefas da lista «{name}»?',
+    archiveStageTasksFailedDetail: 'As tarefas não foram arquivadas.',
+    stageTasksArchived: '{count} tarefas arquivadas | {count} tarefa arquivada | {count} tarefas arquivadas',
   },
   task: {
     dialog: {

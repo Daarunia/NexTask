@@ -132,6 +132,11 @@ export const zh: MessageSchema = {
     openCopy: '打开副本',
     startDateTooltip: '开始于 {date}',
     archiveConfirm: '归档此任务？',
+    archiveStageTasks: '归档所有任务',
+    archiveStageTasksConfirm:
+      '归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？',
+    archiveStageTasksFailedDetail: '任务未能归档。',
+    stageTasksArchived: '已归档 {count} 个任务 | 已归档 {count} 个任务 | 已归档 {count} 个任务',
   },
   task: {
     dialog: {

@@ -149,6 +149,15 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Archive plusieurs tâches en une requête (toutes celles d'une colonne),
+     * par le batch qui gère les séries comme l'archivage d'une seule tâche
+     * @param ids Ids des tâches
+     */
+    async archiveTasks(ids: number[]): Promise<void> {
+      await this.updateTaskBatch(ids.map((id) => ({ id, isHistorized: true, stageId: null })))
+    },
+
+    /**
      * Tâches archivées, de la plus récemment archivée à la plus ancienne.
      * Lues à chaque appel, sans cache : elles ne s'affichent que sur la page
      * des archives, et GET /stages (qui remplit le cache) ne les renvoie pas.
@@ -423,9 +432,12 @@ export const useTaskStore = defineStore('task', {
     /**
      * Mise à jour partielle d'un ensemble de tâches
      * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés).
-     *   Les tags ne passent pas par ce batch : l'API les refuse.
+     *   Les tags ne passent pas par ce batch : l'API les refuse. `stageId` null retire la
+     *   tâche de sa colonne, comme un archivage.
      */
-    async updateTaskBatch(tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags'>>>): Promise<void> {
+    async updateTaskBatch(
+      tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId'>> & { stageId?: number | null }>,
+    ): Promise<void> {
       if (!tasks.length) return
 
       try {
