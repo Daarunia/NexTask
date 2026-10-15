@@ -195,6 +195,7 @@ const MAX_TASK_SUGGESTIONS = 5
 const STATUS_ICONS: Record<TaskStatus, string> = {
   overdue: 'pi pi-exclamation-circle',
   today: 'pi pi-calendar',
+  upcoming: 'pi pi-calendar-plus',
   checklist: 'pi pi-check-square',
 }
 

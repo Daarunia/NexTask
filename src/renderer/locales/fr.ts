@@ -103,6 +103,7 @@ export const fr = {
     status: {
       overdue: 'En retard',
       today: 'Aujourd’hui',
+      upcoming: '7 prochains jours',
       checklist: 'Checklist à terminer',
     },
     searchLabel: 'Recherche',

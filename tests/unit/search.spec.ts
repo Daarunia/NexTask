@@ -132,6 +132,14 @@ describe('taskHasStatus', () => {
     expect(taskHasStatus(task({ startDate: at(16, 8) }), 'today', now)).toBe(false)
   })
 
+  test('7 prochains jours, de demain à J+7', () => {
+    expect(taskHasStatus(task({ startDate: at(15, 23) }), 'upcoming', now)).toBe(false)
+    expect(taskHasStatus(task({ startDate: at(16, 0) }), 'upcoming', now)).toBe(true)
+    expect(taskHasStatus(task({ startDate: at(22, 23) }), 'upcoming', now)).toBe(true)
+    expect(taskHasStatus(task({ startDate: at(23, 0) }), 'upcoming', now)).toBe(false)
+    expect(taskHasStatus(task({ startDate: at(10) }), 'upcoming', now)).toBe(false)
+  })
+
   test('date reçue du serveur en texte ISO', () => {
     const iso = at(15).toISOString() as unknown as Date
     expect(taskHasStatus(task({ startDate: iso }), 'today', now)).toBe(true)

@@ -5,7 +5,7 @@ import type { ChecklistItemInput } from '../../../src/main/shared/checklist.cons
 
 /**
  * Tests E2E des filtres rapides de la barre de recherche (en retard,
- * aujourd'hui, checklist à terminer). Ils sont proposés dès le focus, ou en
+ * aujourd'hui, 7 prochains jours, checklist à terminer). Ils sont proposés dès le focus, ou en
  * tapant leur nom, s'affichent en chips et se combinent entre eux (OU) et
  * avec le texte et les tags (ET). Les règles de chaque état sont couvertes
  * par tests/unit/search.spec.ts.
@@ -31,6 +31,7 @@ function daysFromToday(days: number, hours: number): string {
 const TASKS: { title: string; startDate?: string; checklistItems?: ChecklistItemInput[]; tags?: string[] }[] = [
   { title: 'Relancer le fournisseur', startDate: daysFromToday(-2, 9), tags: ['important'] },
   { title: 'Appeler le dentiste', startDate: daysFromToday(0, 23) },
+  { title: 'Préparer la réunion', startDate: daysFromToday(3, 9) },
   {
     title: 'Courses',
     checklistItems: [
@@ -65,10 +66,21 @@ test('les filtres rapides sont proposés dès le focus, avec leur nombre de tâc
 
   await tagFilter.input.click()
   await expect(tagFilter.list).toBeVisible()
-  await expect(tagFilter.statusOptions).toHaveCount(3)
+  await expect(tagFilter.statusOptions).toHaveCount(4)
   await expect(tagFilter.statusOption('En retard')).toContainText('1')
   await expect(tagFilter.statusOption('Aujourd’hui')).toBeVisible()
+  await expect(tagFilter.statusOption('7 prochains jours')).toContainText('1')
   await expect(tagFilter.statusOption('Checklist à terminer')).toBeVisible()
+})
+
+test('« 7 prochains jours » garde les tâches de demain à J+7', async ({ page, taskBoard, tagFilter }) => {
+  await seed(page)
+
+  await tagFilter.input.click()
+  await tagFilter.statusOption('7 prochains jours').click()
+
+  await expect(tagFilter.statusChips).toHaveText(['7 prochains jours'])
+  await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Préparer la réunion'])
 })
 
 test('un filtre sans tâche concernée n’est pas proposé', async ({ page, tagFilter }) => {
@@ -87,7 +99,7 @@ test('un filtre sans tâche concernée n’est pas proposé', async ({ page, tag
   await page.reload()
 
   await tagFilter.input.click()
-  await expect(tagFilter.statusOptions).toHaveCount(2)
+  await expect(tagFilter.statusOptions).toHaveCount(3)
   await expect(tagFilter.statusOption('Checklist à terminer')).toHaveCount(0)
 })
 
@@ -99,13 +111,13 @@ test('choisir « En retard » filtre le tableau et pose une chip', async ({ page
 
   await expect(tagFilter.statusChips).toHaveText(['En retard'])
   await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Relancer le fournisseur'])
-  await expect(taskBoard.columnCount(COLUMN)).toHaveText('1/4')
+  await expect(taskBoard.columnCount(COLUMN)).toHaveText('1/5')
   await expect(tagFilter.dndHint).toBeVisible()
 
   // La croix de la chip retire le filtre
   await tagFilter.statusChips.getByTestId('search-status-chip-remove').click()
   await expect(tagFilter.statusChips).toHaveCount(0)
-  await expect(taskBoard.columnCount(COLUMN)).toHaveText('4')
+  await expect(taskBoard.columnCount(COLUMN)).toHaveText('5')
 })
 
 test('taper le nom propose le filtre, et deux filtres se cumulent en OU', async ({ page, taskBoard, tagFilter }) => {
@@ -148,5 +160,5 @@ test('combiné en ET avec un tag, retour arrière puis effacement', async ({ pag
 
   await tagFilter.clearButton.click()
   await expect(tagFilter.statusChips).toHaveCount(0)
-  await expect(taskBoard.columnCount(COLUMN)).toHaveText('4')
+  await expect(taskBoard.columnCount(COLUMN)).toHaveText('5')
 })

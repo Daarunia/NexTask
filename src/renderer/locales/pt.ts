@@ -98,6 +98,7 @@ export const pt: MessageSchema = {
     status: {
       overdue: 'Atrasadas',
       today: 'Hoje',
+      upcoming: 'Próximos 7 dias',
       checklist: 'Checklist por concluir',
     },
     searchLabel: 'Pesquisa',

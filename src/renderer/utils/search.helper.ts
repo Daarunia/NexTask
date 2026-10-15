@@ -1,6 +1,6 @@
 import type { Task } from '../types/task.types'
 import { descriptionExcerpt } from './description.helper'
-import { dayState } from './date.helper'
+import { dayOffset, dayState } from './date.helper'
 
 /**
  * Texte comparable par la recherche : minuscules, sans accents
@@ -32,13 +32,17 @@ export function taskSearchText(task: Pick<Task, 'title' | 'description' | 'check
 }
 
 /** Filtres rapides du board, sur l'état d'une tâche plutôt que sur son texte. */
-export const TASK_STATUSES = ['overdue', 'today', 'checklist'] as const
+export const TASK_STATUSES = ['overdue', 'today', 'upcoming', 'checklist'] as const
+
+/** Nombre de jours après aujourd'hui couverts par le filtre `upcoming`. */
+export const UPCOMING_DAYS = 7
 export type TaskStatus = (typeof TASK_STATUSES)[number]
 
 /**
  * Vrai si la tâche est dans l'état demandé, soit une date de début passée
  * depuis la veille ou plus (`overdue`), une date de début aujourd'hui
- * (`today`), ou une checklist avec au moins un point à cocher (`checklist`).
+ * (`today`) ou dans les `UPCOMING_DAYS` jours suivants (`upcoming`), ou une
+ * checklist avec au moins un point à cocher (`checklist`).
  * @param task Tâche à tester
  * @param status État recherché
  * @param now Maintenant
@@ -50,7 +54,12 @@ export function taskHasStatus(task: Pick<Task, 'startDate' | 'checklist'>, statu
   }
 
   if (!task.startDate) return false
-  return dayState(new Date(task.startDate), now) === (status === 'overdue' ? 'past' : 'today')
+  const date = new Date(task.startDate)
+  if (status === 'upcoming') {
+    const offset = dayOffset(date, now)
+    return offset >= 1 && offset <= UPCOMING_DAYS
+  }
+  return dayState(date, now) === (status === 'overdue' ? 'past' : 'today')
 }
 
 /**

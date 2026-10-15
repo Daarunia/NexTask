@@ -98,6 +98,7 @@ export const zh: MessageSchema = {
     status: {
       overdue: '已逾期',
       today: '今天',
+      upcoming: '未来 7 天',
       checklist: '清单未完成',
     },
     searchLabel: '搜索',
