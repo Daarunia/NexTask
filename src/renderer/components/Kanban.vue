@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
 import ContextMenu from 'primevue/contextmenu'
@@ -154,7 +154,7 @@ import { Task } from '../types/task.types'
 import { Stage } from '../types/stage.types'
 import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
-import { setAll } from '../utils/map.helper'
+import { useBoardLists } from '../utils/boardLists.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
@@ -189,7 +189,8 @@ const showDialog = ref(false)
 const positionDialog = ref(0)
 const editTask = ref<Task | null>(null)
 const creationMode = ref(true)
-const taskLists = reactive(new Map<number, Task[]>())
+const board = useBoardLists()
+const taskLists = board.lists // colonnes locales, seule source de vérité après le montage
 const stageDialog = ref<number | null>(null)
 const selectedStage = ref<Stage | null>(null)
 const stagesLocal = ref<Stage[]>([])
@@ -308,7 +309,7 @@ const stageMenuItems = computed(() => [
 ])
 
 // Place de la carte du menu contextuel, relue à chaque ouverture
-const menuTaskLocation = computed(() => (menuTaskId.value === null ? null : findTaskLocation(menuTaskId.value)))
+const menuTaskLocation = computed(() => (menuTaskId.value === null ? null : board.find(menuTaskId.value)))
 
 // Calculé pour suivre la langue de l'interface et la place de la carte
 const cardMenuItems = computed(() => {
@@ -353,28 +354,13 @@ const cardMenuItems = computed(() => {
   ]
 })
 
-function buildTaskLists() {
-  const map = new Map<number, Task[]>()
+stagesLocal.value = [...props.stages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+board.build(stageIds(), props.tasks)
 
-  for (const stage of stagesLocal.value) {
-    map.set(
-      stage.id,
-      props.tasks
-        .filter((t) => t.stageId === stage.id)
-        .sort((a, b) => a.position - b.position)
-        .map((t) => ({ ...t })),
-    )
-  }
-
-  setAll(taskLists, map)
+/** Ids des colonnes, dans l'ordre affiché. */
+function stageIds(): number[] {
+  return stagesLocal.value.map((stage) => stage.id)
 }
-
-function buildStages() {
-  stagesLocal.value = [...props.stages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-}
-
-buildStages()
-buildTaskLists()
 
 /**
  * Ouverture de la boite de dialogue en mode création
@@ -435,21 +421,9 @@ async function onTasksDrop() {
  * @param stageIds Colonnes à enregistrer (toutes par défaut)
  * @returns Faux si l'enregistrement a échoué (rien n'a changé en base)
  */
-async function saveTaskOrder(stageIds: number[] = stagesLocal.value.map((stage) => stage.id)): Promise<boolean> {
-  // Comparaison avec le dernier état persisté, porté par les tâches de taskLists
-  // (et non avec props.tasks, instantané figé au montage)
-  const changes: { task: Task; position: number; stageId: number }[] = []
-
-  for (const stageId of stageIds) {
-    const currentTasks = taskLists.get(stageId) ?? []
-
-    currentTasks.forEach((task, index) => {
-      if (task.position !== index || task.stageId !== stageId) {
-        changes.push({ task, position: index, stageId })
-      }
-    })
-  }
-
+async function saveTaskOrder(columns: number[] = stageIds()): Promise<boolean> {
+  // Comparaison avec le dernier état persisté, porté par les cartes locales
+  const changes = board.orderChanges(columns)
   if (!changes.length) return true
 
   // Seuls les champs du déplacement sont envoyés, car renvoyer la tâche entière ferait
@@ -463,31 +437,16 @@ async function saveTaskOrder(stageIds: number[] = stagesLocal.value.map((stage) 
     return false
   }
 
-  // Sauvegarde réussie : les tâches locales reflètent désormais l'état persisté
-  for (const { task, position, stageId } of changes) {
-    task.position = position
-    task.stageId = stageId
-  }
+  // Sauvegarde réussie : les cartes locales reflètent désormais l'état persisté
+  board.commitOrder(changes)
   return true
 }
 
 /**
  * Remet les cartes à leur dernière place enregistrée, après un DnD refusé.
- * Chaque tâche porte encore sa colonne et sa position persistées, qui ne sont
- * mises à jour qu'une fois la sauvegarde réussie.
  */
 function restorePersistedTasks() {
-  const tasks = [...taskLists.values()].flat()
-  const map = new Map<number, Task[]>()
-
-  for (const stage of stagesLocal.value) {
-    map.set(
-      stage.id,
-      tasks.filter((t) => t.stageId === stage.id).sort((a, b) => a.position - b.position),
-    )
-  }
-
-  setAll(taskLists, map)
+  board.restorePersisted(stageIds())
 }
 
 /**
@@ -529,7 +488,7 @@ async function removeTagFromTask(task: Task, tagId: number) {
   // Un renommage en vol changerait les noms à envoyer
   await tagStore.waitForPendingEdits()
 
-  const location = findTaskLocation(task.id)
+  const location = board.find(task.id)
   if (!location) return
 
   const oldTags = (location.list[location.index].tags ?? []).filter((tag) => !tagStore.wasDeleted(tag.id))
@@ -541,12 +500,7 @@ async function removeTagFromTask(task: Task, tagId: number) {
     const updatedTask = await taskStore.updateTaskTags(task.id, keptNames)
 
     // Seuls les tags de la copie locale changent : la carte a pu bouger pendant l'appel
-    const current = findTaskLocation(task.id)
-    if (current) {
-      const list = [...current.list]
-      list[current.index] = { ...list[current.index], tags: updatedTask.tags }
-      taskLists.set(current.stageId, list)
-    }
+    board.update(task.id, (current) => ({ ...current, tags: updatedTask.tags }))
 
     updateTagCounts(
       oldTags.map((tag) => tag.id),
@@ -568,7 +522,7 @@ async function removeTagFromTask(task: Task, tagId: number) {
  * @param isChecked Nouvel état du point
  */
 async function checkChecklistItem(task: Task, itemId: number, isChecked: boolean) {
-  const location = findTaskLocation(task.id)
+  const location = board.find(task.id)
   const previous = location?.list[location.index].checklist
   const wasChecked = previous?.items.find((item) => item.id === itemId)?.isChecked
   if (!previous || wasChecked === undefined) return
@@ -605,7 +559,7 @@ function offerArchive(task: Task) {
   showAction(t('checklist.allDone'), task.title, {
     label: t('common.archive'),
     run: () => archiveTask(task),
-    available: () => findTaskLocation(task.id) !== null,
+    available: () => board.find(task.id) !== null,
   })
 }
 
@@ -617,13 +571,7 @@ function offerArchive(task: Task) {
  * @param update Nouvelle checklist, à partir de celle affichée
  */
 function updateLocalChecklist(taskId: number, update: (checklist: TaskChecklist) => TaskChecklist) {
-  const location = findTaskLocation(taskId)
-  const checklist = location?.list[location.index].checklist
-  if (!location || !checklist) return
-
-  const list = [...location.list]
-  list[location.index] = { ...list[location.index], checklist: update(checklist) }
-  taskLists.set(location.stageId, list)
+  board.update(taskId, (task) => (task.checklist ? { ...task, checklist: update(task.checklist) } : task))
 }
 
 /**
@@ -664,14 +612,11 @@ function onCardMenuHide() {
  * @param edge Haut ou bas de la colonne
  */
 async function moveTask(taskId: number, stageId: number, edge: 'top' | 'bottom') {
-  const from = findTaskLocation(taskId)
-  if (!from || !taskLists.has(stageId)) return
+  if (!taskLists.has(stageId)) return
+  const from = board.remove(taskId)
+  if (!from) return
 
   const task = from.list[from.index]
-  taskLists.set(
-    from.stageId,
-    from.list.filter((t) => t.id !== taskId),
-  )
   const rest = taskLists.get(stageId) ?? []
   taskLists.set(stageId, edge === 'top' ? [task, ...rest] : [...rest, task])
 
@@ -715,11 +660,11 @@ async function duplicateTask(task: Task) {
     return
   }
 
-  insertTaskLocally(copy)
+  board.insert(copy)
   showAction(t('board.taskDuplicated'), copy.title, {
     label: t('board.openCopy'),
     run: () => openTask(copy.id),
-    available: () => findTaskLocation(copy.id) !== null,
+    available: () => board.find(copy.id) !== null,
   })
 }
 
@@ -730,7 +675,7 @@ async function duplicateTask(task: Task) {
  * @param taskId Id de la tâche
  */
 function openTask(taskId: number) {
-  const location = findTaskLocation(taskId)
+  const location = board.find(taskId)
   if (!location || showDialog.value) return
   openEditTaskDialog(location.stageId, location.list[location.index])
 }
@@ -747,17 +692,8 @@ async function archiveTask(task: Task) {
     return
   }
 
-  // On retire la carte de sa colonne locale (taskLists est la source de
-  // vérité après le montage — ne PAS reconstruire depuis props.tasks, qui est
-  // un instantané figé et réafficherait la tâche archivée).
-  // La colonne est retrouvée par id : task.stageId peut être obsolète après un DnD.
-  const location = findTaskLocation(task.id)
-  if (location) {
-    taskLists.set(
-      location.stageId,
-      location.list.filter((t) => t.id !== task.id),
-    )
-  }
+  // Carte retirée de sa colonne locale, retrouvée par id
+  const location = board.remove(task.id)
 
   logger.debug('Tâche archivée', task)
 
@@ -777,9 +713,9 @@ async function archiveTask(task: Task) {
 async function undoArchive(taskId: number, place?: { stageId: number; position: number }) {
   try {
     const { task: restored, removed } = await taskStore.restoreTask(taskId, place)
-    insertTaskLocally(restored)
+    board.insert(restored)
     if (removed) {
-      removeTaskLocally(removed.id)
+      board.remove(removed.id)
       updateTagCounts(
         (removed.tags ?? []).map((tag) => tag.id),
         [],
@@ -789,41 +725,6 @@ async function undoArchive(taskId: number, place?: { stageId: number; position: 
   } catch {
     showError(t('board.undoFailed'), t('board.undoArchiveFailedDetail'))
   }
-}
-
-/**
- * Insère une carte placée au tableau par le serveur (archivage annulé, ajout
- * rapide, occurrence d'une tâche récurrente). Comme côté serveur, les cartes de sa colonne à sa position ou après
- * descendent d'un cran : leur position locale reste celle enregistrée.
- * @param task Tâche telle que renvoyée par le serveur
- */
-function insertTaskLocally(task: Task) {
-  const list = taskLists.get(task.stageId)
-  if (!list || findTaskLocation(task.id)) return
-
-  for (const t of list) {
-    if (t.position >= task.position) t.position += 1
-  }
-
-  const updated = [...list]
-  const index = updated.findIndex((t) => t.position > task.position)
-  updated.splice(index === -1 ? updated.length : index, 0, { ...task })
-  taskLists.set(task.stageId, updated)
-}
-
-/**
- * Retire une carte supprimée par le serveur (occurrence née d'un archivage
- * annulé). Les positions des autres cartes ne changent pas, comme côté serveur.
- * @param taskId Id de la tâche
- */
-function removeTaskLocally(taskId: number) {
-  const location = findTaskLocation(taskId)
-  if (!location) return
-
-  taskLists.set(
-    location.stageId,
-    location.list.filter((t) => t.id !== taskId),
-  )
 }
 
 /**
@@ -851,13 +752,11 @@ async function onTaskSaved(task: Task) {
   // Édition : remplacement sur place, dans la colonne où la carte est affichée.
   // Pas de tri par position : celles des autres cartes peuvent être obsolètes
   // tant que la sauvegarde d'un DnD n'a pas abouti.
-  const location = findTaskLocation(task.id)
+  const location = board.find(task.id)
   if (!location) return
 
   const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
-  const list = [...location.list]
-  list[location.index] = task
-  taskLists.set(location.stageId, list)
+  board.update(task.id, () => task)
   updateTagCounts(oldTagIds, newTagIds)
 }
 
@@ -871,20 +770,6 @@ function updateTagCounts(oldTagIds: number[], newTagIds: number[]) {
   const added = newTagIds.filter((id) => !oldTagIds.includes(id))
   const removed = oldTagIds.filter((id) => !newTagIds.includes(id))
   tagStore.adjustTaskCounts(added, removed)
-}
-
-/**
- * Retrouve la colonne locale et l'index d'une carte par son id.
- * On ne se fie pas à task.stageId : vuedraggable déplace l'objet entre les
- * listes sans le modifier, le champ n'est remis à jour qu'après la sauvegarde.
- * @param taskId Id de la tâche
- */
-function findTaskLocation(taskId: number): { stageId: number; list: Task[]; index: number } | null {
-  for (const [stageId, list] of taskLists) {
-    const index = list.findIndex((t) => t.id === taskId)
-    if (index !== -1) return { stageId, list, index }
-  }
-  return null
 }
 
 /**
@@ -1056,9 +941,7 @@ async function deleteStage(stage: Stage) {
     stagesLocal.value = stagesLocal.value.filter((s) => s.id !== stageId)
     if (isCollapsed(stageId)) setStageCollapsed(stageId, false)
 
-    const newTaskLists = new Map(taskLists)
-    newTaskLists.delete(stageId)
-    setAll(taskLists, newTaskLists)
+    taskLists.delete(stageId)
 
     logger.debug('Colonne supprimée : ', stageId)
   } catch (error) {
@@ -1133,11 +1016,11 @@ onMounted(() => globalThis.addEventListener('keydown', onBoardKeydown))
 onBeforeUnmount(() => globalThis.removeEventListener('keydown', onBoardKeydown))
 
 // Tâches créées depuis la fenêtre d'ajout rapide, insérées sans recharger le tableau
-const stopQuickAddListener = globalThis.quickAdd.onTaskCreated(insertTaskLocally)
+const stopQuickAddListener = globalThis.quickAdd.onTaskCreated(board.insert)
 onBeforeUnmount(stopQuickAddListener)
 
 // Occurrences des tâches récurrentes créées par le main, insérées de même
-const stopRecurrenceListener = globalThis.recurrence.onTasksCreated((tasks) => tasks.forEach(insertTaskLocally))
+const stopRecurrenceListener = globalThis.recurrence.onTasksCreated((tasks) => tasks.forEach(board.insert))
 onBeforeUnmount(stopRecurrenceListener)
 
 /**
