@@ -15,7 +15,12 @@
     >
       <template #item="{ element }">
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
-          <strong class="task-title">{{ element.title }}</strong>
+          <!-- Titre en bouton, sa zone de clic couvre toute la carte : un clic n'importe
+               où l'ouvre, comme Entrée au clavier. Un clic qui termine un drag est ignoré
+               par SortableJS. -->
+          <button type="button" data-testid="task-card-open" class="task-title" @click="$emit('edit-task', element)">
+            {{ element.title }}
+          </button>
 
           <!-- Pied de carte : tags à gauche, date de début, avancement de la checklist
                puis icônes de description et de récurrence calés à droite -->
@@ -27,10 +32,10 @@
               cardRecurrences.get(element.id) ||
               hasDescription(element.description)
             "
-            class="flex items-end gap-2"
+            class="card-footer flex items-end gap-2"
           >
             <!-- Tags de la carte : nom et couleur lus dans le store, jamais dans task.tags -->
-            <div class="flex flex-wrap gap-1 flex-1 min-w-0">
+            <div class="card-tags flex flex-wrap gap-1 flex-1 min-w-0">
               <TagChip
                 v-for="tag in cardTags.get(element.id)"
                 :key="tag.id"
@@ -269,14 +274,49 @@ const cardTags = computed(() => {
   background-color: var(--p-surface-300);
 }
 
-/* Titre sur toute la largeur, un mot trop long est coupé plutôt que de déborder */
+/* Titre sur toute la largeur, un mot trop long est coupé plutôt que de déborder.
+   Bouton sans habillage, le curseur reste celui du drag */
 .task-title {
+  @apply p-0 text-left font-bold;
   overflow-wrap: anywhere;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: inherit;
+}
+
+/* Zone de clic du titre étendue à toute la carte */
+.task-title::after {
+  @apply absolute inset-0;
+  content: '';
+  border-radius: inherit;
+}
+
+/* Focus clavier du titre affiché sur toute la carte */
+.task-title:focus-visible {
+  outline: none;
+}
+
+.draggable-item:has(.task-title:focus-visible) {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 1px;
+}
+
+/* Pied au-dessus de la zone de clic : chips, date, badge et icônes gardent leur
+   clic et leur infobulle, l'espace libre entre eux ouvre la carte */
+.card-footer {
+  @apply relative z-[1];
+  pointer-events: none;
+}
+
+.card-footer > :deep(:not(.card-tags)),
+.card-tags > :deep(*) {
+  pointer-events: auto;
 }
 
 /* Fond repris de la carte (survol compris) : le titre passe proprement sous les boutons */
 .card-actions {
-  @apply absolute top-2 right-2 h-6 flex gap-2 pl-2 rounded-md;
+  @apply absolute top-2 right-2 z-[2] h-6 flex gap-2 pl-2 rounded-md;
   background-color: inherit;
 }
 

@@ -404,7 +404,7 @@ export class TaskBoard {
    * @param columnName Nom de la colonne
    */
   async columnTaskTitles(columnName: string): Promise<string[]> {
-    const titles = await this.column(columnName).getByTestId('task-card').locator('strong').allInnerTexts()
+    const titles = await this.column(columnName).getByTestId('task-card-open').allInnerTexts()
     return titles.map((t) => t.trim())
   }
 

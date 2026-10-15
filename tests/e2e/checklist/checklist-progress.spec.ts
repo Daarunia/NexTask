@@ -118,7 +118,7 @@ test("le badge se place avant l'icône de description", async ({ page, taskBoard
     .taskCard('Avec tout')
     .locator('[data-testid^="task-card-"]')
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')))
-  expect(testIds).toEqual(['task-card-checklist', 'task-card-description'])
+  expect(testIds).toEqual(['task-card-open', 'task-card-checklist', 'task-card-description'])
   await expect(taskBoard.cardChecklistBadge('Avec tout')).toHaveText('0/1')
   await expect(taskBoard.cardChecklistBadge('Avec tout')).toHaveAttribute('aria-label', '0 point coché sur 1')
 })
