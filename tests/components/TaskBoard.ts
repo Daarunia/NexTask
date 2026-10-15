@@ -33,6 +33,9 @@ export class TaskBoard {
   // Bulle de la checklist d'une carte, ouverte par son badge (une seule à la fois)
   readonly cardChecklistPopover: Locator
 
+  // Menu contextuel des cartes (clic droit), partagé par tout le tableau
+  readonly cardMenu: Locator
+
   /**
    * Constructeur
    * @param page Page courante
@@ -63,6 +66,7 @@ export class TaskBoard {
     this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
 
     this.cardChecklistPopover = page.getByTestId('card-checklist-popover')
+    this.cardMenu = page.getByTestId('card-menu')
   }
 
   /**
@@ -120,6 +124,35 @@ export class TaskBoard {
     const chip = this.taskCardTag(title, tagName)
     await chip.hover()
     await chip.getByTestId('task-card-tag-remove').click()
+  }
+
+  /**
+   * Ouvre le menu contextuel d'une carte par un clic droit sur son titre.
+   * @param title Titre exact de la tâche
+   */
+  async openCardMenu(title: string) {
+    await this.taskCard(title).getByTestId('task-card-open').click({ button: 'right' })
+    await expect(this.cardMenu).toBeVisible()
+  }
+
+  /**
+   * Entrée du menu contextuel ouvert, sous-menu compris.
+   * @param name Libellé exact
+   */
+  cardMenuItem(name: string): Locator {
+    return this.cardMenu.getByRole('menuitem', { name, exact: true })
+  }
+
+  /**
+   * Déplace une carte en bas d'une autre colonne par son menu contextuel.
+   * @param title Titre exact de la tâche
+   * @param columnName Colonne d'arrivée
+   */
+  async moveCardTo(title: string, columnName: string) {
+    await this.openCardMenu(title)
+    await this.cardMenuItem('Déplacer vers').hover()
+    await this.cardMenuItem(columnName).click()
+    await expect(this.cardMenu).toBeHidden()
   }
 
   /**

@@ -140,6 +140,14 @@ export const zh: MessageSchema = {
       '归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？',
     archiveStageTasksFailedDetail: '任务未能归档。',
     stageTasksArchived: '已归档 {count} 个任务 | 已归档 {count} 个任务 | 已归档 {count} 个任务',
+    cardMenu: {
+      open: '打开',
+      duplicate: '复制',
+      moveTo: '移动到',
+      moveTop: '移到顶部',
+      moveBottom: '移到底部',
+      label: '任务 {title} 的操作',
+    },
   },
   task: {
     dialog: {

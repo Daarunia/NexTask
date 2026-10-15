@@ -140,6 +140,14 @@ export const es: MessageSchema = {
       '¿Archivar la tarea de la lista «{name}»? | ¿Archivar la tarea de la lista «{name}»? | ¿Archivar las {count} tareas de la lista «{name}»?',
     archiveStageTasksFailedDetail: 'Las tareas no se archivaron.',
     stageTasksArchived: '{count} tareas archivadas | {count} tarea archivada | {count} tareas archivadas',
+    cardMenu: {
+      open: 'Abrir',
+      duplicate: 'Duplicar',
+      moveTo: 'Mover a',
+      moveTop: 'Mover arriba del todo',
+      moveBottom: 'Mover abajo del todo',
+      label: 'Acciones de la tarea {title}',
+    },
   },
   task: {
     dialog: {

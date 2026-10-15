@@ -60,6 +60,7 @@
             @archive-task="archiveTask"
             @remove-tag="removeTagFromTask"
             @check-item="checkChecklistItem"
+            @card-menu="openCardMenu"
             @create-task="openCreateTaskDialog(stage.id)"
           />
         </div>
@@ -92,6 +93,15 @@
   <!-- Menu contextuel partagé (une seule instance, cible = selectedStage) -->
   <Menu ref="stageMenu" :model="stageMenuItems" popup />
 
+  <!-- Menu contextuel des cartes, partagé de même (cible = menuTaskId) -->
+  <ContextMenu
+    ref="cardMenu"
+    :model="cardMenuItems"
+    data-testid="card-menu"
+    :aria-label="t('board.cardMenu.label', { title: menuTaskLocation?.list[menuTaskLocation.index].title ?? '' })"
+    @hide="onCardMenuHide"
+  />
+
   <TaskDialog
     v-model="showDialog"
     :stageId="stageDialog ?? 0"
@@ -109,6 +119,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive, watch } from 'vue'
 import draggable from 'vuedraggable'
 import Menu from 'primevue/menu'
+import ContextMenu from 'primevue/contextmenu'
 import Button from 'primevue/button'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
@@ -166,6 +177,10 @@ const stageMenuTrigger = ref<HTMLElement | null>(null) // bouton ⋮ du menu ouv
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
+const cardMenu = ref()
+const menuTaskId = ref<number | null>(null) // carte du menu contextuel ouvert
+const menuCard = ref<HTMLElement | null>(null) // sa carte affichée, cible de la confirmation
+let menuTrigger: HTMLElement | null = null // titre de la carte, qui reprend le focus à la fermeture
 
 // Filtre actif (texte ou tags) : le DnD des tâches est alors désactivé
 const filterActive = computed(() => boardFilter.isActive)
@@ -229,6 +244,52 @@ const stageMenuItems = computed(() => [
     class: 'text-primary',
   },
 ])
+
+// Place de la carte du menu contextuel, relue à chaque ouverture
+const menuTaskLocation = computed(() => (menuTaskId.value === null ? null : findTaskLocation(menuTaskId.value)))
+
+// Calculé pour suivre la langue de l'interface et la place de la carte
+const cardMenuItems = computed(() => {
+  const location = menuTaskLocation.value
+  if (!location) return []
+
+  const task = location.list[location.index]
+  const otherStages = stagesLocal.value.filter((stage) => stage.id !== location.stageId)
+
+  return [
+    { label: t('board.cardMenu.open'), icon: 'pi pi-pencil', command: () => openTask(task.id) },
+    { label: t('board.cardMenu.duplicate'), icon: 'pi pi-copy', command: () => duplicateTask(task) },
+    { separator: true },
+    {
+      label: t('board.cardMenu.moveTo'),
+      icon: 'pi pi-arrow-right',
+      disabled: !otherStages.length,
+      items: otherStages.map((stage) => ({
+        label: stage.name,
+        command: () => moveTask(task.id, stage.id, 'bottom'),
+      })),
+    },
+    {
+      label: t('board.cardMenu.moveTop'),
+      icon: 'pi pi-arrow-up',
+      disabled: location.index === 0,
+      command: () => moveTask(task.id, location.stageId, 'top'),
+    },
+    {
+      label: t('board.cardMenu.moveBottom'),
+      icon: 'pi pi-arrow-down',
+      disabled: location.index === location.list.length - 1,
+      command: () => moveTask(task.id, location.stageId, 'bottom'),
+    },
+    { separator: true },
+    {
+      label: t('common.archive'),
+      icon: 'pi pi-box',
+      // Après la fermeture du menu, pour que la confirmation ne soit pas refermée aussitôt
+      command: () => setTimeout(() => askArchiveTask(task, menuCard.value)),
+    },
+  ]
+})
 
 function buildTaskLists() {
   const map = new Map<number, Task[]>()
@@ -501,6 +562,81 @@ function updateLocalChecklist(taskId: number, update: (checklist: TaskChecklist)
   const list = [...location.list]
   list[location.index] = { ...list[location.index], checklist: update(checklist) }
   taskLists.set(location.stageId, list)
+}
+
+/**
+ * Ouvre le menu contextuel d'une carte, à la place du clic droit (ou sous le
+ * titre, ouvert au clavier).
+ * @param event Clic droit, ou touche Menu sur le titre
+ * @param task Tâche de la carte
+ */
+function openCardMenu(event: MouseEvent, task: Task) {
+  menuTaskId.value = task.id
+  menuTrigger = event.currentTarget as HTMLElement
+  menuCard.value = menuTrigger.closest('[data-testid="task-card"]')
+  cardMenu.value.show(event)
+}
+
+/**
+ * Fermeture du menu d'une carte. Si le focus était dans le menu (Échap, choix
+ * au clavier), il revient sur le titre de la carte plutôt que sur la page. Un
+ * clic ailleurs a déjà placé le focus, il n'est pas déplacé.
+ */
+function onCardMenuHide() {
+  menuTaskId.value = null
+  const trigger = menuTrigger
+
+  setTimeout(() => {
+    const active = document.activeElement
+    if (!active || active === document.body || active.closest('[data-testid="card-menu"]')) trigger?.focus()
+  })
+}
+
+/**
+ * Déplace une carte, depuis son menu, tout en haut ou tout en bas d'une colonne
+ * (la sienne ou une autre), puis enregistre l'ordre des colonnes touchées. La
+ * carte est retrouvée par id dans les colonnes complètes : le déplacement marche
+ * aussi sous filtre, où le glisser-déposer est désactivé.
+ * @param taskId Id de la tâche
+ * @param stageId Colonne d'arrivée
+ * @param edge Haut ou bas de la colonne
+ */
+async function moveTask(taskId: number, stageId: number, edge: 'top' | 'bottom') {
+  const from = findTaskLocation(taskId)
+  if (!from || !taskLists.has(stageId)) return
+
+  const task = from.list[from.index]
+  taskLists.set(
+    from.stageId,
+    from.list.filter((t) => t.id !== taskId),
+  )
+  const rest = taskLists.get(stageId) ?? []
+  taskLists.set(stageId, edge === 'top' ? [task, ...rest] : [...rest, task])
+
+  if (!(await saveTaskOrder([...new Set([from.stageId, stageId])]))) {
+    restorePersistedTasks()
+    showError(t('board.moveCanceled'))
+  }
+}
+
+/**
+ * Archivage d'une carte depuis son menu : direct, ou après confirmation dans
+ * une bulle ancrée sur la carte si le paramètre est activé (comme la corbeille).
+ * @param task Tâche de la carte
+ * @param card Carte affichée, ancre de la bulle
+ */
+function askArchiveTask(task: Task, card: HTMLElement | null) {
+  if (!settings.confirmArchive) {
+    archiveTask(task)
+    return
+  }
+
+  confirmDanger({
+    target: card ?? undefined,
+    message: t('board.archiveConfirm'),
+    acceptLabel: t('common.archive'),
+    accept: () => archiveTask(task),
+  })
 }
 
 /**

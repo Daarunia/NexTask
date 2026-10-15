@@ -145,6 +145,15 @@ export const fr = {
       'Archiver la tâche de la liste « {name} » ? | Archiver la tâche de la liste « {name} » ? | Archiver les {count} tâches de la liste « {name} » ?',
     archiveStageTasksFailedDetail: "Les tâches n'ont pas été archivées.",
     stageTasksArchived: '{count} tâche archivée | {count} tâche archivée | {count} tâches archivées',
+    // Menu contextuel d'une carte (clic droit ou touche Menu sur son titre)
+    cardMenu: {
+      open: 'Ouvrir',
+      duplicate: 'Dupliquer',
+      moveTo: 'Déplacer vers',
+      moveTop: 'Tout en haut',
+      moveBottom: 'Tout en bas',
+      label: 'Actions de la tâche {title}',
+    },
   },
   task: {
     dialog: {

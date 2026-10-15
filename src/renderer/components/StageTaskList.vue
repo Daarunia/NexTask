@@ -17,8 +17,15 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <!-- Titre en bouton, sa zone de clic couvre toute la carte : un clic n'importe
                où l'ouvre, comme Entrée au clavier. Un clic qui termine un drag est ignoré
-               par SortableJS. -->
-          <button type="button" data-testid="task-card-open" class="task-title" @click="$emit('edit-task', element)">
+               par SortableJS. Le clic droit (ou la touche Menu) ouvre les actions de la carte. -->
+          <button
+            type="button"
+            data-testid="task-card-open"
+            class="task-title"
+            aria-haspopup="menu"
+            @click="$emit('edit-task', element)"
+            @contextmenu.prevent="$emit('card-menu', $event, element)"
+          >
             {{ element.title }}
           </button>
 
@@ -161,7 +168,15 @@ const props = withDefaults(
   { filterActive: false },
 )
 
-const emit = defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag', 'check-item'])
+const emit = defineEmits([
+  'tasks-drop',
+  'edit-task',
+  'archive-task',
+  'create-task',
+  'remove-tag',
+  'check-item',
+  'card-menu',
+])
 
 /** Fin d'un drag de carte : fin du curseur de drag, puis sauvegarde par le parent. */
 function onDragEnd() {

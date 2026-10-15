@@ -140,6 +140,14 @@ export const en: MessageSchema = {
       'Archive the task of the list “{name}”? | Archive the task of the list “{name}”? | Archive the {count} tasks of the list “{name}”?',
     archiveStageTasksFailedDetail: 'The tasks were not archived.',
     stageTasksArchived: '{count} tasks archived | {count} task archived | {count} tasks archived',
+    cardMenu: {
+      open: 'Open',
+      duplicate: 'Duplicate',
+      moveTo: 'Move to',
+      moveTop: 'Move to top',
+      moveBottom: 'Move to bottom',
+      label: 'Actions for the task {title}',
+    },
   },
   task: {
     dialog: {

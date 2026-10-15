@@ -140,6 +140,14 @@ export const pt: MessageSchema = {
       'Arquivar a tarefa da lista «{name}»? | Arquivar a tarefa da lista «{name}»? | Arquivar as {count} tarefas da lista «{name}»?',
     archiveStageTasksFailedDetail: 'As tarefas não foram arquivadas.',
     stageTasksArchived: '{count} tarefas arquivadas | {count} tarefa arquivada | {count} tarefas arquivadas',
+    cardMenu: {
+      open: 'Abrir',
+      duplicate: 'Duplicar',
+      moveTo: 'Mover para',
+      moveTop: 'Mover para o topo',
+      moveBottom: 'Mover para o fim',
+      label: 'Ações da tarefa {title}',
+    },
   },
   task: {
     dialog: {
