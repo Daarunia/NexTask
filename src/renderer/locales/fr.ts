@@ -584,8 +584,6 @@ export const fr = {
     allDone: 'Checklist terminée',
   },
   archives: {
-    itemChecked: 'Coché',
-    itemUnchecked: 'Non coché',
     back: 'Retour aux paramètres',
     restore: 'Restaurer',
     deleteForever: 'Supprimer définitivement',

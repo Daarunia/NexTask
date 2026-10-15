@@ -143,12 +143,11 @@
                   :data-checked="item.isChecked"
                   :class="['archived-item', { checked: item.isChecked }]"
                 >
-                  <i
-                    :class="['pi', item.isChecked ? 'pi-check-square' : 'pi-stop']"
-                    role="img"
-                    :aria-label="item.isChecked ? t('archives.itemChecked') : t('archives.itemUnchecked')"
-                  ></i>
-                  <span>{{ item.text }}</span>
+                  <!-- Case en lecture seule, son état est annoncé avec le texte du point -->
+                  <label class="flex items-start gap-2">
+                    <input type="checkbox" :checked="item.isChecked" disabled />
+                    <span>{{ item.text }}</span>
+                  </label>
                 </li>
               </ul>
             </div>
@@ -426,8 +425,9 @@ async function deletePermanently(task: Task) {
   @apply flex items-start gap-2;
 }
 
-.archived-item .pi {
-  @apply mt-0.5 text-xs;
+.archived-item input {
+  @apply mt-1;
+  accent-color: var(--p-primary-color);
 }
 
 .archived-item.checked {
