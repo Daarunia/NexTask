@@ -24,15 +24,15 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 
 <img align="right" width="300" alt="Task editor with a checklist and a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
 
-- **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns. A click anywhere on a card opens it, `N` creates a task, the arrow keys move between cards, and a right click (or `Shift+F10`) gives the card actions: duplicate it with its tags and checklist, move it to another column (even while filtering), to the top or bottom of its column, or archive it. A column can be renamed, sorted by start date, archived in one go or collapsed into a narrow strip.
+- **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns. A click anywhere on a card opens it, `N` creates a task, the arrow keys move between cards, and a right click (or `Shift+F10`) gives the card actions: duplicate it with its tags and checklist, move it to another column (even while filtering), to the top or bottom of its column, or archive it. A column can be renamed, sorted by start date, archived in one go or collapsed into a narrow strip. The task dialog can save and start the next task (`Ctrl+Shift+Enter`), and asks before dropping unsaved changes.
 - **Checklists** to split a task into steps, with progress shown on its card where items can be ticked without opening the task, and reusable templates managed from their own page.
 - **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden, optionally filled from a checklist template.
 - **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
 - **Reminders** through native desktop notifications based on each task's start date, also shown on its card and highlighted on the day and once overdue.
-- **Global search** from the header (`Ctrl+F`): filter the board by text (title, description and checklist items), by tags and by quick filters (overdue, today, unfinished checklist), or jump straight to a task.
+- **Global search** from the header (`Ctrl+F`): filter the board by text (title, description and checklist items), by tags and by quick filters (overdue, today, next 7 days, unfinished checklist), or jump straight to a task.
 - **Tags** with a color palette to categorize and filter tasks.
 - **Task versions** to group tasks by release or milestone.
-- **Archives** for completed tasks, searchable, with optional automatic purge after 30, 90 or 365 days.
+- **Archives** for completed tasks, searchable and expandable to read a task again, with optional automatic purge after 30, 90 or 365 days.
 - **Undo** for destructive actions.
 - **Automatic daily backups** of the database (the last 7 are kept).
 - **JSON import / export** of all your data.
