@@ -168,6 +168,8 @@ export const fr = {
       duplicate: 'Dupliquer',
       duplicateHint: 'Copie sous la tâche, telle qu’enregistrée',
       close: 'Fermer',
+      discardConfirm: 'Abandonner les modifications non enregistrées ?',
+      discard: 'Abandonner',
       title: 'Titre',
       titlePlaceholder: 'Décris ton titre ici...',
       description: 'Description',

@@ -52,7 +52,7 @@ test('annuler la création ne crée aucune tâche', async ({ taskBoard }) => {
 
   await taskBoard.openCreateDialog(COLUMN)
   await taskBoard.titleInput.fill(title)
-  await taskBoard.cancelButton.click()
+  await taskBoard.discardDialog()
 
   await expect(taskBoard.dialog).toBeHidden()
   await expect(taskBoard.taskCard(title)).toHaveCount(0)
@@ -133,8 +133,7 @@ test("l'en-tête indique le mode et la colonne, et la croix ferme sans enregistr
   // Pas d'archivage pour une tâche pas encore créée
   await expect(page.getByTestId('task-archive-btn')).toHaveCount(0)
   await taskBoard.titleInput.fill('Fermée sans enregistrer')
-  await page.getByTestId('task-close-btn').click()
-  await expect(taskBoard.dialog).toBeHidden()
+  await taskBoard.discardDialog(page.getByTestId('task-close-btn'))
   await expect(taskBoard.taskCard('Fermée sans enregistrer')).toHaveCount(0)
 
   await taskBoard.createTask(COLUMN, { title: 'Existante' })

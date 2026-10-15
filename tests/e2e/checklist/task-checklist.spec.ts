@@ -166,8 +166,7 @@ test.describe('Checklist du dialogue de tâche', () => {
     await checklist.newItem.press('Enter')
     await expect(checklist.progress).toHaveText('1/3')
 
-    await taskBoard.cancelButton.click()
-    await expect(taskBoard.dialog).toBeHidden()
+    await taskBoard.discardDialog()
     await expect(taskBoard.cardChecklistBadge('Revue')).toHaveText('0/2')
 
     await taskBoard.openEditDialog('Revue')
@@ -489,8 +488,7 @@ test.describe('Checklist du dialogue de tâche', () => {
 
     // Dialogue refermé, plus rien à perdre, « Ouvrir » apparaît. Fermé par la croix,
     // le toast recouvre les boutons du bas à la taille de la CI.
-    await page.getByTestId('task-close-btn').click()
-    await expect(taskBoard.dialog).toBeHidden()
+    await taskBoard.discardDialog(page.getByTestId('task-close-btn'))
     await expect(checklist.toastOpenButton).toBeVisible()
   })
 

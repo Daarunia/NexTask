@@ -162,6 +162,8 @@ export const es: MessageSchema = {
       duplicate: 'Duplicar',
       duplicateHint: 'Copia debajo de la tarea, tal como está guardada',
       close: 'Cerrar',
+      discardConfirm: '¿Descartar los cambios sin guardar?',
+      discard: 'Descartar',
       title: 'Título',
       titlePlaceholder: 'Describe tu título aquí...',
       description: 'Descripción',

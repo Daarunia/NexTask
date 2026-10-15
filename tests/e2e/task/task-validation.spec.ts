@@ -53,7 +53,7 @@ test("refuse un titre composé uniquement d'espaces", async ({ taskBoard }) => {
   await expect(cards).toHaveCount(cardsBefore)
 
   // Refermer la modale, sinon son masque peut bloquer les clics du test suivant
-  await taskBoard.cancelButton.click()
+  await taskBoard.discardDialog()
   await expect(taskBoard.dialog).toBeHidden()
 })
 
@@ -76,7 +76,7 @@ test("empêche d'effacer le titre d'une tâche existante", async ({ taskBoard })
   await expect(taskBoard.dialog).toBeVisible()
 
   // Après annulation, la tâche garde son titre d'origine
-  await taskBoard.cancelButton.click()
+  await taskBoard.discardDialog()
   await expect(taskBoard.dialog).toBeHidden()
   await expect(taskBoard.taskCard(title)).toBeVisible()
 })

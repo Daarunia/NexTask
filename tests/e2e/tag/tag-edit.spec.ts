@@ -204,8 +204,7 @@ test.describe('Renommage', () => {
 
     // L'édition ne dépend pas du bouton Save : annuler ne la défait pas
     await tagPicker.closeIfOpen()
-    await taskBoard.cancelButton.click()
-    await expect(taskBoard.dialog).toBeHidden()
+    await taskBoard.discardDialog()
 
     await expect(taskBoard.taskCardTags('T1')).toHaveText(['anomalie'])
     await expect.poll(async () => tagNames(await getTags(page.request))).toEqual(['anomalie'])
@@ -340,8 +339,7 @@ test.describe('Couleur', () => {
     await expect(tagPicker.selectedColor).toHaveAttribute('data-color', 'teal')
 
     await tagPicker.closeIfOpen()
-    await taskBoard.cancelButton.click()
-    await expect(taskBoard.dialog).toBeHidden()
+    await taskBoard.discardDialog()
 
     // Ni la création ni la couleur ne sont défaites par l'annulation
     await expect

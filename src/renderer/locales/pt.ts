@@ -162,6 +162,8 @@ export const pt: MessageSchema = {
       duplicate: 'Duplicar',
       duplicateHint: 'Cópia abaixo da tarefa, como está salva',
       close: 'Fechar',
+      discardConfirm: 'Descartar as alterações não salvas?',
+      discard: 'Descartar',
       title: 'Título',
       titlePlaceholder: 'Descreva seu título aqui...',
       description: 'Descrição',

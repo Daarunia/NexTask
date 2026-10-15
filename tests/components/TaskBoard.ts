@@ -147,6 +147,34 @@ export class TaskBoard {
   }
 
   /**
+   * Clique sur un bouton du dialogue de tâche une fois le défilement retombé.
+   * Playwright fait défiler le dialogue pour amener le bouton en vue (petit écran
+   * de la CI), et l'événement de défilement, livré à l'image suivante,
+   * refermerait aussitôt la bulle de confirmation ouverte par ce clic.
+   * @param button Bouton du dialogue
+   */
+  async clickSettled(button: Locator) {
+    await button.scrollIntoViewIfNeeded()
+    await this.page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+    await button.click()
+  }
+
+  /**
+   * Ferme le dialogue de tâche sans enregistrer, par Annuler ou la croix, en
+   * confirmant l'abandon si une saisie est en cours.
+   * @param button Bouton de fermeture, Annuler par défaut
+   */
+  async discardDialog(button: Locator = this.cancelButton) {
+    await this.clickSettled(button)
+    await expect(async () => {
+      if (await this.confirmPopup.isVisible()) await this.confirmAcceptButton.click()
+      await expect(this.dialog).toBeHidden({ timeout: 500 })
+    }).toPass()
+  }
+
+  /**
    * Ouvre le menu contextuel d'une carte par un clic droit sur son titre.
    * @param title Titre exact de la tâche
    */

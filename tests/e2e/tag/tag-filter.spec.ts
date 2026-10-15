@@ -454,7 +454,7 @@ test.describe('Tag supprimé', () => {
     await tagPicker.deleteTag()
     await expect(tagPicker.anyChip('bug')).toHaveCount(0)
     await tagPicker.closeIfOpen()
-    await taskBoard.cancelButton.click()
+    await taskBoard.discardDialog()
     await expect(taskBoard.dialog).toBeHidden()
 
     // Il ne reste que « ui » dans le filtre : A1 et A4 (qui n'avaient que « bug ») disparaissent
@@ -476,7 +476,7 @@ test.describe('Tag supprimé', () => {
     await tagPicker.deleteTag()
     await expect(tagPicker.anyChip('ui')).toHaveCount(0)
     await tagPicker.closeIfOpen()
-    await taskBoard.cancelButton.click()
+    await taskBoard.discardDialog()
     await expect(taskBoard.dialog).toBeHidden()
 
     await expect(tagFilter.dndHint).toHaveCount(0)

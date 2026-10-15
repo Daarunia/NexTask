@@ -1,6 +1,14 @@
 <template>
   <!-- Largeur prévue pour la barre d'outils de l'éditeur Markdown de la description -->
-  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-2xl w-full">
+  <!-- Échap passe par requestClose, qui protège une saisie non enregistrée -->
+  <Dialog
+    :visible="visible"
+    :modal="true"
+    :show-header="false"
+    :draggable="true"
+    class="max-w-2xl w-full"
+    @update:visible="onDialogVisible"
+  >
     <!-- Le contenu du Dialog est démonté à la fermeture, donc le formulaire repart
          de initialValues à chaque ouverture, sans erreur résiduelle -->
     <!-- Raccourcis d'enregistrement écoutés en capture : avant l'éditeur Markdown,
@@ -32,7 +40,7 @@
           size="small"
           data-testid="task-close-btn"
           :aria-label="t('task.dialog.close')"
-          @click="visible = false"
+          @click="requestClose($event)"
         />
       </div>
 
@@ -199,12 +207,13 @@
         />
         <span class="flex-1"></span>
         <Button
+          ref="cancelButton"
           type="button"
           :label="t('common.cancel')"
           data-testid="task-cancel-btn"
           severity="secondary"
           text
-          @click="visible = false"
+          @click="requestClose($event)"
         />
         <Button
           type="submit"
@@ -242,6 +251,8 @@ import { useStageStore } from '../stores/Stage'
 import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
+import { useConfirm } from 'primevue/useconfirm'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
 import { toChecklistInput } from '../utils/checklist.helper'
@@ -338,6 +349,8 @@ const stageStore = useStageStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
+const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 
 // Série de la tâche modifiée, dans son dernier état connu (absente à la création)
 const series = computed(() =>
@@ -375,6 +388,45 @@ function onDuplicate() {
   if (!props.editTask) return
   emit('duplicate-task', props.editTask)
   visible.value = false
+}
+
+// Bouton Annuler, ancre de la confirmation d'abandon demandée au clavier
+const cancelButton = ref<{ $el: HTMLElement } | null>(null)
+
+/**
+ * Le Dialog demande sa fermeture (Échap).
+ * @param open Nouvel état demandé
+ */
+function onDialogVisible(open: boolean) {
+  if (!open) requestClose()
+}
+
+/**
+ * Fermeture demandée par la croix, Annuler ou Échap. Une saisie non
+ * enregistrée n'est abandonnée qu'après confirmation, dans une bulle ancrée sur
+ * le bouton cliqué (Annuler pour Échap). Une bulle déjà ouverte est refermée
+ * d'abord, le dialogue reste alors affiché.
+ * @param event Clic sur la croix ou Annuler, absent pour Échap
+ */
+function requestClose(event?: MouseEvent) {
+  if (document.querySelector('[data-testid="confirm-popup"]')) {
+    confirm.close()
+    return
+  }
+
+  if (!hasPendingChanges()) {
+    visible.value = false
+    return
+  }
+
+  confirmDanger({
+    target: (event?.currentTarget as HTMLElement | undefined) ?? cancelButton.value?.$el,
+    message: t('task.dialog.discardConfirm'),
+    acceptLabel: t('task.dialog.discard'),
+    accept: () => {
+      visible.value = false
+    },
+  })
 }
 
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche

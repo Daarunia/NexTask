@@ -162,6 +162,8 @@ export const zh: MessageSchema = {
       duplicate: '复制',
       duplicateHint: '在任务下方创建副本（按已保存内容）',
       close: '关闭',
+      discardConfirm: '放弃未保存的更改？',
+      discard: '放弃',
       title: '标题',
       titlePlaceholder: '在此输入标题...',
       description: '描述',

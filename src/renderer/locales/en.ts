@@ -162,6 +162,8 @@ export const en: MessageSchema = {
       duplicate: 'Duplicate',
       duplicateHint: 'Copy below the task, as saved',
       close: 'Close',
+      discardConfirm: 'Discard the unsaved changes?',
+      discard: 'Discard',
       title: 'Title',
       titlePlaceholder: 'Describe your title here...',
       description: 'Description',
