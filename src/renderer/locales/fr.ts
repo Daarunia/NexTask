@@ -160,6 +160,7 @@ export const fr = {
     dialog: {
       newTask: 'Nouvelle tâche',
       editTask: 'Modifier la tâche',
+      createdOn: 'créée le {date}',
       duplicate: 'Dupliquer',
       duplicateHint: 'Copie sous la tâche, telle qu’enregistrée',
       close: 'Fermer',

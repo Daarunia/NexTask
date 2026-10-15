@@ -154,6 +154,7 @@ export const zh: MessageSchema = {
     dialog: {
       newTask: '新任务',
       editTask: '编辑任务',
+      createdOn: '创建于 {date}',
       duplicate: '复制',
       duplicateHint: '在任务下方创建副本（按已保存内容）',
       close: '关闭',

@@ -139,7 +139,9 @@ test("l'en-tête indique le mode et la colonne, et la croix ferme sans enregistr
 
   await taskBoard.createTask(COLUMN, { title: 'Existante' })
   await taskBoard.openEditDialog('Existante')
-  await expect(heading).toHaveText(`Modifier la tâche · ${COLUMN}`)
+  // Suivie du jour de création de la tâche
+  const today = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date())
+  await expect(heading).toHaveText(`Modifier la tâche · ${COLUMN} · créée le ${today}`)
 })
 
 test("« Archiver » dans l'édition archive la tâche, annulable depuis le toast", async ({

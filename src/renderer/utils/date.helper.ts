@@ -92,3 +92,11 @@ export function sortByStartDate<T extends Pick<Task, 'startDate'>>(tasks: readon
 export function longDateLabel(date: Date): string {
   return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'full', timeStyle: 'short' }).format(date)
 }
+
+/**
+ * Jour seul, sans l'heure (« 22 octobre 2026 »).
+ * @param date Date affichée
+ */
+export function dayLabel(date: Date): string {
+  return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'long' }).format(date)
+}

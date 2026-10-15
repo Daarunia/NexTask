@@ -154,6 +154,7 @@ export const en: MessageSchema = {
     dialog: {
       newTask: 'New task',
       editTask: 'Edit task',
+      createdOn: 'created {date}',
       duplicate: 'Duplicate',
       duplicateHint: 'Copy below the task, as saved',
       close: 'Close',

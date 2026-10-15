@@ -154,6 +154,7 @@ export const es: MessageSchema = {
     dialog: {
       newTask: 'Nueva tarea',
       editTask: 'Editar la tarea',
+      createdOn: 'creada el {date}',
       duplicate: 'Duplicar',
       duplicateHint: 'Copia debajo de la tarea, tal como está guardada',
       close: 'Cerrar',

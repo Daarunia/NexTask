@@ -20,6 +20,9 @@
         <span data-testid="task-dialog-heading" class="dialog-heading">
           {{ creationMode ? t('task.dialog.newTask') : t('task.dialog.editTask') }}
           <template v-if="stageName"> · {{ stageName }}</template>
+          <template v-if="createdLabel">
+            · <span data-testid="task-dialog-created">{{ createdLabel }}</span>
+          </template>
         </span>
         <Button
           type="button"
@@ -242,6 +245,7 @@ import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
 import { toChecklistInput } from '../utils/checklist.helper'
+import { dayLabel } from '../utils/date.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
@@ -347,6 +351,12 @@ const seriesLive = computed(() => !!series.value && series.value.status !== 'end
 
 // Colonne de la tâche, affichée dans l'en-tête
 const stageName = computed(() => stageStore.getAllStages.find((stage) => stage.id === stageId.value)?.name ?? '')
+
+// Jour de création de la tâche modifiée, affiché dans l'en-tête après sa colonne
+const createdLabel = computed(() => {
+  const createdAt = props.creationMode ? undefined : props.editTask?.createdAt
+  return createdAt ? t('task.dialog.createdOn', { date: dayLabel(new Date(createdAt)) }) : ''
+})
 
 /**
  * Archive la tâche éditée (le tableau s'en charge, annulation comprise) et ferme le dialogue.

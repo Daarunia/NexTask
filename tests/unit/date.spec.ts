@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { i18n } from '../../src/renderer/i18n'
 import {
+  dayLabel,
   dayOffset,
   dayState,
   longDateLabel,
@@ -81,6 +82,17 @@ describe('shortDateLabel', () => {
 describe('longDateLabel', () => {
   test('date complète avec le jour de la semaine et l’heure', () => {
     expect(longDateLabel(local(2026, 10, 22, 9))).toBe('jeudi 22 octobre 2026 à 09:00')
+  })
+})
+
+describe('dayLabel', () => {
+  test('jour seul, sans l’heure', () => {
+    expect(dayLabel(local(2026, 10, 22, 9))).toBe('22 octobre 2026')
+  })
+
+  test('dans la langue active', () => {
+    i18n.global.locale.value = 'en'
+    expect(dayLabel(local(2026, 10, 22, 9))).toBe('October 22, 2026')
   })
 })
 

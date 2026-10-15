@@ -42,7 +42,7 @@ test('un clic sur la carte ouvre la tâche', async ({ page, taskBoard }) => {
   await createTask(page.request, 'Courses', 0, { tags: ['maison'] })
   await page.reload()
 
-  // Coin bas gauche, sous le titre : la zone de clic couvre toute la carte
+  // Coin bas droit, loin du titre : la zone de clic couvre toute la carte
   const card = taskBoard.taskCard('Courses')
   const box = (await card.boundingBox())!
   await page.mouse.click(box.x + box.width - 12, box.y + box.height - 6)
@@ -50,6 +50,9 @@ test('un clic sur la carte ouvre la tâche', async ({ page, taskBoard }) => {
   await taskBoard.waitForDialogOpened()
   await expect(page.getByTestId('task-dialog-heading')).toContainText('Modifier la tâche')
   await expect(taskBoard.titleInput).toHaveValue('Courses')
+  // Jour de création dans l'en-tête, créée à l'instant par l'API
+  const today = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date())
+  await expect(page.getByTestId('task-dialog-created')).toHaveText(`créée le ${today}`)
 })
 
 test('Entrée sur le titre de la carte ouvre la tâche', async ({ page, taskBoard }) => {
