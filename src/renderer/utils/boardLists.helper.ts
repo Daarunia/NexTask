@@ -17,6 +17,18 @@ export interface OrderChange {
 }
 
 /**
+ * Prend acte d'un ordre enregistré : les cartes portent désormais leur
+ * nouvelle colonne et leur nouvelle position.
+ * @param changes Changements envoyés au serveur
+ */
+function commitOrder(changes: OrderChange[]) {
+  for (const { task, stageId, position } of changes) {
+    task.stageId = stageId
+    task.position = position
+  }
+}
+
+/**
  * Colonnes locales du tableau : une copie des tâches de chaque colonne, dans
  * l'ordre affiché. Après le montage, elles sont la seule source de vérité du
  * Kanban (les props sont un instantané figé du chargement), et vuedraggable les
@@ -152,18 +164,6 @@ export function useBoardLists() {
     }
 
     return changes
-  }
-
-  /**
-   * Prend acte d'un ordre enregistré : les cartes portent désormais leur
-   * nouvelle colonne et leur nouvelle position.
-   * @param changes Changements envoyés au serveur
-   */
-  function commitOrder(changes: OrderChange[]) {
-    for (const { task, stageId, position } of changes) {
-      task.stageId = stageId
-      task.position = position
-    }
   }
 
   return { lists, build, find, update, remove, insert, restorePersisted, orderChanges, commitOrder }
