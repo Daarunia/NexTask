@@ -17,13 +17,15 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <!-- Titre en bouton, sa zone de clic couvre toute la carte : un clic n'importe
                où l'ouvre, comme Entrée au clavier. Un clic qui termine un drag est ignoré
-               par SortableJS. Le clic droit (ou la touche Menu) ouvre les actions de la carte. -->
+               par SortableJS. Le clic droit (ou la touche Menu) ouvre les actions de la carte,
+               les flèches passent aux cartes voisines. -->
           <button
             type="button"
             data-testid="task-card-open"
             class="task-title"
             aria-haspopup="menu"
             @click="$emit('edit-task', element)"
+            @keydown="onTitleKeydown"
             @contextmenu.prevent="$emit('card-menu', $event, element)"
           >
             {{ element.title }}
@@ -163,6 +165,7 @@ import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { isDragging, setDragging } from '../utils/dnd.helper'
 import { useDangerConfirm } from '../utils/confirm.helper'
+import { focusNeighborCard } from '../utils/cardFocus.helper'
 import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(
@@ -184,6 +187,16 @@ const emit = defineEmits([
   'check-item',
   'card-menu',
 ])
+
+/**
+ * Flèches, Début et Fin sur le titre d'une carte : focus sur la carte voisine,
+ * sans faire défiler la page.
+ * @param event Touche pressée
+ */
+function onTitleKeydown(event: KeyboardEvent) {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+  if (focusNeighborCard(event.currentTarget as HTMLElement, event.key)) event.preventDefault()
+}
 
 /** Fin d'un drag de carte : fin du curseur de drag, puis sauvegarde par le parent. */
 function onDragEnd() {
