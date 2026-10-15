@@ -13,7 +13,9 @@
          de initialValues à chaque ouverture, sans erreur résiduelle -->
     <!-- Raccourcis d'enregistrement écoutés en capture : avant l'éditeur Markdown,
          qui réserve aussi Ctrl+S et Ctrl+Entrée -->
+    <!-- Clé changée par « Enregistrer et nouvelle » : formulaire recréé, vide -->
     <Form
+      :key="formKey"
       ref="formRef"
       v-slot="$form"
       :initialValues="initialValues"
@@ -215,6 +217,17 @@
           text
           @click="requestClose($event)"
         />
+        <!-- Bouton simple, et non submit : Entrée dans un champ garde l'enregistrement normal -->
+        <Button
+          v-if="creationMode"
+          type="button"
+          :label="t('task.dialog.saveAndNew')"
+          v-tooltip.top="infoTooltip(t('task.dialog.saveAndNewShortcut'))"
+          data-testid="task-save-new-btn"
+          severity="secondary"
+          outlined
+          @click="submit(true)"
+        />
         <Button
           type="submit"
           :label="t('common.save')"
@@ -227,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onMounted, PropType, type Component } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, nextTick, PropType, type Component } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
@@ -442,6 +455,36 @@ const formRef = ref<{ submit: () => void; states: Record<string, { value: unknow
 // Sauvegarde en cours
 const saving = ref(false)
 
+// Création suivante demandée (« Enregistrer et nouvelle »), lue par la soumission en cours
+let createAnother = false
+
+// Clé du formulaire, changée pour le recréer vide après « Enregistrer et nouvelle »
+const formKey = ref(0)
+
+/**
+ * Soumet le formulaire comme le bouton Enregistrer, validation comprise.
+ * @param another Vrai pour enchaîner sur une nouvelle tâche (création seulement)
+ */
+function submit(another = false) {
+  createAnother = another && props.creationMode
+  // Le champ « Ajouter un point » garde le focus, son texte n'est pas encore dans la liste
+  checklistRef.value?.commitPending()
+  formRef.value?.submit()
+}
+
+/**
+ * Après « Enregistrer et nouvelle » : formulaire vidé pour la tâche suivante,
+ * placée juste après celle créée (ou de nouveau tout en haut), titre prêt à la
+ * saisie.
+ */
+async function startNextTask() {
+  if (settings.newTaskPosition !== 'top') position.value += 1
+  initialValues.value = defaultValues()
+  formKey.value += 1
+  await nextTick()
+  document.getElementById('inputValue')?.focus()
+}
+
 // Sync ouverture / fermeture
 watch(
   () => props.modelValue,
@@ -592,10 +635,13 @@ function hasPendingChanges(): boolean {
 /**
  * Ctrl+S ou Ctrl+Entrée (Cmd sur macOS), depuis n'importe quel champ :
  * enregistre la tâche comme le bouton Enregistrer, validation comprise.
+ * Ctrl+Maj+Entrée enregistre et enchaîne sur une nouvelle tâche (création).
  * @param event Touche pressée dans le formulaire
  */
 function onSaveShortcut(event: KeyboardEvent) {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+  const another = event.shiftKey && event.key === 'Enter'
+  if (event.shiftKey && !another) return
   if (event.key !== 'Enter' && event.key.toLowerCase() !== 's') return
 
   // Ni enregistrement de la page par le navigateur, ni nouvelle ligne dans l'éditeur
@@ -603,23 +649,28 @@ function onSaveShortcut(event: KeyboardEvent) {
   event.stopPropagation()
   if (event.repeat) return
 
-  // Le champ « Ajouter un point » garde le focus, son texte n'est pas encore dans la liste
-  checklistRef.value?.commitPending()
-  formRef.value?.submit()
+  submit(another)
 }
 
 // Soumission, sachant que <Form> émet submit même si la validation échoue
 function onSubmit({ valid, values }: FormSubmitEvent) {
+  const another = createAnother
+  createAnother = false
+
   if (!valid) {
     logger.debug('Formulaire de tâche invalide, sauvegarde annulée')
     return
   }
 
-  saveTask(values as TaskFormValues)
+  saveTask(values as TaskFormValues, another)
 }
 
-// Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
-async function saveTask(values: TaskFormValues) {
+/**
+ * Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
+ * @param values Valeurs du formulaire
+ * @param another Vrai pour garder le dialogue ouvert sur une nouvelle tâche
+ */
+async function saveTask(values: TaskFormValues, another = false) {
   // Une seule à la fois : un double clic ou un raccourci répété ne crée pas la tâche deux fois
   if (saving.value) return
   saving.value = true
@@ -699,7 +750,8 @@ async function saveTask(values: TaskFormValues) {
       showUndo(t('task.dialog.seriesStopped'), { detail: savedTask?.title, undo: () => resumeSeries(id, status) })
     }
 
-    emit('update:modelValue', false)
+    if (another) await startNextTask()
+    else emit('update:modelValue', false)
   } catch (error) {
     // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)

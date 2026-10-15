@@ -175,6 +175,8 @@ export const en: MessageSchema = {
       startDatePlaceholder: 'Task start date',
       applyToSeries: 'Apply to upcoming occurrences',
       saveShortcut: 'Ctrl+S or Ctrl+Enter',
+      saveAndNew: 'Save and new',
+      saveAndNewShortcut: 'Ctrl+Shift+Enter',
       seriesStopped: 'Series stopped',
       undoFailed: 'Undo failed',
       resumeFailedDetail: 'The series was not restarted.',

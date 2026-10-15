@@ -175,6 +175,8 @@ export const zh: MessageSchema = {
       startDatePlaceholder: '任务的开始日期',
       applyToSeries: '应用到之后的重复任务',
       saveShortcut: 'Ctrl+S 或 Ctrl+Enter',
+      saveAndNew: '保存并新建',
+      saveAndNewShortcut: 'Ctrl+Shift+Enter',
       seriesStopped: '系列已停止',
       undoFailed: '无法撤销',
       resumeFailedDetail: '系列未恢复。',

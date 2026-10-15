@@ -181,6 +181,8 @@ export const fr = {
       startDatePlaceholder: 'Date de début de la tâche',
       applyToSeries: 'Appliquer aux prochaines occurrences',
       saveShortcut: 'Ctrl+S ou Ctrl+Entrée',
+      saveAndNew: 'Enregistrer et nouvelle',
+      saveAndNewShortcut: 'Ctrl+Maj+Entrée',
       seriesStopped: 'Série arrêtée',
       undoFailed: 'Annulation impossible',
       resumeFailedDetail: "La série n'a pas été relancée.",

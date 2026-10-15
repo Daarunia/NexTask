@@ -175,6 +175,8 @@ export const es: MessageSchema = {
       startDatePlaceholder: 'Fecha de inicio de la tarea',
       applyToSeries: 'Aplicar a las próximas repeticiones',
       saveShortcut: 'Ctrl+S o Ctrl+Intro',
+      saveAndNew: 'Guardar y nueva',
+      saveAndNewShortcut: 'Ctrl+Mayús+Intro',
       seriesStopped: 'Serie detenida',
       undoFailed: 'No se ha podido deshacer',
       resumeFailedDetail: 'La serie no se ha reanudado.',
