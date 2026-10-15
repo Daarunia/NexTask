@@ -47,17 +47,17 @@
 
             <!-- Date de début (« Demain, 09:00 »), teintée le jour même et passée la date,
                  date complète au survol et en aria-label -->
-            <span
+            <time
               v-if="cardDates.get(element.id)"
               v-tooltip.top="infoTooltip(cardDates.get(element.id)!.tooltip, isDragging)"
               data-testid="task-card-date"
+              :datetime="cardDates.get(element.id)!.datetime"
               :data-state="cardDates.get(element.id)!.state"
               :class="['card-date', cardDates.get(element.id)!.state]"
-              role="img"
               :aria-label="cardDates.get(element.id)!.tooltip"
             >
               <i class="pi pi-calendar" aria-hidden="true"></i>{{ cardDates.get(element.id)!.label }}
-            </span>
+            </time>
 
             <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point.
                  Un clic ouvre la bulle où cocher les points sans passer par le dialogue -->
@@ -192,7 +192,7 @@ const cardRecurrences = computed(() => {
  * minute (cf. useNow), « Demain » devient ainsi « Aujourd'hui » passé minuit.
  */
 const cardDates = computed(() => {
-  const map = new Map<number, { label: string; state: DayState; tooltip: string }>()
+  const map = new Map<number, { label: string; state: DayState; tooltip: string; datetime: string }>()
 
   for (const task of props.tasks) {
     if (!task.startDate) continue
@@ -201,6 +201,7 @@ const cardDates = computed(() => {
       label: shortDateLabel(date, now.value),
       state: dayState(date, now.value),
       tooltip: t('board.startDateTooltip', { date: longDateLabel(date) }),
+      datetime: date.toISOString(),
     })
   }
 

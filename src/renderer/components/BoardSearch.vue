@@ -399,6 +399,17 @@ function clearAll() {
 }
 
 /**
+ * Retour arrière sur une saisie vide, retire la dernière chip affichée, un
+ * tag, sinon un filtre rapide.
+ */
+function removeLastChip() {
+  const lastTag = boardFilter.tagIds.at(-1)
+  const lastStatus = boardFilter.statuses.at(-1)
+  if (lastTag !== undefined) removeTag(lastTag)
+  else if (lastStatus) boardFilter.removeStatus(lastStatus)
+}
+
+/**
  * Navigation clavier dans le champ et la liste.
  * @param event Touche pressée
  */
@@ -425,15 +436,9 @@ function onKeydown(event: KeyboardEvent) {
         input.value?.blur()
       }
       break
-    case 'Backspace': {
-      // Dernière chip affichée : un tag, sinon un filtre rapide
-      if (text.value) break
-      const lastTag = boardFilter.tagIds.at(-1)
-      const lastStatus = boardFilter.statuses.at(-1)
-      if (lastTag !== undefined) removeTag(lastTag)
-      else if (lastStatus) boardFilter.removeStatus(lastStatus)
+    case 'Backspace':
+      if (!text.value) removeLastChip()
       break
-    }
   }
 }
 

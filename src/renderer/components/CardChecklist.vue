@@ -12,8 +12,9 @@
     <ChecklistBadge data-testid="task-card-checklist" :checklist="task.checklist" :tooltipDisabled="disabled || open" />
   </button>
 
-  <Popover ref="popover" @show="open = true" @hide="open = false">
-    <div class="card-checklist" data-testid="card-checklist-popover" role="dialog" :aria-label="task.title">
+  <!-- Le Popover porte déjà le rôle dialog, il reçoit ici son nom accessible -->
+  <Popover ref="popover" :aria-label="task.title" @show="open = true" @hide="open = false">
+    <div class="card-checklist" data-testid="card-checklist-popover">
       <div class="cc-head">
         <strong class="cc-title">{{ task.title }}</strong>
         <span :class="['cc-progress', { done: complete }]">{{ progress.done }}/{{ progress.total }}</span>
