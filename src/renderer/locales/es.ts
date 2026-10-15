@@ -564,6 +564,7 @@ export const es: MessageSchema = {
   quickAdd: {
     titleLabel: 'Título de la tarea',
     placeholder: 'Nueva tarea…',
+    templateLabel: 'Plantilla de checklist',
     noStage: 'Añade una columna al tablero para anotar la tarea en ella.',
     failed: 'La tarea no se ha añadido. Inténtalo de nuevo con Intro.',
     hint: 'Intro para añadir · Esc para cerrar',

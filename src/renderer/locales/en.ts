@@ -561,6 +561,7 @@ export const en: MessageSchema = {
   quickAdd: {
     titleLabel: 'Task title',
     placeholder: 'New task…',
+    templateLabel: 'Checklist template',
     noStage: 'Add a column to the board to note the task in it.',
     failed: 'The task was not added. Try again with Enter.',
     hint: 'Enter to add · Esc to close',

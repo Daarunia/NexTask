@@ -562,6 +562,7 @@ export const pt: MessageSchema = {
   quickAdd: {
     titleLabel: 'Título da tarefa',
     placeholder: 'Nova tarefa…',
+    templateLabel: 'Modelo de checklist',
     noStage: 'Adicione uma coluna ao quadro para anotar a tarefa nela.',
     failed: 'A tarefa não foi adicionada. Tente de novo com Enter.',
     hint: 'Enter para adicionar · Esc para fechar',

@@ -239,11 +239,12 @@ export const useTaskStore = defineStore('task', {
      * (haut ou bas de la colonne) sont choisies par le serveur selon les paramètres
      * @param title Titre de la tâche
      * @param stageId Colonne (la première si elle n'existe plus)
+     * @param checklistTemplateId Modèle de checklist dont les points sont copiés dans la tâche
      * @returns La tâche créée
      */
-    async quickAddTask(title: string, stageId?: number): Promise<Task> {
+    async quickAddTask(title: string, stageId?: number, checklistTemplateId?: number): Promise<Task> {
       try {
-        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId })
+        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId, checklistTemplateId })
         this.insertCachedTask(task)
         return task
       } catch (error) {

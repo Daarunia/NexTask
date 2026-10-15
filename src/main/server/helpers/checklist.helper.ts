@@ -1,6 +1,7 @@
 import type { Checklist, Prisma } from '../../prisma/generated/prisma/client.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import { templateKey } from '../../shared/checklistTemplate.helper.js'
+import Logger from 'electron-log'
 
 // Règles de nommage partagées avec le renderer, reprises ici pour les routes
 export { duplicateName, templateKey } from '../../shared/checklistTemplate.helper.js'
@@ -218,6 +219,25 @@ export async function syncTaskChecklist(
   if (plan.create.length) {
     await tx.checklistItem.createMany({ data: plan.create.map((row) => ({ ...row, checklistId: checklist.id })) })
   }
+}
+
+/**
+ * Points d'un modèle prêts à copier dans une tâche (cf. syncTaskChecklist),
+ * dans l'ordre et décochés. Un modèle introuvable donne une liste vide.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param templateId Id du modèle
+ */
+export async function templateChecklistInput(tx: TransactionClient, templateId: number): Promise<ChecklistItemInput[]> {
+  const template = await tx.checklist.findFirst({
+    where: { ...templateWhere, id: templateId },
+    include: templateInclude,
+  })
+  if (!template) {
+    Logger.warn(`Modèle de checklist ${templateId} introuvable, aucun point copié`)
+    return []
+  }
+  return template.items.map((item) => ({ text: item.text, isChecked: false }))
 }
 
 /**

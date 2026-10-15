@@ -10,6 +10,7 @@ import {
   sameChecklistTexts,
   setTaskChecklistItemChecked,
   syncTaskChecklist,
+  templateChecklistInput,
   taskChecklistTexts,
 } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
@@ -723,12 +724,15 @@ export default async function taskRoutes(fastify) {
    * Crée une tâche depuis la fenêtre d'ajout rapide, avec son seul titre. Le
    * serveur complète le reste à partir des paramètres : version par défaut, et
    * place en haut ou en bas de la colonne (les autres tâches descendent d'un
-   * cran pour une tâche ajoutée en haut).
+   * cran pour une tâche ajoutée en haut). Avec un modèle de checklist, ses
+   * points sont copiés dans la tâche, décochés ; un modèle supprimé entre-temps
+   * est ignoré, la tâche est créée sans checklist.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {string} req.body.title - Titre
    * @param {number} [req.body.stageId] - Colonne (la première si absente ou supprimée)
+   * @param {number} [req.body.checklistTemplateId] - Modèle de checklist à appliquer
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task créé, 409 s'il n'y a aucune colonne
    */
@@ -743,6 +747,7 @@ export default async function taskRoutes(fastify) {
           properties: {
             title: requiredLabel,
             stageId: { type: 'integer' },
+            checklistTemplateId: { type: 'integer' },
           },
           required: ['title'],
         },
@@ -753,7 +758,11 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const { title, stageId } = req.body as { title: string; stageId?: number }
+      const { title, stageId, checklistTemplateId } = req.body as {
+        title: string
+        stageId?: number
+        checklistTemplateId?: number
+      }
       const { newTaskPosition, defaultTaskVersion } = settingsStore.store
 
       return prisma.$transaction(async (tx) => {
@@ -773,13 +782,15 @@ export default async function taskRoutes(fastify) {
           position = await bottomPosition(tx, stage.id)
         }
 
+        const items = checklistTemplateId === undefined ? [] : await templateChecklistInput(tx, checklistTemplateId)
+
         const task = await tx.task.create({
           data: { title: title.trim(), version: defaultTaskVersion, description: '', stageId: stage.id, position },
-          include: taskInclude,
         })
+        await syncTaskChecklist(tx, task.id, items, new Date())
 
-        Logger.info(`Ajout rapide : tâche ${task.id} créée dans la colonne ${stage.id}`)
-        return task
+        Logger.info(`Ajout rapide : tâche ${task.id} créée dans la colonne ${stage.id} (${items.length} point(s))`)
+        return tx.task.findUniqueOrThrow({ where: { id: task.id }, include: taskInclude })
       })
     },
   )

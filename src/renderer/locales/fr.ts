@@ -570,6 +570,7 @@ export const fr = {
   quickAdd: {
     titleLabel: 'Titre de la tâche',
     placeholder: 'Nouvelle tâche…',
+    templateLabel: 'Modèle de checklist',
     noStage: 'Ajoute une colonne au tableau pour y noter la tâche.',
     failed: "La tâche n'a pas été ajoutée. Réessaie avec Entrée.",
     hint: 'Entrée pour ajouter · Échap pour fermer',

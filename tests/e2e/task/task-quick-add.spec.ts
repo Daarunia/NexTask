@@ -20,7 +20,30 @@ const FIRST_COLUMN = 'A faire'
 const OTHER_COLUMN = 'En cours'
 
 /** Tâche telle que renvoyée par l'API. */
-type ApiTask = { id: number; title: string; version: string; description: string; position: number; stageId: number }
+type ApiTask = {
+  id: number
+  title: string
+  version: string
+  description: string
+  position: number
+  stageId: number
+  checklist: { items: { text: string; isChecked: boolean }[] } | null
+}
+
+/** Modèle de checklist tel que renvoyé par l'API. */
+type ApiTemplate = { id: number; name: string; items: { text: string }[] }
+
+/**
+ * Crée un modèle de checklist (aucun modèle après le reset de la base).
+ * @param request Contexte de requête Playwright
+ * @param name Nom du modèle
+ * @param items Textes des points
+ */
+async function createTemplate(request: APIRequestContext, name: string, items: string[]): Promise<ApiTemplate> {
+  const res = await request.post(`${API}/checklist-templates`, { data: { name, items } })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return (await res.json()) as ApiTemplate
+}
 
 /** Ids des colonnes seedées, par nom. */
 async function stageIds(request: APIRequestContext): Promise<Record<string, number>> {
@@ -47,7 +70,10 @@ async function createTask(request: APIRequestContext, stageId: number, title: st
  * @param request Contexte de requête Playwright
  * @param data Corps de la requête
  */
-async function quickAdd(request: APIRequestContext, data: { title: string; stageId?: number }): Promise<ApiTask> {
+async function quickAdd(
+  request: APIRequestContext,
+  data: { title: string; stageId?: number; checklistTemplateId?: number },
+): Promise<ApiTask> {
   const res = await request.post(`${API}/tasks/quick-add`, { data })
   expect(res.ok(), await res.text()).toBeTruthy()
   return (await res.json()) as ApiTask
@@ -120,6 +146,21 @@ test.describe('POST /tasks/quick-add', () => {
     expect(await (await page.request.get(`${API}/tasks`)).json()).toEqual([])
   })
 
+  test('avec un modèle, ses points sont copiés décochés dans la tâche', async ({ page }) => {
+    const template = await createTemplate(page.request, 'Release', ['Changelog', 'Tests', 'Tag'])
+
+    const task = await quickAdd(page.request, { title: 'Release 2.0', checklistTemplateId: template.id })
+    expect(task.checklist!.items).toEqual(
+      template.items.map((item) => expect.objectContaining({ text: item.text, isChecked: false })),
+    )
+  })
+
+  test('un modèle introuvable est ignoré, la tâche est créée sans checklist', async ({ page }) => {
+    const task = await quickAdd(page.request, { title: 'Sans modèle', checklistTemplateId: 999999 })
+    expect(task.title).toBe('Sans modèle')
+    expect(task.checklist).toBeNull()
+  })
+
   test('400 pour un titre vide', async ({ page }) => {
     const res = await page.request.post(`${API}/tasks/quick-add`, { data: { title: '   ' } })
     expect(res.status()).toBe(400)
@@ -171,6 +212,32 @@ test.describe("Fenêtre d'ajout rapide", () => {
     // Même ordre une fois le tableau relu en base
     await page.reload()
     await expect.poll(() => taskBoard.columnTaskTitles(OTHER_COLUMN)).toEqual(['Urgent', 'Déjà là'])
+  })
+
+  test('le modèle de checklist choisi remplit la checklist de la tâche', async ({ electronApp, page, taskBoard }) => {
+    await createTemplate(page.request, 'Courses', ['Pain'])
+    const template = await createTemplate(page.request, 'Release', ['Changelog', 'Tests', 'Tag'])
+    const win = await openQuickAdd(electronApp, page)
+
+    const option = win.getByTestId('quick-add-template').getByRole('button', { name: template.name, exact: true })
+    await option.click()
+    await expect(option).toHaveAttribute('aria-pressed', 'true')
+
+    const closed = win.waitForEvent('close')
+    await win.getByTestId('quick-add-title').fill('Release 2.0')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
+    await closed
+
+    await expect(taskBoard.cardChecklistBadge('Release 2.0')).toHaveText('0/3')
+  })
+
+  test('sans modèle avec des points, aucun choix de modèle', async ({ electronApp, page }) => {
+    await createTemplate(page.request, 'Vide', [])
+
+    const win = await openQuickAdd(electronApp, page)
+    await expect(win.getByTestId('quick-add-stage')).toBeVisible()
+    await expect(win.getByTestId('quick-add-template')).toHaveCount(0)
   })
 
   test('Échap ferme la fenêtre sans rien ajouter', async ({ electronApp, page }) => {
