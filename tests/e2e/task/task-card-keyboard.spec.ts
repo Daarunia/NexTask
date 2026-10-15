@@ -5,8 +5,8 @@ import { API } from '../../helpers/api.helper'
 /**
  * Tests E2E du clavier sur les cartes du tableau, depuis le titre d'une carte :
  * flèches haut et bas, Début et Fin dans la colonne, flèches gauche et droite
- * vers la colonne voisine qui a des cartes, et Alt+flèche pour déplacer la
- * carte elle-même.
+ * vers la colonne voisine qui a des cartes, Alt+flèche pour déplacer la
+ * carte elle-même et Suppr pour l'archiver.
  *
  * Isolation, la base et les paramètres sont remis à zéro avant chaque test
  * (fixture `cleanState`).
@@ -52,6 +52,24 @@ async function createTasks(request: APIRequestContext, column: string, ...titles
     expect(res.ok(), await res.text()).toBeTruthy()
   }
 }
+
+test('Suppr archive la carte, le focus passe à la suivante', async ({ page, taskBoard, undoToast }) => {
+  await createTasks(page.request, COLUMN, 'Un', 'Deux', 'Trois')
+  await page.reload()
+
+  const title = (name: string) => taskBoard.taskCard(name).getByTestId('task-card-open')
+  await title('Deux').focus()
+  await page.keyboard.press('Delete')
+
+  await expect(taskBoard.taskCard('Deux')).toHaveCount(0)
+  await expect(undoToast.toast('Deux')).toContainText('Tâche archivée')
+  await expect(title('Trois')).toBeFocused()
+
+  // Dernière carte : le focus remonte à la précédente
+  await page.keyboard.press('Delete')
+  await expect(taskBoard.taskCard('Trois')).toHaveCount(0)
+  await expect(title('Un')).toBeFocused()
+})
 
 test('les flèches passent d’une carte à l’autre', async ({ page, taskBoard }) => {
   await createTasks(page.request, COLUMN, 'Un', 'Deux', 'Trois')

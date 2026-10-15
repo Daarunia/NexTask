@@ -201,12 +201,18 @@ const MOVE_KEYS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
 /**
  * Touches sur le titre d'une carte, sans faire défiler la page : flèches,
  * Début et Fin pour passer le focus à une carte voisine, Alt+flèche pour
- * déplacer la carte (fait par le parent).
+ * déplacer la carte (fait par le parent), Suppr pour l'archiver.
  * @param event Touche pressée
  * @param task Tâche de la carte
  */
 function onTitleKeydown(event: KeyboardEvent, task: Task) {
   if (event.ctrlKey || event.metaKey || event.shiftKey) return
+
+  if (event.key === 'Delete' && !event.altKey) {
+    event.preventDefault()
+    archiveFromKeyboard(event.currentTarget as HTMLElement, task)
+    return
+  }
 
   if (event.altKey) {
     const direction = MOVE_KEYS[event.key]
@@ -276,17 +282,45 @@ const cardDates = computed(() => {
  * @param task Tâche de la carte
  */
 function onArchiveClick(event: MouseEvent, task: Task) {
+  askArchive(event.currentTarget as HTMLElement, task)
+}
+
+/**
+ * Archive une carte, directement ou après confirmation dans une bulle ancrée
+ * sur `target` si le paramètre est activé.
+ * @param target Élément qui porte la bulle
+ * @param task Tâche de la carte
+ */
+function askArchive(target: HTMLElement, task: Task) {
   if (!settings.confirmArchive) {
     emit('archive-task', task)
     return
   }
 
   confirmDanger({
-    target: event.currentTarget as HTMLElement,
+    target,
     message: t('board.archiveConfirm'),
     acceptLabel: t('common.archive'),
     accept: () => emit('archive-task', task),
   })
+}
+
+/**
+ * Suppr sur le titre d'une carte : archivage, comme la corbeille. Le focus
+ * passe d'abord à la carte voisine (la suivante, sinon la précédente), la
+ * carte archivée quittant le tableau.
+ * @param title Titre de la carte
+ * @param task Tâche de la carte
+ */
+function archiveFromKeyboard(title: HTMLElement, task: Task) {
+  const card = title.closest<HTMLElement>('[data-testid="task-card"]') ?? title
+  if (settings.confirmArchive) {
+    askArchive(card, task)
+    return
+  }
+
+  if (!focusNeighborCard(title, 'ArrowDown')) focusNeighborCard(title, 'ArrowUp')
+  askArchive(card, task)
 }
 
 /**
