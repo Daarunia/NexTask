@@ -482,6 +482,32 @@ export const fr = {
       },
     },
     title: 'Paramètres',
+    // Aide-mémoire des raccourcis clavier (cf. ShortcutsSection)
+    shortcuts: {
+      title: 'Raccourcis clavier',
+      description: 'Les touches de carte agissent sur la carte dont le titre a le focus (Tab ou clic).',
+      keys: {
+        enter: 'Entrée',
+        shift: 'Maj',
+        del: 'Suppr',
+        esc: 'Échap',
+        home: 'Début',
+        end: 'Fin',
+      },
+      items: {
+        search: 'Rechercher dans le tableau',
+        newTask: 'Nouvelle tâche dans la colonne courante',
+        openCard: 'Ouvrir la carte',
+        navigate: 'Passer à une carte voisine, au début ou à la fin de la colonne',
+        moveCard: 'Déplacer la carte',
+        cardMenu: 'Ouvrir le menu de la carte',
+        archive: 'Archiver la carte',
+        save: 'Enregistrer la tâche ouverte',
+        saveAndNew: 'Enregistrer et créer la tâche suivante',
+        undo: 'Annuler la dernière action proposée par un toast',
+        close: 'Fermer un dialogue, un menu ou une bulle',
+      },
+    },
     about: {
       navLabel: 'À propos',
       title: 'À propos',
