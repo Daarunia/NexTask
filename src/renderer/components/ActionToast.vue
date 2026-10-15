@@ -9,14 +9,16 @@
     @life-end="onToastEnd"
   >
     <template #container="{ message, closeCallback }">
-      <div data-testid="action-toast" role="status" class="action-toast-box">
+      <!-- <output> porte le rôle status : le message est annoncé par les lecteurs d'écran -->
+      <output data-testid="action-toast" class="action-toast-box">
         <i class="pi pi-check" aria-hidden="true"></i>
-        <div class="min-w-0 flex-1">
-          <p data-testid="action-toast-summary" class="action-toast-summary">{{ message.summary }}</p>
-          <p v-if="message.detail" data-testid="action-toast-detail" class="action-toast-detail">
+        <!-- Contenu en ligne seulement dans un <output>, d'où des span affichés en bloc -->
+        <span class="block min-w-0 flex-1">
+          <span data-testid="action-toast-summary" class="action-toast-summary block">{{ message.summary }}</span>
+          <span v-if="message.detail" data-testid="action-toast-detail" class="action-toast-detail block">
             {{ message.detail }}
-          </p>
-        </div>
+          </span>
+        </span>
 
         <Button
           v-if="isAvailable(message)"
@@ -27,7 +29,7 @@
           text
           @click="run(message, closeCallback)"
         />
-      </div>
+      </output>
     </template>
   </Toast>
 </template>

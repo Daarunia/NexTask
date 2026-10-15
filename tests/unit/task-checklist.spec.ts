@@ -1,10 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  appendTemplateItems,
-  progressPercent,
-  toChecklistInput,
-  toTemplateItems,
-} from '../../src/renderer/utils/checklist.helper'
+import { appendTemplateItems, toChecklistInput, toTemplateItems } from '../../src/renderer/utils/checklist.helper'
 
 /**
  * Tests unitaires des fonctions de la checklist du dialogue de tâche, soit
@@ -35,7 +30,9 @@ function draft(text: string): Draft {
  * @param texts Textes des points
  */
 function template(...texts: string[]) {
-  return { items: texts.map((text, position) => ({ id: position + 1, text, position, isChecked: false, checkedAt: null })) }
+  return {
+    items: texts.map((text, position) => ({ id: position + 1, text, position, isChecked: false, checkedAt: null })),
+  }
 }
 
 describe('appendTemplateItems', () => {
@@ -72,14 +69,10 @@ describe('appendTemplateItems', () => {
 
 describe('toTemplateItems', () => {
   test('garde les textes nettoyés, sans les vides ni leur état coché', () => {
-    expect(
-      toTemplateItems([
-        { text: '  Changelog ' },
-        { text: '   ' },
-        { text: 'Tag' },
-        { text: '' },
-      ]),
-    ).toEqual(['Changelog', 'Tag'])
+    expect(toTemplateItems([{ text: '  Changelog ' }, { text: '   ' }, { text: 'Tag' }, { text: '' }])).toEqual([
+      'Changelog',
+      'Tag',
+    ])
   })
 
   test('une checklist vide donne un modèle sans point', () => {
@@ -112,17 +105,5 @@ describe('toChecklistInput', () => {
 
   test("n'envoie pas la clé de rendu de l'éditeur", () => {
     expect(toChecklistInput([draft('Point')])).toEqual([{ text: 'Point', isChecked: false }])
-  })
-})
-
-describe('progressPercent', () => {
-  test.each([
-    [0, 0, 0],
-    [0, 3, 0],
-    [1, 3, 33],
-    [2, 3, 67],
-    [3, 3, 100],
-  ])('%i sur %i → %i %', (done, total, expected) => {
-    expect(progressPercent({ done, total })).toBe(expected)
   })
 })

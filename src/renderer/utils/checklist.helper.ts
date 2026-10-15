@@ -24,15 +24,6 @@ export function checklistProgress(
 }
 
 /**
- * Part des points cochés, en pourcentage entier (largeur de la barre de
- * progression). 0 pour une liste vide.
- * @param progress Avancement de la checklist
- */
-export function progressPercent({ done, total }: ChecklistProgress): number {
-  return total ? Math.round((done / total) * 100) : 0
-}
-
-/**
  * Libellé de l'avancement (« 2 points cochés sur 6 »), pour l'infobulle et
  * l'`aria-label` du badge des cartes. Le pluriel suit le nombre de points cochés.
  * @param done Nombre de points cochés

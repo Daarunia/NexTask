@@ -191,7 +191,8 @@ test.describe('Checklist du dialogue de tâche', () => {
     await checklist.toggle('Relire')
     await expect(checklist.progress).toHaveText('1/2')
     await expect(checklist.items.first()).toHaveClass(/\bchecked\b/)
-    await expect(checklist.bar.locator('i')).toHaveAttribute('style', /width: 50%/)
+    await expect(checklist.bar).toHaveAttribute('value', '1')
+    await expect(checklist.bar).toHaveAttribute('max', '2')
     await taskBoard.saveButton.click()
     await expect(taskBoard.dialog).toBeHidden()
 

@@ -41,19 +41,15 @@
     </div>
 
     <!-- Barre de progression, verte quand tout est coché -->
-    <div
+    <progress
       v-if="progress.total"
       data-testid="task-checklist-bar"
-      role="progressbar"
       :class="['bar', { done: complete }]"
       :aria-label="t('checklist.progressBar')"
-      aria-valuemin="0"
-      :aria-valuemax="progress.total"
-      :aria-valuenow="progress.done"
+      :max="progress.total"
+      :value="progress.done"
       :aria-valuetext="progressLabel(progress.done, progress.total)"
-    >
-      <i :style="{ width: `${percent}%` }"></i>
-    </div>
+    ></progress>
 
     <ChecklistItemsEditor
       ref="editor"
@@ -94,13 +90,15 @@
     />
 
     <!-- Points d'un modèle à ajouter (parcours P2), dans l'ordre de la page Checklists -->
-    <Popover ref="templatesPop" class="checklist-pop" @show="onTemplatesShow" @hide="onTemplatesHide">
-      <div
-        class="pop templates-pop"
-        data-testid="checklist-templates"
-        role="dialog"
-        :aria-label="t('checklist.templatesTitle')"
-      >
+    <!-- Le Popover porte déjà le rôle dialog, il reçoit ici son nom accessible -->
+    <Popover
+      ref="templatesPop"
+      class="checklist-pop"
+      :aria-label="t('checklist.templatesTitle')"
+      @show="onTemplatesShow"
+      @hide="onTemplatesHide"
+    >
+      <div class="pop templates-pop" data-testid="checklist-templates">
         <div class="pop-title">{{ t('checklist.templatesTitle') }}</div>
 
         <label v-if="usableTemplates.length > SEARCH_THRESHOLD" class="pop-search">
@@ -167,13 +165,7 @@ import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem 
 import SaveAsTemplateDialog from './SaveAsTemplateDialog.vue'
 import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
-import {
-  appendTemplateItems,
-  checklistProgress,
-  progressLabel,
-  progressPercent,
-  toTemplateItems,
-} from '../utils/checklist.helper'
+import { appendTemplateItems, checklistProgress, progressLabel, toTemplateItems } from '../utils/checklist.helper'
 import { normalizeSearchText } from '../utils/search.helper'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
@@ -252,7 +244,6 @@ const shownTemplates = computed(() => {
 
 const progress = computed(() => checklistProgress(props.modelValue))
 const complete = computed(() => progress.value.total > 0 && progress.value.done === progress.value.total)
-const percent = computed(() => progressPercent(progress.value))
 
 // Calculé pour suivre la langue de l'interface et l'état de la liste
 const menuItems = computed<MenuItem[]>(() => {
@@ -486,34 +477,42 @@ defineExpose({ commitPending })
 }
 
 /* Barre de progression, sur la surface des colonnes */
+/* Élément <progress> natif, habillé : fond de la piste puis partie remplie */
 .bar {
-  @apply overflow-hidden;
+  @apply block w-full overflow-hidden;
+  appearance: none;
   height: 5px;
+  border: none;
   border-radius: 3px;
   background-color: var(--p-surface-200);
 }
 
-.app-dark .bar {
+.bar::-webkit-progress-bar {
+  border-radius: 3px;
+  background-color: var(--p-surface-200);
+}
+
+.app-dark .bar,
+.app-dark .bar::-webkit-progress-bar {
   background-color: var(--p-surface-900);
 }
 
-.bar i {
-  @apply block h-full;
+.bar::-webkit-progress-value {
   border-radius: 3px;
   background-color: var(--p-primary-color);
   transition: width 0.25s ease;
 }
 
-.bar.done i {
+.bar.done::-webkit-progress-value {
   background-color: var(--p-green-600);
 }
 
-.app-dark .bar.done i {
+.app-dark .bar.done::-webkit-progress-value {
   background-color: var(--p-green-400);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bar i {
+  .bar::-webkit-progress-value {
     transition: none;
   }
 }
