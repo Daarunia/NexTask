@@ -132,6 +132,7 @@ export const pt: MessageSchema = {
     openCopy: 'Abrir a cópia',
     startDateTooltip: 'Começa em {date}',
     archiveConfirm: 'Arquivar esta tarefa?',
+    renameStage: 'Renomear',
     sortByStartDate: 'Ordenar por data de início',
     stageSorted: 'Lista ordenada por data',
     sortFailed: 'Ordenação não salva',

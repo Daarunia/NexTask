@@ -137,6 +137,7 @@ export const fr = {
     openCopy: 'Ouvrir la copie',
     startDateTooltip: 'Début le {date}',
     archiveConfirm: 'Archiver cette tâche ?',
+    renameStage: 'Renommer',
     sortByStartDate: 'Trier par date de début',
     stageSorted: 'Liste triée par date',
     sortFailed: 'Tri non enregistré',

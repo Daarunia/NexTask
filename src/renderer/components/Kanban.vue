@@ -224,6 +224,12 @@ function stageCount(stageId: number): string {
 // Calculé pour suivre la langue de l'interface
 const stageMenuItems = computed(() => [
   {
+    label: t('board.renameStage'),
+    icon: 'pi pi-pencil',
+    // Après la fermeture du menu, qui rendrait sinon le focus à son bouton
+    command: () => setTimeout(() => selectedStage.value && startEditingStage(selectedStage.value)),
+  },
+  {
     label: t('board.sortByStartDate'),
     icon: 'pi pi-sort-amount-down-alt',
     command: () => setTimeout(sortSelectedStage),

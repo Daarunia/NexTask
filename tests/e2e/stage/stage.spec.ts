@@ -39,6 +39,28 @@ test.describe('Gestion des colonnes', () => {
     await taskBoard.deleteStage(after)
   })
 
+  test('renomme une colonne depuis son menu', async ({ taskBoard }) => {
+    const before = `Menu ${uid()}`
+    const after = `${before} (ok)`
+
+    await taskBoard.addStage(before)
+    await taskBoard.openStageMenu(before)
+    await taskBoard.page.getByRole('menuitem', { name: 'Renommer' }).click()
+
+    // Champ prêt à la saisie, nom sélectionné
+    const input = taskBoard.page.getByTestId('stage-edit-input')
+    await expect(input).toBeFocused()
+    await input.fill(after)
+    await input.press('Enter')
+
+    await expect(taskBoard.column(after)).toHaveCount(1)
+    await expect(taskBoard.column(before)).toHaveCount(0)
+    await taskBoard.page.reload()
+    await expect(taskBoard.column(after)).toHaveCount(1)
+
+    await taskBoard.deleteStage(after)
+  })
+
   test('enregistre le nom sans les espaces autour, à la création et au renommage', async ({ taskBoard }) => {
     const name = `Espaces ${uid()}`
     const renamed = `${name} bis`
