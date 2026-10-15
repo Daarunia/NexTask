@@ -24,7 +24,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 
 <img align="right" width="300" alt="Task editor with a checklist and a weekly recurrence rule" src="docs/screenshots/task-dialog.png">
 
-- **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns. Any task can be duplicated with its tags and checklist.
+- **Kanban board** with customizable columns (stages) and drag-and-drop to reorder tasks and columns. Any task can be duplicated with its tags and checklist, and a column can be sorted by start date or archived in one go.
 - **Checklists** to split a task into steps, with progress shown on its card where items can be ticked without opening the task, and reusable templates managed from their own page.
 - **Quick add from anywhere** with a global shortcut (`Ctrl+Alt+N` / `Cmd+Alt+N`), even when the window is hidden, optionally filled from a checklist template.
 - **Recurring tasks** (daily, weekly, monthly, yearly) with flexible rules: specific weekdays, nth weekday of the month, end date or occurrence count, pause and resume.
@@ -32,7 +32,7 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **Global search** from the header (`Ctrl+F`): filter the board by text (title, description and checklist items), by tags and by quick filters (overdue, today, unfinished checklist), or jump straight to a task.
 - **Tags** with a color palette to categorize and filter tasks.
 - **Task versions** to group tasks by release or milestone.
-- **Archives** for completed tasks, with optional automatic purge after 30, 90 or 365 days.
+- **Archives** for completed tasks, searchable, with optional automatic purge after 30, 90 or 365 days.
 - **Undo** for destructive actions.
 - **Automatic daily backups** of the database (the last 7 are kept).
 - **JSON import / export** of all your data.
