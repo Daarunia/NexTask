@@ -17,11 +17,12 @@
         <div data-testid="task-card" :class="['group draggable-item', { 'drag-disabled': filterActive }]">
           <strong class="task-title">{{ element.title }}</strong>
 
-          <!-- Pied de carte : tags à gauche, avancement de la checklist puis icônes de
-               description et de récurrence calés à droite -->
+          <!-- Pied de carte : tags à gauche, date de début, avancement de la checklist
+               puis icônes de description et de récurrence calés à droite -->
           <div
             v-if="
               cardTags.get(element.id)?.length ||
+              cardDates.get(element.id) ||
               element.checklist?.items.length ||
               cardRecurrences.get(element.id) ||
               hasDescription(element.description)
@@ -43,6 +44,20 @@
                 @remove="$emit('remove-tag', element, tag.id)"
               />
             </div>
+
+            <!-- Date de début (« Demain, 09:00 »), teintée le jour même et passée la date,
+                 date complète au survol et en aria-label -->
+            <span
+              v-if="cardDates.get(element.id)"
+              v-tooltip.top="infoTooltip(cardDates.get(element.id)!.tooltip, isDragging)"
+              data-testid="task-card-date"
+              :data-state="cardDates.get(element.id)!.state"
+              :class="['card-date', cardDates.get(element.id)!.state]"
+              role="img"
+              :aria-label="cardDates.get(element.id)!.tooltip"
+            >
+              <i class="pi pi-calendar" aria-hidden="true"></i>{{ cardDates.get(element.id)!.label }}
+            </span>
 
             <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point.
                  Un clic ouvre la bulle où cocher les points sans passer par le dialogue -->
@@ -123,6 +138,8 @@ import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
 import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
+import { dayState, longDateLabel, shortDateLabel, type DayState } from '../utils/date.helper'
+import { useNow } from '../utils/now.helper'
 import { useTaskStore } from '../stores/Task'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
@@ -152,6 +169,7 @@ const taskStore = useTaskStore()
 const settings = useSettingsStore()
 const confirm = useConfirm()
 const { t } = useI18n()
+const now = useNow()
 
 /**
  * Série de chaque carte récurrente, dans son dernier état connu (store Task) :
@@ -163,6 +181,27 @@ const cardRecurrences = computed(() => {
   for (const task of props.tasks) {
     const recurrence = taskStore.getRecurrence(task.recurrenceId) ?? task.recurrence
     if (recurrence) map.set(task.id, recurrence)
+  }
+
+  return map
+})
+
+/**
+ * Date de début de chaque carte qui en a une, libellé court relatif au jour
+ * courant, place par rapport à aujourd'hui et date complète. Recalculé chaque
+ * minute (cf. useNow), « Demain » devient ainsi « Aujourd'hui » passé minuit.
+ */
+const cardDates = computed(() => {
+  const map = new Map<number, { label: string; state: DayState; tooltip: string }>()
+
+  for (const task of props.tasks) {
+    if (!task.startDate) continue
+    const date = new Date(task.startDate)
+    map.set(task.id, {
+      label: shortDateLabel(date, now.value),
+      state: dayState(date, now.value),
+      tooltip: t('board.startDateTooltip', { date: longDateLabel(date) }),
+    })
   }
 
   return map
@@ -291,6 +330,39 @@ const cardTags = computed(() => {
 .recurrence-icon {
   @apply shrink-0 text-xs;
   color: var(--p-primary-color);
+}
+
+/* Date de début, discrète tant qu'elle est à venir */
+.card-date {
+  @apply inline-flex shrink-0 items-center rounded px-1 whitespace-nowrap;
+  gap: 3px;
+  height: 18px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-text-muted-color);
+}
+
+.card-date .pi {
+  font-size: 12px;
+}
+
+/* Le jour même, à l'accent */
+.card-date.today {
+  @apply font-semibold;
+  background-color: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
+  color: var(--p-primary-color);
+}
+
+/* Date passée, la tâche attend depuis la veille ou plus */
+.card-date.past {
+  @apply font-semibold;
+  background-color: var(--p-orange-100);
+  color: var(--p-orange-700);
+}
+
+.app-dark .card-date.past {
+  background-color: color-mix(in srgb, var(--p-orange-400) 15%, transparent);
+  color: var(--p-orange-400);
 }
 
 /* Discrète : signale seulement qu'il y a quelque chose à lire */

@@ -119,6 +119,7 @@ export const zh: MessageSchema = {
     stageDeleteFailedDetail: '列表未删除。',
     renameCanceled: '重命名已取消',
     addTask: '添加任务',
+    startDateTooltip: '开始于 {date}',
     archiveConfirm: '归档此任务？',
   },
   task: {

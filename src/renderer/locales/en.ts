@@ -119,6 +119,7 @@ export const en: MessageSchema = {
     stageDeleteFailedDetail: 'The list was not deleted.',
     renameCanceled: 'Rename canceled',
     addTask: 'Add a task',
+    startDateTooltip: 'Starts {date}',
     archiveConfirm: 'Archive this task?',
   },
   task: {

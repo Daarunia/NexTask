@@ -124,6 +124,7 @@ export const fr = {
     stageDeleteFailedDetail: "La liste n'a pas été supprimée.",
     renameCanceled: 'Renommage annulé',
     addTask: 'Ajouter une tâche',
+    startDateTooltip: 'Début le {date}',
     archiveConfirm: 'Archiver cette tâche ?',
   },
   task: {
