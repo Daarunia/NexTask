@@ -18,12 +18,13 @@ const COLUMN = 'A faire'
  * Crée une tâche dans la colonne `COLUMN`.
  * @param request Contexte de requête Playwright
  * @param title Titre de la tâche
+ * @param extra Champs ajoutés au corps
  */
-async function createTask(request: APIRequestContext, title: string) {
+async function createTask(request: APIRequestContext, title: string, extra: Record<string, unknown> = {}) {
   const stages = (await (await request.get(`${API}/stages`)).json()) as { id: number; name: string }[]
   const stageId = stages.find((stage) => stage.name === COLUMN)!.id
   const res = await request.post(`${API}/tasks`, {
-    data: { stageId, position: 0, title, version: '1.0.0', description: '' },
+    data: { stageId, position: 0, title, version: '1.0.0', description: '', ...extra },
   })
   expect(res.ok(), await res.text()).toBeTruthy()
 }
@@ -38,6 +39,25 @@ test('un dialogue intact se ferme sans confirmation', async ({ page, taskBoard }
 
   await taskBoard.openCreateDialog(COLUMN)
   await page.getByTestId('task-close-btn').click()
+  await expect(taskBoard.dialog).toBeHidden()
+  await expect(taskBoard.confirmPopup).toHaveCount(0)
+})
+
+test('une tâche complète, rouverte sans changement, se ferme sans confirmation', async ({ page, taskBoard }) => {
+  await createTask(page.request, 'Complète', {
+    description: ['**Liste** de la semaine', '', '- pain', '- lait'].join('\n'),
+    startDate: '2026-11-02T08:00:00.000Z',
+    tags: ['maison', 'courses'],
+    checklistItems: [
+      { text: 'Pain', isChecked: true },
+      { text: 'Lait', isChecked: false },
+    ],
+    recurrence: { frequency: 'weekly', interval: 1, weekdays: [1], endType: 'never', skipIfPending: true },
+  })
+  await page.reload()
+
+  await taskBoard.openEditDialog('Complète')
+  await page.keyboard.press('Escape')
   await expect(taskBoard.dialog).toBeHidden()
   await expect(taskBoard.confirmPopup).toHaveCount(0)
 })
