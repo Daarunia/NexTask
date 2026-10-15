@@ -58,6 +58,8 @@ model Stage {
   id          Int          @id @default(autoincrement())
   name        String
   position    Int
+  // Couleur de la palette des tags (cf. TAG_COLORS), null pour une colonne sans couleur
+  color       String?
   tasks       Task[]
   recurrences Recurrence[]
 }

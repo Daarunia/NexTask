@@ -1,6 +1,7 @@
 import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { tagKey } from '../helpers/tag.helper.js'
+import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { translate } from '../../i18n.js'
@@ -28,6 +29,8 @@ const exportedStageSchema = {
     id: { type: 'integer' },
     name: { type: 'string' },
     position: { type: 'integer' },
+    // Couleur facultative : un export antérieur aux couleurs de colonne reste importable
+    color: { type: ['string', 'null'] },
   },
   required: ['id', 'name', 'position'],
 }
@@ -161,11 +164,20 @@ const importErrorSchema = {
   },
 }
 
+/**
+ * Couleur d'une colonne importée : gardée si elle fait partie de la palette,
+ * sinon la colonne est importée sans couleur.
+ * @param color Couleur lue dans le fichier
+ */
+function stageColor(color: string | null | undefined): TagColor | null {
+  return TAG_COLORS.includes(color as TagColor) ? (color as TagColor) : null
+}
+
 /** Fichier d'import, une fois validé par Fastify. */
 interface DataImportBody {
   format: string
   version: number
-  stages: { id: number; name: string; position: number }[]
+  stages: { id: number; name: string; position: number; color?: string | null }[]
   tags: { id: number; name: string; color: string; createdAt?: string }[]
   tasks: {
     id: number
@@ -360,7 +372,7 @@ export default async function dataRoutes(fastify) {
       // Lecture groupée, pour un instantané cohérent de toutes les tables
       const [stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
         prisma.stage.findMany({
-          select: { id: true, name: true, position: true },
+          select: { id: true, name: true, position: true, color: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
@@ -492,7 +504,12 @@ export default async function dataRoutes(fastify) {
 
             // Champs repris un par un : une propriété inconnue du fichier n'atteint pas Prisma
             await tx.stage.createMany({
-              data: data.stages.map(({ id, name, position }) => ({ id, name, position })),
+              data: data.stages.map(({ id, name, position, color }) => ({
+                id,
+                name,
+                position,
+                color: stageColor(color),
+              })),
             })
             await tx.tag.createMany({
               data: data.tags.map((tag) => {

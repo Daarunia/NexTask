@@ -16,11 +16,14 @@
       @end="onStagesDrop"
     >
       <template #item="{ element: stage }">
+        <!-- Couleur de la colonne en liseré, en haut ou sur sa bande repliée -->
         <div
           data-testid="stage-column"
           :data-stage-id="stage.id"
           :data-collapsed="isCollapsed(stage.id)"
-          :class="['stages-container', { collapsed: isCollapsed(stage.id) }]"
+          :data-color="stage.color ?? undefined"
+          :class="['stages-container', { collapsed: isCollapsed(stage.id), colored: !!stage.color }]"
+          :style="stage.color ? { '--stage-color': getTagColorStyle(stage.color).swatch } : undefined"
         >
           <!-- Colonne repliée : bande étroite avec son nom et son compteur, un clic la
                déplie. Toute la bande sert de poignée pour déplacer la colonne. -->
@@ -113,8 +116,8 @@
     </div>
   </div>
 
-  <!-- Menu contextuel partagé (une seule instance, cible = selectedStage) -->
-  <Menu ref="stageMenu" :model="stageMenuItems" popup />
+  <!-- Menu contextuel partagé (une seule instance, cible = selectedStage), à sous-menus (couleur) -->
+  <TieredMenu ref="stageMenu" :model="stageMenuItems" popup data-testid="stage-menu" />
 
   <!-- Menu contextuel des cartes, partagé de même (cible = menuTaskId) -->
   <ContextMenu
@@ -141,7 +144,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import draggable from 'vuedraggable'
-import Menu from 'primevue/menu'
+import TieredMenu from 'primevue/tieredmenu'
 import ContextMenu from 'primevue/contextmenu'
 import Button from 'primevue/button'
 import StageTaskList from './StageTaskList.vue'
@@ -165,6 +168,8 @@ import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useDangerConfirm } from '../utils/confirm.helper'
 import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
+import { TAG_COLOR_STYLES, getTagColorStyle } from '../constants/tag.constants'
+import type { TagColor } from '../../main/shared/tag.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -266,6 +271,25 @@ async function setStageCollapsed(stageId: number, collapsed: boolean) {
 }
 
 /**
+ * Change la couleur d'une colonne, affichée tout de suite et rétablie si
+ * l'enregistrement échoue.
+ * @param stage Colonne
+ * @param color Couleur de la palette, `null` pour la retirer
+ */
+async function setStageColor(stage: Stage, color: TagColor | null) {
+  const previous = stage.color ?? null
+  if (previous === color) return
+  stage.color = color
+
+  try {
+    await stageStore.updateStageColor(stage.id, color)
+  } catch {
+    stage.color = previous
+    showError(t('board.colorNotSaved'))
+  }
+}
+
+/**
  * Compteur d'une colonne : cartes visibles, sur le total quand un filtre est actif.
  * @param stageId Id de la colonne
  */
@@ -280,6 +304,25 @@ const stageMenuItems = computed(() => [
     label: t('board.collapseStage'),
     icon: 'pi pi-chevron-left',
     command: () => selectedStage.value && setStageCollapsed(selectedStage.value.id, true),
+  },
+  {
+    label: t('board.stageColor'),
+    icon: 'pi pi-palette',
+    items: [
+      {
+        label: t('board.noColor'),
+        icon: 'pi pi-ban',
+        class: selectedStage.value?.color ? undefined : 'stage-color-current',
+        command: () => selectedStage.value && setStageColor(selectedStage.value, null),
+      },
+      ...TAG_COLOR_STYLES.map((color) => ({
+        label: t(`tagColors.${color.name}`),
+        icon: 'pi pi-circle-fill',
+        class: ['stage-color-option', { 'stage-color-current': selectedStage.value?.color === color.name }],
+        style: { '--swatch': color.swatch },
+        command: () => selectedStage.value && setStageColor(selectedStage.value, color.name),
+      })),
+    ],
   },
   {
     label: t('board.renameStage'),
@@ -1151,6 +1194,11 @@ onMounted(() => {
   background-color: var(--p-surface-200);
 }
 
+/* Colonne colorée : liseré en haut, à la couleur choisie */
+.stages-container.colored {
+  box-shadow: inset 0 4px 0 var(--stage-color);
+}
+
 .btn-add-container {
   @apply flex flex-col items-center justify-center min-w-[300px] overflow-x-auto rounded-lg ml-4 h-16 p-2;
   background-color: var(--p-surface-200);
@@ -1240,5 +1288,25 @@ onMounted(() => {
 .app-dark .stage-count {
   background-color: color-mix(in srgb, var(--p-primary-400) 18%, transparent);
   color: var(--p-primary-400);
+}
+</style>
+
+<!-- Menu des colonnes, ajouté au body : hors de portée du style scoped -->
+<style>
+/* Pastille de chaque couleur, survol compris */
+.p-tieredmenu
+  .p-tieredmenu-item.stage-color-option:not(.p-disabled)
+  > .p-tieredmenu-item-content
+  .p-tieredmenu-item-icon {
+  color: var(--swatch);
+}
+
+/* Couleur actuelle de la colonne */
+.stage-color-current .p-tieredmenu-item-label {
+  font-weight: 600;
+}
+
+.stage-color-current .p-tieredmenu-item-label::after {
+  content: ' ✓';
 }
 </style>
