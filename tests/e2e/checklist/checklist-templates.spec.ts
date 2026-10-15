@@ -1,6 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { expectAnchoredTo } from '../../helpers/overlay.helper'
 
 /**
  * Tests E2E de la page Checklists (parcours P5). États vides, création,
@@ -58,9 +59,12 @@ async function templateNamed(request: APIRequestContext, name: string): Promise<
  * @param id Id du modèle, absent pour la page sans sélection
  */
 async function openChecklists(page: Page, id?: number) {
-  await page.evaluate((hash) => {
-    globalThis.location.hash = hash
-  }, `#/checklists${id === undefined ? '' : `/${id}`}`)
+  await page.evaluate(
+    (hash) => {
+      globalThis.location.hash = hash
+    },
+    `#/checklists${id === undefined ? '' : `/${id}`}`,
+  )
 }
 
 test.describe('Page Checklists', () => {
@@ -256,6 +260,8 @@ test.describe('Page Checklists', () => {
     // Annuler ne supprime rien
     await checklistsPage.menuAction('Supprimer')
     await expect(page.getByTestId('confirm-popup')).toContainText('Les tâches qui ont reçu ses points ne changent pas.')
+    // Bulle ancrée sur le bouton ⋯, bien qu'ouverte après la fermeture du menu
+    await expectAnchoredTo(page.getByTestId('confirm-popup'), checklistsPage.menuButton)
     await page.getByTestId('btn-confirm-reject').click()
     expect(await checklistsPage.names()).toEqual(['A', 'B', 'C'])
 

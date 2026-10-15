@@ -84,7 +84,6 @@ import { computed, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
-import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import TemplateList from '../components/checklists/TemplateList.vue'
 import TemplateEditor from '../components/checklists/TemplateEditor.vue'
@@ -92,6 +91,7 @@ import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
 import { duplicateName, templateKey } from '../../main/shared/checklistTemplate.helper'
 
 /**
@@ -106,7 +106,7 @@ const logger = getLogger()
 const store = useChecklistTemplateStore()
 const route = useRoute()
 const router = useRouter()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const { t } = useI18n()
 
@@ -201,17 +201,10 @@ async function duplicateTemplate(template: ChecklistTemplate) {
  * @param template Modèle à supprimer
  */
 function askDelete(target: HTMLElement | undefined, template: ChecklistTemplate) {
-  confirm.require({
+  confirmDanger({
     target,
     message: t('checklists.deleteConfirm', { name: template.name }),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('common.delete'),
     accept: () => deleteTemplate(template),
   })
 }

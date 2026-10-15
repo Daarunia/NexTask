@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { expectAnchoredTo } from '../../helpers/overlay.helper'
 
 /**
  * Tests E2E des colonnes (Stage) : gestion (ajout/annulation, renommage,
@@ -180,6 +181,8 @@ test.describe('Suppression de colonne', () => {
 
     await taskBoard.deleteStage(stage)
     await expect(taskBoard.confirmPopup).toContainText(`Supprimer la liste « ${stage} » ? Sa tâche sera archivée.`)
+    // Bulle ancrée sur le bouton ⋮, bien qu'ouverte après la fermeture du menu
+    await expectAnchoredTo(taskBoard.confirmPopup, taskBoard.column(stage).getByTestId('btn-stage-menu'))
     await taskBoard.confirmAcceptButton.click()
 
     // La colonne disparaît…

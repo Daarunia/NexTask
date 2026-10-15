@@ -12,6 +12,7 @@ import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useTagStore } from './stores/Tag'
 import { useUpdateStore } from './stores/Update'
+import { registerConfirmPopup } from './utils/confirm.helper'
 
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
@@ -101,7 +102,7 @@ onBeforeUnmount(() => {
     <UpdateToast />
 
     <!-- Confirmations ancrées sur leur bouton (cf. useConfirm) -->
-    <ConfirmPopup data-testid="confirm-popup" />
+    <ConfirmPopup :ref="registerConfirmPopup" data-testid="confirm-popup" />
   </div>
 </template>
 

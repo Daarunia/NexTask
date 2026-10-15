@@ -1,3 +1,4 @@
+import { nextTick, type ComponentPublicInstance } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { t } from '../i18n'
 
@@ -7,6 +8,24 @@ export interface DangerConfirmOptions {
   message: string // question posée
   acceptLabel: string // libellé du bouton rouge (« Supprimer », « Archiver »…)
   accept: () => unknown // action confirmée
+}
+
+/** Méthodes internes de la ConfirmPopup PrimeVue utilisées pour la placer. */
+interface ConfirmPopupInstance {
+  container: HTMLElement | null
+  alignOverlay: () => void
+}
+
+// Bulle de confirmation unique de l'app, montée par App.vue
+let confirmPopup: ConfirmPopupInstance | null = null
+
+/**
+ * Ref de fonction de la ConfirmPopup d'App.vue : garde son instance, pour la
+ * placer après une ouverture différée (cf. `useDangerConfirm`).
+ * @param instance Instance montée, `null` au démontage
+ */
+export function registerConfirmPopup(instance: Element | ComponentPublicInstance | null) {
+  confirmPopup = instance as unknown as ConfirmPopupInstance | null
 }
 
 /**
@@ -21,7 +40,7 @@ export interface DangerConfirmOptions {
 export function useDangerConfirm() {
   const confirm = useConfirm()
 
-  return ({ target, message, acceptLabel, accept }: DangerConfirmOptions) =>
+  return ({ target, message, acceptLabel, accept }: DangerConfirmOptions) => {
     confirm.require({
       target,
       message,
@@ -35,4 +54,14 @@ export function useDangerConfirm() {
       acceptProps: { label: acceptLabel, severity: 'danger', 'data-testid': 'btn-confirm-accept' },
       accept,
     })
+
+    // PrimeVue ne place la bulle que lorsque le clic qui l'ouvre remonte au
+    // document. Ouverte après coup, depuis un menu (différée pour que ce clic ne
+    // la referme pas), elle restait sinon dans le coin de la fenêtre.
+    if (target) {
+      nextTick(() => {
+        if (confirmPopup?.container) confirmPopup.alignOverlay()
+      })
+    }
+  }
 }
