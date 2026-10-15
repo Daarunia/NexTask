@@ -520,6 +520,7 @@ export const zh: MessageSchema = {
     open: '打开',
     openTask: '打开任务',
     checkFailed: '勾选未保存',
+    allDone: '清单已完成',
   },
   archives: {
     back: '返回设置',

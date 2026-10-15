@@ -122,9 +122,9 @@ import { Stage } from '../types/stage.types'
 import { Tag, TagSelection } from '../types/tag.types'
 import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
-import { useErrorToast, useUndoToast } from '../utils/toast.helper'
+import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
-import { withItemChecked } from '../utils/checklist.helper'
+import { checklistProgress, withItemChecked } from '../utils/checklist.helper'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useI18n } from 'vue-i18n'
@@ -143,6 +143,7 @@ const boardFilter = useBoardFilterStore()
 const { t } = useI18n()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
+const showAction = useActionToast()
 const confirm = useConfirm()
 
 const newStageInput = ref<HTMLInputElement | null>(null)
@@ -419,7 +420,8 @@ async function removeTagFromTask(task: Task, tagId: number) {
 /**
  * Coche ou décoche un point de checklist depuis la carte. La copie locale est
  * mise à jour tout de suite, puis remplacée par la checklist enregistrée, ou
- * remise dans son état d'avant si l'enregistrement échoue.
+ * remise dans son état d'avant si l'enregistrement échoue. Le dernier point
+ * coché propose d'archiver la tâche, dans un toast.
  * @param task Tâche de la carte
  * @param itemId Id du point
  * @param isChecked Nouvel état du point
@@ -434,10 +436,33 @@ async function checkChecklistItem(task: Task, itemId: number, isChecked: boolean
   try {
     const updatedTask = await taskStore.setChecklistItemChecked(task.id, itemId, isChecked)
     setLocalChecklist(task.id, updatedTask.checklist ?? null)
+    if (isChecked && isComplete(updatedTask.checklist) && !isComplete(previous)) offerArchive(task)
   } catch {
     setLocalChecklist(task.id, previous)
     showError(t('checklist.checkFailed'))
   }
+}
+
+/**
+ * Vrai si la checklist a des points et qu'ils sont tous cochés.
+ * @param checklist Checklist de la tâche
+ */
+function isComplete(checklist: Task['checklist']): boolean {
+  const { done, total } = checklistProgress(checklist?.items)
+  return total > 0 && done === total
+}
+
+/**
+ * Checklist terminée depuis la carte, toast qui propose d'archiver la tâche.
+ * Le bouton disparaît si la carte a quitté le tableau entre-temps.
+ * @param task Tâche de la carte
+ */
+function offerArchive(task: Task) {
+  showAction(t('checklist.allDone'), task.title, {
+    label: t('common.archive'),
+    run: () => archiveTask(task),
+    available: () => findTaskLocation(task.id) !== null,
+  })
 }
 
 /**

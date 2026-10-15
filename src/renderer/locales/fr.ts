@@ -539,6 +539,7 @@ export const fr = {
     // Bulle de la checklist d'une carte du tableau
     openTask: 'Ouvrir la tâche',
     checkFailed: 'Coche non enregistrée',
+    allDone: 'Checklist terminée',
   },
   archives: {
     back: 'Retour aux paramètres',

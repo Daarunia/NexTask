@@ -134,6 +134,36 @@ test.describe('bulle de la carte', () => {
   })
 })
 
+test.describe('checklist terminée depuis la carte', () => {
+  test("le dernier point coché propose d'archiver la tâche", async ({ page, taskBoard }) => {
+    await createTask(page.request, 'Courses', items(['Pain', 'Café'], 1))
+    await page.reload()
+
+    const toast = page.getByTestId('action-toast')
+    await taskBoard.cardChecklistButton('Courses').click()
+    await taskBoard.cardChecklistCheck('Café').check()
+
+    await expect(toast).toBeVisible()
+    await expect(toast.getByTestId('action-toast-summary')).toHaveText('Checklist terminée')
+    await expect(toast.getByTestId('action-toast-detail')).toHaveText('Courses')
+
+    await toast.getByTestId('btn-toast-action').click()
+    await expect(taskBoard.taskCard('Courses')).toHaveCount(0)
+    // Archivage habituel, donc annulable
+    await expect(page.getByTestId('undo-toast')).toBeVisible()
+  })
+
+  test("aucune proposition tant qu'un point reste à cocher", async ({ page, taskBoard }) => {
+    await createTask(page.request, 'Courses', items(['Pain', 'Café', 'Lait']))
+    await page.reload()
+
+    await taskBoard.cardChecklistButton('Courses').click()
+    await taskBoard.cardChecklistCheck('Pain').check()
+    await expect(taskBoard.cardChecklistBadge('Courses')).toHaveText('1/3')
+    await expect(page.getByTestId('action-toast')).toHaveCount(0)
+  })
+})
+
 test.describe('PATCH /tasks/:id/checklist/items/:itemId', () => {
   test.use({ ui: false })
 

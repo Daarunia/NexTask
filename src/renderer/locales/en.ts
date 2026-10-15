@@ -530,6 +530,7 @@ export const en: MessageSchema = {
     open: 'Open',
     openTask: 'Open the task',
     checkFailed: 'Check not saved',
+    allDone: 'Checklist complete',
   },
   archives: {
     back: 'Back to settings',

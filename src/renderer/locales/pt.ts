@@ -531,6 +531,7 @@ export const pt: MessageSchema = {
     open: 'Abrir',
     openTask: 'Abrir a tarefa',
     checkFailed: 'Marcação não salva',
+    allDone: 'Checklist concluída',
   },
   archives: {
     back: 'Voltar às configurações',

@@ -533,6 +533,7 @@ export const es: MessageSchema = {
     open: 'Abrir',
     openTask: 'Abrir la tarea',
     checkFailed: 'Marca no guardada',
+    allDone: 'Checklist completada',
   },
   archives: {
     back: 'Volver a los ajustes',
