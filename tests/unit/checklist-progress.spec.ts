@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { i18n } from '../../src/renderer/i18n'
-import { checklistProgress, progressLabel } from '../../src/renderer/utils/checklist.helper'
+import { checklistProgress, progressLabel, withItemChecked } from '../../src/renderer/utils/checklist.helper'
+import type { TaskChecklist } from '../../src/renderer/types/checklist.types'
 
 /**
  * Tests unitaires de l'avancement d'une checklist, affiché par le badge des
- * cartes et des Archives (nombre de points cochés et libellé accessible).
+ * cartes et des Archives (nombre de points cochés et libellé accessible), et
+ * coche d'un point depuis la carte.
  */
 
 describe('checklistProgress', () => {
@@ -42,5 +44,30 @@ describe('progressLabel', () => {
   ])('%i sur %i en anglais → %j', (done, total, expected) => {
     i18n.global.locale.value = 'en'
     expect(progressLabel(done, total)).toBe(expected)
+  })
+})
+
+describe('withItemChecked', () => {
+  const checklist: TaskChecklist = {
+    id: 1,
+    items: [
+      { id: 10, text: 'Pain', position: 0, isChecked: false, checkedAt: null },
+      { id: 11, text: 'Café', position: 1, isChecked: true, checkedAt: '2026-10-15T08:00:00.000Z' },
+    ],
+  }
+
+  test('coche le point visé et garde les autres tels quels', () => {
+    const result = withItemChecked(checklist, 10, true)
+    expect(result.items.map((item) => item.isChecked)).toEqual([true, true])
+    expect(result.items[1]).toBe(checklist.items[1])
+  })
+
+  test('ne modifie pas la checklist reçue', () => {
+    withItemChecked(checklist, 11, false)
+    expect(checklist.items[1].isChecked).toBe(true)
+  })
+
+  test('un id inconnu ne change aucun point', () => {
+    expect(withItemChecked(checklist, 99, true).items).toEqual(checklist.items)
   })
 })

@@ -518,6 +518,8 @@ export const zh: MessageSchema = {
     templateCreated: '模板已创建',
     templateCreatedDetail: '“{name}”已在清单页面中。',
     open: '打开',
+    openTask: '打开任务',
+    checkFailed: '勾选未保存',
   },
   archives: {
     back: '返回设置',

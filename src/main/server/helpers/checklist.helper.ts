@@ -221,6 +221,35 @@ export async function syncTaskChecklist(
 }
 
 /**
+ * Coche ou décoche un point de la checklist d'une tâche, sans toucher aux
+ * autres (case cochée depuis la carte). La date de coche suit la même règle
+ * qu'à l'enregistrement de la liste complète (cf. checkedAtFor).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param taskId Id de la tâche
+ * @param itemId Id du point
+ * @param isChecked Nouvel état du point
+ * @param now Maintenant
+ * @returns Faux si le point n'appartient pas à la checklist de cette tâche
+ */
+export async function setTaskChecklistItemChecked(
+  tx: TransactionClient,
+  taskId: number,
+  itemId: number,
+  isChecked: boolean,
+  now: Date,
+): Promise<boolean> {
+  const previous = await tx.checklistItem.findFirst({ where: { id: itemId, checklist: { taskId } } })
+  if (!previous) return false
+
+  await tx.checklistItem.update({
+    where: { id: itemId },
+    data: { isChecked, checkedAt: checkedAtFor(isChecked, previous, now) },
+  })
+  return true
+}
+
+/**
  * Vrai si la valeur est une liste de textes de points, forme attendue du
  * champ JSON `Recurrence.checklistItems`. Garde de type pour lire ce champ,
  * que Prisma type en simple `JsonValue`.

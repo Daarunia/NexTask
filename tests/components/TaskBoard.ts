@@ -30,6 +30,9 @@ export class TaskBoard {
   readonly confirmAcceptButton: Locator
   readonly confirmRejectButton: Locator
 
+  // Bulle de la checklist d'une carte, ouverte par son badge (une seule à la fois)
+  readonly cardChecklistPopover: Locator
+
   /**
    * Constructeur
    * @param page Page courante
@@ -58,6 +61,8 @@ export class TaskBoard {
     this.confirmPopup = page.getByTestId('confirm-popup')
     this.confirmAcceptButton = page.getByTestId('btn-confirm-accept')
     this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
+
+    this.cardChecklistPopover = page.getByTestId('card-checklist-popover')
   }
 
   /**
@@ -223,6 +228,22 @@ export class TaskBoard {
    */
   cardChecklistBadge(title: string): Locator {
     return this.taskCard(title).getByTestId('task-card-checklist')
+  }
+
+  /**
+   * Bouton du badge de checklist d'une carte, qui ouvre la bulle des points.
+   * @param title Titre exact de la tâche
+   */
+  cardChecklistButton(title: string): Locator {
+    return this.taskCard(title).getByTestId('btn-card-checklist')
+  }
+
+  /**
+   * Case d'un point dans la bulle de checklist d'une carte, repérée par le texte du point.
+   * @param text Texte exact du point
+   */
+  cardChecklistCheck(text: string): Locator {
+    return this.cardChecklistPopover.getByRole('checkbox', { name: text, exact: true })
   }
 
   /**

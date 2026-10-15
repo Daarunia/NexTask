@@ -44,8 +44,14 @@
               />
             </div>
 
-            <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point -->
-            <ChecklistBadge data-testid="task-card-checklist" :checklist="element.checklist" :tooltipDisabled="isDragging" />
+            <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point.
+                 Un clic ouvre la bulle où cocher les points sans passer par le dialogue -->
+            <CardChecklist
+              :task="element"
+              :disabled="isDragging"
+              @check-item="(itemId: number, checked: boolean) => $emit('check-item', element, itemId, checked)"
+              @open="$emit('edit-task', element)"
+            />
 
             <!-- Tâche avec une description : son début au survol, sans la syntaxe Markdown.
                  Même texte en aria-label, nom accessible de l'icône -->
@@ -107,7 +113,7 @@ import { computed } from 'vue'
 import draggable from 'vuedraggable'
 import Button from 'primevue/button'
 import TagChip from './TagChip.vue'
-import ChecklistBadge from './ChecklistBadge.vue'
+import CardChecklist from './CardChecklist.vue'
 import { Task } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { useConfirm } from 'primevue/useconfirm'
@@ -133,7 +139,7 @@ const props = withDefaults(
   { filterActive: false },
 )
 
-const emit = defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag'])
+const emit = defineEmits(['tasks-drop', 'edit-task', 'archive-task', 'create-task', 'remove-tag', 'check-item'])
 
 /** Fin d'un drag de carte : fin du curseur de drag, puis sauvegarde par le parent. */
 function onDragEnd() {

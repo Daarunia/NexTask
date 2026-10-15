@@ -536,6 +536,9 @@ export const fr = {
     templateCreated: 'Modèle créé',
     templateCreatedDetail: '« {name} » est dans la page Checklists.',
     open: 'Ouvrir',
+    // Bulle de la checklist d'une carte du tableau
+    openTask: 'Ouvrir la tâche',
+    checkFailed: 'Coche non enregistrée',
   },
   archives: {
     back: 'Retour aux paramètres',

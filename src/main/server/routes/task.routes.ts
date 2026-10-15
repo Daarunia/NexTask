@@ -6,7 +6,12 @@ import { idParam, errorResponse, messageResponse, requiredLabel } from '../schem
 import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas/recurrenceSchema.js'
 import { taskChecklistItemsSchema } from '../schemas/checklistSchema.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
-import { sameChecklistTexts, syncTaskChecklist, taskChecklistTexts } from '../helpers/checklist.helper.js'
+import {
+  sameChecklistTexts,
+  setTaskChecklistItemChecked,
+  syncTaskChecklist,
+  taskChecklistTexts,
+} from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
   createSeries,
@@ -454,6 +459,64 @@ export default async function taskRoutes(fastify) {
         reply.code(500)
         return { error: 'Impossible de mettre à jour la tâche' }
       }
+    },
+  )
+
+  /**
+   * PATCH /tasks/:id/checklist/items/:itemId
+   *
+   * Coche ou décoche un seul point de la checklist d'une tâche, depuis la
+   * carte du tableau, sans renvoyer toute la liste. Une coche ne part jamais
+   * dans le modèle d'une série (seuls les textes y vont), la série n'est donc
+   * pas touchée.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID de la tâche
+   * @param {number} req.params.itemId - ID du point
+   * @param {Object} req.body - Corps de la requête
+   * @param {boolean} req.body.isChecked - Nouvel état du point
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task à jour avec sa checklist,
+   *   404 si la tâche n'existe pas ou si le point n'est pas dans sa checklist
+   */
+  fastify.patch(
+    '/tasks/:id/checklist/items/:itemId',
+    {
+      schema: {
+        description: "Coche ou décoche un point de la checklist d'une tâche",
+        tags: ['Task'],
+        params: {
+          type: 'object',
+          properties: { id: { type: 'integer' }, itemId: { type: 'integer' } },
+          required: ['id', 'itemId'],
+        },
+        body: {
+          type: 'object',
+          properties: { isChecked: { type: 'boolean' } },
+          required: ['isChecked'],
+        },
+        response: {
+          200: taskSchema,
+          404: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { id, itemId } = req.params as { id: number; itemId: number }
+      const { isChecked } = req.body as { isChecked: boolean }
+      const now = new Date()
+
+      return prisma.$transaction(async (tx) => {
+        if (!(await setTaskChecklistItemChecked(tx, id, itemId, isChecked, now))) {
+          Logger.warn(`Point ${itemId} introuvable dans la checklist de la tâche ${id}`)
+          reply.code(404)
+          return { error: 'Point de checklist non trouvé' }
+        }
+
+        // La tâche compte comme modifiée, comme après un enregistrement du dialogue
+        return tx.task.update({ where: { id }, data: { updatedAt: now }, include: taskInclude })
+      })
     },
   )
 

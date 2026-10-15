@@ -1,4 +1,4 @@
-import type { ChecklistItem } from '../types/checklist.types'
+import type { ChecklistItem, TaskChecklist } from '../types/checklist.types'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
 import type { ChecklistItemInput } from '../../main/shared/checklist.constants'
 import { t } from '../i18n'
@@ -16,7 +16,9 @@ type DraftItem = Pick<ChecklistItemInput, 'id' | 'text' | 'isChecked'>
  * Avancement d'une checklist. Une liste absente compte comme vide.
  * @param items Points de la checklist, enregistrés ou en cours de saisie
  */
-export function checklistProgress(items: readonly Pick<ChecklistItem, 'isChecked'>[] | null | undefined): ChecklistProgress {
+export function checklistProgress(
+  items: readonly Pick<ChecklistItem, 'isChecked'>[] | null | undefined,
+): ChecklistProgress {
   const list = items ?? []
   return { done: list.filter((item) => item.isChecked).length, total: list.length }
 }
@@ -38,6 +40,21 @@ export function progressPercent({ done, total }: ChecklistProgress): number {
  */
 export function progressLabel(done: number, total: number): string {
   return t('checklist.progress', { count: done, total }, done)
+}
+
+/**
+ * Checklist avec un point coché ou décoché, pour l'affichage immédiat d'une
+ * coche faite depuis la carte. Les autres points sont gardés tels quels.
+ * @param checklist Checklist de la tâche
+ * @param itemId Id du point
+ * @param isChecked Nouvel état du point
+ * @returns Une nouvelle checklist, celle reçue n'est pas modifiée
+ */
+export function withItemChecked(checklist: TaskChecklist, itemId: number, isChecked: boolean): TaskChecklist {
+  return {
+    ...checklist,
+    items: checklist.items.map((item) => (item.id === itemId ? { ...item, isChecked } : item)),
+  }
 }
 
 /**

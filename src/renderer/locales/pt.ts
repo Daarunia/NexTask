@@ -529,6 +529,8 @@ export const pt: MessageSchema = {
     templateCreated: 'Modelo criado',
     templateCreatedDetail: '“{name}” está na página Checklists.',
     open: 'Abrir',
+    openTask: 'Abrir a tarefa',
+    checkFailed: 'Marcação não salva',
   },
   archives: {
     back: 'Voltar às configurações',

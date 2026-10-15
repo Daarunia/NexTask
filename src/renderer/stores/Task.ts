@@ -328,10 +328,6 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
-     * @param tag Tag mis à jour
-     */
-    /**
      * Remplace les tags d'une tâche (retrait direct depuis une carte)
      * @param id Id de la tâche
      * @param tagNames Noms des tags à garder
@@ -349,6 +345,29 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
+    /**
+     * Coche ou décoche un point de checklist depuis la carte, sans renvoyer
+     * toute la liste
+     * @param taskId Id de la tâche
+     * @param itemId Id du point
+     * @param isChecked Nouvel état du point
+     * @returns La tâche mise à jour, avec sa checklist (dates de coche fixées par le serveur)
+     */
+    async setChecklistItemChecked(taskId: number, itemId: number, isChecked: boolean): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${taskId}/checklist/items/${itemId}`, { isChecked })
+        this.patchCachedTask(taskId, { checklist: updatedTask.checklist, updatedAt: updatedTask.updatedAt })
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de la coche du point ${itemId} de la tâche ${taskId} :`, error)
+        throw error
+      }
+    },
+
+    /**
+     * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
+     * @param tag Tag mis à jour
+     */
     patchTagInTasks(tag: Tag) {
       if (!this.allEntities) return
 

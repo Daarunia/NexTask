@@ -59,6 +59,7 @@
             @edit-task="openEditTaskDialog(stage.id, $event)"
             @archive-task="archiveTask"
             @remove-tag="removeTagFromTask"
+            @check-item="checkChecklistItem"
             @create-task="openCreateTaskDialog(stage.id)"
           />
         </div>
@@ -123,6 +124,7 @@ import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
+import { withItemChecked } from '../utils/checklist.helper'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useI18n } from 'vue-i18n'
@@ -378,9 +380,6 @@ async function onStagesDrop() {
 }
 
 /**
- * Archivage
- */
-/**
  * Retire un tag d'une tâche directement depuis sa carte (croix au survol du chip)
  * @param task Tâche de la carte
  * @param tagId Tag à retirer
@@ -417,6 +416,49 @@ async function removeTagFromTask(task: Task, tagId: number) {
   }
 }
 
+/**
+ * Coche ou décoche un point de checklist depuis la carte. La copie locale est
+ * mise à jour tout de suite, puis remplacée par la checklist enregistrée, ou
+ * remise dans son état d'avant si l'enregistrement échoue.
+ * @param task Tâche de la carte
+ * @param itemId Id du point
+ * @param isChecked Nouvel état du point
+ */
+async function checkChecklistItem(task: Task, itemId: number, isChecked: boolean) {
+  const location = findTaskLocation(task.id)
+  const previous = location?.list[location.index].checklist
+  if (!previous) return
+
+  setLocalChecklist(task.id, withItemChecked(previous, itemId, isChecked))
+
+  try {
+    const updatedTask = await taskStore.setChecklistItemChecked(task.id, itemId, isChecked)
+    setLocalChecklist(task.id, updatedTask.checklist ?? null)
+  } catch {
+    setLocalChecklist(task.id, previous)
+    showError(t('checklist.checkFailed'))
+  }
+}
+
+/**
+ * Remplace la checklist d'une carte dans sa colonne locale, retrouvée par id
+ * (la carte a pu bouger pendant un appel).
+ * @param taskId Id de la tâche
+ * @param checklist Nouvelle checklist
+ */
+function setLocalChecklist(taskId: number, checklist: Task['checklist']) {
+  const location = findTaskLocation(taskId)
+  if (!location) return
+
+  const list = [...location.list]
+  list[location.index] = { ...list[location.index], checklist }
+  taskLists.set(location.stageId, list)
+}
+
+/**
+ * Archivage d'une carte, annulable depuis le toast
+ * @param task Tâche de la carte
+ */
 async function archiveTask(task: Task) {
   try {
     await taskStore.archiveTask(task.id)

@@ -528,6 +528,8 @@ export const en: MessageSchema = {
     templateCreated: 'Template created',
     templateCreatedDetail: '“{name}” is on the Checklists page.',
     open: 'Open',
+    openTask: 'Open the task',
+    checkFailed: 'Check not saved',
   },
   archives: {
     back: 'Back to settings',
