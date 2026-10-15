@@ -1,4 +1,5 @@
 import { intlLocale } from '../i18n'
+import type { Task } from '../types/task.types'
 
 /**
  * Dates affichées sur les cartes du tableau (date de début d'une tâche),
@@ -67,6 +68,21 @@ export function shortDateLabel(date: Date, now: Date): string {
     ...(sameYear ? {} : { year: 'numeric' }),
   }).format(date)
   return sameYear ? `${day}, ${time}` : day
+}
+
+/**
+ * Tâches triées par date de début, la plus proche en premier. Les tâches sans
+ * date suivent, dans leur ordre actuel, comme les tâches de même date (tri stable).
+ * @param tasks Tâches d'une colonne, dans l'ordre affiché
+ * @returns Une nouvelle liste, celle reçue n'est pas modifiée
+ */
+export function sortByStartDate<T extends Pick<Task, 'startDate'>>(tasks: readonly T[]): T[] {
+  const time = (task: T) => (task.startDate ? new Date(task.startDate).getTime() : Infinity)
+  return [...tasks].sort((a, b) => {
+    const [ta, tb] = [time(a), time(b)]
+    if (ta === tb) return 0
+    return ta < tb ? -1 : 1
+  })
 }
 
 /**

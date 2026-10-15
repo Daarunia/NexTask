@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { i18n } from '../../src/renderer/i18n'
-import { dayOffset, dayState, longDateLabel, shortDateLabel } from '../../src/renderer/utils/date.helper'
+import {
+  dayOffset,
+  dayState,
+  longDateLabel,
+  shortDateLabel,
+  sortByStartDate,
+} from '../../src/renderer/utils/date.helper'
 
 /**
  * Tests unitaires des dates des cartes du tableau (date de début d'une
@@ -75,5 +81,26 @@ describe('shortDateLabel', () => {
 describe('longDateLabel', () => {
   test('date complète avec le jour de la semaine et l’heure', () => {
     expect(longDateLabel(local(2026, 10, 22, 9))).toBe('jeudi 22 octobre 2026 à 09:00')
+  })
+})
+
+describe('sortByStartDate', () => {
+  const task = (id: number, startDate: Date | string | null) => ({ id, startDate })
+
+  test('la plus proche en premier, les tâches sans date à la fin dans leur ordre', () => {
+    const tasks = [
+      task(1, null),
+      task(2, local(2026, 10, 20)),
+      task(3, null),
+      task(4, local(2026, 10, 16).toISOString()),
+      task(5, local(2026, 10, 18)),
+    ]
+    expect(sortByStartDate(tasks).map((t) => t.id)).toEqual([4, 5, 2, 1, 3])
+  })
+
+  test('tri stable pour une même date, liste reçue intacte', () => {
+    const tasks = [task(1, local(2026, 10, 16)), task(2, local(2026, 10, 16)), task(3, local(2026, 10, 15))]
+    expect(sortByStartDate(tasks).map((t) => t.id)).toEqual([3, 1, 2])
+    expect(tasks.map((t) => t.id)).toEqual([1, 2, 3])
   })
 })

@@ -132,6 +132,9 @@ export const pt: MessageSchema = {
     openCopy: 'Abrir a cópia',
     startDateTooltip: 'Começa em {date}',
     archiveConfirm: 'Arquivar esta tarefa?',
+    sortByStartDate: 'Ordenar por data de início',
+    stageSorted: 'Lista ordenada por data',
+    sortFailed: 'Ordenação não salva',
     archiveStageTasks: 'Arquivar as tarefas',
     archiveStageTasksConfirm:
       'Arquivar a tarefa da lista «{name}»? | Arquivar a tarefa da lista «{name}»? | Arquivar as {count} tarefas da lista «{name}»?',

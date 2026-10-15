@@ -137,6 +137,9 @@ export const fr = {
     openCopy: 'Ouvrir la copie',
     startDateTooltip: 'Début le {date}',
     archiveConfirm: 'Archiver cette tâche ?',
+    sortByStartDate: 'Trier par date de début',
+    stageSorted: 'Liste triée par date',
+    sortFailed: 'Tri non enregistré',
     archiveStageTasks: 'Archiver les tâches',
     archiveStageTasksConfirm:
       'Archiver la tâche de la liste « {name} » ? | Archiver la tâche de la liste « {name} » ? | Archiver les {count} tâches de la liste « {name} » ?',

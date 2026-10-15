@@ -126,6 +126,7 @@ import { setAll } from '../utils/map.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
+import { sortByStartDate } from '../utils/date.helper'
 import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
@@ -207,6 +208,13 @@ function stageCount(stageId: number): string {
 
 // Calculé pour suivre la langue de l'interface
 const stageMenuItems = computed(() => [
+  {
+    label: t('board.sortByStartDate'),
+    icon: 'pi pi-sort-amount-down-alt',
+    command: () => setTimeout(sortSelectedStage),
+    // Aucune date à trier
+    disabled: !taskLists.get(selectedStage.value?.id ?? -1)?.some((task) => task.startDate),
+  },
   {
     label: t('board.archiveStageTasks'),
     icon: 'pi pi-box',
@@ -747,6 +755,48 @@ function askDeleteStage() {
     acceptProps: { label: t('common.delete'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
     accept: () => deleteStage(stage),
   })
+}
+
+/**
+ * Trie les cartes de la colonne du menu par date de début, la plus proche en
+ * haut, et enregistre ce nouvel ordre. Le toast permet de revenir à l'ordre
+ * d'avant.
+ */
+async function sortSelectedStage() {
+  const stage = selectedStage.value
+  const list = stage ? taskLists.get(stage.id) : undefined
+  if (!stage || !list) return
+
+  const sorted = sortByStartDate(list)
+  if (sorted.every((task, index) => task === list[index])) return
+
+  const previousOrder = list.map((task) => task.id)
+  taskLists.set(stage.id, sorted)
+  if (!(await saveTaskOrder([stage.id]))) {
+    restorePersistedTasks()
+    showError(t('board.sortFailed'))
+    return
+  }
+
+  showUndo(t('board.stageSorted'), { detail: stage.name, undo: () => restoreStageOrder(stage.id, previousOrder) })
+}
+
+/**
+ * Remet une colonne dans un ordre enregistré (annulation d'un tri). Les cartes
+ * arrivées depuis restent en bas, celles qui l'ont quittée sont ignorées.
+ * @param stageId Id de la colonne
+ * @param order Ids des tâches, dans l'ordre voulu
+ */
+async function restoreStageOrder(stageId: number, order: number[]) {
+  const list = taskLists.get(stageId) ?? []
+  const byId = new Map(list.map((task) => [task.id, task]))
+  const kept = order.flatMap((id) => byId.get(id) ?? [])
+  taskLists.set(stageId, [...kept, ...list.filter((task) => !order.includes(task.id))])
+
+  if (!(await saveTaskOrder([stageId]))) {
+    restorePersistedTasks()
+    showError(t('board.undoFailed'))
+  }
 }
 
 /**

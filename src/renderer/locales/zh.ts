@@ -132,6 +132,9 @@ export const zh: MessageSchema = {
     openCopy: '打开副本',
     startDateTooltip: '开始于 {date}',
     archiveConfirm: '归档此任务？',
+    sortByStartDate: '按开始日期排序',
+    stageSorted: '列表已按日期排序',
+    sortFailed: '排序未保存',
     archiveStageTasks: '归档所有任务',
     archiveStageTasksConfirm:
       '归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？ | 归档列表“{name}”中的 {count} 个任务？',
