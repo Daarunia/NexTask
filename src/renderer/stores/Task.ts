@@ -357,6 +357,29 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Change la date de début d'une tâche depuis sa carte, sans toucher au
+     * modèle de sa série. Le serveur réarme le rappel d'une date repoussée.
+     * @param id Id de la tâche
+     * @param startDate Nouvelle date, `null` pour la retirer
+     * @returns La tâche mise à jour
+     */
+    async setTaskStartDate(id: number, startDate: Date | null): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { startDate, applyToSeries: false })
+        this.patchCachedTask(id, {
+          startDate: updatedTask.startDate,
+          notifiedAt: updatedTask.notifiedAt,
+          updatedAt: updatedTask.updatedAt,
+        })
+
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors du changement de date de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
+    /**
      * Remplace les tags d'une tâche (retrait direct depuis une carte)
      * @param id Id de la tâche
      * @param tagNames Noms des tags à garder

@@ -71,6 +71,7 @@ test('le clic droit ouvre le menu, sans ouvrir la tâche', async ({ page, taskBo
   await expect(taskBoard.cardMenu.getByRole('menuitem')).toHaveText([
     'Ouvrir',
     'Dupliquer',
+    'Date de début',
     'Déplacer vers',
     'Tout en haut',
     'Tout en bas',
@@ -147,6 +148,33 @@ test('monte et descend une carte tout en haut ou tout en bas de sa colonne', asy
   await taskBoard.cardMenuItem('Tout en bas').click()
   expect(await taskBoard.columnTaskTitles(COLUMN)).toEqual(['Trois', 'Deux', 'Un'])
   await expect.poll(() => savedTitles(page.request, COLUMN)).toEqual(['Trois', 'Deux', 'Un'])
+})
+
+test('replanifie une carte à demain, puis retire sa date', async ({ page, taskBoard }) => {
+  await createTasks(page.request, COLUMN, 'Courses')
+  await page.reload()
+
+  await taskBoard.openCardMenu('Courses')
+  await taskBoard.cardMenuItem('Date de début').hover()
+  // Rien à retirer sans date
+  await expect(taskBoard.cardMenuItem('Retirer la date')).toHaveAttribute('aria-disabled', 'true')
+  await taskBoard.cardMenuItem('Demain').click()
+
+  const date = taskBoard.taskCard('Courses').getByTestId('task-card-date')
+  await expect(date).toHaveText('Demain, 09:00')
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(9, 0, 0, 0)
+  await expect
+    .poll(async () => ((await (await page.request.get(`${API}/tasks`)).json()) as { startDate: string }[])[0].startDate)
+    .toBe(tomorrow.toISOString())
+
+  await taskBoard.openCardMenu('Courses')
+  await taskBoard.cardMenuItem('Date de début').hover()
+  await taskBoard.cardMenuItem('Retirer la date').click()
+  await expect(date).toHaveCount(0)
+  await page.reload()
+  await expect(taskBoard.taskCard('Courses').getByTestId('task-card-date')).toHaveCount(0)
 })
 
 test('duplique une carte sous l’originale', async ({ page, taskBoard }) => {

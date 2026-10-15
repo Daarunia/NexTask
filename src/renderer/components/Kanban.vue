@@ -159,7 +159,7 @@ import { useBoardLists } from '../utils/boardLists.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
-import { sortByStartDate } from '../utils/date.helper'
+import { quickStartDate, sortByStartDate, type QuickDay } from '../utils/date.helper'
 import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
@@ -324,6 +324,22 @@ const cardMenuItems = computed(() => {
     { label: t('board.cardMenu.open'), icon: 'pi pi-pencil', command: () => openTask(task.id) },
     { label: t('board.cardMenu.duplicate'), icon: 'pi pi-copy', command: () => duplicateTask(task) },
     { separator: true },
+    {
+      label: t('board.cardMenu.startDate'),
+      icon: 'pi pi-calendar',
+      items: [
+        ...QUICK_DAYS.map((day) => ({
+          label: t(`board.cardMenu.${day}`),
+          command: () =>
+            setStartDate(task, quickStartDate(day, task.startDate ? new Date(task.startDate) : null, new Date())),
+        })),
+        {
+          label: t('board.cardMenu.clearDate'),
+          disabled: !task.startDate,
+          command: () => setStartDate(task, null),
+        },
+      ],
+    },
     {
       label: t('board.cardMenu.moveTo'),
       icon: 'pi pi-arrow-right',
@@ -633,6 +649,24 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
   if (!(await saveTaskOrder([...new Set([from.stageId, stageId])]))) {
     restorePersistedTasks()
     showError(t('board.moveCanceled'))
+  }
+}
+
+// Jours proposés dans le sous-menu « Date de début » d'une carte
+const QUICK_DAYS: QuickDay[] = ['today', 'tomorrow', 'nextMonday']
+
+/**
+ * Change la date de début d'une carte depuis son menu, puis l'affiche telle
+ * qu'enregistrée.
+ * @param task Tâche de la carte
+ * @param startDate Nouvelle date, `null` pour la retirer
+ */
+async function setStartDate(task: Task, startDate: Date | null) {
+  try {
+    const updated = await taskStore.setTaskStartDate(task.id, startDate)
+    board.update(task.id, (current) => ({ ...current, startDate: updated.startDate, notifiedAt: updated.notifiedAt }))
+  } catch {
+    showError(t('board.dateFailed'))
   }
 }
 

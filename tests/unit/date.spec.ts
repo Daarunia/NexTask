@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { i18n } from '../../src/renderer/i18n'
 import {
+  quickStartDate,
   dayLabel,
   dayOffset,
   dayState,
@@ -93,6 +94,31 @@ describe('dayLabel', () => {
   test('dans la langue active', () => {
     i18n.global.locale.value = 'en'
     expect(dayLabel(local(2026, 10, 22, 9))).toBe('October 22, 2026')
+  })
+})
+
+describe('quickStartDate', () => {
+  // Jeudi 15 octobre 2026, 14 h 30
+  const now = local(2026, 10, 15, 14, 30)
+
+  test('aujourd’hui et demain gardent l’heure de la date actuelle', () => {
+    const current = local(2026, 10, 2, 18, 45)
+    expect(quickStartDate('today', current, now)).toEqual(local(2026, 10, 15, 18, 45))
+    expect(quickStartDate('tomorrow', current, now)).toEqual(local(2026, 10, 16, 18, 45))
+  })
+
+  test('09:00 pour une tâche sans date', () => {
+    expect(quickStartDate('tomorrow', null, now)).toEqual(local(2026, 10, 16, 9))
+  })
+
+  test('lundi prochain, à sept jours un lundi', () => {
+    expect(quickStartDate('nextMonday', null, now)).toEqual(local(2026, 10, 19, 9))
+    expect(quickStartDate('nextMonday', null, local(2026, 10, 19, 8))).toEqual(local(2026, 10, 26, 9))
+    expect(quickStartDate('nextMonday', null, local(2026, 10, 18, 8))).toEqual(local(2026, 10, 19, 9))
+  })
+
+  test('passe le changement d’heure sans décaler l’heure', () => {
+    expect(quickStartDate('tomorrow', null, local(2026, 10, 24, 12))).toEqual(local(2026, 10, 25, 9))
   })
 })
 

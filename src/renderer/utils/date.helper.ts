@@ -93,6 +93,30 @@ export function longDateLabel(date: Date): string {
   return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'full', timeStyle: 'short' }).format(date)
 }
 
+/** Jours proposés pour replanifier une tâche depuis sa carte. */
+export type QuickDay = 'today' | 'tomorrow' | 'nextMonday'
+
+// Heure donnée à une tâche qui n'en avait pas, comme dans le dialogue
+const DEFAULT_START_HOUR = 9
+
+/**
+ * Nouvelle date de début d'une tâche replanifiée sur un jour proposé : ce jour,
+ * à l'heure de sa date actuelle, ou à 09:00 si elle n'en a pas. « Lundi
+ * prochain » est le lundi qui suit, à sept jours un lundi.
+ * @param day Jour choisi
+ * @param current Date de début actuelle de la tâche
+ * @param now Maintenant
+ */
+export function quickStartDate(day: QuickDay, current: Date | null, now: Date): Date {
+  const date = new Date(now)
+  if (day === 'tomorrow') date.setDate(date.getDate() + 1)
+  if (day === 'nextMonday') date.setDate(date.getDate() + ((8 - date.getDay()) % 7 || 7))
+
+  if (current) date.setHours(current.getHours(), current.getMinutes(), 0, 0)
+  else date.setHours(DEFAULT_START_HOUR, 0, 0, 0)
+  return date
+}
+
 /**
  * Jour seul, sans l'heure (« 22 octobre 2026 »).
  * @param date Date affichée

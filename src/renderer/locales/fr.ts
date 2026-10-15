@@ -151,10 +151,16 @@ export const fr = {
       'Archiver la tâche de la liste « {name} » ? | Archiver la tâche de la liste « {name} » ? | Archiver les {count} tâches de la liste « {name} » ?',
     archiveStageTasksFailedDetail: "Les tâches n'ont pas été archivées.",
     stageTasksArchived: '{count} tâche archivée | {count} tâche archivée | {count} tâches archivées',
+    dateFailed: 'Date non enregistrée',
     // Menu contextuel d'une carte (clic droit ou touche Menu sur son titre)
     cardMenu: {
       open: 'Ouvrir',
       duplicate: 'Dupliquer',
+      startDate: 'Date de début',
+      today: 'Aujourd’hui',
+      tomorrow: 'Demain',
+      nextMonday: 'Lundi prochain',
+      clearDate: 'Retirer la date',
       moveTo: 'Déplacer vers',
       moveTop: 'Tout en haut',
       moveBottom: 'Tout en bas',
