@@ -312,13 +312,13 @@ const stageMenuItems = computed(() => [
       {
         label: t('board.noColor'),
         icon: 'pi pi-ban',
-        class: selectedStage.value?.color ? undefined : 'stage-color-current',
+        class: selectedStage.value?.color ? undefined : 'menu-option-current',
         command: () => selectedStage.value && setStageColor(selectedStage.value, null),
       },
       ...TAG_COLOR_STYLES.map((color) => ({
         label: t(`tagColors.${color.name}`),
         icon: 'pi pi-circle-fill',
-        class: ['stage-color-option', { 'stage-color-current': selectedStage.value?.color === color.name }],
+        class: ['menu-swatch-option', { 'menu-option-current': selectedStage.value?.color === color.name }],
         style: { '--swatch': color.swatch },
         command: () => selectedStage.value && setStageColor(selectedStage.value, color.name),
       })),
@@ -367,6 +367,18 @@ const cardMenuItems = computed(() => {
     { label: t('board.cardMenu.open'), icon: 'pi pi-pencil', command: () => openTask(task.id) },
     { label: t('board.cardMenu.duplicate'), icon: 'pi pi-copy', command: () => duplicateTask(task) },
     { separator: true },
+    {
+      label: t('board.cardMenu.tags'),
+      icon: 'pi pi-tag',
+      disabled: !tagStore.getAllTags.length,
+      items: menuTags(task).map((tag) => ({
+        label: tag.name,
+        icon: 'pi pi-circle-fill',
+        class: ['menu-swatch-option', { 'menu-option-current': task.tags?.some((carried) => carried.id === tag.id) }],
+        style: { '--swatch': getTagColorStyle(tag.color).swatch },
+        command: () => toggleTaskTag(task, tag.id),
+      })),
+    },
     {
       label: t('board.cardMenu.startDate'),
       icon: 'pi pi-calendar',
@@ -545,30 +557,73 @@ async function onStagesDrop() {
  * @param tagId Tag à retirer
  */
 async function removeTagFromTask(task: Task, tagId: number) {
+  if (!(await changeTaskTags(task, (ids) => ids.filter((id) => id !== tagId)))) {
+    showError(t('board.tagRemoveFailed'), t('board.tagRemoveFailedDetail'))
+  }
+}
+
+/**
+ * Pose ou retire un tag depuis le menu d'une carte.
+ * @param task Tâche de la carte
+ * @param tagId Tag basculé
+ */
+async function toggleTaskTag(task: Task, tagId: number) {
+  const toggled = (ids: number[]) => (ids.includes(tagId) ? ids.filter((id) => id !== tagId) : [...ids, tagId])
+  if (!(await changeTaskTags(task, toggled))) showError(t('board.tagsNotSaved'))
+}
+
+/**
+ * Change les tags d'une carte sans ouvrir le dialogue, puis affiche ceux
+ * enregistrés. Les tags sont envoyés par leur nom actuel, une fois les
+ * renommages en cours terminés ; un tag supprimé entre-temps est ignoré.
+ * @param task Tâche de la carte
+ * @param change Nouveaux ids, à partir de ceux portés par la carte
+ * @returns Faux si l'enregistrement a échoué
+ */
+async function changeTaskTags(task: Task, change: (tagIds: number[]) => number[]): Promise<boolean> {
   // Un renommage en vol changerait les noms à envoyer
   await tagStore.waitForPendingEdits()
 
   const location = board.find(task.id)
-  if (!location) return
+  if (!location) return true
 
   const oldTags = (location.list[location.index].tags ?? []).filter((tag) => !tagStore.wasDeleted(tag.id))
-  const keptNames = oldTags
-    .filter((tag) => tag.id !== tagId)
-    .map((tag) => tagStore.getTagById(tag.id)?.name ?? tag.name)
+  const oldIds = oldTags.map((tag) => tag.id)
+  const names = change(oldIds).flatMap((id) => {
+    const name = tagStore.getTagById(id)?.name ?? oldTags.find((tag) => tag.id === id)?.name
+    return name ? [name] : []
+  })
 
   try {
-    const updatedTask = await taskStore.updateTaskTags(task.id, keptNames)
+    const updatedTask = await taskStore.updateTaskTags(task.id, names)
 
     // Seuls les tags de la copie locale changent : la carte a pu bouger pendant l'appel
     board.update(task.id, (current) => ({ ...current, tags: updatedTask.tags }))
-
     updateTagCounts(
-      oldTags.map((tag) => tag.id),
+      oldIds,
       (updatedTask.tags ?? []).map((tag) => tag.id),
     )
+    return true
   } catch {
-    showError(t('board.tagRemoveFailed'), t('board.tagRemoveFailedDetail'))
+    return false
   }
+}
+
+// Nombre de tags proposés dans le menu d'une carte, en plus de ceux qu'elle porte
+const MENU_TAG_COUNT = 12
+
+/**
+ * Tags proposés dans le menu d'une carte : ceux qu'elle porte, puis les plus
+ * utilisés, le tout trié par nom.
+ * @param task Tâche de la carte
+ */
+function menuTags(task: Task): Tag[] {
+  const carried = new Set((task.tags ?? []).map((tag) => tag.id))
+  const mostUsed = tagStore.getAllTags
+    .filter((tag) => !carried.has(tag.id))
+    .sort((a, b) => (b.taskCount ?? 0) - (a.taskCount ?? 0))
+    .slice(0, MENU_TAG_COUNT)
+  return [...tagStore.getAllTags.filter((tag) => carried.has(tag.id)), ...mostUsed].sort(compareTagNames)
 }
 
 /**
@@ -1291,22 +1346,26 @@ onMounted(() => {
 }
 </style>
 
-<!-- Menu des colonnes, ajouté au body : hors de portée du style scoped -->
+<!-- Menus des colonnes et des cartes, ajoutés au body : hors de portée du style scoped -->
 <style>
-/* Pastille de chaque couleur, survol compris */
+/* Pastille d'une couleur (couleur de colonne, tag), survol compris */
 .p-tieredmenu
-  .p-tieredmenu-item.stage-color-option:not(.p-disabled)
+  .p-tieredmenu-item.menu-swatch-option:not(.p-disabled)
   > .p-tieredmenu-item-content
-  .p-tieredmenu-item-icon {
+  .p-tieredmenu-item-icon,
+.p-contextmenu
+  .p-contextmenu-item.menu-swatch-option:not(.p-disabled)
+  > .p-contextmenu-item-content
+  .p-contextmenu-item-icon {
   color: var(--swatch);
 }
 
-/* Couleur actuelle de la colonne */
-.stage-color-current .p-tieredmenu-item-label {
+/* Choix en cours : couleur de la colonne, tags portés par la carte */
+.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label) {
   font-weight: 600;
 }
 
-.stage-color-current .p-tieredmenu-item-label::after {
+.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label)::after {
   content: ' ✓';
 }
 </style>

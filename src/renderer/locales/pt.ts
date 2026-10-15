@@ -150,9 +150,11 @@ export const pt: MessageSchema = {
     archiveStageTasksFailedDetail: 'As tarefas não foram arquivadas.',
     stageTasksArchived: '{count} tarefas arquivadas | {count} tarefa arquivada | {count} tarefas arquivadas',
     dateFailed: 'Data não salva',
+    tagsNotSaved: 'Tags não salvas',
     cardMenu: {
       open: 'Abrir',
       duplicate: 'Duplicar',
+      tags: 'Tags',
       startDate: 'Data de início',
       today: 'Hoje',
       tomorrow: 'Amanhã',

@@ -155,10 +155,12 @@ export const fr = {
     archiveStageTasksFailedDetail: "Les tâches n'ont pas été archivées.",
     stageTasksArchived: '{count} tâche archivée | {count} tâche archivée | {count} tâches archivées',
     dateFailed: 'Date non enregistrée',
+    tagsNotSaved: 'Tags non enregistrés',
     // Menu contextuel d'une carte (clic droit ou touche Menu sur son titre)
     cardMenu: {
       open: 'Ouvrir',
       duplicate: 'Dupliquer',
+      tags: 'Tags',
       startDate: 'Date de début',
       today: 'Aujourd’hui',
       tomorrow: 'Demain',

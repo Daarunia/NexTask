@@ -150,9 +150,11 @@ export const zh: MessageSchema = {
     archiveStageTasksFailedDetail: '任务未能归档。',
     stageTasksArchived: '已归档 {count} 个任务 | 已归档 {count} 个任务 | 已归档 {count} 个任务',
     dateFailed: '日期未保存',
+    tagsNotSaved: '标签未保存',
     cardMenu: {
       open: '打开',
       duplicate: '复制',
+      tags: '标签',
       startDate: '开始日期',
       today: '今天',
       tomorrow: '明天',

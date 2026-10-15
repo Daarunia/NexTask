@@ -71,6 +71,7 @@ test('le clic droit ouvre le menu, sans ouvrir la tâche', async ({ page, taskBo
   await expect(taskBoard.cardMenu.getByRole('menuitem')).toHaveText([
     'Ouvrir',
     'Dupliquer',
+    'Tags',
     'Date de début',
     'Déplacer vers',
     'Tout en haut',
@@ -148,6 +149,37 @@ test('monte et descend une carte tout en haut ou tout en bas de sa colonne', asy
   await taskBoard.cardMenuItem('Tout en bas').click()
   expect(await taskBoard.columnTaskTitles(COLUMN)).toEqual(['Trois', 'Deux', 'Un'])
   await expect.poll(() => savedTitles(page.request, COLUMN)).toEqual(['Trois', 'Deux', 'Un'])
+})
+
+test('pose puis retire un tag depuis le menu de la carte', async ({ page, taskBoard }) => {
+  const stageId = await columnId(page.request, COLUMN)
+  await page.request.post(`${API}/tasks`, {
+    data: { stageId, position: 0, title: 'Courses', version: '1.0.0', description: '', tags: ['maison'] },
+  })
+  await createTasks(page.request, OTHER_COLUMN, 'Ménage')
+  await page.reload()
+
+  await taskBoard.openCardMenu('Ménage')
+  await taskBoard.cardMenuItem('Tags').hover()
+  await taskBoard.cardMenuItem('maison').click()
+
+  await expect(taskBoard.taskCardTags('Ménage')).toHaveText(['maison'])
+  await expect
+    .poll(async () => {
+      const tasks = (await (await page.request.get(`${API}/tasks`)).json()) as {
+        title: string
+        tags: { name: string }[]
+      }[]
+      return tasks.find((task) => task.title === 'Ménage')!.tags.map((tag) => tag.name)
+    })
+    .toEqual(['maison'])
+
+  // Tag porté : marqué dans le menu, un clic le retire
+  await taskBoard.openCardMenu('Ménage')
+  await taskBoard.cardMenuItem('Tags').hover()
+  await expect(taskBoard.cardMenuItem('maison')).toHaveClass(/menu-option-current/)
+  await taskBoard.cardMenuItem('maison').click()
+  await expect(taskBoard.taskCardTags('Ménage')).toHaveCount(0)
 })
 
 test('replanifie une carte à demain, puis retire sa date', async ({ page, taskBoard }) => {
