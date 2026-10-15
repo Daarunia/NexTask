@@ -183,6 +183,17 @@
           text
           @click="onArchive"
         />
+        <Button
+          v-if="!creationMode"
+          type="button"
+          icon="pi pi-copy"
+          :label="t('task.dialog.duplicate')"
+          v-tooltip.top="infoTooltip(t('task.dialog.duplicateHint'))"
+          data-testid="task-duplicate-btn"
+          severity="secondary"
+          text
+          @click="onDuplicate"
+        />
         <span class="flex-1"></span>
         <Button
           type="button"
@@ -288,6 +299,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'task-saved', task: Task): void
   (e: 'archive-task', task: Task): void
+  (e: 'duplicate-task', task: Task): void
 }>()
 
 // Paramètres : versions proposées et version par défaut
@@ -342,6 +354,16 @@ const stageName = computed(() => stageStore.getAllStages.find((stage) => stage.i
 function onArchive() {
   if (!props.editTask) return
   emit('archive-task', props.editTask)
+  visible.value = false
+}
+
+/**
+ * Duplique la tâche telle qu'enregistrée (le tableau s'en charge) et ferme le
+ * dialogue, comme l'archivage. Une saisie non enregistrée n'est pas reprise.
+ */
+function onDuplicate() {
+  if (!props.editTask) return
+  emit('duplicate-task', props.editTask)
   visible.value = false
 }
 

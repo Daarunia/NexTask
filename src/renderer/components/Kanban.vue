@@ -101,6 +101,7 @@
     :defaultTags="defaultTagsDialog"
     @task-saved="onTaskSaved"
     @archive-task="archiveTask"
+    @duplicate-task="duplicateTask"
   />
 </template>
 
@@ -481,6 +482,40 @@ function setLocalChecklist(taskId: number, checklist: Task['checklist']) {
 }
 
 /**
+ * Duplique une tâche juste sous sa carte, puis propose d'ouvrir la copie pour
+ * la retoucher (titre suffixé, à renommer le plus souvent).
+ * @param task Tâche dupliquée
+ */
+async function duplicateTask(task: Task) {
+  let copy: Task
+  try {
+    copy = await taskStore.duplicateTask(task.id, t('board.copyTitle', { title: task.title }))
+  } catch {
+    showError(t('board.duplicateFailed'))
+    return
+  }
+
+  insertTaskLocally(copy)
+  showAction(t('board.taskDuplicated'), copy.title, {
+    label: t('board.openCopy'),
+    run: () => openTask(copy.id),
+    available: () => findTaskLocation(copy.id) !== null,
+  })
+}
+
+/**
+ * Ouvre une carte du tableau en édition, retrouvée par id. Ignorée si elle a
+ * quitté le tableau, ou si le dialogue est déjà ouvert (la saisie en cours
+ * n'est pas remplacée).
+ * @param taskId Id de la tâche
+ */
+function openTask(taskId: number) {
+  const location = findTaskLocation(taskId)
+  if (!location || showDialog.value) return
+  openEditTaskDialog(location.stageId, location.list[location.index])
+}
+
+/**
  * Archivage d'une carte, annulable depuis le toast
  * @param task Tâche de la carte
  */
@@ -785,9 +820,7 @@ function openRequestedTask() {
   if (taskId === null) return
   taskStore.taskToOpen = null
 
-  const location = findTaskLocation(taskId)
-  if (!location || showDialog.value) return
-  openEditTaskDialog(location.stageId, location.list[location.index])
+  openTask(taskId)
 }
 
 // Demande reçue tableau affiché, ou avant (autre page) : traitée une fois le

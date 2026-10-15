@@ -796,6 +796,83 @@ export default async function taskRoutes(fastify) {
   )
 
   /**
+   * POST /tasks/:id/duplicate
+   *
+   * Duplique une tâche du tableau juste sous l'originale, dans la même
+   * colonne (les tâches suivantes descendent d'un cran). La copie reprend la
+   * version, la description, la date de début (et son rappel déjà envoyé, pour
+   * ne pas notifier deux fois), les tags et les textes des points de la
+   * checklist, tous décochés. Elle ne fait partie d'aucune série. Le titre est
+   * choisi par le renderer, dans la langue de l'interface.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID de la tâche à dupliquer
+   * @param {Object} req.body - Corps de la requête
+   * @param {string} req.body.title - Titre de la copie
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, 404 si la tâche
+   *   n'existe pas, 409 si elle est archivée
+   */
+  fastify.post(
+    '/tasks/:id/duplicate',
+    {
+      schema: {
+        description: 'Duplique une tâche du tableau sous l’originale',
+        tags: ['Task'],
+        params: idParam,
+        body: {
+          type: 'object',
+          properties: { title: requiredLabel },
+          required: ['title'],
+        },
+        response: {
+          200: taskSchema,
+          404: errorResponse,
+          409: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const id = Number(req.params.id)
+      const { title } = req.body as { title: string }
+
+      return prisma.$transaction(async (tx) => {
+        const source = await tx.task.findUnique({ where: { id }, include: taskInclude })
+        if (!source) {
+          reply.code(404)
+          return { error: 'Tâche non trouvée' }
+        }
+        if (source.isHistorized || source.stageId === null) {
+          reply.code(409)
+          return { error: 'Une tâche archivée ne se duplique pas' }
+        }
+
+        const position = source.position + 1
+        await makeRoomAt(tx, source.stageId, position)
+
+        const copy = await tx.task.create({
+          data: {
+            title: title.trim(),
+            version: source.version,
+            description: source.description,
+            stageId: source.stageId,
+            position,
+            startDate: source.startDate,
+            notifiedAt: source.notifiedAt,
+            tags: { connect: source.tags.map((tag) => ({ id: tag.id })) },
+          },
+        })
+        const items = (source.checklist?.items ?? []).map((item) => ({ text: item.text, isChecked: false }))
+        await syncTaskChecklist(tx, copy.id, items, new Date())
+
+        Logger.info(`Tâche ${id} dupliquée en ${copy.id} (colonne ${source.stageId}, position ${position})`)
+        return tx.task.findUniqueOrThrow({ where: { id: copy.id }, include: taskInclude })
+      })
+    },
+  )
+
+  /**
    * PATCH /tasks/batch
    *
    * Met à jour plusieurs tâches en une seule requête, dans une transaction.

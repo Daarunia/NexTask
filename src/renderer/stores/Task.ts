@@ -254,6 +254,24 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Duplique une tâche du tableau juste sous l'originale (tags, description,
+     * date de début et points de checklist décochés), puis l'ajoute au cache
+     * @param id Id de la tâche dupliquée
+     * @param title Titre de la copie
+     * @returns La copie, placée par le serveur
+     */
+    async duplicateTask(id: number, title: string): Promise<Task> {
+      try {
+        const copy = await api.post<Task>(`/tasks/${id}/duplicate`, { title })
+        this.insertCachedTask(copy)
+        return copy
+      } catch (error) {
+        getLogger().error(`Erreur lors de la duplication de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
+    /**
      * Historise dans le cache les tâches d'une colonne supprimée
      * (l'archivage est déjà fait côté serveur par DELETE /stages/:id)
      * @param stageId ID de la colonne supprimée
