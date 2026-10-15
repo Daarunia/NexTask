@@ -264,7 +264,7 @@ import { useStageStore } from '../stores/Stage'
 import { useSettingsStore } from '../stores/Settings'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useUndoToast } from '../utils/toast.helper'
-import { useDangerConfirm } from '../utils/confirm.helper'
+import { isConfirmOpen, useDangerConfirm } from '../utils/confirm.helper'
 import { useConfirm } from 'primevue/useconfirm'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
@@ -417,12 +417,12 @@ function onDialogVisible(open: boolean) {
 /**
  * Fermeture demandée par la croix, Annuler ou Échap. Une saisie non
  * enregistrée n'est abandonnée qu'après confirmation, dans une bulle ancrée sur
- * le bouton cliqué (Annuler pour Échap). Une bulle déjà ouverte est refermée
- * d'abord, le dialogue reste alors affiché.
+ * le bouton cliqué (Annuler pour Échap). Échap referme d'abord une bulle déjà
+ * ouverte, le dialogue reste alors affiché.
  * @param event Clic sur la croix ou Annuler, absent pour Échap
  */
 function requestClose(event?: MouseEvent) {
-  if (document.querySelector('[data-testid="confirm-popup"]')) {
+  if (!event && isConfirmOpen()) {
     confirm.close()
     return
   }

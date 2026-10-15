@@ -167,11 +167,13 @@ export class TaskBoard {
    * @param button Bouton de fermeture, Annuler par défaut
    */
   async discardDialog(button: Locator = this.cancelButton) {
-    await this.clickSettled(button)
+    // Bouton recliqué si la bulle s'est refermée avant le clic sur « Abandonner »
     await expect(async () => {
-      if (await this.confirmPopup.isVisible()) await this.confirmAcceptButton.click()
-      await expect(this.dialog).toBeHidden({ timeout: 500 })
-    }).toPass()
+      if (await this.dialog.isHidden()) return
+      if (!(await this.confirmPopup.isVisible())) await this.clickSettled(button)
+      if (await this.confirmPopup.isVisible()) await this.confirmAcceptButton.click({ timeout: 2000 })
+      await expect(this.dialog).toBeHidden({ timeout: 1000 })
+    }).toPass({ timeout: 20000 })
   }
 
   /**

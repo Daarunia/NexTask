@@ -13,6 +13,7 @@ export interface DangerConfirmOptions {
 /** Méthodes internes de la ConfirmPopup PrimeVue utilisées pour la placer. */
 interface ConfirmPopupInstance {
   container: HTMLElement | null
+  visible: boolean
   alignOverlay: () => void
 }
 
@@ -26,6 +27,13 @@ let confirmPopup: ConfirmPopupInstance | null = null
  */
 export function registerConfirmPopup(instance: Element | ComponentPublicInstance | null) {
   confirmPopup = instance as unknown as ConfirmPopupInstance | null
+}
+
+/**
+ * Vrai si une bulle de confirmation est affichée (pas en train de disparaître).
+ */
+export function isConfirmOpen(): boolean {
+  return !!confirmPopup?.visible
 }
 
 /**

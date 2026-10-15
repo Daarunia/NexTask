@@ -98,6 +98,8 @@ test('les cartes masquées par un filtre sont archivées aussi', async ({ page, 
 
   await tagFilter.search('visible')
   await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Visible'])
+  // Suggestions refermées, elles se fermeraient sinon au clic sur le menu en le déplaçant
+  await tagFilter.input.press('Escape')
 
   await taskBoard.openStageMenu(COLUMN)
   await page.getByRole('menuitem', { name: 'Archiver les tâches' }).click()
