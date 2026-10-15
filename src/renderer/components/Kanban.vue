@@ -82,6 +82,7 @@
               @remove-tag="removeTagFromTask"
               @check-item="checkChecklistItem"
               @card-menu="openCardMenu"
+              @move-card="moveCardByKey"
               @create-task="openCreateTaskDialog(stage.id)"
             />
           </template>
@@ -603,27 +604,71 @@ function onCardMenuHide() {
 }
 
 /**
- * Déplace une carte, depuis son menu, tout en haut ou tout en bas d'une colonne
- * (la sienne ou une autre), puis enregistre l'ordre des colonnes touchées. La
- * carte est retrouvée par id dans les colonnes complètes : le déplacement marche
- * aussi sous filtre, où le glisser-déposer est désactivé.
+ * Déplace une carte, depuis son menu ou au clavier, dans une colonne (la sienne
+ * ou une autre), puis enregistre l'ordre des colonnes touchées. La carte est
+ * retrouvée par id dans les colonnes complètes : le déplacement marche aussi
+ * sous filtre, où le glisser-déposer est désactivé.
  * @param taskId Id de la tâche
  * @param stageId Colonne d'arrivée
- * @param edge Haut ou bas de la colonne
+ * @param place Haut ou bas de la colonne, ou index dans la colonne d'arrivée
+ * @param keepFocus Vrai pour rendre le focus au titre de la carte déplacée
  */
-async function moveTask(taskId: number, stageId: number, edge: 'top' | 'bottom') {
+async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom' | number, keepFocus = false) {
   if (!taskLists.has(stageId)) return
   const from = board.remove(taskId)
   if (!from) return
 
   const task = from.list[from.index]
-  const rest = taskLists.get(stageId) ?? []
-  taskLists.set(stageId, edge === 'top' ? [task, ...rest] : [...rest, task])
+  const list = [...(taskLists.get(stageId) ?? [])]
+  list.splice(placeIndex(place, list.length), 0, task)
+  taskLists.set(stageId, list)
+
+  // La carte est recréée dans sa nouvelle place, le focus est à lui rendre
+  if (keepFocus) {
+    nextTick(() =>
+      document.querySelector<HTMLElement>(`[data-testid="task-card-open"][data-task-id="${taskId}"]`)?.focus(),
+    )
+  }
 
   if (!(await saveTaskOrder([...new Set([from.stageId, stageId])]))) {
     restorePersistedTasks()
     showError(t('board.moveCanceled'))
   }
+}
+
+/**
+ * Index d'arrivée d'une carte déplacée dans une colonne.
+ * @param place Haut ou bas de la colonne, ou index voulu
+ * @param length Nombre de cartes de la colonne, sans elle
+ */
+function placeIndex(place: 'top' | 'bottom' | number, length: number): number {
+  if (place === 'top') return 0
+  if (place === 'bottom') return length
+  return Math.min(place, length)
+}
+
+/**
+ * Alt+flèche sur le titre d'une carte : la carte monte ou descend d'un cran
+ * dans sa colonne (pas sous filtre, où l'ordre affiché est incomplet), ou passe
+ * dans la colonne dépliée voisine, à la même hauteur (en bas sous filtre).
+ * @param task Tâche de la carte
+ * @param direction Sens du déplacement
+ */
+function moveCardByKey(task: Task, direction: 'up' | 'down' | 'left' | 'right') {
+  const from = board.find(task.id)
+  if (!from) return
+
+  if (direction === 'up' || direction === 'down') {
+    const index = from.index + (direction === 'up' ? -1 : 1)
+    if (filterActive.value || index < 0 || index >= from.list.length) return
+    moveTask(task.id, from.stageId, index, true)
+    return
+  }
+
+  const columns = stageIds().filter((id) => !isCollapsed(id))
+  const stageId = columns[columns.indexOf(from.stageId) + (direction === 'left' ? -1 : 1)]
+  if (stageId === undefined) return
+  moveTask(task.id, stageId, filterActive.value ? 'bottom' : from.index, true)
 }
 
 /**

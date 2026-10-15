@@ -22,10 +22,11 @@
           <button
             type="button"
             data-testid="task-card-open"
+            :data-task-id="element.id"
             class="task-title"
             aria-haspopup="menu"
             @click="$emit('edit-task', element)"
-            @keydown="onTitleKeydown"
+            @keydown="onTitleKeydown($event, element)"
             @contextmenu.prevent="$emit('card-menu', $event, element)"
           >
             {{ element.title }}
@@ -186,15 +187,35 @@ const emit = defineEmits([
   'remove-tag',
   'check-item',
   'card-menu',
+  'move-card',
 ])
 
+// Sens de déplacement d'une carte par Alt+flèche
+const MOVE_KEYS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+}
+
 /**
- * Flèches, Début et Fin sur le titre d'une carte : focus sur la carte voisine,
- * sans faire défiler la page.
+ * Touches sur le titre d'une carte, sans faire défiler la page : flèches,
+ * Début et Fin pour passer le focus à une carte voisine, Alt+flèche pour
+ * déplacer la carte (fait par le parent).
  * @param event Touche pressée
+ * @param task Tâche de la carte
  */
-function onTitleKeydown(event: KeyboardEvent) {
-  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+function onTitleKeydown(event: KeyboardEvent, task: Task) {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) return
+
+  if (event.altKey) {
+    const direction = MOVE_KEYS[event.key]
+    if (!direction) return
+    event.preventDefault()
+    if (!event.repeat) emit('move-card', task, direction)
+    return
+  }
+
   if (focusNeighborCard(event.currentTarget as HTMLElement, event.key)) event.preventDefault()
 }
 
