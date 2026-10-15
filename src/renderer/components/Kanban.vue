@@ -125,7 +125,8 @@ import { getLogger } from '../utils/logger'
 import { setAll } from '../utils/map.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
-import { checklistProgress, withItemChecked } from '../utils/checklist.helper'
+import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
+import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { useI18n } from 'vue-i18n'
@@ -419,10 +420,11 @@ async function removeTagFromTask(task: Task, tagId: number) {
 }
 
 /**
- * Coche ou décoche un point de checklist depuis la carte. La copie locale est
- * mise à jour tout de suite, puis remplacée par la checklist enregistrée, ou
- * remise dans son état d'avant si l'enregistrement échoue. Le dernier point
- * coché propose d'archiver la tâche, dans un toast.
+ * Coche ou décoche un point de checklist depuis la carte. Le point change tout
+ * de suite dans la copie locale, puis prend sa version enregistrée, ou revient
+ * à son état d'avant si l'enregistrement échoue. Seul ce point est touché, une
+ * autre coche en cours reste affichée. Le dernier point coché propose
+ * d'archiver la tâche, dans un toast.
  * @param task Tâche de la carte
  * @param itemId Id du point
  * @param isChecked Nouvel état du point
@@ -430,16 +432,19 @@ async function removeTagFromTask(task: Task, tagId: number) {
 async function checkChecklistItem(task: Task, itemId: number, isChecked: boolean) {
   const location = findTaskLocation(task.id)
   const previous = location?.list[location.index].checklist
-  if (!previous) return
+  const wasChecked = previous?.items.find((item) => item.id === itemId)?.isChecked
+  if (!previous || wasChecked === undefined) return
 
-  setLocalChecklist(task.id, withItemChecked(previous, itemId, isChecked))
+  updateLocalChecklist(task.id, (checklist) => withItemChecked(checklist, itemId, isChecked))
 
   try {
     const updatedTask = await taskStore.setChecklistItemChecked(task.id, itemId, isChecked)
-    setLocalChecklist(task.id, updatedTask.checklist ?? null)
+    const saved = updatedTask.checklist?.items.find((item) => item.id === itemId)
+    if (saved) updateLocalChecklist(task.id, (checklist) => withSavedItem(checklist, saved))
+    // Complétude lue en base, une seule proposition même si deux coches se croisent
     if (isChecked && isComplete(updatedTask.checklist) && !isComplete(previous)) offerArchive(task)
   } catch {
-    setLocalChecklist(task.id, previous)
+    updateLocalChecklist(task.id, (checklist) => withItemChecked(checklist, itemId, wasChecked))
     showError(t('checklist.checkFailed'))
   }
 }
@@ -467,17 +472,19 @@ function offerArchive(task: Task) {
 }
 
 /**
- * Remplace la checklist d'une carte dans sa colonne locale, retrouvée par id
- * (la carte a pu bouger pendant un appel).
+ * Modifie la checklist d'une carte dans sa colonne locale, retrouvée par id
+ * (la carte a pu bouger pendant un appel). Rien ne change si la carte a quitté
+ * le tableau ou n'a plus de checklist.
  * @param taskId Id de la tâche
- * @param checklist Nouvelle checklist
+ * @param update Nouvelle checklist, à partir de celle affichée
  */
-function setLocalChecklist(taskId: number, checklist: Task['checklist']) {
+function updateLocalChecklist(taskId: number, update: (checklist: TaskChecklist) => TaskChecklist) {
   const location = findTaskLocation(taskId)
-  if (!location) return
+  const checklist = location?.list[location.index].checklist
+  if (!location || !checklist) return
 
   const list = [...location.list]
-  list[location.index] = { ...list[location.index], checklist }
+  list[location.index] = { ...list[location.index], checklist: update(checklist) }
   taskLists.set(location.stageId, list)
 }
 

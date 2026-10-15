@@ -108,6 +108,23 @@ test.describe('bulle de la carte', () => {
     await expect(taskBoard.cardChecklistBadge('Courses')).toHaveText('1/2')
   })
 
+  test('deux coches enchaînées sans attendre restent cochées', async ({ page, taskBoard }) => {
+    const task = await createTask(page.request, 'Courses', items(['Pain', 'Café', 'Lait']))
+    await page.reload()
+
+    await taskBoard.cardChecklistButton('Courses').click()
+    // Clics sans attendre l'enregistrement du premier
+    await taskBoard.cardChecklistCheck('Pain').click({ noWaitAfter: true })
+    await taskBoard.cardChecklistCheck('Café').click({ noWaitAfter: true })
+
+    await expect(taskBoard.cardChecklistBadge('Courses')).toHaveText('2/3')
+    await expect
+      .poll(async () => (await readTask(page.request, task.id)).checklist!.items.map((item) => item.isChecked))
+      .toEqual([true, true, false])
+    await expect(taskBoard.cardChecklistCheck('Pain')).toBeChecked()
+    await expect(taskBoard.cardChecklistCheck('Café')).toBeChecked()
+  })
+
   test('Échap referme la bulle', async ({ page, taskBoard }) => {
     await createTask(page.request, 'Courses', items(['Pain']))
     await page.reload()

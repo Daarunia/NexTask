@@ -58,6 +58,18 @@ export function withItemChecked(checklist: TaskChecklist, itemId: number, isChec
 }
 
 /**
+ * Checklist avec un point remplacé par sa version enregistrée (état et date
+ * de coche fixés par le serveur). Seul ce point change, une autre coche encore
+ * en cours d'enregistrement reste donc affichée. Un point absent ne change rien.
+ * @param checklist Checklist affichée
+ * @param saved Point tel que renvoyé par le serveur
+ * @returns Une nouvelle checklist, celle reçue n'est pas modifiée
+ */
+export function withSavedItem(checklist: TaskChecklist, saved: ChecklistItem): TaskChecklist {
+  return { ...checklist, items: checklist.items.map((item) => (item.id === saved.id ? saved : item)) }
+}
+
+/**
  * Ajoute les points d'un modèle à la fin d'une checklist, décochés et dans
  * l'ordre du modèle (parcours P2). Simple copie des textes, rien ne garde le
  * lien avec le modèle, et les points déjà là ne bougent pas.

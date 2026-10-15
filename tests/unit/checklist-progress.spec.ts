@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { i18n } from '../../src/renderer/i18n'
-import { checklistProgress, progressLabel, withItemChecked } from '../../src/renderer/utils/checklist.helper'
+import {
+  checklistProgress,
+  progressLabel,
+  withItemChecked,
+  withSavedItem,
+} from '../../src/renderer/utils/checklist.helper'
 import type { TaskChecklist } from '../../src/renderer/types/checklist.types'
 
 /**
@@ -69,5 +74,27 @@ describe('withItemChecked', () => {
 
   test('un id inconnu ne change aucun point', () => {
     expect(withItemChecked(checklist, 99, true).items).toEqual(checklist.items)
+  })
+})
+
+describe('withSavedItem', () => {
+  const checklist: TaskChecklist = {
+    id: 1,
+    items: [
+      { id: 10, text: 'Pain', position: 0, isChecked: true, checkedAt: null },
+      { id: 11, text: 'Café', position: 1, isChecked: true, checkedAt: null },
+    ],
+  }
+
+  test('reprend le point enregistré sans toucher à une autre coche en cours', () => {
+    const saved = { id: 10, text: 'Pain', position: 0, isChecked: true, checkedAt: '2026-10-15T08:00:00.000Z' }
+    const result = withSavedItem(checklist, saved)
+    expect(result.items[0]).toBe(saved)
+    expect(result.items[1]).toBe(checklist.items[1])
+  })
+
+  test('un point absent ne change rien', () => {
+    const saved = { id: 99, text: 'Autre', position: 5, isChecked: true, checkedAt: null }
+    expect(withSavedItem(checklist, saved).items).toEqual(checklist.items)
   })
 })

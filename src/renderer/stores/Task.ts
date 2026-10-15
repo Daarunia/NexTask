@@ -7,6 +7,7 @@ import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '..
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
+import { withSavedItem } from '../utils/checklist.helper'
 
 /**
  * Restauration d'une tâche archivée : la tâche remise au tableau, et
@@ -366,16 +367,21 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Coche ou décoche un point de checklist depuis la carte, sans renvoyer
-     * toute la liste
+     * toute la liste. Seul ce point est repris dans le cache, deux coches
+     * envoyées coup sur coup ne s'écrasent pas quel que soit l'ordre des réponses.
      * @param taskId Id de la tâche
      * @param itemId Id du point
      * @param isChecked Nouvel état du point
-     * @returns La tâche mise à jour, avec sa checklist (dates de coche fixées par le serveur)
+     * @returns La tâche mise à jour, avec sa checklist telle qu'en base (dates de coche fixées par le serveur)
      */
     async setChecklistItemChecked(taskId: number, itemId: number, isChecked: boolean): Promise<Task> {
       try {
         const updatedTask = await api.patch<Task>(`/tasks/${taskId}/checklist/items/${itemId}`, { isChecked })
-        this.patchCachedTask(taskId, { checklist: updatedTask.checklist, updatedAt: updatedTask.updatedAt })
+        const saved = updatedTask.checklist?.items.find((item) => item.id === itemId)
+        const cached = this.allEntities?.data.find((task) => task.id === taskId)?.checklist
+        if (saved && cached) {
+          this.patchCachedTask(taskId, { checklist: withSavedItem(cached, saved), updatedAt: updatedTask.updatedAt })
+        }
         return updatedTask
       } catch (error) {
         getLogger().error(`Erreur lors de la coche du point ${itemId} de la tâche ${taskId} :`, error)
