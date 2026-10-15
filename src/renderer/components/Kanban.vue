@@ -16,53 +16,74 @@
       @end="onStagesDrop"
     >
       <template #item="{ element: stage }">
-        <div data-testid="stage-column" class="stages-container">
-          <div class="flex items-center justify-between mb-3">
-            <template v-if="editingStageId === stage.id">
-              <input
-                :id="`stage-input-${stage.id}`"
-                data-testid="stage-edit-input"
-                v-model="editedStageName"
-                @keyup.enter="saveStageName(stage)"
-                @keyup.esc="cancelEditingStage"
-                @blur="saveStageName(stage)"
-                class="border rounded px-2 py-1 text-lg w-full"
+        <div
+          data-testid="stage-column"
+          :data-collapsed="isCollapsed(stage.id)"
+          :class="['stages-container', { collapsed: isCollapsed(stage.id) }]"
+        >
+          <!-- Colonne repliée : bande étroite avec son nom et son compteur, un clic la
+               déplie. Toute la bande sert de poignée pour déplacer la colonne. -->
+          <button
+            v-if="isCollapsed(stage.id)"
+            type="button"
+            data-testid="btn-stage-expand"
+            class="stage-strip stage-handle"
+            :aria-label="t('board.expandStage', { name: stage.name })"
+            @click="setStageCollapsed(stage.id, false)"
+          >
+            <i class="pi pi-chevron-right" aria-hidden="true"></i>
+            <span data-testid="stage-count" class="stage-count">{{ stageCount(stage.id) }}</span>
+            <span data-testid="stage-strip-name" class="stage-strip-name">{{ stage.name }}</span>
+          </button>
+
+          <template v-else>
+            <div class="flex items-center justify-between mb-3">
+              <template v-if="editingStageId === stage.id">
+                <input
+                  :id="`stage-input-${stage.id}`"
+                  data-testid="stage-edit-input"
+                  v-model="editedStageName"
+                  @keyup.enter="saveStageName(stage)"
+                  @keyup.esc="cancelEditingStage"
+                  @blur="saveStageName(stage)"
+                  class="border rounded px-2 py-1 text-lg w-full"
+                />
+              </template>
+              <div v-else class="flex items-center gap-2 min-w-0">
+                <h2
+                  data-testid="stage-title"
+                  class="stage-handle cursor-grab text-lg"
+                  @dblclick="startEditingStage(stage)"
+                >
+                  {{ stage.name }}
+                </h2>
+                <!-- Nombre de cartes affichées, sur le total de la colonne quand un filtre est actif -->
+                <span data-testid="stage-count" class="stage-count">
+                  {{ stageCount(stage.id) }}
+                </span>
+              </div>
+
+              <!-- Menu -->
+              <Button
+                icon="pi pi-ellipsis-v"
+                data-testid="btn-stage-menu"
+                @click="(event) => toggleStageMenu(event, stage)"
+                text
               />
-            </template>
-            <div v-else class="flex items-center gap-2 min-w-0">
-              <h2
-                data-testid="stage-title"
-                class="stage-handle cursor-grab text-lg"
-                @dblclick="startEditingStage(stage)"
-              >
-                {{ stage.name }}
-              </h2>
-              <!-- Nombre de cartes affichées, sur le total de la colonne quand un filtre est actif -->
-              <span data-testid="stage-count" class="stage-count">
-                {{ stageCount(stage.id) }}
-              </span>
             </div>
 
-            <!-- Menu -->
-            <Button
-              icon="pi pi-ellipsis-v"
-              data-testid="btn-stage-menu"
-              @click="(event) => toggleStageMenu(event, stage)"
-              text
+            <StageTaskList
+              :tasks="visibleTaskLists.get(stage.id) ?? []"
+              :filterActive="filterActive"
+              @tasks-drop="onTasksDrop"
+              @edit-task="openEditTaskDialog(stage.id, $event)"
+              @archive-task="archiveTask"
+              @remove-tag="removeTagFromTask"
+              @check-item="checkChecklistItem"
+              @card-menu="openCardMenu"
+              @create-task="openCreateTaskDialog(stage.id)"
             />
-          </div>
-
-          <StageTaskList
-            :tasks="visibleTaskLists.get(stage.id) ?? []"
-            :filterActive="filterActive"
-            @tasks-drop="onTasksDrop"
-            @edit-task="openEditTaskDialog(stage.id, $event)"
-            @archive-task="archiveTask"
-            @remove-tag="removeTagFromTask"
-            @check-item="checkChecklistItem"
-            @card-menu="openCardMenu"
-            @create-task="openCreateTaskDialog(stage.id)"
-          />
+          </template>
         </div>
       </template>
     </draggable>
@@ -212,6 +233,34 @@ const showFilterEmpty = computed(
   () => filterActive.value && [...visibleTaskLists.value.values()].every((list) => list.length === 0),
 )
 
+// Colonnes repliées, mémorisées dans les paramètres
+const collapsedStageIds = computed(() => new Set(settings.collapsedStageIds))
+
+/**
+ * Vrai si la colonne est repliée en bande étroite.
+ * @param stageId Id de la colonne
+ */
+function isCollapsed(stageId: number): boolean {
+  return collapsedStageIds.value.has(stageId)
+}
+
+/**
+ * Replie ou déplie une colonne et mémorise l'état. Les ids des colonnes
+ * supprimées depuis sont oubliés au passage.
+ * @param stageId Id de la colonne
+ * @param collapsed Vrai pour la replier
+ */
+async function setStageCollapsed(stageId: number, collapsed: boolean) {
+  const ids = settings.collapsedStageIds.filter((id) => id !== stageId && taskLists.has(id))
+  if (collapsed) ids.push(stageId)
+
+  try {
+    await settings.set('collapsedStageIds', ids)
+  } catch {
+    showError(t('board.collapseNotSaved'))
+  }
+}
+
 /**
  * Compteur d'une colonne : cartes visibles, sur le total quand un filtre est actif.
  * @param stageId Id de la colonne
@@ -223,6 +272,11 @@ function stageCount(stageId: number): string {
 
 // Calculé pour suivre la langue de l'interface
 const stageMenuItems = computed(() => [
+  {
+    label: t('board.collapseStage'),
+    icon: 'pi pi-chevron-left',
+    command: () => selectedStage.value && setStageCollapsed(selectedStage.value.id, true),
+  },
   {
     label: t('board.renameStage'),
     icon: 'pi pi-pencil',
@@ -998,6 +1052,7 @@ async function deleteStage(stage: Stage) {
     await stageStore.deleteStage(stageId)
 
     stagesLocal.value = stagesLocal.value.filter((s) => s.id !== stageId)
+    if (isCollapsed(stageId)) setStageCollapsed(stageId, false)
 
     const newTaskLists = new Map(taskLists)
     newTaskLists.delete(stageId)
@@ -1157,6 +1212,37 @@ onMounted(() => {
 
 .stage-handle {
   user-select: none;
+}
+
+/* Colonne repliée : bande étroite, à la hauteur des autres colonnes */
+.stages-container.collapsed {
+  @apply w-12 min-w-0 px-1 py-3;
+}
+
+.stage-strip {
+  @apply flex h-full w-full cursor-pointer flex-col items-center gap-3 rounded-md py-1;
+  background: none;
+  border: none;
+  color: inherit;
+}
+
+.stage-strip:hover {
+  background-color: var(--p-surface-300);
+}
+
+.app-dark .stage-strip:hover {
+  background-color: var(--p-surface-800);
+}
+
+.stage-strip:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 1px;
+}
+
+/* Nom écrit de haut en bas, coupé s'il dépasse la hauteur de la colonne */
+.stage-strip-name {
+  @apply min-h-0 overflow-hidden text-lg text-ellipsis whitespace-nowrap;
+  writing-mode: vertical-rl;
 }
 
 /* Seule touche de la couleur d'accent sur le tableau */

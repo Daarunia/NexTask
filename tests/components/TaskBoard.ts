@@ -80,6 +80,26 @@ export class TaskBoard {
   }
 
   /**
+   * Colonne repliée, repérée par le nom porté par sa bande.
+   * @param name Nom de la colonne
+   */
+  collapsedColumn(name: string): Locator {
+    return this.page.getByTestId('stage-column').filter({
+      has: this.page.getByRole('button', { name: `Déplier la liste ${name}`, exact: true }),
+    })
+  }
+
+  /**
+   * Replie une colonne depuis son menu.
+   * @param name Nom de la colonne
+   */
+  async collapseStage(name: string) {
+    await this.openStageMenu(name)
+    await this.page.getByRole('menuitem', { name: 'Replier la liste' }).click()
+    await expect(this.collapsedColumn(name)).toHaveCount(1)
+  }
+
+  /**
    * Compteur de cartes affiché à côté du titre d'une colonne.
    * @param name Nom de la colonne
    */
