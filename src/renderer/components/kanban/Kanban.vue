@@ -15,8 +15,10 @@
       @start="setDragging(true)"
       @end="onStagesDrop"
     >
+      <!-- Couleur de la colonne en liseré, en haut ou sur sa bande repliée. Pas de
+           commentaire à la racine du slot : gardé en dev, vuedraggable y voit un
+           second enfant (« Item slot must have only one child »). -->
       <template #item="{ element: stage }">
-        <!-- Couleur de la colonne en liseré, en haut ou sur sa bande repliée -->
         <div
           data-testid="stage-column"
           :data-stage-id="stage.id"
