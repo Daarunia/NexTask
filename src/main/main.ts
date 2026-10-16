@@ -244,6 +244,11 @@ if (gotTheLock) {
   app.quit()
 }
 
+// Pont IPC d'electron-log : les journaux du renderer (electron-log/renderer)
+// rejoignent ceux du main. Son preload, ajouté aux sessions, n'importe
+// qu'electron et passe donc dans le renderer sandboxé.
+Logger.initialize()
+
 app.whenReady().then(async () => {
   // Windows rattache l'icône de la barre des tâches et les notifications à cet
   // identifiant. Sans lui, l'app s'affiche sous l'identité d'Electron.
