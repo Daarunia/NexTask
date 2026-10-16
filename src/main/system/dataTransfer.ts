@@ -67,10 +67,20 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
   const response = await fetch(`${getApiUrl()}/data/export`)
   if (!response.ok) throw new Error(`Export impossible : ${await errorMessage(response)}`)
 
-  const data = (await response.json()) as { stages: unknown[]; tags: unknown[]; tasks: unknown[] }
+  const data = (await response.json()) as {
+    stages: unknown[]
+    tags: unknown[]
+    tasks: unknown[]
+    checklistTemplates?: unknown[]
+  }
   await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8')
 
-  const counts: DataCounts = { stages: data.stages.length, tags: data.tags.length, tasks: data.tasks.length }
+  const counts: DataCounts = {
+    stages: data.stages.length,
+    tags: data.tags.length,
+    tasks: data.tasks.length,
+    checklistTemplates: data.checklistTemplates?.length ?? 0,
+  }
   Logger.info(`Données exportées dans ${filePath}`, counts)
   return { status: 'done', filePath, counts }
 }
@@ -118,7 +128,8 @@ export async function importDataFromFile(window: BrowserWindow | null): Promise<
   }
   if (!response.ok) throw new Error(`Import impossible : ${await errorMessage(response)}`)
 
-  const counts = (await response.json()) as DataCounts
-  Logger.info(`Données importées depuis ${filePath}`, counts)
+  // Anomalies corrigées par le serveur, déjà journalisées par la route, hors du résumé affiché
+  const { warnings = [], ...counts } = (await response.json()) as DataCounts & { warnings?: ImportProblem[] }
+  Logger.info(`Données importées depuis ${filePath}, ${warnings.length} anomalie(s) corrigée(s)`, counts)
   return { status: 'done', filePath, counts }
 }

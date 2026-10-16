@@ -4,6 +4,7 @@ import { stageSchema } from '../schemas/stageSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { taskInclude } from '../helpers/task.helper.js'
 import { onArchiveStatesChanged } from '../helpers/recurrence.helper.js'
+import { TAG_COLORS } from '../../shared/tag.constants.js'
 
 /**
  * Plugin de routes Fastify pour la gestion des stages (Stage)
@@ -89,6 +90,9 @@ export default async function stagesRoutes(fastify) {
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la stage
    * @param {Object} req.body - Données à mettre à jour
+   * @param {string} [req.body.name] - Nouveau nom
+   * @param {number} [req.body.position] - Nouvelle position
+   * @param {string|null} [req.body.color] - Couleur parmi TAG_COLORS, null pour la retirer
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Stage mis à jour ou erreur
    */
@@ -104,6 +108,7 @@ export default async function stagesRoutes(fastify) {
           properties: {
             name: requiredLabel,
             position: { type: 'integer' },
+            color: { type: ['string', 'null'], enum: [...TAG_COLORS, null] },
           },
         },
         response: {

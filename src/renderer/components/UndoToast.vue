@@ -29,6 +29,7 @@ import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import { latestUndoMessage, takeUndoAction, UNDO_TOAST_GROUP } from '../utils/toast.helper'
+import { isEditableTarget } from '../utils/keyboard.helper'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -60,8 +61,7 @@ function onToastEnd(event: { message: ToastMessageOptions }) {
 function onKeydown(event: KeyboardEvent) {
   if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey || event.key.toLowerCase() !== 'z') return
 
-  const target = event.target as HTMLElement | null
-  if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+  if (isEditableTarget(event.target)) return
 
   const message = latestUndoMessage()
   if (!message) return

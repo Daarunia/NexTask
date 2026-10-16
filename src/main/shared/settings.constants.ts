@@ -87,6 +87,7 @@ export interface AppSettings {
   autoBackupEnabled: boolean // copie quotidienne de la base dans le dossier des sauvegardes
   rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
+  collapsedStageIds: number[] // colonnes repliées sur le tableau, état d'affichage gardé d'un lancement à l'autre
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
@@ -94,6 +95,7 @@ export interface AppSettings {
   startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
   quickAddEnabled: boolean // raccourci global qui ouvre la fenêtre d'ajout rapide
   autoUpdateEnabled: boolean // recherche et téléchargement des nouvelles versions en arrière-plan
+  showDevToolsButton: boolean // bouton de la console du navigateur dans l'en-tête, toujours affiché en dev
   windowMode: WindowMode // fenêtre maximisée ou à sa dernière taille au démarrage
   windowState: WindowState | null // dernière taille et position, tenue à jour par le main
 }
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoBackupEnabled: false,
   rememberTagFilter: false,
   tagFilterIds: [],
+  collapsedStageIds: [],
   notificationsEnabled: true,
   notificationStyle: 'reminder',
   closeToTray: false,
@@ -120,6 +123,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   startMinimized: false,
   quickAddEnabled: true,
   autoUpdateEnabled: true,
+  showDevToolsButton: false,
   windowMode: 'maximized',
   windowState: null,
 }

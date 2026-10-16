@@ -1,8 +1,8 @@
 import { Page, Locator, expect } from '@playwright/test'
 
 /**
- * Objet page de la barre de recherche du board (en-tête) : filtre par texte
- * et par tags.
+ * Objet page de la barre de recherche du board (en-tête) : filtre par texte,
+ * par tags et par filtres rapides (en retard, aujourd'hui, checklist à terminer).
  *
  * Les tags se choisissent en tapant `#` puis leur nom, et s'affichent en chips
  * dans la barre. Le ciblage repose sur les `data-testid` de la barre et sur
@@ -19,6 +19,9 @@ export class TagFilter {
   readonly options: Locator
   readonly taskOptions: Locator
   readonly textOption: Locator
+  // Suggestions de filtres rapides, et leurs chips une fois choisis
+  readonly statusOptions: Locator
+  readonly statusChips: Locator
   // Chips des tags du filtre
   readonly chips: Locator
   readonly clearButton: Locator
@@ -40,6 +43,8 @@ export class TagFilter {
     this.options = this.list.getByTestId('search-option-tag')
     this.taskOptions = this.list.getByTestId('search-option-task')
     this.textOption = this.list.getByTestId('search-option-text')
+    this.statusOptions = this.list.getByTestId('search-option-status')
+    this.statusChips = this.root.getByTestId('search-status-chip')
     this.chips = this.root.getByTestId('search-tag-chip')
     this.clearButton = page.getByTestId('search-clear')
     this.dndHint = page.getByTestId('filter-dnd-hint')
@@ -60,6 +65,14 @@ export class TagFilter {
    */
   taskOption(title: string): Locator {
     return this.list.getByRole('option', { name: title, exact: true }).and(this.taskOptions)
+  }
+
+  /**
+   * Suggestion d'un filtre rapide dans la liste ouverte.
+   * @param name Nom exact du filtre (ex : "En retard")
+   */
+  statusOption(name: string): Locator {
+    return this.list.getByRole('option', { name, exact: true }).and(this.statusOptions)
   }
 
   /**

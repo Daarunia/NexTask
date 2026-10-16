@@ -11,6 +11,7 @@ import {
   type RecurrenceRule,
 } from '../../shared/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
+import { isChecklistTexts, sameChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
 import Logger from 'electron-log'
 
 /**
@@ -62,6 +63,15 @@ interface SeriesState {
 
 /** Occurrence avec les ids de ses tags. */
 type TaskWithTagIds = Task & { tags: { id: number }[] }
+
+/** Occurrence avec les ids de ses tags et les points de sa checklist, dans l'ordre. */
+type OccurrenceContent = TaskWithTagIds & { checklist: { items: { text: string; isChecked: boolean }[] } | null }
+
+// Contenu d'une occurrence comparé au modèle de sa série (cf. isUntouchedOccurrence)
+const occurrenceContentInclude = {
+  tags: { select: { id: true } },
+  checklist: { select: { items: { select: { text: true, isChecked: true }, orderBy: { position: 'asc' } } } },
+} as const
 
 // Options d'une série qui ne touchent pas à son calendrier : modifiées seules,
 // la série garde son début et sa prochaine date
@@ -176,6 +186,19 @@ function scheduleChanged(series: Recurrence, rule: RuleData): boolean {
 export function occurrenceVersion(version: string): string {
   const { taskVersions, defaultTaskVersion } = settingsStore.store
   return taskVersions.includes(version) ? version : defaultTaskVersion
+}
+
+/**
+ * Textes des points du modèle d'une série, lus dans son champ JSON. Une
+ * valeur qui n'est pas une liste de textes (base modifiée à la main, import
+ * douteux) vaut une liste vide, et se journalise.
+ *
+ * @param series Série, avec le champ JSON de ses points
+ */
+export function seriesChecklistTexts(series: Pick<Recurrence, 'id' | 'checklistItems'>): string[] {
+  if (isChecklistTexts(series.checklistItems)) return series.checklistItems
+  Logger.warn(`[recurrence] Série ${series.id} : points du modèle illisibles, checklist ignorée`, series.checklistItems)
+  return []
 }
 
 /**
@@ -306,7 +329,9 @@ async function restartState(
 
 /**
  * Crée une série depuis sa tâche d'origine, première occurrence : le modèle
- * des occurrences reprend son contenu, sa colonne et ses tags. En mode
+ * des occurrences reprend son contenu, sa colonne, ses tags et les textes des
+ * points de sa checklist, sans leur état coché. La checklist est lue en base,
+ * elle y est donc écrite avant l'appel. En mode
  * « après archivage », la série attend l'archivage de cette tâche.
  *
  * @param tx Client Prisma de la transaction en cours
@@ -325,6 +350,7 @@ export async function createSeries(
 ): Promise<number> {
   const startDate = task.startDate as Date
   const rule = toRuleData(input, startDate)
+  const checklistItems = await taskChecklistTexts(tx, task.id)
 
   const series = await tx.recurrence.create({
     data: {
@@ -335,6 +361,7 @@ export async function createSeries(
       description: task.description,
       version: task.version,
       stageId: task.stageId,
+      checklistItems,
       tags: { connect: tagIds.map((id) => ({ id })) },
     },
   })
@@ -407,22 +434,26 @@ export async function updateSeriesRule(
  * Reporte le contenu modifié d'une occurrence sur le modèle de sa série
  * (« Appliquer aux prochaines occurrences ») : seuls les champs envoyés sont
  * repris. La colonne ne l'est que si la modification la change, un simple
- * déplacement de carte ne passant pas par ici.
+ * déplacement de carte ne passant pas par ici. Les points de la checklist ne
+ * le sont que si leurs textes ont changé (point ajouté, retiré, renommé ou
+ * déplacé), cocher ou décocher ne touchant jamais au modèle.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param seriesId Id de la série
  * @param task Occurrence, une fois modifiée
- * @param changed Champs envoyés, et colonne de l'occurrence avant la modification
+ * @param changed Champs envoyés, textes des points changés, et colonne de l'occurrence avant la modification
  * @param tagIds Ids des tags de l'occurrence, s'ils ont été envoyés
  */
 async function applyToSeriesTemplate(
   tx: TransactionClient,
   seriesId: number,
   task: Task,
-  changed: { title: boolean; description: boolean; version: boolean; previousStageId: number | null },
+  changed: TaskSeriesChange['sent'] & { previousStageId: number | null },
   tagIds: number[] | undefined,
 ): Promise<void> {
   const stageChanged = task.stageId !== null && task.stageId !== changed.previousStageId
+  // Checklist déjà enregistrée, ses textes sont relus tels qu'écrits (nettoyés, sans les points vides)
+  const checklistItems = changed.checklistItems ? await taskChecklistTexts(tx, task.id) : undefined
 
   await tx.recurrence.update({
     where: { id: seriesId },
@@ -431,6 +462,7 @@ async function applyToSeriesTemplate(
       ...(changed.description && { description: task.description }),
       ...(changed.version && { version: task.version }),
       ...(stageChanged && { stageId: task.stageId }),
+      ...(checklistItems && { checklistItems }),
       ...(tagIds && { tags: { set: tagIds.map((id) => ({ id })) } }),
     },
   })
@@ -443,7 +475,9 @@ export interface TaskSeriesChange {
   recurrence: RecurrenceInput | null | undefined // règle envoyée : absente, null (arrêt) ou nouvelle
   startDate: Date | null // date de début une fois la modification appliquée
   applyToSeries: boolean // contenu reporté sur le modèle des prochaines occurrences
-  sent: { title: boolean; description: boolean; version: boolean } // champs de contenu envoyés
+  // Champs de contenu envoyés. Pour la checklist, vrai seulement si les textes de ses points ont changé,
+  // comparés avant son enregistrement (une coche seule ne part pas dans le modèle)
+  sent: { title: boolean; description: boolean; version: boolean; checklistItems: boolean }
   tagIds: number[] | undefined // ids des tags envoyés
 }
 
@@ -632,15 +666,18 @@ function sameTagIds(a: { id: number }[], b: { id: number }[]): boolean {
 
 /**
  * Vrai si une occurrence générée n'a pas été modifiée depuis sa création :
- * toujours au tableau, avec le contenu, la version, la date et les tags du
- * modèle de sa série, et dans la colonne du modèle. `updatedAt` ne suffit
+ * toujours au tableau, avec le contenu, la version, la date, les tags et les
+ * textes des points du modèle de sa série, aucun point coché, et dans la
+ * colonne du modèle. Une occurrence créée en avance et déjà entamée n'est
+ * donc jamais retirée. `updatedAt` ne suffit
  * pas : le rappel (`notifiedAt`) et les décalages de position des autres
  * cartes le changent aussi.
  *
- * @param task Occurrence, avec ses tags
+ * @param task Occurrence, avec ses tags et sa checklist
  * @param series Série, avec les tags de son modèle
  */
-function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags: { id: number }[] }): boolean {
+function isUntouchedOccurrence(task: OccurrenceContent, series: Recurrence & { tags: { id: number }[] }): boolean {
+  const items = task.checklist?.items ?? []
   return (
     !task.isHistorized &&
     task.title === series.title &&
@@ -648,7 +685,12 @@ function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags
     task.version === occurrenceVersion(series.version) &&
     (series.stageId === null || task.stageId === series.stageId) &&
     task.startDate?.getTime() === task.occurrenceDate?.getTime() &&
-    sameTagIds(task.tags, series.tags)
+    sameTagIds(task.tags, series.tags) &&
+    items.every((item) => !item.isChecked) &&
+    sameChecklistTexts(
+      items.map((item) => item.text),
+      seriesChecklistTexts(series),
+    )
   )
 }
 
@@ -658,7 +700,8 @@ function isUntouchedOccurrence(task: TaskWithTagIds, series: Recurrence & { tags
  * - l'occurrence née de cet archivage (seule occurrence de la série créée
  *   depuis) est retirée si elle n'a pas été modifiée (cf.
  *   isUntouchedOccurrence), et ne compte plus dans le nombre d'occurrences ;
- *   modifiée (contenu, colonne, archivage…), elle est gardée ;
+ *   modifiée (contenu, checklist, point coché, colonne, archivage…), elle
+ *   est gardée ;
  * - la série attend de nouveau l'occurrence restaurée (`nextRunAt` null) ;
  * - une série terminée par sa règle à cause de cet archivage (date de fin
  *   dépassée, ou dernière occurrence retirée) reprend son attente. Une série
@@ -683,7 +726,7 @@ export async function onOccurrenceRestored(tx: TransactionClient, task: Task): P
   const born = archivedAt
     ? await tx.task.findMany({
         where: { recurrenceId: series.id, id: { not: task.id }, createdAt: { gte: archivedAt } },
-        include: { tags: { select: { id: true } } },
+        include: occurrenceContentInclude,
       })
     : []
   const removed = born.length === 1 && isUntouchedOccurrence(born[0], series) ? born[0] : null
@@ -710,11 +753,36 @@ export async function onOccurrenceRestored(tx: TransactionClient, task: Task): P
 }
 
 /**
+ * Prochaine date et état à écrire pour une série importée, null s'ils sont
+ * déjà cohérents (cf. normalizeImportedSeries).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param series Série importée
+ * @param now Maintenant
+ */
+async function importedSeriesState(
+  tx: TransactionClient,
+  series: Recurrence,
+  now: Date,
+): Promise<{ nextRunAt?: Date | null; status?: string } | null> {
+  if (series.status === 'ended') return series.nextRunAt ? { nextRunAt: null } : null
+  if (series.anchor === 'completion') {
+    const state = await completionState(tx, series, now)
+    return { nextRunAt: state.nextRunAt, status: series.status === 'paused' ? 'paused' : state.status }
+  }
+  if (series.status === 'active' && !series.nextRunAt) {
+    return scheduleState(series, now, await latestOccurrenceDate(tx, series.id))
+  }
+  return null
+}
+
+/**
  * Remet en cohérence la prochaine date et l'état des séries importées
  * (POST /data/import), quel que soit le fichier : une série terminée n'a plus
  * de prochaine date, une série « après archivage » attend son occurrence au
  * tableau ou part de son dernier archivage, une série calendaire active sans
- * prochaine date repart de maintenant.
+ * prochaine date repart de maintenant. Des points du modèle illisibles (pas une
+ * liste de textes) sont remplacés par une liste vide.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param now Maintenant
@@ -723,15 +791,9 @@ export async function normalizeImportedSeries(tx: TransactionClient, now: Date):
   const seriesList = await tx.recurrence.findMany()
 
   for (const series of seriesList) {
-    let data: { nextRunAt?: Date | null; status?: string } | null = null
-    if (series.status === 'ended') {
-      if (series.nextRunAt) data = { nextRunAt: null }
-    } else if (series.anchor === 'completion') {
-      const state = await completionState(tx, series, now)
-      data = { nextRunAt: state.nextRunAt, status: series.status === 'paused' ? 'paused' : state.status }
-    } else if (series.status === 'active' && !series.nextRunAt) {
-      data = scheduleState(series, now, await latestOccurrenceDate(tx, series.id))
-    }
+    let data: { nextRunAt?: Date | null; status?: string; checklistItems?: string[] } | null =
+      await importedSeriesState(tx, series, now)
+    if (!isChecklistTexts(series.checklistItems)) data = { ...data, checklistItems: seriesChecklistTexts(series) }
 
     if (data) await tx.recurrence.update({ where: { id: series.id }, data })
   }

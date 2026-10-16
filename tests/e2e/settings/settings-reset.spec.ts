@@ -117,11 +117,16 @@ test('annuler la confirmation ne modifie aucun réglage', async ({ page, header,
   await expectChangedSettings(header, settingsPage)
 })
 
-test('conserve la dernière taille et position de la fenêtre', async ({ page, header, settingsPage }) => {
+test('conserve la taille de la fenêtre et les colonnes repliées', async ({ page, header, settingsPage }) => {
   const windowState: WindowState = { x: 40, y: 30, width: 1000, height: 700, maximized: false }
+  const collapsedStageIds = [2, 4]
   await page.evaluate(
-    (state) => (globalThis as unknown as { settings: SettingsBridge }).settings.set('windowState', state),
-    windowState,
+    async ([state, ids]) => {
+      const bridge = (globalThis as unknown as { settings: SettingsBridge }).settings
+      await bridge.set('windowState', state)
+      await bridge.set('collapsedStageIds', ids)
+    },
+    [windowState, collapsedStageIds] as const,
   )
 
   await header.goSettings()
@@ -129,5 +134,5 @@ test('conserve la dernière taille et position de la fenêtre', async ({ page, h
   await settingsPage.confirmAcceptButton.click()
   await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
 
-  expect(await storedSettings(page)).toEqual({ ...TEST_DEFAULTS, windowState })
+  expect(await storedSettings(page)).toEqual({ ...TEST_DEFAULTS, windowState, collapsedStageIds })
 })

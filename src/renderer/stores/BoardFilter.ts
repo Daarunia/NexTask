@@ -2,16 +2,16 @@ import { defineStore } from 'pinia'
 import type { Task } from '../types/task.types'
 import { useSettingsStore } from './Settings'
 import { useTagStore } from './Tag'
-import { searchTerms, taskMatchesFilter } from '../utils/search.helper'
+import { searchTerms, taskMatchesFilter, type TaskStatus } from '../utils/search.helper'
 import { getLogger } from '../utils/logger'
 
 /**
  * Filtre du board, partagé entre la barre de recherche (en-tête) et le
- * Kanban : texte libre (titre et description) et tags sélectionnés (OU),
- * combinés en ET.
+ * Kanban : texte libre (titre et description), tags sélectionnés (OU) et
+ * filtres rapides sur l'état des tâches (OU), combinés en ET.
  *
  * Seuls les tags sont mémorisés (paramètre « mémoriser le filtre de tags »),
- * le texte est vidé au redémarrage. Les actions qui changent les tags sont
+ * le texte et les filtres rapides sont vidés au redémarrage. Les actions qui changent les tags sont
  * rejetées si cet enregistrement échoue : le filtre reste appliqué, à
  * l'appelant de prévenir l'utilisateur.
  */
@@ -19,13 +19,14 @@ export const useBoardFilterStore = defineStore('boardFilter', {
   state: () => ({
     query: '',
     tagIds: [] as number[],
+    statuses: [] as TaskStatus[],
   }),
 
   getters: {
     // Mots recherchés, normalisés
     terms: (state) => searchTerms(state.query),
     isActive(): boolean {
-      return this.terms.length > 0 || this.tagIds.length > 0
+      return this.terms.length > 0 || this.tagIds.length > 0 || this.statuses.length > 0
     },
   },
 
@@ -35,7 +36,23 @@ export const useBoardFilterStore = defineStore('boardFilter', {
      * @param task Tâche à tester
      */
     matches(task: Task): boolean {
-      return taskMatchesFilter(task, this.terms, this.tagIds)
+      return taskMatchesFilter(task, this.terms, this.tagIds, this.statuses)
+    },
+
+    /**
+     * Ajoute un filtre rapide (sans doublon).
+     * @param status État des tâches à garder
+     */
+    addStatus(status: TaskStatus) {
+      if (!this.statuses.includes(status)) this.statuses = [...this.statuses, status]
+    },
+
+    /**
+     * Retire un filtre rapide.
+     * @param status État retiré
+     */
+    removeStatus(status: TaskStatus) {
+      this.statuses = this.statuses.filter((s) => s !== status)
     },
 
     /**
@@ -64,10 +81,11 @@ export const useBoardFilterStore = defineStore('boardFilter', {
     },
 
     /**
-     * Vide le texte et les tags.
+     * Vide le texte, les filtres rapides et les tags.
      */
     async clear() {
       this.query = ''
+      this.statuses = []
       await this.setTags([])
     },
 

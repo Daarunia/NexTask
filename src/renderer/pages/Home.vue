@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import Kanban from '../components/Kanban.vue'
+import Kanban from '../components/kanban/Kanban.vue'
 import { useTaskStore } from '../stores/Task'
 import type { Task } from '../types/task.types'
 import ProgressSpinner from 'primevue/progressspinner'

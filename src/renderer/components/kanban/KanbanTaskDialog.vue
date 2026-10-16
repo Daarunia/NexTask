@@ -1,11 +1,21 @@
 <template>
   <!-- Largeur prévue pour la barre d'outils de l'éditeur Markdown de la description -->
-  <Dialog v-model:visible="visible" :modal="true" :show-header="false" :draggable="true" class="max-w-2xl w-full">
+  <!-- Échap passe par requestClose, qui protège une saisie non enregistrée -->
+  <Dialog
+    :visible="visible"
+    :modal="true"
+    :show-header="false"
+    :draggable="true"
+    class="max-w-2xl w-full"
+    @update:visible="onDialogVisible"
+  >
     <!-- Le contenu du Dialog est démonté à la fermeture, donc le formulaire repart
          de initialValues à chaque ouverture, sans erreur résiduelle -->
     <!-- Raccourcis d'enregistrement écoutés en capture : avant l'éditeur Markdown,
          qui réserve aussi Ctrl+S et Ctrl+Entrée -->
+    <!-- Clé changée par « Enregistrer et nouvelle » : formulaire recréé, vide -->
     <Form
+      :key="formKey"
       ref="formRef"
       v-slot="$form"
       :initialValues="initialValues"
@@ -20,6 +30,9 @@
         <span data-testid="task-dialog-heading" class="dialog-heading">
           {{ creationMode ? t('task.dialog.newTask') : t('task.dialog.editTask') }}
           <template v-if="stageName"> · {{ stageName }}</template>
+          <template v-if="createdLabel">
+            · <span data-testid="task-dialog-created">{{ createdLabel }}</span>
+          </template>
         </span>
         <Button
           type="button"
@@ -29,7 +42,7 @@
           size="small"
           data-testid="task-close-btn"
           :aria-label="t('task.dialog.close')"
-          @click="visible = false"
+          @click="requestClose($event)"
         />
       </div>
 
@@ -58,8 +71,8 @@
       <!-- Description en Markdown : ouverte en aperçu si la tâche en a déjà une -->
       <FormField v-slot="$field" name="description">
         <component
-          :is="MarkdownEditor"
-          v-if="MarkdownEditor"
+          :is="KanbanMarkdownEditor"
+          v-if="KanbanMarkdownEditor"
           id="description"
           :label="t('task.dialog.description')"
           testId="task-description"
@@ -70,13 +83,25 @@
         />
       </FormField>
 
+      <!-- Checklist, valeur du formulaire = ChecklistEditorItem[], envoyée au serveur à l'enregistrement -->
+      <FormField v-slot="$field" name="checklistItems">
+        <KanbanTaskChecklist
+          ref="checklistRef"
+          :modelValue="$field.value ?? []"
+          :error="$field.invalid ? $field.error?.message : undefined"
+          :hasPendingChanges="hasPendingChanges"
+          :taskTitle="$form.title?.value ?? ''"
+          @update:modelValue="(value: ChecklistEditorItem[]) => $field.props.onChange({ value })"
+        />
+      </FormField>
+
       <!-- Réglages secondaires, sur deux colonnes -->
       <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
         <!-- Tags : valeur du formulaire = TagSelection[] -->
         <div class="flex flex-col gap-1 min-w-0">
           <span class="field-label"><i class="pi pi-tag" aria-hidden="true"></i>{{ t('task.dialog.tags') }}</span>
           <FormField v-slot="$field" name="tags">
-            <TagSelect
+            <KanbanTagSelect
               ref="tagSelectRef"
               :modelValue="$field.value ?? []"
               @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
@@ -141,7 +166,7 @@
             { 'sm:col-span-2': $form.recurrence?.value?.preset && $form.recurrence.value.preset !== 'none' },
           ]"
         >
-          <RecurrenceFields
+          <KanbanRecurrenceFields
             :modelValue="$field.value ?? defaultRecurrenceValue()"
             :startDate="$form.startDate?.value ?? null"
             :series="series"
@@ -171,14 +196,37 @@
           text
           @click="onArchive"
         />
+        <Button
+          v-if="!creationMode"
+          type="button"
+          icon="pi pi-copy"
+          :label="t('task.dialog.duplicate')"
+          v-tooltip.top="infoTooltip(t('task.dialog.duplicateHint'))"
+          data-testid="task-duplicate-btn"
+          severity="secondary"
+          text
+          @click="onDuplicate"
+        />
         <span class="flex-1"></span>
         <Button
+          ref="cancelButton"
           type="button"
           :label="t('common.cancel')"
           data-testid="task-cancel-btn"
           severity="secondary"
           text
-          @click="visible = false"
+          @click="requestClose($event)"
+        />
+        <!-- Bouton simple, et non submit : Entrée dans un champ garde l'enregistrement normal -->
+        <Button
+          v-if="creationMode"
+          type="button"
+          :label="t('task.dialog.saveAndNew')"
+          v-tooltip.top="infoTooltip(t('task.dialog.saveAndNewShortcut'))"
+          data-testid="task-save-new-btn"
+          severity="secondary"
+          outlined
+          @click="submit(true)"
         />
         <Button
           type="submit"
@@ -192,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onMounted, PropType, type Component } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, nextTick, PropType, type Component } from 'vue'
 import { Form, FormField, type FormSubmitEvent } from '@primevue/forms'
 import { zodResolver } from '@primevue/forms/resolvers/zod'
 import Dialog from 'primevue/dialog'
@@ -202,38 +250,44 @@ import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Checkbox from 'primevue/checkbox'
-import TagSelect from './TagSelect.vue'
-import RecurrenceFields from './RecurrenceFields.vue'
-import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
-import { TagSelection } from '../types/tag.types'
-import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
-import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
-import { useTaskStore } from '../stores/Task'
-import { useTagStore } from '../stores/Tag'
-import { useStageStore } from '../stores/Stage'
-import { useSettingsStore } from '../stores/Settings'
-import { getLogger } from '../utils/logger'
-import { useErrorToast, useUndoToast } from '../utils/toast.helper'
-import { compareTagNames } from '../utils/tag.helper'
-import { infoTooltip } from '../utils/tooltip.helper'
+import KanbanTagSelect from './KanbanTagSelect.vue'
+import KanbanRecurrenceFields from './KanbanRecurrenceFields.vue'
+import KanbanTaskChecklist from './KanbanTaskChecklist.vue'
+import { type ChecklistEditorItem, newChecklistEditorItem } from '../ChecklistItemsEditor.vue'
+import { Task, TaskInput, TaskUpdateInput } from '../../types/task.types'
+import { TagSelection } from '../../types/tag.types'
+import { taskFormSchema, TaskFormValues } from '../../schemas/task.schema'
+import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
+import { useTaskStore } from '../../stores/Task'
+import { useTagStore } from '../../stores/Tag'
+import { useStageStore } from '../../stores/Stage'
+import { useSettingsStore } from '../../stores/Settings'
+import { getLogger } from '../../utils/logger'
+import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
+import { isConfirmOpen, useDangerConfirm } from '../../utils/confirm.helper'
+import { useConfirm } from 'primevue/useconfirm'
+import { compareTagNames } from '../../utils/tag.helper'
+import { infoTooltip } from '../../utils/tooltip.helper'
+import { toChecklistInput } from '../../utils/checklist.helper'
+import { dayLabel } from '../../utils/date.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
   summaryToInput,
   toRecurrenceInput,
   toRecurrenceValue,
-} from '../utils/recurrence.helper'
+} from '../../utils/recurrence.helper'
 import { useI18n } from 'vue-i18n'
 
 // Éditeur Markdown (md-editor-v3 et CodeMirror) dans un chunk à part, pour ne pas
 // alourdir le démarrage : préchargé au montage, et attendu avant d'ouvrir le
 // dialogue. Le formulaire s'affiche d'un bloc, sans que la description apparaisse
 // après coup et décale les champs suivants (et le popover des tags ouvert dessus).
-const MarkdownEditor = shallowRef<Component | null>(null)
+const KanbanMarkdownEditor = shallowRef<Component | null>(null)
 
 /** Charge l'éditeur Markdown une seule fois. */
 async function loadMarkdownEditor() {
-  MarkdownEditor.value ??= (await import('./MarkdownEditor.vue')).default
+  KanbanMarkdownEditor.value ??= (await import('./KanbanMarkdownEditor.vue')).default
 }
 
 onMounted(() => {
@@ -273,6 +327,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'task-saved', task: Task): void
   (e: 'archive-task', task: Task): void
+  (e: 'duplicate-task', task: Task): void
 }>()
 
 // Paramètres : versions proposées et version par défaut
@@ -307,6 +362,8 @@ const stageStore = useStageStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
+const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 
 // Série de la tâche modifiée, dans son dernier état connu (absente à la création)
 const series = computed(() =>
@@ -321,6 +378,12 @@ const seriesLive = computed(() => !!series.value && series.value.status !== 'end
 // Colonne de la tâche, affichée dans l'en-tête
 const stageName = computed(() => stageStore.getAllStages.find((stage) => stage.id === stageId.value)?.name ?? '')
 
+// Jour de création de la tâche modifiée, affiché dans l'en-tête après sa colonne
+const createdLabel = computed(() => {
+  const createdAt = props.creationMode ? undefined : props.editTask?.createdAt
+  return createdAt ? t('task.dialog.createdOn', { date: dayLabel(new Date(createdAt)) }) : ''
+})
+
 /**
  * Archive la tâche éditée (le tableau s'en charge, annulation comprise) et ferme le dialogue.
  */
@@ -330,14 +393,97 @@ function onArchive() {
   visible.value = false
 }
 
-// Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
-const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
+/**
+ * Duplique la tâche telle qu'enregistrée (le tableau s'en charge) et ferme le
+ * dialogue, comme l'archivage. Une saisie non enregistrée n'est pas reprise.
+ */
+function onDuplicate() {
+  if (!props.editTask) return
+  emit('duplicate-task', props.editTask)
+  visible.value = false
+}
 
-// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton Enregistrer)
-const formRef = ref<{ submit: () => void } | null>(null)
+// Bouton Annuler, ancre de la confirmation d'abandon demandée au clavier
+const cancelButton = ref<{ $el: HTMLElement } | null>(null)
+
+/**
+ * Le Dialog demande sa fermeture (Échap).
+ * @param open Nouvel état demandé
+ */
+function onDialogVisible(open: boolean) {
+  if (!open) requestClose()
+}
+
+/**
+ * Fermeture demandée par la croix, Annuler ou Échap. Une saisie non
+ * enregistrée n'est abandonnée qu'après confirmation, dans une bulle ancrée sur
+ * le bouton cliqué (Annuler pour Échap). Échap referme d'abord une bulle déjà
+ * ouverte, le dialogue reste alors affiché.
+ * @param event Clic sur la croix ou Annuler, absent pour Échap
+ */
+function requestClose(event?: MouseEvent) {
+  if (!event && isConfirmOpen()) {
+    confirm.close()
+    return
+  }
+
+  if (!hasPendingChanges()) {
+    visible.value = false
+    return
+  }
+
+  confirmDanger({
+    target: (event?.currentTarget as HTMLElement | undefined) ?? cancelButton.value?.$el,
+    message: t('task.dialog.discardConfirm'),
+    acceptLabel: t('task.dialog.discard'),
+    accept: () => {
+      visible.value = false
+    },
+  })
+}
+
+// Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
+const tagSelectRef = ref<InstanceType<typeof KanbanTagSelect> | null>(null)
+
+// Checklist, pour ajouter le point en cours de saisie avant un enregistrement au clavier
+const checklistRef = ref<InstanceType<typeof KanbanTaskChecklist> | null>(null)
+
+// Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton
+// Enregistrer). Ses valeurs courantes (`states`) disent si une saisie est en cours.
+const formRef = ref<{ submit: () => void; states: Record<string, { value: unknown } | undefined> } | null>(null)
 
 // Sauvegarde en cours
 const saving = ref(false)
+
+// Création suivante demandée (« Enregistrer et nouvelle »), lue par la soumission en cours
+let createAnother = false
+
+// Clé du formulaire, changée pour le recréer vide après « Enregistrer et nouvelle »
+const formKey = ref(0)
+
+/**
+ * Soumet le formulaire comme le bouton Enregistrer, validation comprise.
+ * @param another Vrai pour enchaîner sur une nouvelle tâche (création seulement)
+ */
+function submit(another = false) {
+  createAnother = another && props.creationMode
+  // Le champ « Ajouter un point » garde le focus, son texte n'est pas encore dans la liste
+  checklistRef.value?.commitPending()
+  formRef.value?.submit()
+}
+
+/**
+ * Après « Enregistrer et nouvelle » : formulaire vidé pour la tâche suivante,
+ * placée juste après celle créée (ou de nouveau tout en haut), titre prêt à la
+ * saisie.
+ */
+async function startNextTask() {
+  if (settings.newTaskPosition !== 'top') position.value += 1
+  initialValues.value = defaultValues()
+  formKey.value += 1
+  await nextTick()
+  document.getElementById('inputValue')?.focus()
+}
 
 // Sync ouverture / fermeture
 watch(
@@ -358,6 +504,7 @@ watch(
           version: props.editTask.version,
           startDate,
           tags: toTagSelection(props.editTask),
+          checklistItems: toChecklistItems(props.editTask),
           recurrence: toRecurrenceValue(series.value, startDate),
           applyToSeries: true,
         }
@@ -387,6 +534,7 @@ function defaultValues(): TaskFormValues {
     version: settings.defaultTaskVersion,
     startDate: null,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
+    checklistItems: [],
     recurrence: defaultRecurrenceValue(),
     applyToSeries: true,
   }
@@ -442,6 +590,17 @@ function toTagSelection(task: Task): TagSelection[] {
 }
 
 /**
+ * Points de la checklist d'une tâche existante en valeur de formulaire, dans
+ * leur ordre, avec une nouvelle clé de rendu à chaque ouverture
+ * @param task Tâche éditée
+ */
+function toChecklistItems(task: Task): ChecklistEditorItem[] {
+  return (task.checklist?.items ?? []).map((item) =>
+    newChecklistEditorItem(item.text, { id: item.id, isChecked: item.isChecked }),
+  )
+}
+
+/**
  * Noms des tags à envoyer au serveur. Un tag existant est converti en son nom
  * actuel (il a pu être renommé depuis le menu d'édition, renvoyer l'ancien nom
  * recréerait un tag) et un tag supprimé entre-temps est ignoré. Un tag sans id,
@@ -459,32 +618,59 @@ function toTagNames(selection: TagSelection[]): string[] {
 }
 
 /**
+ * Vrai si le formulaire ouvert diffère de ses valeurs de départ, donc si
+ * quitter le tableau ferait perdre une saisie. Faux une fois le dialogue
+ * fermé. Réactif, il peut être lu dans un rendu (toast d'un modèle créé, P6).
+ */
+function hasPendingChanges(): boolean {
+  const states = formRef.value?.states
+  if (!states) return false
+
+  return Object.entries(initialValues.value).some(([name, initial]) => {
+    const state = states[name]
+    return state !== undefined && JSON.stringify(state.value ?? null) !== JSON.stringify(initial ?? null)
+  })
+}
+
+/**
  * Ctrl+S ou Ctrl+Entrée (Cmd sur macOS), depuis n'importe quel champ :
  * enregistre la tâche comme le bouton Enregistrer, validation comprise.
+ * Ctrl+Maj+Entrée enregistre et enchaîne sur une nouvelle tâche (création).
  * @param event Touche pressée dans le formulaire
  */
 function onSaveShortcut(event: KeyboardEvent) {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+  const another = event.shiftKey && event.key === 'Enter'
+  if (event.shiftKey && !another) return
   if (event.key !== 'Enter' && event.key.toLowerCase() !== 's') return
 
   // Ni enregistrement de la page par le navigateur, ni nouvelle ligne dans l'éditeur
   event.preventDefault()
   event.stopPropagation()
-  if (!event.repeat) formRef.value?.submit()
+  if (event.repeat) return
+
+  submit(another)
 }
 
 // Soumission, sachant que <Form> émet submit même si la validation échoue
 function onSubmit({ valid, values }: FormSubmitEvent) {
+  const another = createAnother
+  createAnother = false
+
   if (!valid) {
     logger.debug('Formulaire de tâche invalide, sauvegarde annulée')
     return
   }
 
-  saveTask(values as TaskFormValues)
+  saveTask(values as TaskFormValues, another)
 }
 
-// Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
-async function saveTask(values: TaskFormValues) {
+/**
+ * Sauvegarde (valeurs déjà validées et nettoyées par le schéma)
+ * @param values Valeurs du formulaire
+ * @param another Vrai pour garder le dialogue ouvert sur une nouvelle tâche
+ */
+async function saveTask(values: TaskFormValues, another = false) {
   // Une seule à la fois : un double clic ou un raccourci répété ne crée pas la tâche deux fois
   if (saving.value) return
   saving.value = true
@@ -519,6 +705,7 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: undefined,
         startDate: values.startDate,
         tags: tagNames,
+        checklistItems: toChecklistInput(values.checklistItems),
         ...(recurrenceInput && { recurrence: recurrenceInput }),
       }
 
@@ -537,6 +724,8 @@ async function saveTask(values: TaskFormValues) {
         historizationDate: props.editTask.historizationDate,
         startDate: values.startDate,
         tags: tagNames,
+        // Toujours envoyée, seule une liste de textes modifiée part dans la série (applyToSeries)
+        checklistItems: toChecklistInput(values.checklistItems),
         recurrence: recurrenceChange(recurrenceInput),
         applyToSeries: values.applyToSeries,
       }
@@ -561,7 +750,8 @@ async function saveTask(values: TaskFormValues) {
       showUndo(t('task.dialog.seriesStopped'), { detail: savedTask?.title, undo: () => resumeSeries(id, status) })
     }
 
-    emit('update:modelValue', false)
+    if (another) await startNextTask()
+    else emit('update:modelValue', false)
   } catch (error) {
     // Le dialogue reste ouvert : la saisie n'est pas perdue et peut être renvoyée
     logger.error('Erreur lors de la sauvegarde', error)

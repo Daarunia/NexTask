@@ -1,8 +1,8 @@
-import { useLogger } from 'vue-logger-plugin'
+import log from 'electron-log/renderer'
 
-const loggerInstance = (() => {
-  let instance: ReturnType<typeof useLogger> | null = null
-  return () => (instance ??= useLogger())
-})()
+// Journaux du renderer : console des DevTools, et fichier de log du main via
+// l'IPC d'electron-log (cf. Logger.initialize() dans main.ts)
+log.transports.console.level = import.meta.env.VITE_LOG_LEVEL
+log.transports.ipc.level = import.meta.env.VITE_LOG_LEVEL
 
-export const getLogger = loggerInstance
+export const getLogger = () => log

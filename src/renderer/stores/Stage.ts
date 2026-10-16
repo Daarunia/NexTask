@@ -6,6 +6,7 @@ import { api } from '../utils/api.helper'
 import { isCacheValid } from '../utils/cache.helper'
 import { useTaskStore } from './Task'
 import { getLogger } from '../utils/logger'
+import type { TagColor } from '../../main/shared/tag.constants'
 
 /**
  * Cache des colonnes, chargé en même temps que celui des tâches.
@@ -122,6 +123,25 @@ export const useStageStore = defineStore('stage', {
         throw error
       }
     },
+    /**
+     * Change la couleur d'une colonne
+     * @param id Id de la colonne
+     * @param color Couleur de la palette, `null` pour la retirer
+     * @returns La colonne mise à jour
+     */
+    async updateStageColor(id: number, color: TagColor | null): Promise<Stage> {
+      try {
+        const updatedStage = await api.patch<Stage>(`/stages/${id}`, { color })
+        const cached = this.allEntities?.data.find((s) => s.id === id)
+        if (cached) cached.color = updatedStage.color
+
+        return updatedStage
+      } catch (error) {
+        getLogger().error('Erreur lors du changement de couleur de la colonne :', error)
+        throw error
+      }
+    },
+
     /**
      * Mise à jour du nom d'une colonne
      * @param id Id de la colonne

@@ -25,7 +25,7 @@ import { useI18n } from 'vue-i18n'
 
 /**
  * Choix de la couleur d'un tag, partagé par le menu d'édition du sélecteur
- * (TagSelect) et la liste des tags des Paramètres.
+ * (KanbanTagSelect) et la liste des tags des Paramètres.
  */
 defineProps<{
   // Couleur actuelle du tag

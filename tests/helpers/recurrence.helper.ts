@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 import type { APIRequestContext } from '@playwright/test'
 import type { RecurrenceInput, RecurrenceSummary } from '../../src/main/shared/recurrence.constants'
+import type { ChecklistItemInput } from '../../src/main/shared/checklist.constants'
 import { API } from './api.helper'
 
 /**
@@ -27,6 +28,10 @@ export interface RecurringTask {
   occurrenceDate: string | null
   recurrence: RecurrenceSummary | null
   tags: { id: number; name: string }[]
+  checklist: {
+    id: number
+    items: { id: number; text: string; position: number; isChecked: boolean; checkedAt: string | null }[]
+  } | null
 }
 
 /** Résultat d'un passage de la génération (POST /test/run-recurrences). */
@@ -98,7 +103,7 @@ export async function stageIds(request: APIRequestContext): Promise<Record<strin
 /**
  * Crée une tâche récurrente via POST /tasks, et la renvoie.
  * @param request Contexte de requête Playwright
- * @param data Titre, date de début, règle, et au besoin colonne, version et tags
+ * @param data Titre, date de début, règle, et au besoin colonne, version, tags et points de checklist
  */
 export async function createRecurringTask(
   request: APIRequestContext,
@@ -110,6 +115,7 @@ export async function createRecurringTask(
     version?: string
     tags?: string[]
     position?: number
+    checklistItems?: ChecklistItemInput[]
   },
 ): Promise<RecurringTask> {
   const stageId = data.stageId ?? (await stageIds(request))['A faire']
@@ -123,6 +129,7 @@ export async function createRecurringTask(
       startDate: data.startDate.toISOString(),
       tags: data.tags ?? [],
       recurrence: data.recurrence,
+      ...(data.checklistItems && { checklistItems: data.checklistItems }),
     },
   })
   expect(res.ok(), await res.text()).toBeTruthy()

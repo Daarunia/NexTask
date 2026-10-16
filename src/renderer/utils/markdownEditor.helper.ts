@@ -6,7 +6,7 @@ import type { Locale } from '../../main/shared/settings.constants'
  *
  * Par défaut, l'éditeur télécharge depuis unpkg.com la coloration du code,
  * KaTeX, Mermaid, ECharts, Prettier, Cropper et screenfull. L'app fonctionne
- * hors ligne : ces modules sont coupés par les props `no*` de MarkdownEditor.vue
+ * hors ligne : ces modules sont coupés par les props `no*` de KanbanMarkdownEditor.vue
  * et les boutons qui en dépendent ne sont pas affichés.
  */
 
@@ -166,8 +166,8 @@ const PORTUGUESE: StaticTextDefaultValue = {
  * Configure md-editor-v3 pour toute l'app, une seule fois avant le premier
  * affichage : libellés des langues que md-editor-v3 ne fournit pas, liens
  * ouverts hors de l'app, et rendu sans les cases à cocher (`- [ ]` reste du texte).
- * Appelée au chargement de ce module, importé seulement par MarkdownEditor.vue
- * (chargé à la demande par TaskDialog).
+ * Appelée au chargement de ce module, importé seulement par KanbanMarkdownEditor.vue
+ * (chargé à la demande par KanbanTaskDialog).
  */
 function setupMarkdownEditor() {
   config({

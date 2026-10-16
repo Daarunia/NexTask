@@ -4,12 +4,15 @@ import { useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmPopup from 'primevue/confirmpopup'
 import Header from './components/Header.vue'
+import AppRail from './components/AppRail.vue'
 import UndoToast from './components/UndoToast.vue'
 import UpdateToast from './components/UpdateToast.vue'
+import ActionToast from './components/ActionToast.vue'
 import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useTagStore } from './stores/Tag'
 import { useUpdateStore } from './stores/Update'
+import { registerConfirmPopup } from './utils/confirm.helper'
 
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
@@ -76,10 +79,15 @@ onBeforeUnmount(() => {
   <div v-else class="flex flex-col h-screen">
     <Header />
 
-    <!-- Hauteur restante sous l'en-tête : chaque page gère son propre défilement -->
-    <main class="min-h-0 flex-1">
-      <router-view />
-    </main>
+    <!-- Rail de navigation à gauche, page à droite, séparés de l'en-tête par un filet -->
+    <div class="app-body flex min-h-0 flex-1">
+      <AppRail />
+
+      <!-- Hauteur et largeur restantes : chaque page gère son propre défilement -->
+      <main class="min-h-0 min-w-0 flex-1">
+        <router-view />
+      </main>
+    </div>
 
     <!-- Notifications d'erreur (cf. utils/toast.helper.ts) -->
     <Toast position="bottom-right" />
@@ -87,10 +95,19 @@ onBeforeUnmount(() => {
     <!-- Annulation d'une action qui vient d'être faite (cf. useUndoToast) -->
     <UndoToast />
 
+    <!-- Confirmation qui propose une suite, ex. ouvrir un modèle créé (cf. useActionToast) -->
+    <ActionToast />
+
     <!-- Nouvelle version téléchargée, redémarrage proposé (cf. stores/Update) -->
     <UpdateToast />
 
     <!-- Confirmations ancrées sur leur bouton (cf. useConfirm) -->
-    <ConfirmPopup data-testid="confirm-popup" />
+    <ConfirmPopup :ref="registerConfirmPopup" data-testid="confirm-popup" />
   </div>
 </template>
+
+<style scoped>
+.app-body {
+  border-top: 1px solid var(--p-content-border-color);
+}
+</style>

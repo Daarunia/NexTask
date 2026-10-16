@@ -1,0 +1,126 @@
+import { intlLocale } from '../i18n'
+import type { Task } from '../types/task.types'
+
+/**
+ * Dates affichées sur les cartes du tableau (date de début d'une tâche),
+ * dans la langue active, relatives au jour courant.
+ */
+
+/** Place d'une date par rapport à aujourd'hui, pour la couleur de la pastille. */
+export type DayState = 'past' | 'today' | 'future'
+
+// Durée d'un jour, pour compter les jours entre deux minuits locaux
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Nombre de jours calendaires de `now` à `date` (0 le même jour, 1 demain,
+ * -1 hier), sans tenir compte des heures. Passe par l'UTC des dates locales,
+ * un changement d'heure ne décale donc pas le compte.
+ * @param date Date comparée
+ * @param now Maintenant
+ */
+export function dayOffset(date: Date, now: Date): number {
+  const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((day - today) / DAY_MS)
+}
+
+/**
+ * Place d'une date par rapport au jour courant, à la journée près.
+ * @param date Date comparée
+ * @param now Maintenant
+ */
+export function dayState(date: Date, now: Date): DayState {
+  const offset = dayOffset(date, now)
+  if (offset < 0) return 'past'
+  return offset === 0 ? 'today' : 'future'
+}
+
+/**
+ * Première lettre en capitale, selon la langue (« aujourd’hui » → « Aujourd’hui »).
+ * @param text Texte
+ */
+function capitalize(text: string): string {
+  return text.charAt(0).toLocaleUpperCase(intlLocale()) + text.slice(1)
+}
+
+/**
+ * Libellé court d'une date pour une carte. Hier, aujourd'hui et demain sont
+ * écrits en toutes lettres avec l'heure, les autres dates en jour et mois
+ * (« 22 oct., 09:00 »), avec l'année si ce n'est pas l'année en cours.
+ * @param date Date affichée
+ * @param now Maintenant
+ */
+export function shortDateLabel(date: Date, now: Date): string {
+  const locale = intlLocale()
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(date)
+  const offset = dayOffset(date, now)
+
+  if (Math.abs(offset) <= 1) {
+    const day = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(offset, 'day')
+    return `${capitalize(day)}, ${time}`
+  }
+
+  const sameYear = date.getFullYear() === now.getFullYear()
+  const day = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  }).format(date)
+  return sameYear ? `${day}, ${time}` : day
+}
+
+/**
+ * Tâches triées par date de début, la plus proche en premier. Les tâches sans
+ * date suivent, dans leur ordre actuel, comme les tâches de même date (tri stable).
+ * @param tasks Tâches d'une colonne, dans l'ordre affiché
+ * @returns Une nouvelle liste, celle reçue n'est pas modifiée
+ */
+export function sortByStartDate<T extends Pick<Task, 'startDate'>>(tasks: readonly T[]): T[] {
+  const time = (task: T) => (task.startDate ? new Date(task.startDate).getTime() : Infinity)
+  return [...tasks].sort((a, b) => {
+    const [ta, tb] = [time(a), time(b)]
+    if (ta === tb) return 0
+    return ta < tb ? -1 : 1
+  })
+}
+
+/**
+ * Date complète, pour une infobulle (« jeudi 22 octobre 2026 à 09:00 »).
+ * @param date Date affichée
+ */
+export function longDateLabel(date: Date): string {
+  return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'full', timeStyle: 'short' }).format(date)
+}
+
+/** Jours proposés pour replanifier une tâche depuis sa carte. */
+export type QuickDay = 'today' | 'tomorrow' | 'nextMonday'
+
+// Heure donnée à une tâche qui n'en avait pas, comme dans le dialogue
+const DEFAULT_START_HOUR = 9
+
+/**
+ * Nouvelle date de début d'une tâche replanifiée sur un jour proposé : ce jour,
+ * à l'heure de sa date actuelle, ou à 09:00 si elle n'en a pas. « Lundi
+ * prochain » est le lundi qui suit, à sept jours un lundi.
+ * @param day Jour choisi
+ * @param current Date de début actuelle de la tâche
+ * @param now Maintenant
+ */
+export function quickStartDate(day: QuickDay, current: Date | null, now: Date): Date {
+  const date = new Date(now)
+  if (day === 'tomorrow') date.setDate(date.getDate() + 1)
+  if (day === 'nextMonday') date.setDate(date.getDate() + ((8 - date.getDay()) % 7 || 7))
+
+  if (current) date.setHours(current.getHours(), current.getMinutes(), 0, 0)
+  else date.setHours(DEFAULT_START_HOUR, 0, 0, 0)
+  return date
+}
+
+/**
+ * Jour seul, sans l'heure (« 22 octobre 2026 »).
+ * @param date Date affichée
+ */
+export function dayLabel(date: Date): string {
+  return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'long' }).format(date)
+}

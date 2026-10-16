@@ -19,10 +19,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Button from 'primevue/button'
-import { useConfirm } from 'primevue/useconfirm'
 import SettingsRow from './SettingsRow.vue'
 import { useSettingsStore } from '../../stores/Settings'
 import { useErrorToast, useSuccessToast } from '../../utils/toast.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -30,7 +30,7 @@ import { useI18n } from 'vue-i18n'
  */
 
 const settings = useSettingsStore()
-const confirm = useConfirm()
+const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const showSuccess = useSuccessToast()
 const { t } = useI18n()
@@ -42,17 +42,10 @@ const resetting = ref(false)
  * @param event Clic sur le bouton
  */
 function askReset(event: MouseEvent) {
-  confirm.require({
+  confirmDanger({
     target: event.currentTarget as HTMLElement,
     message: t('settings.reset.confirm'),
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: t('common.cancel'),
-      severity: 'secondary',
-      outlined: true,
-      'data-testid': 'btn-confirm-reject',
-    },
-    acceptProps: { label: t('settings.reset.accept'), severity: 'danger', 'data-testid': 'btn-confirm-accept' },
+    acceptLabel: t('settings.reset.accept'),
     accept: resetSettings,
   })
 }

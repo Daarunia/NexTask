@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import taskRoutes from './routes/task.routes.js'
 import stageRoutes from './routes/stage.routes.js'
 import tagRoutes from './routes/tag.routes.js'
+import checklistTemplateRoutes from './routes/checklistTemplate.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
 import testRoutes from './routes/test.routes.js'
@@ -123,6 +124,7 @@ export async function startServer() {
   await fastify.register(taskRoutes)
   await fastify.register(stageRoutes)
   await fastify.register(tagRoutes)
+  await fastify.register(checklistTemplateRoutes)
   await fastify.register(recurrenceRoutes)
   await fastify.register(dataRoutes)
 

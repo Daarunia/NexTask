@@ -163,11 +163,6 @@ function createWindow() {
 
   loadRenderer(mainWindow)
 
-  // On ouvre la console que en dev, et pas en test playwright
-  if (DEV_RENDERER_URL && !IS_TEST) {
-    mainWindow.webContents.openDevTools()
-  }
-
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -243,6 +238,11 @@ if (gotTheLock) {
   // via `second-instance` et ramènera sa fenêtre au premier plan.
   app.quit()
 }
+
+// Pont IPC d'electron-log : les journaux du renderer (electron-log/renderer)
+// rejoignent ceux du main. Son preload, ajouté aux sessions, n'importe
+// qu'electron et passe donc dans le renderer sandboxé.
+Logger.initialize()
 
 app.whenReady().then(async () => {
   // Windows rattache l'icône de la barre des tâches et les notifications à cet
@@ -362,6 +362,13 @@ app.on('window-all-closed', () => {
 
 ipcMain.on('message', (event, message) => {
   Logger.debug(message)
+})
+
+// Console du navigateur, ouverte par le bouton de l'en-tête : toujours en dev,
+// en prod seulement si le paramètre affiche le bouton
+ipcMain.on('devtools:toggle', (event) => {
+  if (!DEV_RENDERER_URL && !settingsStore.get('showDevToolsButton')) return
+  event.sender.toggleDevTools()
 })
 
 // Pont des paramètres : lecture groupée en un seul aller-retour au démarrage

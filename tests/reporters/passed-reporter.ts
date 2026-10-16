@@ -1,5 +1,13 @@
 import path from 'node:path'
-import type { FullConfig, FullResult, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+import type {
+  FullConfig,
+  FullResult,
+  Reporter,
+  Suite,
+  TestCase,
+  TestError,
+  TestResult,
+} from '@playwright/test/reporter'
 
 // jcp --ignore-checks le fichier doit être ignoré par le pre-commit
 /**
@@ -20,7 +28,7 @@ const dim = paint(2)
 
 /** Durée lisible : 850ms, 2.3s, 1.5m. */
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
+  if (ms < 1000) return `${Math.round(ms)}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
   return `${(ms / 60000).toFixed(1)}m`
 }
@@ -44,6 +52,14 @@ export default class PassedReporter implements Reporter {
     this.suite = suite
     const workers = config.workers > 1 ? `${config.workers} workers` : '1 worker'
     console.log(`\nRunning ${suite.allTests().length} tests using ${workers}\n`)
+  }
+
+  // Erreurs hors test (serveur du renderer déjà lancé, fichier de test qui ne se
+  // charge pas…) : sans elles, le lancement finit sur « 0 passed » sans explication
+  onError(error: TestError) {
+    console.log(`
+${red(indent(error.message ?? error.value ?? 'Erreur inconnue'))}
+`)
   }
 
   onTestEnd(test: TestCase, result: TestResult) {

@@ -24,11 +24,13 @@ export const recurrenceSummarySelect = {
 
 /**
  * Relations renvoyées avec chaque tâche, par toutes les routes (tâches,
- * colonnes) : ses tags triés par nom, et le résumé de sa série.
+ * colonnes) : ses tags triés par nom, le résumé de sa série, et sa checklist
+ * avec ses points dans l'ordre (null pour une tâche sans point).
  */
 export const taskInclude = {
   tags: { orderBy: { name: 'asc' } },
   recurrence: { select: recurrenceSummarySelect },
+  checklist: { include: { items: { orderBy: { position: 'asc' } } } },
 } as const
 
 /**

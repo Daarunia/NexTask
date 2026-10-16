@@ -158,7 +158,7 @@ test.describe('Création et sélection de tags', () => {
     await expect.poll(async () => tagNames(await getTags(page.request))).toEqual(['fantome'])
     await tagPicker.close()
 
-    await taskBoard.cancelButton.click()
+    await taskBoard.discardDialog()
     await expect(taskBoard.dialog).toBeHidden()
 
     // Aucune tâche créée

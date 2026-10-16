@@ -26,13 +26,18 @@ export const fr = {
   quickAdd: {
     windowTitle: 'NexTask — Ajout rapide',
   },
+  // Modèles de checklist
+  checklists: {
+    // Nom de la copie d'un modèle, numérotée ensuite si elle est déjà prise
+    copyName: '{name} (copie)',
+  },
   dataTransfer: {
     exportTitle: 'Exporter les données',
     importTitle: 'Importer des données',
     fileFilter: 'Export NexTask',
     unreadableFile: "Le fichier n'est pas un fichier JSON lisible",
   },
-  // Motifs de refus d'un import (cf. data.constants.ts, ImportProblemCode)
+  // Motifs de refus et anomalies d'un import (cf. data.constants.ts, ImportProblemCode)
   importProblems: {
     notAnExport: "Ce fichier n'est pas un export NexTask",
     unsupportedVersion: 'Version de format {version} non prise en charge (version attendue : {expected})',
@@ -47,6 +52,13 @@ export const fr = {
     taskUnknownTag: 'La tâche {id} référence un tag absent du fichier ({ref})',
     taskUnknownRecurrence: 'La tâche {id} référence une série absente du fichier ({ref})',
     duplicateOccurrence: 'Plusieurs tâches de la série {id} sont prévues à la même date',
+    // Anomalies corrigées sans refuser l'import
+    taskChecklistClamped: 'Checklist de la tâche {id} ramenée à {maxItems} points de {maxLength} caractères au plus',
+    recurrenceChecklistClamped:
+      'Checklist de la série {id} ramenée à {maxItems} points de {maxLength} caractères au plus',
+    templateChecklistClamped: 'Modèle « {name} » ramené à {maxItems} points de {maxLength} caractères au plus',
+    templateNameTruncated: 'Nom de modèle raccourci à {maxLength} caractères (« {name} »)',
+    duplicateTemplateName: 'Plusieurs modèles portent le nom « {name} », seul le premier est importé',
   } satisfies Record<ImportProblemCode, string>,
 }
 

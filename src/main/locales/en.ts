@@ -23,6 +23,9 @@ export const en: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — Quick add',
   },
+  checklists: {
+    copyName: '{name} (copy)',
+  },
   dataTransfer: {
     exportTitle: 'Export data',
     importTitle: 'Import data',
@@ -43,5 +46,11 @@ export const en: MainMessages = {
     taskUnknownTag: 'Task {id} refers to a tag missing from the file ({ref})',
     taskUnknownRecurrence: 'Task {id} refers to a series missing from the file ({ref})',
     duplicateOccurrence: 'Several tasks of series {id} are scheduled on the same date',
+    taskChecklistClamped: 'Checklist of task {id} reduced to {maxItems} items of at most {maxLength} characters',
+    recurrenceChecklistClamped:
+      'Checklist of series {id} reduced to {maxItems} items of at most {maxLength} characters',
+    templateChecklistClamped: 'Template “{name}” reduced to {maxItems} items of at most {maxLength} characters',
+    templateNameTruncated: 'Template name shortened to {maxLength} characters (“{name}”)',
+    duplicateTemplateName: 'Several templates are named “{name}”, only the first one is imported',
   },
 }
