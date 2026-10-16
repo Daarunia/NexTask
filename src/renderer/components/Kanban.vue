@@ -119,13 +119,16 @@
   <!-- Menu contextuel partagé (une seule instance, cible = selectedStage), à sous-menus (couleur) -->
   <TieredMenu ref="stageMenu" :model="stageMenuItems" popup data-testid="stage-menu" />
 
-  <!-- Menu contextuel des cartes, partagé de même (cible = menuTaskId) -->
-  <ContextMenu
+  <!-- Menu contextuel des cartes, partagé de même -->
+  <CardMenu
     ref="cardMenu"
-    :model="cardMenuItems"
-    data-testid="card-menu"
-    :aria-label="t('board.cardMenu.label', { title: menuTaskLocation?.list[menuTaskLocation.index].title ?? '' })"
-    @hide="onCardMenuHide"
+    :stages="stagesLocal"
+    @open="openTask"
+    @duplicate="duplicateTask"
+    @toggle-tag="toggleTaskTag"
+    @start-date="setStartDate"
+    @move="moveTask"
+    @archive="askArchiveTask"
   />
 
   <TaskDialog
@@ -145,7 +148,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import draggable from 'vuedraggable'
 import TieredMenu from 'primevue/tieredmenu'
-import ContextMenu from 'primevue/contextmenu'
+import CardMenu from './CardMenu.vue'
 import Button from 'primevue/button'
 import StageTaskList from './StageTaskList.vue'
 import TaskDialog from './TaskDialog.vue'
@@ -162,7 +165,7 @@ import { useBoardLists } from '../utils/boardLists.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
-import { quickStartDate, sortByStartDate, type QuickDay } from '../utils/date.helper'
+import { sortByStartDate } from '../utils/date.helper'
 import type { TaskChecklist } from '../types/checklist.types'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
@@ -207,10 +210,7 @@ const stageMenuTrigger = ref<HTMLElement | null>(null) // bouton ⋮ du menu ouv
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
-const cardMenu = ref()
-const menuTaskId = ref<number | null>(null) // carte du menu contextuel ouvert
-const menuCard = ref<HTMLElement | null>(null) // sa carte affichée, cible de la confirmation
-let menuTrigger: HTMLElement | null = null // titre de la carte, qui reprend le focus à la fermeture
+const cardMenu = ref<InstanceType<typeof CardMenu> | null>(null)
 
 // Filtre actif (texte ou tags) : le DnD des tâches est alors désactivé
 const filterActive = computed(() => boardFilter.isActive)
@@ -351,80 +351,6 @@ const stageMenuItems = computed(() => [
     class: 'text-primary',
   },
 ])
-
-// Place de la carte du menu contextuel, relue à chaque ouverture
-const menuTaskLocation = computed(() => (menuTaskId.value === null ? null : board.find(menuTaskId.value)))
-
-// Calculé pour suivre la langue de l'interface et la place de la carte
-const cardMenuItems = computed(() => {
-  const location = menuTaskLocation.value
-  if (!location) return []
-
-  const task = location.list[location.index]
-  const otherStages = stagesLocal.value.filter((stage) => stage.id !== location.stageId)
-
-  return [
-    { label: t('board.cardMenu.open'), icon: 'pi pi-pencil', command: () => openTask(task.id) },
-    { label: t('board.cardMenu.duplicate'), icon: 'pi pi-copy', command: () => duplicateTask(task) },
-    { separator: true },
-    {
-      label: t('board.cardMenu.tags'),
-      icon: 'pi pi-tag',
-      disabled: !tagStore.getAllTags.length,
-      items: menuTags(task).map((tag) => ({
-        label: tag.name,
-        icon: 'pi pi-circle-fill',
-        class: ['menu-swatch-option', { 'menu-option-current': task.tags?.some((carried) => carried.id === tag.id) }],
-        style: { '--swatch': getTagColorStyle(tag.color).swatch },
-        command: () => toggleTaskTag(task, tag.id),
-      })),
-    },
-    {
-      label: t('board.cardMenu.startDate'),
-      icon: 'pi pi-calendar',
-      items: [
-        ...QUICK_DAYS.map((day) => ({
-          label: t(`board.cardMenu.${day}`),
-          command: () =>
-            setStartDate(task, quickStartDate(day, task.startDate ? new Date(task.startDate) : null, new Date())),
-        })),
-        {
-          label: t('board.cardMenu.clearDate'),
-          disabled: !task.startDate,
-          command: () => setStartDate(task, null),
-        },
-      ],
-    },
-    {
-      label: t('board.cardMenu.moveTo'),
-      icon: 'pi pi-arrow-right',
-      disabled: !otherStages.length,
-      items: otherStages.map((stage) => ({
-        label: stage.name,
-        command: () => moveTask(task.id, stage.id, 'bottom'),
-      })),
-    },
-    {
-      label: t('board.cardMenu.moveTop'),
-      icon: 'pi pi-arrow-up',
-      disabled: location.index === 0,
-      command: () => moveTask(task.id, location.stageId, 'top'),
-    },
-    {
-      label: t('board.cardMenu.moveBottom'),
-      icon: 'pi pi-arrow-down',
-      disabled: location.index === location.list.length - 1,
-      command: () => moveTask(task.id, location.stageId, 'bottom'),
-    },
-    { separator: true },
-    {
-      label: t('common.archive'),
-      icon: 'pi pi-box',
-      // Après la fermeture du menu, pour que la confirmation ne soit pas refermée aussitôt
-      command: () => setTimeout(() => askArchiveTask(task, menuCard.value)),
-    },
-  ]
-})
 
 stagesLocal.value = [...props.stages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
 board.build(stageIds(), props.tasks)
@@ -609,23 +535,6 @@ async function changeTaskTags(task: Task, change: (tagIds: number[]) => number[]
   }
 }
 
-// Nombre de tags proposés dans le menu d'une carte, en plus de ceux qu'elle porte
-const MENU_TAG_COUNT = 12
-
-/**
- * Tags proposés dans le menu d'une carte : ceux qu'elle porte, puis les plus
- * utilisés, le tout trié par nom.
- * @param task Tâche de la carte
- */
-function menuTags(task: Task): Tag[] {
-  const carried = new Set((task.tags ?? []).map((tag) => tag.id))
-  const mostUsed = tagStore.getAllTags
-    .filter((tag) => !carried.has(tag.id))
-    .sort((a, b) => (b.taskCount ?? 0) - (a.taskCount ?? 0))
-    .slice(0, MENU_TAG_COUNT)
-  return [...tagStore.getAllTags.filter((tag) => carried.has(tag.id)), ...mostUsed].sort(compareTagNames)
-}
-
 /**
  * Coche ou décoche un point de checklist depuis la carte. Le point change tout
  * de suite dans la copie locale, puis prend sa version enregistrée, ou revient
@@ -696,24 +605,12 @@ function updateLocalChecklist(taskId: number, update: (checklist: TaskChecklist)
  * @param task Tâche de la carte
  */
 function openCardMenu(event: MouseEvent, task: Task) {
-  menuTaskId.value = task.id
-  menuTrigger = event.currentTarget as HTMLElement
-  menuCard.value = menuTrigger.closest('[data-testid="task-card"]')
-  cardMenu.value.show(event)
-}
-
-/**
- * Fermeture du menu d'une carte. Si le focus était dans le menu (Échap, choix
- * au clavier), il revient sur le titre de la carte plutôt que sur la page. Un
- * clic ailleurs a déjà placé le focus, il n'est pas déplacé.
- */
-function onCardMenuHide() {
-  menuTaskId.value = null
-  const trigger = menuTrigger
-
-  setTimeout(() => {
-    const active = document.activeElement
-    if (!active || active === document.body || active.closest('[data-testid="card-menu"]')) trigger?.focus()
+  const location = board.find(task.id)
+  if (!location) return
+  cardMenu.value?.show(event, location.list[location.index], {
+    stageId: location.stageId,
+    index: location.index,
+    count: location.list.length,
   })
 }
 
@@ -749,9 +646,6 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
     showError(t('board.moveCanceled'))
   }
 }
-
-// Jours proposés dans le sous-menu « Date de début » d'une carte
-const QUICK_DAYS: QuickDay[] = ['today', 'tomorrow', 'nextMonday']
 
 /**
  * Change la date de début d'une carte depuis son menu, puis l'affiche telle
@@ -1343,29 +1237,5 @@ onMounted(() => {
 .app-dark .stage-count {
   background-color: color-mix(in srgb, var(--p-primary-400) 18%, transparent);
   color: var(--p-primary-400);
-}
-</style>
-
-<!-- Menus des colonnes et des cartes, ajoutés au body : hors de portée du style scoped -->
-<style>
-/* Pastille d'une couleur (couleur de colonne, tag), survol compris */
-.p-tieredmenu
-  .p-tieredmenu-item.menu-swatch-option:not(.p-disabled)
-  > .p-tieredmenu-item-content
-  .p-tieredmenu-item-icon,
-.p-contextmenu
-  .p-contextmenu-item.menu-swatch-option:not(.p-disabled)
-  > .p-contextmenu-item-content
-  .p-contextmenu-item-icon {
-  color: var(--swatch);
-}
-
-/* Choix en cours : couleur de la colonne, tags portés par la carte */
-.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label) {
-  font-weight: 600;
-}
-
-.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label)::after {
-  content: ' ✓';
 }
 </style>

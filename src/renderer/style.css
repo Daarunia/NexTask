@@ -65,3 +65,25 @@ body {
 .field-label > .pi {
   font-size: 0.75rem;
 }
+
+/* Menus des colonnes et des cartes (ajoutés au body) */
+/* Pastille d'une couleur (couleur de colonne, tag), survol compris */
+.p-tieredmenu
+  .p-tieredmenu-item.menu-swatch-option:not(.p-disabled)
+  > .p-tieredmenu-item-content
+  .p-tieredmenu-item-icon,
+.p-contextmenu
+  .p-contextmenu-item.menu-swatch-option:not(.p-disabled)
+  > .p-contextmenu-item-content
+  .p-contextmenu-item-icon {
+  color: var(--swatch);
+}
+
+/* Choix en cours : couleur de la colonne, tags portés par la carte */
+.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label) {
+  font-weight: 600;
+}
+
+.menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label)::after {
+  content: ' ✓';
+}
