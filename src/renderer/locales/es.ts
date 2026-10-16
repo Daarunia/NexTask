@@ -16,6 +16,7 @@ export const es: MessageSchema = {
   header: {
     themeNotSaved: 'Tema no guardado',
     colorNotSaved: 'Color no guardado',
+    devTools: 'Herramientas de desarrollo',
   },
   nav: {
     label: 'Navegación',
@@ -451,6 +452,9 @@ export const es: MessageSchema = {
       open: 'Abrir',
       logsFolder: 'Carpeta de registros',
       logsFolderDescription: 'Archivos de registro de NexTask, útiles para informar de un problema.',
+      devToolsButton: 'Herramientas de desarrollo',
+      devToolsButtonDescription:
+        'Muestra en el encabezado un botón que abre la consola del navegador, útil para diagnosticar un problema.',
       purge30: '30 días',
       purge90: '90 días',
       purge365: '1 año',

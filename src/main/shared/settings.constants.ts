@@ -95,6 +95,7 @@ export interface AppSettings {
   startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
   quickAddEnabled: boolean // raccourci global qui ouvre la fenêtre d'ajout rapide
   autoUpdateEnabled: boolean // recherche et téléchargement des nouvelles versions en arrière-plan
+  showDevToolsButton: boolean // bouton de la console du navigateur dans l'en-tête, toujours affiché en dev
   windowMode: WindowMode // fenêtre maximisée ou à sa dernière taille au démarrage
   windowState: WindowState | null // dernière taille et position, tenue à jour par le main
 }
@@ -122,6 +123,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   startMinimized: false,
   quickAddEnabled: true,
   autoUpdateEnabled: true,
+  showDevToolsButton: false,
   windowMode: 'maximized',
   windowState: null,
 }

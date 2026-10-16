@@ -16,6 +16,7 @@ export const pt: MessageSchema = {
   header: {
     themeNotSaved: 'Tema não salvo',
     colorNotSaved: 'Cor não salva',
+    devTools: 'Ferramentas de desenvolvimento',
   },
   nav: {
     label: 'Navegação',
@@ -452,6 +453,9 @@ export const pt: MessageSchema = {
       open: 'Abrir',
       logsFolder: 'Pasta de logs',
       logsFolderDescription: 'Arquivos de log do NexTask, úteis para relatar um problema.',
+      devToolsButton: 'Ferramentas de desenvolvimento',
+      devToolsButtonDescription:
+        'Mostra no cabeçalho um botão que abre o console do navegador, útil para diagnosticar um problema.',
       purge30: '30 dias',
       purge90: '90 dias',
       purge365: '1 ano',

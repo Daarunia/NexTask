@@ -18,6 +18,7 @@ export const fr = {
   header: {
     themeNotSaved: 'Thème non enregistré',
     colorNotSaved: 'Couleur non enregistrée',
+    devTools: 'Outils de développement',
   },
   nav: {
     label: 'Navigation',
@@ -458,6 +459,9 @@ export const fr = {
       open: 'Ouvrir',
       logsFolder: 'Dossier des journaux',
       logsFolderDescription: 'Fichiers de log de NexTask, utiles pour signaler un problème.',
+      devToolsButton: 'Outils de développement',
+      devToolsButtonDescription:
+        "Affiche dans l'en-tête un bouton qui ouvre la console du navigateur, utile pour diagnostiquer un problème.",
       purge30: '30 jours',
       purge90: '90 jours',
       purge365: '1 an',

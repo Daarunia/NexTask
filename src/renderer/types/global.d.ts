@@ -30,6 +30,11 @@ declare global {
     importFromFile: () => Promise<DataTransferResult>
   }
 
+  // Console du navigateur, ouverte ou fermée (en dev, ou si le paramètre l'autorise)
+  var devTools: {
+    toggle: () => void
+  }
+
   // Ouverture des dossiers de l'app dans l'explorateur de fichiers
   var folders: {
     openData: () => Promise<void>

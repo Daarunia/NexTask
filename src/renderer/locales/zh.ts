@@ -16,6 +16,7 @@ export const zh: MessageSchema = {
   header: {
     themeNotSaved: '主题未保存',
     colorNotSaved: '颜色未保存',
+    devTools: '开发者工具',
   },
   nav: {
     label: '导航',
@@ -445,6 +446,8 @@ export const zh: MessageSchema = {
       open: '打开',
       logsFolder: '日志文件夹',
       logsFolderDescription: 'NexTask 的日志文件，便于报告问题。',
+      devToolsButton: '开发者工具',
+      devToolsButtonDescription: '在标题栏显示一个打开浏览器控制台的按钮，便于诊断问题。',
       purge30: '30 天',
       purge90: '90 天',
       purge365: '1 年',

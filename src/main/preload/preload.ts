@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('dataTransfer', {
   importFromFile: () => ipcRenderer.invoke('data:import'),
 })
 
+// Console du navigateur, bouton de l'en-tête (en dev, ou en prod si le paramètre l'affiche)
+contextBridge.exposeInMainWorld('devTools', {
+  toggle: () => ipcRenderer.send('devtools:toggle'),
+})
+
 // Ouverture des dossiers de l'app dans l'explorateur de fichiers (cf. system/folders)
 contextBridge.exposeInMainWorld('folders', {
   openData: () => ipcRenderer.invoke('folders:open', 'data'),

@@ -121,6 +121,10 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.autoUpdateEnabled,
   },
+  showDevToolsButton: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.showDevToolsButton,
+  },
   windowMode: {
     type: 'string',
     enum: [...WINDOW_MODES],

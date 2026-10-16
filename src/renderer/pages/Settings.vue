@@ -331,6 +331,18 @@
             />
           </SettingsRow>
 
+          <SettingsRow
+            :label="t('settings.data.devToolsButton')"
+            :description="t('settings.data.devToolsButtonDescription')"
+            testId="settings-row-devtools-button"
+          >
+            <ToggleSwitch
+              v-model="showDevToolsButton"
+              data-testid="settings-devtools-button-toggle"
+              :ariaLabel="t('settings.data.devToolsButton')"
+            />
+          </SettingsRow>
+
           <ResetSettingsSetting />
         </SettingsSection>
 
@@ -459,6 +471,7 @@ const theme = settingModel('theme')
 const interfaceScale = settingModel('interfaceScale')
 const newTaskPosition = settingModel('newTaskPosition')
 const confirmArchive = settingModel('confirmArchive')
+const showDevToolsButton = settingModel('showDevToolsButton')
 
 // Désactiver la mémorisation oublie aussi le filtre enregistré
 const rememberTagFilter = computed({
