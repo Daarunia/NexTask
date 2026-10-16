@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { expectAnchoredTo } from '../../helpers/overlay.helper'
 
 /**
  * Tests E2E des colonnes (Stage) : gestion (ajout/annulation, renommage,
@@ -34,6 +35,28 @@ test.describe('Gestion des colonnes', () => {
 
     await expect(taskBoard.column(after)).toHaveCount(1)
     await expect(taskBoard.column(before)).toHaveCount(0)
+
+    await taskBoard.deleteStage(after)
+  })
+
+  test('renomme une colonne depuis son menu', async ({ taskBoard }) => {
+    const before = `Menu ${uid()}`
+    const after = `${before} (ok)`
+
+    await taskBoard.addStage(before)
+    await taskBoard.openStageMenu(before)
+    await taskBoard.page.getByRole('menuitem', { name: 'Renommer' }).click()
+
+    // Champ prêt à la saisie, nom sélectionné
+    const input = taskBoard.page.getByTestId('stage-edit-input')
+    await expect(input).toBeFocused()
+    await input.fill(after)
+    await input.press('Enter')
+
+    await expect(taskBoard.column(after)).toHaveCount(1)
+    await expect(taskBoard.column(before)).toHaveCount(0)
+    await taskBoard.page.reload()
+    await expect(taskBoard.column(after)).toHaveCount(1)
 
     await taskBoard.deleteStage(after)
   })
@@ -180,6 +203,8 @@ test.describe('Suppression de colonne', () => {
 
     await taskBoard.deleteStage(stage)
     await expect(taskBoard.confirmPopup).toContainText(`Supprimer la liste « ${stage} » ? Sa tâche sera archivée.`)
+    // Bulle ancrée sur le bouton ⋮, bien qu'ouverte après la fermeture du menu
+    await expectAnchoredTo(taskBoard.confirmPopup, taskBoard.column(stage).getByTestId('btn-stage-menu'))
     await taskBoard.confirmAcceptButton.click()
 
     // La colonne disparaît…

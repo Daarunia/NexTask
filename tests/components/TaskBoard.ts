@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test'
 
 /**
- * Objet page du tableau Kanban et de l'écran de tâche (TaskDialog).
+ * Objet page du tableau Kanban et de l'écran de tâche (KanbanTaskDialog).
  *
  * Regroupe le ciblage et les gestes de l'écran de tâche : ouverture en
  * création / édition depuis une colonne, remplissage des champs, sauvegarde,
@@ -10,7 +10,7 @@ import { Page, Locator, expect } from '@playwright/test'
 export class TaskBoard {
   readonly page: Page
 
-  // Écran de tâche (TaskDialog)
+  // Écran de tâche (KanbanTaskDialog)
   readonly dialog: Locator
   readonly titleInput: Locator
   readonly titleError: Locator
@@ -29,6 +29,12 @@ export class TaskBoard {
   readonly confirmPopup: Locator
   readonly confirmAcceptButton: Locator
   readonly confirmRejectButton: Locator
+
+  // Bulle de la checklist d'une carte, ouverte par son badge (une seule à la fois)
+  readonly cardChecklistPopover: Locator
+
+  // Menu contextuel des cartes (clic droit), partagé par tout le tableau
+  readonly cardMenu: Locator
 
   /**
    * Constructeur
@@ -58,6 +64,9 @@ export class TaskBoard {
     this.confirmPopup = page.getByTestId('confirm-popup')
     this.confirmAcceptButton = page.getByTestId('btn-confirm-accept')
     this.confirmRejectButton = page.getByTestId('btn-confirm-reject')
+
+    this.cardChecklistPopover = page.getByTestId('card-checklist-popover')
+    this.cardMenu = page.getByTestId('card-menu')
   }
 
   /**
@@ -68,6 +77,26 @@ export class TaskBoard {
     return this.page.getByTestId('stage-column').filter({
       has: this.page.getByRole('heading', { name, exact: true }),
     })
+  }
+
+  /**
+   * Colonne repliée, repérée par le nom porté par sa bande.
+   * @param name Nom de la colonne
+   */
+  collapsedColumn(name: string): Locator {
+    return this.page.getByTestId('stage-column').filter({
+      has: this.page.getByRole('button', { name: `Déplier la liste ${name}`, exact: true }),
+    })
+  }
+
+  /**
+   * Replie une colonne depuis son menu.
+   * @param name Nom de la colonne
+   */
+  async collapseStage(name: string) {
+    await this.openStageMenu(name)
+    await this.page.getByRole('menuitem', { name: 'Replier la liste' }).click()
+    await expect(this.collapsedColumn(name)).toHaveCount(1)
   }
 
   /**
@@ -115,6 +144,65 @@ export class TaskBoard {
     const chip = this.taskCardTag(title, tagName)
     await chip.hover()
     await chip.getByTestId('task-card-tag-remove').click()
+  }
+
+  /**
+   * Clique sur un bouton du dialogue de tâche une fois le défilement retombé.
+   * Playwright fait défiler le dialogue pour amener le bouton en vue (petit écran
+   * de la CI), et l'événement de défilement, livré à l'image suivante,
+   * refermerait aussitôt la bulle de confirmation ouverte par ce clic.
+   * @param button Bouton du dialogue
+   */
+  async clickSettled(button: Locator) {
+    await button.scrollIntoViewIfNeeded()
+    await this.page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+    await button.click()
+  }
+
+  /**
+   * Ferme le dialogue de tâche sans enregistrer, par Annuler ou la croix, en
+   * confirmant l'abandon si une saisie est en cours.
+   * @param button Bouton de fermeture, Annuler par défaut
+   */
+  async discardDialog(button: Locator = this.cancelButton) {
+    // Bouton recliqué si la bulle s'est refermée avant le clic sur « Abandonner »
+    await expect(async () => {
+      if (await this.dialog.isHidden()) return
+      if (!(await this.confirmPopup.isVisible())) await this.clickSettled(button)
+      if (await this.confirmPopup.isVisible()) await this.confirmAcceptButton.click({ timeout: 2000 })
+      await expect(this.dialog).toBeHidden({ timeout: 1000 })
+    }).toPass({ timeout: 20000 })
+  }
+
+  /**
+   * Ouvre le menu contextuel d'une carte par un clic droit sur son titre.
+   * @param title Titre exact de la tâche
+   */
+  async openCardMenu(title: string) {
+    await this.taskCard(title).getByTestId('task-card-open').click({ button: 'right' })
+    await expect(this.cardMenu).toBeVisible()
+  }
+
+  /**
+   * Entrée du menu contextuel ouvert, sous-menu compris.
+   * @param name Libellé exact
+   */
+  cardMenuItem(name: string): Locator {
+    return this.cardMenu.getByRole('menuitem', { name, exact: true })
+  }
+
+  /**
+   * Déplace une carte en bas d'une autre colonne par son menu contextuel.
+   * @param title Titre exact de la tâche
+   * @param columnName Colonne d'arrivée
+   */
+  async moveCardTo(title: string, columnName: string) {
+    await this.openCardMenu(title)
+    await this.cardMenuItem('Déplacer vers').hover()
+    await this.cardMenuItem(columnName).click()
+    await expect(this.cardMenu).toBeHidden()
   }
 
   /**
@@ -215,6 +303,30 @@ export class TaskBoard {
    */
   cardDescriptionIcon(title: string): Locator {
     return this.taskCard(title).getByTestId('task-card-description')
+  }
+
+  /**
+   * Badge d'avancement de la checklist d'une carte (« 2/3 »), absent sans point.
+   * @param title Titre exact de la tâche
+   */
+  cardChecklistBadge(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-checklist')
+  }
+
+  /**
+   * Bouton du badge de checklist d'une carte, qui ouvre la bulle des points.
+   * @param title Titre exact de la tâche
+   */
+  cardChecklistButton(title: string): Locator {
+    return this.taskCard(title).getByTestId('btn-card-checklist')
+  }
+
+  /**
+   * Case d'un point dans la bulle de checklist d'une carte, repérée par le texte du point.
+   * @param text Texte exact du point
+   */
+  cardChecklistCheck(text: string): Locator {
+    return this.cardChecklistPopover.getByRole('checkbox', { name: text, exact: true })
   }
 
   /**
@@ -375,7 +487,7 @@ export class TaskBoard {
    * @param columnName Nom de la colonne
    */
   async columnTaskTitles(columnName: string): Promise<string[]> {
-    const titles = await this.column(columnName).getByTestId('task-card').locator('strong').allInnerTexts()
+    const titles = await this.column(columnName).getByTestId('task-card-open').allInnerTexts()
     return titles.map((t) => t.trim())
   }
 

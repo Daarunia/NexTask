@@ -20,6 +20,7 @@ test.describe('Sommaire des Paramètres', () => {
       'Notifications',
       'Démarrage et arrière-plan',
       'Organisation et données',
+      'Raccourcis clavier',
       'À propos',
     ])
     await expect(settingsPage.navItem('Apparence')).toHaveAttribute('aria-current', 'location')

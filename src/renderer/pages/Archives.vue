@@ -12,9 +12,8 @@
           @click="goSettings"
         />
         <h1 class="text-2xl">{{ t('archives.title') }}</h1>
-        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{
-          visibleTasks.length
-        }}</span>
+        <!-- Nombre de tâches, sur le total pendant une recherche -->
+        <span v-if="status === 'ready'" data-testid="archives-count" class="archives-count">{{ countLabel }}</span>
       </div>
 
       <template v-if="status === 'ready'">
@@ -22,10 +21,25 @@
           {{ t('archives.empty') }}
         </p>
 
+        <!-- Recherche dans le titre, la description et les points de la checklist, comme au tableau -->
+        <InputText
+          v-else
+          v-model="query"
+          data-testid="archives-search"
+          type="search"
+          :placeholder="t('archives.search')"
+          :aria-label="t('archives.search')"
+          spellcheck="false"
+        />
+
+        <p v-if="visibleTasks.length && !shownTasks.length" data-testid="archives-no-match" class="archives-muted">
+          {{ t('archives.noMatch') }}
+        </p>
+
         <!-- De la plus récemment archivée à la plus ancienne (ordre du serveur) -->
-        <ul v-else class="flex flex-col gap-2">
+        <ul v-if="shownTasks.length" class="flex flex-col gap-2">
           <li
-            v-for="task in visibleTasks"
+            v-for="task in shownTasks"
             :key="task.id"
             data-testid="archived-task"
             :data-task-id="task.id"
@@ -33,7 +47,26 @@
           >
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex min-w-0 items-center gap-2">
-                <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+                <!-- Titre dépliant le détail (description, points), s'il y en a un -->
+                <button
+                  v-if="hasDetails(task)"
+                  type="button"
+                  data-testid="archived-task-toggle"
+                  class="archived-toggle"
+                  :aria-expanded="expandedIds.has(task.id)"
+                  :aria-controls="`archived-details-${task.id}`"
+                  @click="toggleDetails(task.id)"
+                >
+                  <i
+                    :class="['pi text-xs', expandedIds.has(task.id) ? 'pi-chevron-down' : 'pi-chevron-right']"
+                    aria-hidden="true"
+                  ></i>
+                  <strong data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+                </button>
+                <strong v-else data-testid="archived-task-title" class="truncate">{{ task.title }}</strong>
+
+                <!-- Avancement de la checklist, gardée telle quelle à l'archivage, comme sur les cartes -->
+                <ChecklistBadge data-testid="archived-task-checklist" :checklist="task.checklist" />
 
                 <!-- Occurrence d'une tâche récurrente, comme sur les cartes du tableau -->
                 <i
@@ -62,7 +95,7 @@
               </div>
             </div>
 
-            <div class="flex shrink-0 gap-1">
+            <div class="flex shrink-0 gap-1 self-start">
               <Button
                 data-testid="btn-restore-task"
                 icon="pi pi-replay"
@@ -86,6 +119,37 @@
                 :disabled="busyIds.has(task.id)"
                 @click="deleteWithUndo(task)"
               />
+            </div>
+
+            <!-- Détail déplié, en lecture seule : description sans la syntaxe Markdown, puis les points -->
+            <div
+              v-if="expandedIds.has(task.id)"
+              :id="`archived-details-${task.id}`"
+              data-testid="archived-task-details"
+              class="archived-details"
+            >
+              <p
+                v-if="hasDescription(task.description)"
+                data-testid="archived-task-description"
+                class="whitespace-pre-line"
+              >
+                {{ descriptionExcerpt(task.description, Infinity) }}
+              </p>
+              <ul v-if="task.checklist?.items.length" class="flex flex-col gap-1">
+                <li
+                  v-for="item in task.checklist.items"
+                  :key="item.id"
+                  data-testid="archived-task-item"
+                  :data-checked="item.isChecked"
+                  :class="['archived-item', { checked: item.isChecked }]"
+                >
+                  <!-- Case en lecture seule, son état est annoncé avec le texte du point -->
+                  <label class="flex items-start gap-2">
+                    <input type="checkbox" :checked="item.isChecked" disabled />
+                    <span>{{ item.text }}</span>
+                  </label>
+                </li>
+              </ul>
             </div>
           </li>
         </ul>
@@ -118,14 +182,18 @@ const pendingDeletions = reactive(new Set<number>())
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import TagChip from '../components/TagChip.vue'
+import ChecklistBadge from '../components/ChecklistBadge.vue'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import type { Tag } from '../types/tag.types'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
+import { searchTerms, taskMatchesFilter } from '../utils/search.helper'
+import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
 import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
 import { getLogger } from '../utils/logger'
 import { httpStatus } from '../utils/api.helper'
@@ -144,10 +212,40 @@ const tagStore = useTagStore()
 // Tâches affichées : sans celles dont la suppression est en attente
 const visibleTasks = computed(() => tasks.value.filter((task) => !pendingDeletions.has(task.id)))
 
+// Recherche, vidée en quittant la page
+const query = ref('')
+const terms = computed(() => searchTerms(query.value))
+
+// Tâches qui contiennent tous les mots recherchés
+const shownTasks = computed(() => visibleTasks.value.filter((task) => taskMatchesFilter(task, terms.value, [])))
+
+const countLabel = computed(() =>
+  terms.value.length ? `${shownTasks.value.length}/${visibleTasks.value.length}` : String(visibleTasks.value.length),
+)
+
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
 // Tâches dont la restauration ou la suppression est en cours
 const busyIds = reactive(new Set<number>())
+
+// Tâches dont le détail est déplié
+const expandedIds = reactive(new Set<number>())
+
+/**
+ * Vrai si la tâche a un détail à déplier (description ou points de checklist).
+ * @param task Tâche archivée
+ */
+function hasDetails(task: Task): boolean {
+  return hasDescription(task.description) || !!task.checklist?.items.length
+}
+
+/**
+ * Déplie ou replie le détail d'une tâche.
+ * @param id Id de la tâche
+ */
+function toggleDetails(id: number) {
+  if (!expandedIds.delete(id)) expandedIds.add(id)
+}
 
 /**
  * Charge les tâches archivées, et relit les tags (nom, couleur) de leurs chips
@@ -291,12 +389,53 @@ async function deletePermanently(task: Task) {
 @reference "tailwindcss";
 
 .archived-task {
-  @apply flex items-center gap-3 rounded-lg p-3;
+  @apply flex flex-wrap items-center gap-3 rounded-lg p-3;
   background-color: var(--p-surface-200);
 }
 
 .app-dark .archived-task {
   background-color: var(--p-surface-900);
+}
+
+/* Titre cliquable sans habillage de bouton */
+.archived-toggle {
+  @apply flex min-w-0 cursor-pointer items-center gap-2 rounded p-0 text-left;
+  background: none;
+  border: none;
+  color: inherit;
+}
+
+.archived-toggle:hover strong {
+  @apply underline;
+}
+
+.archived-toggle:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 2px;
+}
+
+/* Détail sous la ligne, sur toute sa largeur */
+.archived-details {
+  @apply flex basis-full flex-col gap-2 border-t pt-2 text-sm;
+  border-color: var(--p-content-border-color);
+  overflow-wrap: anywhere;
+}
+
+.archived-item {
+  @apply flex items-start gap-2;
+}
+
+.archived-item input {
+  @apply mt-1;
+  accent-color: var(--p-primary-color);
+}
+
+.archived-item.checked {
+  color: var(--p-text-muted-color);
+}
+
+.archived-item.checked span {
+  @apply line-through;
 }
 
 .archives-muted {

@@ -7,6 +7,7 @@ import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '..
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
+import { withSavedItem } from '../utils/checklist.helper'
 
 /**
  * Restauration d'une tâche archivée : la tâche remise au tableau, et
@@ -148,6 +149,15 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Archive plusieurs tâches en une requête (toutes celles d'une colonne),
+     * par le batch qui gère les séries comme l'archivage d'une seule tâche
+     * @param ids Ids des tâches
+     */
+    async archiveTasks(ids: number[]): Promise<void> {
+      await this.updateTaskBatch(ids.map((id) => ({ id, isHistorized: true, stageId: null })))
+    },
+
+    /**
      * Tâches archivées, de la plus récemment archivée à la plus ancienne.
      * Lues à chaque appel, sans cache : elles ne s'affichent que sur la page
      * des archives, et GET /stages (qui remplit le cache) ne les renvoie pas.
@@ -239,15 +249,34 @@ export const useTaskStore = defineStore('task', {
      * (haut ou bas de la colonne) sont choisies par le serveur selon les paramètres
      * @param title Titre de la tâche
      * @param stageId Colonne (la première si elle n'existe plus)
+     * @param checklistTemplateId Modèle de checklist dont les points sont copiés dans la tâche
      * @returns La tâche créée
      */
-    async quickAddTask(title: string, stageId?: number): Promise<Task> {
+    async quickAddTask(title: string, stageId?: number, checklistTemplateId?: number): Promise<Task> {
       try {
-        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId })
+        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId, checklistTemplateId })
         this.insertCachedTask(task)
         return task
       } catch (error) {
         getLogger().error("Erreur lors de l'ajout rapide d'une tâche :", error)
+        throw error
+      }
+    },
+
+    /**
+     * Duplique une tâche du tableau juste sous l'originale (tags, description,
+     * date de début et points de checklist décochés), puis l'ajoute au cache
+     * @param id Id de la tâche dupliquée
+     * @param title Titre de la copie
+     * @returns La copie, placée par le serveur
+     */
+    async duplicateTask(id: number, title: string): Promise<Task> {
+      try {
+        const copy = await api.post<Task>(`/tasks/${id}/duplicate`, { title })
+        this.insertCachedTask(copy)
+        return copy
+      } catch (error) {
+        getLogger().error(`Erreur lors de la duplication de la tâche ${id} :`, error)
         throw error
       }
     },
@@ -284,8 +313,9 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Création d'une tâche
-     * @param task Tâche à créer (tags par nom)
-     * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus)
+     * @param task Tâche à créer (tags par nom, points de checklist sans id)
+     * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus,
+     *   checklist avec les ids des points créés)
      */
     async saveTask(task: TaskInput): Promise<Task> {
       try {
@@ -305,9 +335,11 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Mise à jour complète d'une tâche
-     * @param task Tâche avec un id existant (tags par nom, absents = inchangés)
+     * @param task Tâche avec un id existant (tags par nom, absents = inchangés,
+     *   de même pour les points de checklist)
      * @returns La tâche mise à jour, telle que renvoyée par le serveur (seule à
-     *   contenir les tags résolus), ou une erreur si la mise à jour échoue
+     *   contenir les tags résolus et les ids des nouveaux points, repris par le
+     *   cache), ou une erreur si la mise à jour échoue
      */
     async updateTask(task: TaskUpdateInput): Promise<Task> {
       const { id, ...payload } = task
@@ -325,9 +357,28 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
-     * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
-     * @param tag Tag mis à jour
+     * Change la date de début d'une tâche depuis sa carte, sans toucher au
+     * modèle de sa série. Le serveur réarme le rappel d'une date repoussée.
+     * @param id Id de la tâche
+     * @param startDate Nouvelle date, `null` pour la retirer
+     * @returns La tâche mise à jour
      */
+    async setTaskStartDate(id: number, startDate: Date | null): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { startDate, applyToSeries: false })
+        this.patchCachedTask(id, {
+          startDate: updatedTask.startDate,
+          notifiedAt: updatedTask.notifiedAt,
+          updatedAt: updatedTask.updatedAt,
+        })
+
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors du changement de date de la tâche ${id} :`, error)
+        throw error
+      }
+    },
+
     /**
      * Remplace les tags d'une tâche (retrait direct depuis une carte)
      * @param id Id de la tâche
@@ -346,6 +397,34 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
+    /**
+     * Coche ou décoche un point de checklist depuis la carte, sans renvoyer
+     * toute la liste. Seul ce point est repris dans le cache, deux coches
+     * envoyées coup sur coup ne s'écrasent pas quel que soit l'ordre des réponses.
+     * @param taskId Id de la tâche
+     * @param itemId Id du point
+     * @param isChecked Nouvel état du point
+     * @returns La tâche mise à jour, avec sa checklist telle qu'en base (dates de coche fixées par le serveur)
+     */
+    async setChecklistItemChecked(taskId: number, itemId: number, isChecked: boolean): Promise<Task> {
+      try {
+        const updatedTask = await api.patch<Task>(`/tasks/${taskId}/checklist/items/${itemId}`, { isChecked })
+        const saved = updatedTask.checklist?.items.find((item) => item.id === itemId)
+        const cached = this.allEntities?.data.find((task) => task.id === taskId)?.checklist
+        if (saved && cached) {
+          this.patchCachedTask(taskId, { checklist: withSavedItem(cached, saved), updatedAt: updatedTask.updatedAt })
+        }
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de la coche du point ${itemId} de la tâche ${taskId} :`, error)
+        throw error
+      }
+    },
+
+    /**
+     * Répercute l'édition d'un tag (nom, couleur) sur les tâches du cache qui le portent
+     * @param tag Tag mis à jour
+     */
     patchTagInTasks(tag: Tag) {
       if (!this.allEntities) return
 
@@ -376,9 +455,12 @@ export const useTaskStore = defineStore('task', {
     /**
      * Mise à jour partielle d'un ensemble de tâches
      * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés).
-     *   Les tags ne passent pas par ce batch : l'API les refuse.
+     *   Les tags ne passent pas par ce batch : l'API les refuse. `stageId` null retire la
+     *   tâche de sa colonne, comme un archivage.
      */
-    async updateTaskBatch(tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags'>>>): Promise<void> {
+    async updateTaskBatch(
+      tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId'>> & { stageId?: number | null }>,
+    ): Promise<void> {
       if (!tasks.length) return
 
       try {

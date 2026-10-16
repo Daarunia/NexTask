@@ -141,6 +141,9 @@ export const exportedRecurrenceSchema = {
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
     tagIds: { type: 'array', items: { type: 'integer' } },
+    // Textes des points du modèle, absents des exports antérieurs aux checklists. Pas de
+    // limite ici, un texte trop long ou un point de trop ne doit pas refuser tout l'import
+    checklistItems: { type: 'array', items: { type: 'string' } },
   },
   required: ['id', 'frequency', 'interval', 'time', 'startsAt', 'endType', 'status', 'title', 'description', 'version'],
 }

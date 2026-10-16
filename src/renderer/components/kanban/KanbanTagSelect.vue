@@ -119,7 +119,7 @@
 
         <div class="flex flex-col gap-1">
           <!-- Input natif aux classes PrimeVue : un InputText s'enregistrerait auprès du
-               FormField « tags » du TaskDialog et écraserait la valeur du formulaire -->
+               FormField « tags » du KanbanTaskDialog et écraserait la valeur du formulaire -->
           <input
             ref="editNameRef"
             v-model="editName"
@@ -186,24 +186,24 @@
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import Popover from 'primevue/popover'
 import Button from 'primevue/button'
-import TagChip from './TagChip.vue'
-import TagColorOptions from './TagColorOptions.vue'
-import { useTagStore } from '../stores/Tag'
-import { Tag, TagColor, TagSelection } from '../types/tag.types'
-import { TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
-import { getLogger } from '../utils/logger'
-import { useErrorToast } from '../utils/toast.helper'
+import TagChip from '../TagChip.vue'
+import TagColorOptions from '../TagColorOptions.vue'
+import { useTagStore } from '../../stores/Tag'
+import { Tag, TagColor, TagSelection } from '../../types/tag.types'
+import { TAG_NAME_MAX_LENGTH } from '../../../main/shared/validation.constants'
+import { getLogger } from '../../utils/logger'
+import { useErrorToast } from '../../utils/toast.helper'
 import {
   renameRejection,
   sameTagName as sameName,
   tagDeleteQuestion,
   tagUsageLabel,
   validateTagName,
-} from '../utils/tag.helper'
+} from '../../utils/tag.helper'
 import { useI18n } from 'vue-i18n'
 
 /**
- * Sélecteur de tags façon Notion, branché au formulaire de TaskDialog.
+ * Sélecteur de tags façon Notion, branché au formulaire de KanbanTaskDialog.
  *
  * La valeur est une liste de `TagSelection`, chaque tag par son id (nom et
  * couleur lus dans le store). « Créer « xxx » » crée le tag immédiatement en
@@ -657,7 +657,7 @@ async function sendRename(tag: Tag, name: string, inline: boolean): Promise<bool
  * Termine tout ce qui est en cours puis renvoie la sélection finale : enregistre
  * le renommage saisi dans la vue édition, attend les créations (sélection
  * comprise) et toutes les éditions de tags, puis le rendu qui propage la valeur.
- * Appelé par TaskDialog avant d'enregistrer la tâche : rien ne garantit que la
+ * Appelé par KanbanTaskDialog avant d'enregistrer la tâche : rien ne garantit que la
  * fermeture du popover (clic extérieur) passe avant la soumission, ni qu'un
  * tag créé juste avant le Save soit déjà sélectionné, et les valeurs de
  * soumission du formulaire sont figées au clic.

@@ -96,6 +96,7 @@
           <div class="nav-links">
             <a href="#features">Features</a>
             <a href="#recurring">Recurring tasks</a>
+            <a href="#checklists">Checklists</a>
             <a class="keep" href="https://github.com/Daarunia/NexTask">GitHub</a>
           </div>
         </nav>
@@ -125,9 +126,9 @@
             <source media="(prefers-color-scheme: dark)" srcset="screenshots/board-dark.png" />
             <img
               src="screenshots/board-light.png"
-              width="1640"
+              width="1700"
               height="741"
-              alt="NexTask Kanban board with four columns, tasks with colored tags and recurring tasks"
+              alt="NexTask Kanban board with four columns, tasks with colored tags, checklist progress and recurring tasks"
             />
           </picture>
         </div>
@@ -159,7 +160,33 @@
                 </svg>
               </div>
               <h3>Kanban board</h3>
-              <p>Name your own columns and drag tasks and columns around until the board matches how you work.</p>
+              <p>
+                Name your own columns and drag tasks and columns around until the board matches how you work. Right
+                click a card to move or duplicate it, and collapse the columns you rarely look at.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m3 7 2 2 4-4" />
+                  <path d="m3 17 2 2 4-4" />
+                  <path d="M13 6h8M13 12h8M13 18h8" />
+                </svg>
+              </div>
+              <h3>Checklists</h3>
+              <p>
+                Split a task into steps, follow its progress and tick items right on the card. Save the lists you repeat
+                as templates.
+              </p>
             </article>
 
             <article class="card">
@@ -304,11 +331,62 @@
           <div class="shot-tall">
             <img
               src="screenshots/task-dialog.png"
-              width="448"
-              height="1080"
+              width="672"
+              height="854"
               loading="lazy"
-              alt="NexTask task editor showing a weekly recurrence every Friday"
+              alt="NexTask task editor with a checklist and a weekly recurrence every Friday"
             />
+          </div>
+        </div>
+      </section>
+
+      <section id="checklists">
+        <div class="wrap split">
+          <div>
+            <h2>Checklists for the steps you never skip</h2>
+            <p class="lead lead-left">
+              Break a task into steps, tick them off right on its card, and keep the lists you repeat as templates.
+            </p>
+            <ul>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span
+                  ><strong>Progress at a glance.</strong> Each card shows how many items are done, and turns green once
+                  they all are.</span
+                >
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span><strong>Tick without opening.</strong> Check items straight from the card on the board.</span>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span
+                  ><strong>Reusable templates.</strong> A release, a trip, a weekly review: search, reorder and
+                  duplicate them on their own page, and apply one to any task or from the quick-add window.</span
+                >
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="#i-check" /></svg>
+                <span
+                  ><strong>Found by search.</strong> Tasks match on their checklist items, and a quick filter lists the
+                  unfinished ones.</span
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="window window-inline">
+            <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="screenshots/checklists-dark.png" />
+              <img
+                src="screenshots/checklists-light.png"
+                width="1060"
+                height="500"
+                loading="lazy"
+                alt="NexTask checklist templates page with a Release template and its six items"
+              />
+            </picture>
           </div>
         </div>
       </section>

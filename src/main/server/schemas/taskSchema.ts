@@ -1,5 +1,6 @@
 import { tagSchema } from './tagSchema.js'
 import { taskRecurrenceSchema } from './recurrenceSchema.js'
+import { taskChecklistSchema } from './checklistSchema.js'
 
 export const taskSchema = {
   type: 'object',
@@ -28,5 +29,9 @@ export const taskSchema = {
     recurrenceId: { type: ['integer', 'null'] },
     occurrenceDate: { type: ['string', 'null'], format: 'date-time' },
     recurrence: taskRecurrenceSchema,
+    // Checklist de la tâche avec ses points triés, null sans point. À déclarer
+    // ici, comme les tags, sinon Fastify la retire de toutes les réponses
+    // (GET /stages compris).
+    checklist: taskChecklistSchema,
   },
 }

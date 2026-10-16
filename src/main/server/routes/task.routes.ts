@@ -4,7 +4,15 @@ import { taskSchema } from '../schemas/taskSchema.js'
 import { tagNameSchema } from '../schemas/tagSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { nullableRecurrenceInputSchema, recurrenceInputSchema } from '../schemas/recurrenceSchema.js'
+import { taskChecklistItemsSchema } from '../schemas/checklistSchema.js'
 import { resolveTagIds } from '../helpers/tag.helper.js'
+import {
+  sameChecklistTexts,
+  setTaskChecklistItemChecked,
+  syncTaskChecklist,
+  templateChecklistInput,
+  taskChecklistTexts,
+} from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
   createSeries,
@@ -16,6 +24,7 @@ import {
 } from '../helpers/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
 import type { RecurrenceInput } from '../../shared/recurrence.constants.js'
+import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from 'electron-log'
 
 // Noms des tags d'une tâche, rapprochés ou créés par le serveur (cf. tag.helper)
@@ -25,7 +34,11 @@ const taskTagsBody = {
 }
 
 /** Corps de POST /tasks, une fois validé par Fastify. */
-type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags'> & { tags?: string[]; recurrence?: RecurrenceInput }
+type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags' | 'checklist'> & {
+  tags?: string[]
+  recurrence?: RecurrenceInput
+  checklistItems?: ChecklistItemInput[]
+}
 
 /**
  * Réponse de POST /tasks/:id/restore : la tâche restaurée, et l'id de
@@ -57,10 +70,11 @@ function withArchiveDate<T extends { isHistorized?: unknown; historizationDate?:
 }
 
 /** Corps de PATCH /tasks/:id, une fois validé par Fastify. */
-type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags'> & {
+type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags' | 'checklist'> & {
   tags?: string[]
   recurrence?: RecurrenceInput | null
   applyToSeries?: boolean
+  checklistItems?: ChecklistItemInput[]
 }
 
 /**
@@ -218,7 +232,10 @@ export default async function taskRoutes(fastify) {
    * Les tags sont transmis par leur nom : les noms connus (sans tenir compte
    * de la casse) sont réutilisés, les autres créés. Avec `recurrence`, la
    * tâche est la première occurrence d'une nouvelle série (date de début
-   * obligatoire). Tags, tâche et série sont écrits dans une même transaction.
+   * obligatoire). Avec `checklistItems`, la tâche naît avec sa checklist,
+   * textes nettoyés et vides retirés, les points cochés datés de maintenant
+   * (cf. planChecklistSync). Tags, tâche, checklist et série sont écrits dans
+   * une même transaction.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
@@ -230,9 +247,10 @@ export default async function taskRoutes(fastify) {
    * @param {string|null} [req.body.startDate] - Date de début
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche
    * @param {Object} [req.body.recurrence] - Règle de répétition (cf. RecurrenceInput)
+   * @param {Object[]} [req.body.checklistItems] - Points de la checklist, dans l'ordre (cf. ChecklistItemInput)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags et sa série,
-   *   400 si la règle de répétition est incohérente
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags, sa checklist et sa série,
+   *   400 si la règle de répétition est incohérente ou si un point est invalide
    */
   fastify.post(
     '/tasks',
@@ -251,6 +269,7 @@ export default async function taskRoutes(fastify) {
             startDate: { type: ['string', 'null'], format: 'date-time' },
             tags: taskTagsBody,
             recurrence: recurrenceInputSchema,
+            checklistItems: taskChecklistItemsSchema,
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
@@ -258,7 +277,7 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const { tags, recurrence, ...data } = req.body as TaskCreateBody
+      const { tags, recurrence, checklistItems, ...data } = req.body as TaskCreateBody
 
       if (recurrence) {
         const problem = recurrenceInputProblem(recurrence, data.startDate ? new Date(data.startDate) : null)
@@ -268,13 +287,17 @@ export default async function taskRoutes(fastify) {
         }
       }
 
+      const now = new Date()
+
       return prisma.$transaction(async (tx) => {
         const tagIds = tags ? await resolveTagIds(tx, tags) : []
         const task = await tx.task.create({
           data: { ...data, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
         })
 
-        if (recurrence) await createSeries(tx, task, recurrence, tagIds, new Date())
+        // Checklist écrite avant la série, qui pourra en reprendre les textes
+        await syncTaskChecklist(tx, task.id, checklistItems, now)
+        if (recurrence) await createSeries(tx, task, recurrence, tagIds, now)
 
         return tx.task.findUniqueOrThrow({ where: { id: task.id }, include: taskInclude })
       })
@@ -290,6 +313,12 @@ export default async function taskRoutes(fastify) {
    * Sinon la tâche porte exactement les tags nommés, rapprochés ou créés
    * comme pour POST /tasks, dans la même transaction que la mise à jour.
    *
+   * Pour la checklist, `checklistItems` absent la laisse inchangée, `[]` la supprime
+   * avec tous ses points. Sinon la liste envoyée la remplace, dans l'ordre. Un
+   * point avec l'id d'un point de la tâche est modifié, un point sans id
+   * (ou avec un id étranger à la tâche) est créé, un point absent est
+   * supprimé. Le serveur date la coche (`checkedAt`), cf. planChecklistSync.
+   *
    * Répétition :
    * - `recurrence` absent laisse la série inchangée ;
    * - un objet crée une série dont la tâche est la première occurrence, ou
@@ -298,7 +327,9 @@ export default async function taskRoutes(fastify) {
    * - `null` arrête sa série, dont les occurrences sont conservées.
    * Avec `applyToSeries` (par défaut), le contenu modifié (titre, description,
    * version, tags, colonne) est aussi reporté sur le modèle des prochaines
-   * occurrences. Les occurrences existantes ne changent pas.
+   * occurrences. Les textes des points de la checklist le sont s'ils ont
+   * changé (point ajouté, retiré, renommé ou déplacé), jamais une simple
+   * coche. Les occurrences existantes ne changent pas.
    *
    * Archivage (`isHistorized: true`, daté de maintenant sans
    * `historizationDate`) et désarchivage d'une occurrence d'une série « après
@@ -310,11 +341,13 @@ export default async function taskRoutes(fastify) {
    * @param {number} req.params.id - ID de la tâche
    * @param {Object} req.body - Données à mettre à jour
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche (remplacent les actuels)
+   * @param {Object[]} [req.body.checklistItems] - Points de la checklist (remplacent les actuels)
    * @param {Object|null} [req.body.recurrence] - Règle de répétition, null pour arrêter la série
    * @param {boolean} [req.body.applyToSeries] - Reporter le contenu sur le modèle de la série (défaut : true)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags et sa série,
-   *   400 si la règle de répétition est incohérente, 404 si la tâche n'existe pas,
+   * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags, sa checklist
+   *   et sa série, 400 si la règle de répétition est incohérente ou si un point est invalide,
+   *   404 si la tâche n'existe pas,
    *   500 pour toute autre erreur
    */
   fastify.patch(
@@ -342,6 +375,7 @@ export default async function taskRoutes(fastify) {
             tags: taskTagsBody,
             recurrence: nullableRecurrenceInputSchema,
             applyToSeries: { type: 'boolean' },
+            checklistItems: taskChecklistItemsSchema,
           },
         },
         response: {
@@ -354,7 +388,7 @@ export default async function taskRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
-      const { tags, recurrence, applyToSeries = true, ...data } = req.body as TaskUpdateBody
+      const { tags, recurrence, applyToSeries = true, checklistItems, ...data } = req.body as TaskUpdateBody
       const now = new Date()
 
       // Si la startDate est repoussée dans le futur, on réarme la notification.
@@ -394,11 +428,21 @@ export default async function taskRoutes(fastify) {
             },
           })
 
+          // Textes des points d'une occurrence avant l'enregistrement de sa checklist, car seul
+          // un changement de textes part dans le modèle de la série, jamais une coche
+          const previousTexts =
+            checklistItems !== undefined && current.recurrence ? await taskChecklistTexts(tx, id) : undefined
+
+          // Checklist remplacée avant la série, qui pourra en reprendre les textes
+          await syncTaskChecklist(tx, id, checklistItems, now)
+
           // Série arrêtée, modifiée ou créée, modèle et attente d'archivage à jour
           const sent = {
             title: data.title !== undefined,
             description: data.description !== undefined,
             version: data.version !== undefined,
+            checklistItems:
+              previousTexts !== undefined && !sameChecklistTexts(previousTexts, await taskChecklistTexts(tx, id)),
           }
           await onTaskUpdated(tx, { current, task, recurrence, startDate, applyToSeries, sent, tagIds }, now)
 
@@ -416,6 +460,64 @@ export default async function taskRoutes(fastify) {
         reply.code(500)
         return { error: 'Impossible de mettre à jour la tâche' }
       }
+    },
+  )
+
+  /**
+   * PATCH /tasks/:id/checklist/items/:itemId
+   *
+   * Coche ou décoche un seul point de la checklist d'une tâche, depuis la
+   * carte du tableau, sans renvoyer toute la liste. Une coche ne part jamais
+   * dans le modèle d'une série (seuls les textes y vont), la série n'est donc
+   * pas touchée.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID de la tâche
+   * @param {number} req.params.itemId - ID du point
+   * @param {Object} req.body - Corps de la requête
+   * @param {boolean} req.body.isChecked - Nouvel état du point
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task à jour avec sa checklist,
+   *   404 si la tâche n'existe pas ou si le point n'est pas dans sa checklist
+   */
+  fastify.patch(
+    '/tasks/:id/checklist/items/:itemId',
+    {
+      schema: {
+        description: "Coche ou décoche un point de la checklist d'une tâche",
+        tags: ['Task'],
+        params: {
+          type: 'object',
+          properties: { id: { type: 'integer' }, itemId: { type: 'integer' } },
+          required: ['id', 'itemId'],
+        },
+        body: {
+          type: 'object',
+          properties: { isChecked: { type: 'boolean' } },
+          required: ['isChecked'],
+        },
+        response: {
+          200: taskSchema,
+          404: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { id, itemId } = req.params as { id: number; itemId: number }
+      const { isChecked } = req.body as { isChecked: boolean }
+      const now = new Date()
+
+      return prisma.$transaction(async (tx) => {
+        if (!(await setTaskChecklistItemChecked(tx, id, itemId, isChecked, now))) {
+          Logger.warn(`Point ${itemId} introuvable dans la checklist de la tâche ${id}`)
+          reply.code(404)
+          return { error: 'Point de checklist non trouvé' }
+        }
+
+        // La tâche compte comme modifiée, comme après un enregistrement du dialogue
+        return tx.task.update({ where: { id }, data: { updatedAt: now }, include: taskInclude })
+      })
     },
   )
 
@@ -622,12 +724,15 @@ export default async function taskRoutes(fastify) {
    * Crée une tâche depuis la fenêtre d'ajout rapide, avec son seul titre. Le
    * serveur complète le reste à partir des paramètres : version par défaut, et
    * place en haut ou en bas de la colonne (les autres tâches descendent d'un
-   * cran pour une tâche ajoutée en haut).
+   * cran pour une tâche ajoutée en haut). Avec un modèle de checklist, ses
+   * points sont copiés dans la tâche, décochés ; un modèle supprimé entre-temps
+   * est ignoré, la tâche est créée sans checklist.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {string} req.body.title - Titre
    * @param {number} [req.body.stageId] - Colonne (la première si absente ou supprimée)
+   * @param {number} [req.body.checklistTemplateId] - Modèle de checklist à appliquer
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task créé, 409 s'il n'y a aucune colonne
    */
@@ -642,6 +747,7 @@ export default async function taskRoutes(fastify) {
           properties: {
             title: requiredLabel,
             stageId: { type: 'integer' },
+            checklistTemplateId: { type: 'integer' },
           },
           required: ['title'],
         },
@@ -652,7 +758,11 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const { title, stageId } = req.body as { title: string; stageId?: number }
+      const { title, stageId, checklistTemplateId } = req.body as {
+        title: string
+        stageId?: number
+        checklistTemplateId?: number
+      }
       const { newTaskPosition, defaultTaskVersion } = settingsStore.store
 
       return prisma.$transaction(async (tx) => {
@@ -672,13 +782,92 @@ export default async function taskRoutes(fastify) {
           position = await bottomPosition(tx, stage.id)
         }
 
+        const items = checklistTemplateId === undefined ? [] : await templateChecklistInput(tx, checklistTemplateId)
+
         const task = await tx.task.create({
           data: { title: title.trim(), version: defaultTaskVersion, description: '', stageId: stage.id, position },
-          include: taskInclude,
         })
+        await syncTaskChecklist(tx, task.id, items, new Date())
 
-        Logger.info(`Ajout rapide : tâche ${task.id} créée dans la colonne ${stage.id}`)
-        return task
+        Logger.info(`Ajout rapide : tâche ${task.id} créée dans la colonne ${stage.id} (${items.length} point(s))`)
+        return tx.task.findUniqueOrThrow({ where: { id: task.id }, include: taskInclude })
+      })
+    },
+  )
+
+  /**
+   * POST /tasks/:id/duplicate
+   *
+   * Duplique une tâche du tableau juste sous l'originale, dans la même
+   * colonne (les tâches suivantes descendent d'un cran). La copie reprend la
+   * version, la description, la date de début (et son rappel déjà envoyé, pour
+   * ne pas notifier deux fois), les tags et les textes des points de la
+   * checklist, tous décochés. Elle ne fait partie d'aucune série. Le titre est
+   * choisi par le renderer, dans la langue de l'interface.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID de la tâche à dupliquer
+   * @param {Object} req.body - Corps de la requête
+   * @param {string} req.body.title - Titre de la copie
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Task créé, 404 si la tâche
+   *   n'existe pas, 409 si elle est archivée
+   */
+  fastify.post(
+    '/tasks/:id/duplicate',
+    {
+      schema: {
+        description: 'Duplique une tâche du tableau sous l’originale',
+        tags: ['Task'],
+        params: idParam,
+        body: {
+          type: 'object',
+          properties: { title: requiredLabel },
+          required: ['title'],
+        },
+        response: {
+          200: taskSchema,
+          404: errorResponse,
+          409: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const id = Number(req.params.id)
+      const { title } = req.body as { title: string }
+
+      return prisma.$transaction(async (tx) => {
+        const source = await tx.task.findUnique({ where: { id }, include: taskInclude })
+        if (!source) {
+          reply.code(404)
+          return { error: 'Tâche non trouvée' }
+        }
+        if (source.isHistorized || source.stageId === null) {
+          reply.code(409)
+          return { error: 'Une tâche archivée ne se duplique pas' }
+        }
+
+        const position = source.position + 1
+        await makeRoomAt(tx, source.stageId, position)
+
+        const copy = await tx.task.create({
+          data: {
+            title: title.trim(),
+            version: source.version,
+            description: source.description,
+            stageId: source.stageId,
+            position,
+            startDate: source.startDate,
+            notifiedAt: source.notifiedAt,
+            tags: { connect: source.tags.map((tag) => ({ id: tag.id })) },
+          },
+        })
+        const items = (source.checklist?.items ?? []).map((item) => ({ text: item.text, isChecked: false }))
+        await syncTaskChecklist(tx, copy.id, items, new Date())
+
+        Logger.info(`Tâche ${id} dupliquée en ${copy.id} (colonne ${source.stageId}, position ${position})`)
+        return tx.task.findUniqueOrThrow({ where: { id: copy.id }, include: taskInclude })
       })
     },
   )
@@ -731,8 +920,9 @@ export default async function taskRoutes(fastify) {
               notifiedAt: { type: ['string', 'null'], format: 'date-time' },
             },
             required: ['id'],
-            // Les tags ne se modifient pas en batch : 400 plutôt qu'une erreur Prisma (500)
-            not: { required: ['tags'] },
+            // Ni les tags ni la checklist ne se modifient en batch, d'où un 400 plutôt
+            // qu'une erreur Prisma (500)
+            not: { anyOf: [{ required: ['tags'] }, { required: ['checklistItems'] }] },
           },
         },
         response: {

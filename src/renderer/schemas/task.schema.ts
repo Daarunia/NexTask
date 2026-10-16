@@ -10,6 +10,7 @@ import {
   RECURRENCE_LEAD_DAYS_MAX,
 } from '../../main/shared/recurrence.constants'
 import { startOfLocalDay } from '../../main/shared/recurrence.helper'
+import { CHECKLIST_ITEM_MAX_LENGTH, CHECKLIST_MAX_ITEMS } from '../../main/shared/checklist.constants'
 import { t } from '../i18n'
 
 // Messages d'erreur traduits à la validation (fonctions), dans la langue active à ce moment
@@ -24,7 +25,7 @@ export const RECURRENCE_PRESETS = ['none', 'daily', 'weekdays', 'weekly', 'month
 export type RecurrencePreset = (typeof RECURRENCE_PRESETS)[number]
 
 /**
- * Valeur du champ « Répéter » (cf. RecurrenceFields). Les champs de la règle
+ * Valeur du champ « Répéter » (cf. KanbanRecurrenceFields). Les champs de la règle
  * personnalisée sont gardés quel que soit le choix, mais ne sont lus et
  * contrôlés qu'avec « Personnaliser… ».
  */
@@ -112,7 +113,30 @@ const tagSelectionsSchema = z
   })
 
 /**
- * Règles de validation du formulaire de tâche (TaskDialog).
+ * Points de la checklist saisis dans le dialogue (cf. ChecklistEditorItem).
+ * `key` ne sert qu'au rendu, `id` désigne un point déjà enregistré. Les points
+ * vides sont retirés à l'envoi et ne comptent pas dans les limites. Comme pour
+ * les tags, les contrôles portent sur le tableau entier, pour que l'erreur soit
+ * rattachée au champ `checklistItems`.
+ */
+const checklistItemsSchema = z
+  .array(
+    z.object({
+      key: z.number(),
+      id: z.number().optional(),
+      text: z.string(),
+      isChecked: z.boolean(),
+    }),
+  )
+  .refine((items) => items.filter((item) => item.text.trim()).length <= CHECKLIST_MAX_ITEMS, {
+    error: () => t('task.validation.checklistTooLong', { max: CHECKLIST_MAX_ITEMS }),
+  })
+  .refine((items) => items.every((item) => item.text.trim().length <= CHECKLIST_ITEM_MAX_LENGTH), {
+    error: () => t('task.validation.checklistItemTooLong', { max: CHECKLIST_ITEM_MAX_LENGTH }),
+  })
+
+/**
+ * Règles de validation du formulaire de tâche (KanbanTaskDialog).
  *
  * Le titre est nettoyé (trim) avant contrôle, donc un titre composé uniquement
  * d'espaces est refusé, et la valeur enregistrée est la version nettoyée.
@@ -131,6 +155,7 @@ export const taskFormSchema = z
       .min(1, { error: () => t('task.validation.versionRequired') }),
     startDate: z.date().nullable(),
     tags: tagSelectionsSchema,
+    checklistItems: checklistItemsSchema,
     recurrence: recurrenceFieldsSchema,
     // « Appliquer aux prochaines occurrences » (modification d'une occurrence)
     applyToSeries: z.boolean().default(true),

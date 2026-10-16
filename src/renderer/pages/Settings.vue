@@ -331,8 +331,22 @@
             />
           </SettingsRow>
 
+          <SettingsRow
+            :label="t('settings.data.devToolsButton')"
+            :description="t('settings.data.devToolsButtonDescription')"
+            testId="settings-row-devtools-button"
+          >
+            <ToggleSwitch
+              v-model="showDevToolsButton"
+              data-testid="settings-devtools-button-toggle"
+              :ariaLabel="t('settings.data.devToolsButton')"
+            />
+          </SettingsRow>
+
           <ResetSettingsSetting />
         </SettingsSection>
+
+        <ShortcutsSection id="settings-section-shortcuts" />
 
         <AboutSection id="settings-section-about" />
       </div>
@@ -355,6 +369,7 @@ import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'
+import ShortcutsSection from '../components/settings/ShortcutsSection.vue'
 import SettingsNav, { type SettingsNavSection } from '../components/settings/SettingsNav.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
@@ -394,6 +409,7 @@ const navSections = computed<SettingsNavSection[]>(() => [
   { id: 'settings-section-notifications', label: t('settings.notifications.title'), icon: 'pi-bell' },
   { id: 'settings-section-system', label: t('settings.system.title'), icon: 'pi-power-off' },
   { id: 'settings-section-data', label: t('settings.data.title'), icon: 'pi-database' },
+  { id: 'settings-section-shortcuts', label: t('settings.shortcuts.title'), icon: 'pi-th-large' },
   { id: 'settings-section-about', label: t('settings.about.navLabel'), icon: 'pi-info-circle' },
 ])
 
@@ -455,6 +471,7 @@ const theme = settingModel('theme')
 const interfaceScale = settingModel('interfaceScale')
 const newTaskPosition = settingModel('newTaskPosition')
 const confirmArchive = settingModel('confirmArchive')
+const showDevToolsButton = settingModel('showDevToolsButton')
 
 // Désactiver la mémorisation oublie aussi le filtre enregistré
 const rememberTagFilter = computed({

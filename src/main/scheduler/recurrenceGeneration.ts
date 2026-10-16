@@ -2,7 +2,8 @@ import Logger from 'electron-log'
 import { Prisma } from '../prisma/generated/prisma/client.js'
 import { prisma } from '../server/prismaClient.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.helper.js'
-import { occurrenceVersion } from '../server/helpers/recurrence.helper.js'
+import { occurrenceVersion, seriesChecklistTexts } from '../server/helpers/recurrence.helper.js'
+import { templateItemRows } from '../server/helpers/checklist.helper.js'
 import { settingsStore } from '../stores/settings.js'
 import {
   countReached,
@@ -134,7 +135,8 @@ async function occurrenceBlocker(tx: Prisma.TransactionClient, series: SeriesWit
 
 /**
  * Crée l'occurrence d'une date avec le contenu du modèle, à la place et dans
- * la version choisies comme pour l'ajout rapide (paramètres).
+ * la version choisies comme pour l'ajout rapide (paramètres). Les points du
+ * modèle donnent sa checklist, tous décochés, et sans point elle n'en a pas.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param series Série
@@ -155,6 +157,7 @@ async function createOccurrence(
   } else {
     position = await bottomPosition(tx, stageId)
   }
+  const items = templateItemRows(seriesChecklistTexts(series))
 
   const { id } = await tx.task.create({
     data: {
@@ -167,6 +170,7 @@ async function createOccurrence(
       recurrenceId: series.id,
       occurrenceDate: date,
       tags: { connect: series.tags.map((tag) => ({ id: tag.id })) },
+      ...(items.length > 0 && { checklist: { create: { items: { create: items } } } }),
     },
     select: { id: true },
   })

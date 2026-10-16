@@ -86,6 +86,12 @@ const schema = {
     uniqueItems: true,
     default: DEFAULT_SETTINGS.tagFilterIds,
   },
+  collapsedStageIds: {
+    type: 'array',
+    items: { type: 'integer' },
+    uniqueItems: true,
+    default: DEFAULT_SETTINGS.collapsedStageIds,
+  },
   notificationsEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,
@@ -114,6 +120,10 @@ const schema = {
   autoUpdateEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.autoUpdateEnabled,
+  },
+  showDevToolsButton: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.showDevToolsButton,
   },
   windowMode: {
     type: 'string',
@@ -153,13 +163,17 @@ export function isSettingsKey(key: unknown): key is SettingsKeys {
 /**
  * Remet les paramètres à leurs valeurs par défaut, en une seule écriture. La
  * dernière taille et position de la fenêtre, tenue par le main et non réglable,
- * est conservée. Les écouteurs `onDidChange` (zone de notification, lancement
+ * est conservée, comme les colonnes repliées (état d'affichage du tableau). Les écouteurs `onDidChange` (zone de notification, lancement
  * au démarrage) suivent les clés modifiées.
  *
  * @returns Paramètres après la remise à zéro
  */
 export function resetSettings(): AppSettings {
   const defaults = structuredClone(MAIN_DEFAULTS)
-  settingsStore.set({ ...defaults, windowState: settingsStore.get('windowState') })
+  settingsStore.set({
+    ...defaults,
+    windowState: settingsStore.get('windowState'),
+    collapsedStageIds: settingsStore.get('collapsedStageIds'),
+  })
   return settingsStore.store
 }

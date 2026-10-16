@@ -3,7 +3,7 @@ import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
 
 /**
- * Tests E2E de la page Paramètres : navigation depuis l'en-tête, synchronisation
+ * Tests E2E de la page Paramètres : navigation depuis le rail, synchronisation
  * des réglages avec l'en-tête, persistance et remise à zéro entre deux tests.
  */
 
@@ -13,17 +13,17 @@ async function zoomFactor(electronApp: ElectronApplication): Promise<number> {
 }
 
 test.describe('Page Paramètres', () => {
-  test("s'ouvre depuis l'en-tête et ramène au tableau", async ({ page, header, settingsPage }) => {
+  test("s'ouvre depuis le rail et ramène au tableau", async ({ page, header, settingsPage }) => {
     await header.goSettings()
 
     await settingsPage.expectVisible()
-    await expect(header.settingsButton).toHaveCount(0)
+    await header.expectActiveEntry(header.settingsButton)
     await expect(settingsPage.appearanceSection).toBeVisible()
 
     await header.goHome()
 
     await settingsPage.expectHidden()
-    await expect(header.homeButton).toHaveCount(0)
+    await header.expectActiveEntry(header.homeButton)
     await expect(page.getByTestId('stage-column').first()).toBeVisible()
   })
 

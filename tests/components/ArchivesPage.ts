@@ -14,6 +14,9 @@ export class ArchivesPage {
   readonly count: Locator
   readonly empty: Locator
   readonly backButton: Locator
+  // Recherche, et message quand aucune tâche ne correspond
+  readonly search: Locator
+  readonly noMatch: Locator
 
   /**
    * Constructeur
@@ -28,6 +31,8 @@ export class ArchivesPage {
     this.count = this.root.getByTestId('archives-count')
     this.empty = this.root.getByTestId('archives-empty')
     this.backButton = this.root.getByTestId('btn-archives-back')
+    this.search = this.root.getByTestId('archives-search')
+    this.noMatch = this.root.getByTestId('archives-no-match')
   }
 
   /**
@@ -52,6 +57,14 @@ export class ArchivesPage {
    */
   tags(title: string): Locator {
     return this.item(title).getByTestId('archived-task-tag')
+  }
+
+  /**
+   * Badge d'avancement de la checklist d'une ligne (« 2/3 »), absent sans point.
+   * @param title Titre exact de la tâche
+   */
+  checklistBadge(title: string): Locator {
+    return this.item(title).getByTestId('archived-task-checklist')
   }
 
   /**

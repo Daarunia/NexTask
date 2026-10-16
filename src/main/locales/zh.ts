@@ -23,6 +23,9 @@ export const zh: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — 快速添加',
   },
+  checklists: {
+    copyName: '{name}（副本）',
+  },
   dataTransfer: {
     exportTitle: '导出数据',
     importTitle: '导入数据',
@@ -43,5 +46,10 @@ export const zh: MainMessages = {
     taskUnknownTag: '任务 {id} 引用了文件中不存在的标签（{ref}）',
     taskUnknownRecurrence: '任务 {id} 引用了文件中不存在的系列（{ref}）',
     duplicateOccurrence: '系列 {id} 中有多个任务安排在同一日期',
+    taskChecklistClamped: '任务 {id} 的清单已缩减为最多 {maxItems} 项，每项最多 {maxLength} 个字符',
+    recurrenceChecklistClamped: '系列 {id} 的清单已缩减为最多 {maxItems} 项，每项最多 {maxLength} 个字符',
+    templateChecklistClamped: '模板“{name}”已缩减为最多 {maxItems} 项，每项最多 {maxLength} 个字符',
+    templateNameTruncated: '模板名称已缩短为 {maxLength} 个字符（“{name}”）',
+    duplicateTemplateName: '多个模板名为“{name}”，仅导入第一个',
   },
 }

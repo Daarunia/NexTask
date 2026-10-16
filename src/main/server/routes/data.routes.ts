@@ -1,11 +1,20 @@
 import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
 import { tagKey } from '../helpers/tag.helper.js'
+import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { translate } from '../../i18n.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
-import { normalizeImportedSeries } from '../helpers/recurrence.helper.js'
+import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
+import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
+import {
+  type ExportedChecklistItem,
+  type ExportedChecklistTemplate,
+  importedSeriesChecklist,
+  importedTaskChecklist,
+  planTemplateImport,
+} from '../helpers/dataImport.helper.js'
 
 // Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
 const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
@@ -20,6 +29,8 @@ const exportedStageSchema = {
     id: { type: 'integer' },
     name: { type: 'string' },
     position: { type: 'integer' },
+    // Couleur facultative : un export antérieur aux couleurs de colonne reste importable
+    color: { type: ['string', 'null'] },
   },
   required: ['id', 'name', 'position'],
 }
@@ -35,6 +46,34 @@ const exportedTagSchema = {
     createdAt: { type: 'string', format: 'date-time' },
   },
   required: ['id', 'name', 'color'],
+}
+
+/**
+ * Point de la checklist d'une tâche exporté. Pas de limite de longueur ici,
+ * un texte trop long est raccourci à l'import plutôt que de refuser le fichier.
+ */
+const exportedChecklistItemSchema = {
+  type: 'object',
+  properties: {
+    text: { type: 'string' },
+    isChecked: { type: 'boolean' },
+    checkedAt: nullableDate,
+  },
+  required: ['text'],
+}
+
+/**
+ * Modèle de checklist exporté, ses points réduits à leurs textes (jamais
+ * cochés). Comme pour les points, ni le nom ni les textes ne sont bornés ici.
+ */
+const exportedChecklistTemplateSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', pattern: String.raw`\S` },
+    position: { type: 'integer' },
+    items: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['name'],
 }
 
 /** Tâche exportée, archivée ou non, ses tags désignés par leur id. */
@@ -58,6 +97,8 @@ const exportedTaskSchema = {
     // Série dont la tâche est une occurrence (absente des exports antérieurs aux séries)
     recurrenceId: { type: ['integer', 'null'] },
     occurrenceDate: nullableDate,
+    // Points de la checklist dans l'ordre, absents des exports antérieurs aux checklists
+    checklistItems: { type: 'array', items: exportedChecklistItemSchema },
   },
   required: ['id', 'title', 'description', 'version', 'position', 'isHistorized', 'stageId', 'tagIds'],
 }
@@ -78,17 +119,32 @@ const exportSchema = {
     tasks: { type: 'array', items: exportedTaskSchema },
     // Séries récurrentes, facultatives : un export antérieur aux séries reste importable
     recurrences: { type: 'array', items: exportedRecurrenceSchema },
+    // Modèles de checklist, facultatifs : un export antérieur aux checklists reste importable
+    checklistTemplates: { type: 'array', items: exportedChecklistTemplateSchema },
   },
   required: ['format', 'version', 'stages', 'tags', 'tasks'],
 }
 
-/** Nombre d'éléments importés. */
+/** Motif de refus ou anomalie d'un import (cf. ImportProblem). */
+const importProblemSchema = {
+  type: 'object',
+  properties: {
+    code: { type: 'string' },
+    params: { type: 'object', additionalProperties: { type: ['string', 'number'] } },
+  },
+}
+
+/** Nombre d'éléments importés, et anomalies corrigées en chemin. */
 const countsSchema = {
   type: 'object',
   properties: {
     stages: { type: 'integer' },
     tags: { type: 'integer' },
     tasks: { type: 'integer' },
+    // Modèles réellement créés, sans ceux du fichier dont le nom était déjà pris
+    checklistTemplates: { type: 'integer' },
+    // Textes raccourcis, points en trop, modèles en double, importés quand même une fois corrigés
+    warnings: { type: 'array', items: importProblemSchema },
   },
 }
 
@@ -104,21 +160,24 @@ const importErrorSchema = {
     code: { type: 'string' },
     error: { type: 'string' },
     message: { type: 'string' },
-    problem: {
-      type: 'object',
-      properties: {
-        code: { type: 'string' },
-        params: { type: 'object', additionalProperties: { type: ['string', 'number'] } },
-      },
-    },
+    problem: importProblemSchema,
   },
+}
+
+/**
+ * Couleur d'une colonne importée : gardée si elle fait partie de la palette,
+ * sinon la colonne est importée sans couleur.
+ * @param color Couleur lue dans le fichier
+ */
+function stageColor(color: string | null | undefined): TagColor | null {
+  return TAG_COLORS.includes(color as TagColor) ? (color as TagColor) : null
 }
 
 /** Fichier d'import, une fois validé par Fastify. */
 interface DataImportBody {
   format: string
   version: number
-  stages: { id: number; name: string; position: number }[]
+  stages: { id: number; name: string; position: number; color?: string | null }[]
   tags: { id: number; name: string; color: string; createdAt?: string }[]
   tasks: {
     id: number
@@ -136,6 +195,7 @@ interface DataImportBody {
     tagIds: number[]
     recurrenceId?: number | null
     occurrenceDate?: string | null
+    checklistItems?: ExportedChecklistItem[]
   }[]
   recurrences?: {
     id: number
@@ -161,7 +221,9 @@ interface DataImportBody {
     createdAt?: string
     updatedAt?: string
     tagIds?: number[]
+    checklistItems?: string[]
   }[]
+  checklistTemplates?: ExportedChecklistTemplate[]
 }
 
 /**
@@ -271,8 +333,9 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
 
 /**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
- * (colonnes, tâches archivées comprises, tags, séries récurrentes). Les
- * paramètres de l'app n'en font pas partie.
+ * (colonnes, tâches archivées comprises et leurs checklists, tags, séries
+ * récurrentes, modèles de checklist). Les paramètres de l'app n'en font pas
+ * partie.
  *
  * Appelées par le main (boîtes de dialogue d'enregistrement et d'ouverture,
  * cf. system/dataTransfer) et directement par les tests E2E :
@@ -286,9 +349,12 @@ export default async function dataRoutes(fastify) {
    * GET /data/export
    *
    * Renvoie toutes les colonnes, tous les tags, toutes les tâches (archivées
-   * comprises, tags désignés par leur id) et toutes les séries récurrentes
-   * (règle, état et modèle des occurrences), avec l'identifiant et la version
-   * du format. Les ids sont conservés, l'import les reprend tels quels.
+   * comprises, tags désignés par leur id, points de checklist avec leur état
+   * coché), toutes les séries récurrentes (règle, état et modèle des
+   * occurrences, textes des points compris) et tous les modèles de checklist
+   * (nom, position, textes des points), avec l'identifiant et la version du
+   * format. Les ids sont conservés, l'import les reprend tels quels, sauf ceux
+   * des checklists et de leurs points, recréés à l'import.
    *
    * @returns {Promise<Object>} Données au format d'export
    */
@@ -296,25 +362,37 @@ export default async function dataRoutes(fastify) {
     '/data/export',
     {
       schema: {
-        description: 'Exporte toutes les colonnes, tâches (archivées comprises), tags et séries récurrentes',
+        description:
+          'Exporte toutes les colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
         tags: ['Data'],
         response: { 200: exportSchema },
       },
     },
     async () => {
-      // Lecture groupée : un instantané cohérent des quatre tables
-      const [stages, tags, tasks, recurrences] = await prisma.$transaction([
+      // Lecture groupée, pour un instantané cohérent de toutes les tables
+      const [stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
         prisma.stage.findMany({
-          select: { id: true, name: true, position: true },
+          select: { id: true, name: true, position: true, color: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
-        prisma.task.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
+        prisma.task.findMany({
+          include: {
+            tags: { select: { id: true } },
+            checklist: { include: { items: { orderBy: { position: 'asc' } } } },
+          },
+          orderBy: { id: 'asc' },
+        }),
         prisma.recurrence.findMany({ include: { tags: { select: { id: true } } }, orderBy: { id: 'asc' } }),
+        prisma.checklist.findMany({
+          where: templateWhere,
+          include: templateInclude,
+          orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        }),
       ])
 
       Logger.info(
-        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s)`,
+        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
       )
 
       return {
@@ -324,13 +402,25 @@ export default async function dataRoutes(fastify) {
         exportedAt: new Date(),
         stages,
         tags,
-        tasks: tasks.map(({ tags: taskTags, ...task }) => ({
+        tasks: tasks.map(({ tags: taskTags, checklist, ...task }) => ({
           ...task,
           tagIds: taskTags.map((tag) => tag.id).sort((a, b) => a - b),
+          checklistItems: (checklist?.items ?? []).map(({ text, isChecked, checkedAt }) => ({
+            text,
+            isChecked,
+            checkedAt,
+          })),
         })),
         recurrences: recurrences.map(({ tags: recurrenceTags, ...recurrence }) => ({
           ...recurrence,
           tagIds: recurrenceTags.map((tag) => tag.id).sort((a, b) => a - b),
+          // Valeur illisible en base exportée comme une liste vide, le schéma attend des textes
+          checklistItems: seriesChecklistTexts(recurrence),
+        })),
+        checklistTemplates: templates.map((template) => ({
+          name: template.name,
+          position: template.position,
+          items: template.items.map((item) => item.text),
         })),
       }
     },
@@ -339,9 +429,14 @@ export default async function dataRoutes(fastify) {
   /**
    * POST /data/import
    *
-   * Remplace toutes les colonnes, tâches, tags et séries par ceux d'un export
-   * (sans clé `recurrences`, la base n'a plus aucune série ; sans `anchor`,
-   * une série suit le calendrier). La prochaine date et l'état des séries sont
+   * Remplace toutes les colonnes, tâches, tags, séries et modèles de checklist
+   * par ceux d'un export (sans clé `recurrences`, la base n'a plus aucune
+   * série ; sans `anchor`, une série suit le calendrier ; sans
+   * `checklistTemplates` ni `checklistItems`, ni modèle ni checklist). Les
+   * checklists sont ramenées aux limites partagées et un modèle dont le nom
+   * est déjà pris par un modèle précédent du fichier n'est pas recréé, ces
+   * corrections étant renvoyées dans `warnings` (cf. dataImport.helper). La
+   * prochaine date et l'état des séries sont
    * remis en cohérence avec leurs occurrences (cf. normalizeImportedSeries). Le
    * fichier est entièrement contrôlé avant toute écriture (structure, format,
    * version, cohérence des références), puis l'import se fait dans une seule
@@ -351,15 +446,16 @@ export default async function dataRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Fichier d'export (cf. GET /data/export)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object>} Nombre de colonnes, tags et tâches importés, 400 si le
-   *   fichier est refusé (détail dans `message`), 500 si l'écriture échoue
+   * @returns {Promise<Object>} Nombre de colonnes, tags, tâches et modèles importés et anomalies
+   *   corrigées, 400 si le fichier est refusé (détail dans `message`), 500 si l'écriture échoue
    */
   fastify.post(
     '/data/import',
     {
       bodyLimit: IMPORT_BODY_LIMIT,
       schema: {
-        description: 'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries)',
+        description:
+          'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries, modèles de checklist)',
         tags: ['Data'],
         body: exportSchema,
         response: {
@@ -381,12 +477,26 @@ export default async function dataRoutes(fastify) {
         return { statusCode: 400, error: 'Bad Request', message, problem }
       }
 
+      // Corrections des checklists, prévues avant toute écriture
+      const templatePlan = planTemplateImport(data.checklistTemplates)
+      const seriesChecklists = (data.recurrences ?? []).map((recurrence) =>
+        importedSeriesChecklist(recurrence.id, recurrence.checklistItems),
+      )
+      const taskChecklists = data.tasks.map((task) => importedTaskChecklist(task.id, task.checklistItems))
+      const warnings: ImportProblem[] = [
+        ...templatePlan.problems,
+        ...seriesChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
+        ...taskChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
+      ]
+
       try {
         // Ordre des suppressions : les tâches référencent les séries et les
         // colonnes, les séries les colonnes (clés étrangères), leurs liens avec
-        // les tags partent en cascade
+        // les tags partent en cascade. Toutes les checklists d'abord, modèles
+        // compris, leurs points partant en cascade
         await prisma.$transaction(
           async (tx) => {
+            await tx.checklist.deleteMany()
             await tx.task.deleteMany()
             await tx.recurrence.deleteMany()
             await tx.tag.deleteMany()
@@ -394,7 +504,12 @@ export default async function dataRoutes(fastify) {
 
             // Champs repris un par un : une propriété inconnue du fichier n'atteint pas Prisma
             await tx.stage.createMany({
-              data: data.stages.map(({ id, name, position }) => ({ id, name, position })),
+              data: data.stages.map(({ id, name, position, color }) => ({
+                id,
+                name,
+                position,
+                color: stageColor(color),
+              })),
             })
             await tx.tag.createMany({
               data: data.tags.map((tag) => {
@@ -403,8 +518,26 @@ export default async function dataRoutes(fastify) {
               }),
             })
 
+            for (const template of templatePlan.templates) {
+              await tx.checklist.create({
+                data: {
+                  name: template.name,
+                  nameKey: template.nameKey,
+                  position: template.position,
+                  items: {
+                    create: template.items.map((text, position) => ({
+                      text,
+                      position,
+                      isChecked: false,
+                      checkedAt: null,
+                    })),
+                  },
+                },
+              })
+            }
+
             // Séries avant les tâches, qui les référencent
-            for (const recurrence of data.recurrences ?? []) {
+            for (const [index, recurrence] of (data.recurrences ?? []).entries()) {
               await tx.recurrence.create({
                 data: {
                   id: recurrence.id,
@@ -429,12 +562,14 @@ export default async function dataRoutes(fastify) {
                   stageId: recurrence.stageId,
                   createdAt: recurrence.createdAt,
                   updatedAt: recurrence.updatedAt,
+                  checklistItems: seriesChecklists[index].texts,
                   tags: { connect: (recurrence.tagIds ?? []).map((id) => ({ id })) },
                 },
               })
             }
 
-            for (const task of data.tasks) {
+            for (const [index, task] of data.tasks.entries()) {
+              const { rows } = taskChecklists[index]
               await tx.task.create({
                 data: {
                   id: task.id,
@@ -452,6 +587,8 @@ export default async function dataRoutes(fastify) {
                   recurrenceId: task.recurrenceId,
                   occurrenceDate: task.occurrenceDate,
                   tags: { connect: task.tagIds.map((id) => ({ id })) },
+                  // Pas de checklist sans point, comme à l'enregistrement d'une tâche
+                  ...(rows.length > 0 && { checklist: { create: { items: { create: rows } } } }),
                 },
               })
             }
@@ -468,9 +605,21 @@ export default async function dataRoutes(fastify) {
         return { statusCode: 500, error: 'Internal Server Error', message: "L'import a échoué, aucune donnée modifiée" }
       }
 
-      const counts: DataCounts = { stages: data.stages.length, tags: data.tags.length, tasks: data.tasks.length }
-      Logger.info(`Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s)`)
-      return counts
+      for (const warning of warnings) {
+        const problem = translate('fr', `importProblems.${warning.code}`, warning.params)
+        Logger.warn(`Import corrigé : ${problem}`)
+      }
+
+      const counts: DataCounts = {
+        stages: data.stages.length,
+        tags: data.tags.length,
+        tasks: data.tasks.length,
+        checklistTemplates: templatePlan.templates.length,
+      }
+      Logger.info(
+        `Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist`,
+      )
+      return { ...counts, warnings }
     },
   )
 }

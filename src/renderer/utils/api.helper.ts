@@ -51,10 +51,29 @@ async function request<T>(method: string, url: string, data?: unknown, options?:
   }
 }
 
+/**
+ * PATCH qui survit à la fermeture de la page (`fetch` en `keepalive`, que
+ * axios ne sait pas faire). Sert à envoyer une modification en attente au
+ * déchargement de la fenêtre, sans attendre de réponse, d'où l'absence de
+ * retour. Les erreurs sont ignorées, la page n'est plus là pour les montrer.
+ *
+ * @param url Chemin de la route, relatif au serveur
+ * @param data Corps envoyé en JSON
+ */
+function patchOnUnload(url: string, data: unknown): void {
+  fetch(`${baseUrl}${url}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
 export const api = {
   get: <T>(url: string, options?: AxiosRequestConfig) => request<T>('GET', url, undefined, options),
   post: <T>(url: string, data?: unknown, options?: AxiosRequestConfig) => request<T>('POST', url, data, options),
   put: <T>(url: string, data?: unknown, options?: AxiosRequestConfig) => request<T>('PUT', url, data, options),
   patch: <T>(url: string, data?: unknown, options?: AxiosRequestConfig) => request<T>('PATCH', url, data, options),
+  patchOnUnload,
   delete: <T>(url: string, options?: AxiosRequestConfig) => request<T>('DELETE', url, undefined, options),
 }
