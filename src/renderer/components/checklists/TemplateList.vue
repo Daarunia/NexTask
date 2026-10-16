@@ -105,7 +105,9 @@ const filtering = computed(() => query.value !== '')
 
 // Modèles affichés, la liste locale elle-même hors recherche (réordonnée par le DnD)
 const shown = computed(() =>
-  filtering.value ? local.value.filter((template) => normalizeSearchText(template.name).includes(query.value)) : local.value,
+  filtering.value
+    ? local.value.filter((template) => normalizeSearchText(template.name).includes(query.value))
+    : local.value,
 )
 
 /**
