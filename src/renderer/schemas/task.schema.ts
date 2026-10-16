@@ -25,7 +25,7 @@ export const RECURRENCE_PRESETS = ['none', 'daily', 'weekdays', 'weekly', 'month
 export type RecurrencePreset = (typeof RECURRENCE_PRESETS)[number]
 
 /**
- * Valeur du champ « Répéter » (cf. RecurrenceFields). Les champs de la règle
+ * Valeur du champ « Répéter » (cf. KanbanRecurrenceFields). Les champs de la règle
  * personnalisée sont gardés quel que soit le choix, mais ne sont lus et
  * contrôlés qu'avec « Personnaliser… ».
  */
@@ -136,7 +136,7 @@ const checklistItemsSchema = z
   })
 
 /**
- * Règles de validation du formulaire de tâche (TaskDialog).
+ * Règles de validation du formulaire de tâche (KanbanTaskDialog).
  *
  * Le titre est nettoyé (trim) avant contrôle, donc un titre composé uniquement
  * d'espaces est refusé, et la valeur enregistrée est la version nettoyée.

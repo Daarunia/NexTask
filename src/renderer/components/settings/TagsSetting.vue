@@ -141,7 +141,7 @@ import { useI18n } from 'vue-i18n'
  * Liste des tags dans les Paramètres : renommage, couleur et suppression.
  *
  * Les éditions passent par les actions du store Tag, comme dans le menu « … »
- * du sélecteur (TagSelect) : elles se reflètent aussitôt sur les cartes et
+ * du sélecteur (KanbanTagSelect) : elles se reflètent aussitôt sur les cartes et
  * les filtres, et partagent les mêmes règles (cf. utils/tag.helper).
  */
 

@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test'
 
 /**
- * Objet page du tableau Kanban et de l'écran de tâche (TaskDialog).
+ * Objet page du tableau Kanban et de l'écran de tâche (KanbanTaskDialog).
  *
  * Regroupe le ciblage et les gestes de l'écran de tâche : ouverture en
  * création / édition depuis une colonne, remplissage des champs, sauvegarde,
@@ -10,7 +10,7 @@ import { Page, Locator, expect } from '@playwright/test'
 export class TaskBoard {
   readonly page: Page
 
-  // Écran de tâche (TaskDialog)
+  // Écran de tâche (KanbanTaskDialog)
   readonly dialog: Locator
   readonly titleInput: Locator
   readonly titleError: Locator

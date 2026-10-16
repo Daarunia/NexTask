@@ -76,7 +76,7 @@
               />
             </div>
 
-            <StageTaskList
+            <KanbanStageTaskList
               :tasks="visibleTaskLists.get(stage.id) ?? []"
               :filterActive="filterActive"
               @tasks-drop="onTasksDrop"
@@ -120,7 +120,7 @@
   <TieredMenu ref="stageMenu" :model="stageMenuItems" popup data-testid="stage-menu" />
 
   <!-- Menu contextuel des cartes, partagé de même -->
-  <CardMenu
+  <KanbanCardMenu
     ref="cardMenu"
     :stages="stagesLocal"
     @open="openTask"
@@ -131,7 +131,7 @@
     @archive="askArchiveTask"
   />
 
-  <TaskDialog
+  <KanbanTaskDialog
     v-model="showDialog"
     :stageId="stageDialog ?? 0"
     :editTask="editTask"
@@ -148,31 +148,31 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import draggable from 'vuedraggable'
 import TieredMenu from 'primevue/tieredmenu'
-import CardMenu from './CardMenu.vue'
+import KanbanCardMenu from './KanbanCardMenu.vue'
 import Button from 'primevue/button'
-import StageTaskList from './StageTaskList.vue'
-import TaskDialog from './TaskDialog.vue'
-import { useTaskStore } from '../stores/Task'
-import { useStageStore } from '../stores/Stage'
-import { useTagStore } from '../stores/Tag'
-import { useSettingsStore } from '../stores/Settings'
-import { useBoardFilterStore } from '../stores/BoardFilter'
-import { Task } from '../types/task.types'
-import { Stage } from '../types/stage.types'
-import { Tag, TagSelection } from '../types/tag.types'
-import { getLogger } from '../utils/logger'
-import { useBoardLists } from '../utils/boardLists.helper'
-import { useActionToast, useErrorToast, useUndoToast } from '../utils/toast.helper'
-import { compareTagNames } from '../utils/tag.helper'
-import { checklistProgress, withItemChecked, withSavedItem } from '../utils/checklist.helper'
-import { sortByStartDate } from '../utils/date.helper'
-import type { TaskChecklist } from '../types/checklist.types'
-import { DND_OPTIONS } from '../constants/dnd.constants'
-import { setDragging } from '../utils/dnd.helper'
-import { useDangerConfirm } from '../utils/confirm.helper'
-import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
-import { TAG_COLOR_STYLES, getTagColorStyle } from '../constants/tag.constants'
-import type { TagColor } from '../../main/shared/tag.constants'
+import KanbanStageTaskList from './KanbanStageTaskList.vue'
+import KanbanTaskDialog from './KanbanTaskDialog.vue'
+import { useTaskStore } from '../../stores/Task'
+import { useStageStore } from '../../stores/Stage'
+import { useTagStore } from '../../stores/Tag'
+import { useSettingsStore } from '../../stores/Settings'
+import { useBoardFilterStore } from '../../stores/BoardFilter'
+import { Task } from '../../types/task.types'
+import { Stage } from '../../types/stage.types'
+import { Tag, TagSelection } from '../../types/tag.types'
+import { getLogger } from '../../utils/logger'
+import { useBoardLists } from '../../utils/boardLists.helper'
+import { useActionToast, useErrorToast, useUndoToast } from '../../utils/toast.helper'
+import { compareTagNames } from '../../utils/tag.helper'
+import { checklistProgress, withItemChecked, withSavedItem } from '../../utils/checklist.helper'
+import { sortByStartDate } from '../../utils/date.helper'
+import type { TaskChecklist } from '../../types/checklist.types'
+import { DND_OPTIONS } from '../../constants/dnd.constants'
+import { setDragging } from '../../utils/dnd.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
+import { isEditableTarget, isInOverlay } from '../../utils/keyboard.helper'
+import { TAG_COLOR_STYLES, getTagColorStyle } from '../../constants/tag.constants'
+import type { TagColor } from '../../../main/shared/tag.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -210,7 +210,7 @@ const stageMenuTrigger = ref<HTMLElement | null>(null) // bouton ⋮ du menu ouv
 const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
-const cardMenu = ref<InstanceType<typeof CardMenu> | null>(null)
+const cardMenu = ref<InstanceType<typeof KanbanCardMenu> | null>(null)
 
 // Filtre actif (texte ou tags) : le DnD des tâches est alors désactivé
 const filterActive = computed(() => boardFilter.isActive)
@@ -847,7 +847,7 @@ function updateTagCounts(oldTagIds: number[], newTagIds: number[]) {
  * Création de la colonne
  */
 async function createStage() {
-  // Nom nettoyé comme le titre des tâches (schéma zod de TaskDialog)
+  // Nom nettoyé comme le titre des tâches (schéma zod de KanbanTaskDialog)
   const name = newStageName.value.trim()
   if (!name) return
 

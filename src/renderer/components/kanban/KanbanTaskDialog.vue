@@ -71,8 +71,8 @@
       <!-- Description en Markdown : ouverte en aperçu si la tâche en a déjà une -->
       <FormField v-slot="$field" name="description">
         <component
-          :is="MarkdownEditor"
-          v-if="MarkdownEditor"
+          :is="KanbanMarkdownEditor"
+          v-if="KanbanMarkdownEditor"
           id="description"
           :label="t('task.dialog.description')"
           testId="task-description"
@@ -85,7 +85,7 @@
 
       <!-- Checklist, valeur du formulaire = ChecklistEditorItem[], envoyée au serveur à l'enregistrement -->
       <FormField v-slot="$field" name="checklistItems">
-        <TaskChecklist
+        <KanbanTaskChecklist
           ref="checklistRef"
           :modelValue="$field.value ?? []"
           :error="$field.invalid ? $field.error?.message : undefined"
@@ -101,7 +101,7 @@
         <div class="flex flex-col gap-1 min-w-0">
           <span class="field-label"><i class="pi pi-tag" aria-hidden="true"></i>{{ t('task.dialog.tags') }}</span>
           <FormField v-slot="$field" name="tags">
-            <TagSelect
+            <KanbanTagSelect
               ref="tagSelectRef"
               :modelValue="$field.value ?? []"
               @update:modelValue="(value: TagSelection[]) => $field.props.onChange({ value })"
@@ -166,7 +166,7 @@
             { 'sm:col-span-2': $form.recurrence?.value?.preset && $form.recurrence.value.preset !== 'none' },
           ]"
         >
-          <RecurrenceFields
+          <KanbanRecurrenceFields
             :modelValue="$field.value ?? defaultRecurrenceValue()"
             :startDate="$form.startDate?.value ?? null"
             :series="series"
@@ -250,44 +250,44 @@ import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Checkbox from 'primevue/checkbox'
-import TagSelect from './TagSelect.vue'
-import RecurrenceFields from './RecurrenceFields.vue'
-import TaskChecklist from './TaskChecklist.vue'
-import { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
-import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
-import { TagSelection } from '../types/tag.types'
-import { taskFormSchema, TaskFormValues } from '../schemas/task.schema'
-import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
-import { useTaskStore } from '../stores/Task'
-import { useTagStore } from '../stores/Tag'
-import { useStageStore } from '../stores/Stage'
-import { useSettingsStore } from '../stores/Settings'
-import { getLogger } from '../utils/logger'
-import { useErrorToast, useUndoToast } from '../utils/toast.helper'
-import { isConfirmOpen, useDangerConfirm } from '../utils/confirm.helper'
+import KanbanTagSelect from './KanbanTagSelect.vue'
+import KanbanRecurrenceFields from './KanbanRecurrenceFields.vue'
+import KanbanTaskChecklist from './KanbanTaskChecklist.vue'
+import { type ChecklistEditorItem, newChecklistEditorItem } from '../ChecklistItemsEditor.vue'
+import { Task, TaskInput, TaskUpdateInput } from '../../types/task.types'
+import { TagSelection } from '../../types/tag.types'
+import { taskFormSchema, TaskFormValues } from '../../schemas/task.schema'
+import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
+import { useTaskStore } from '../../stores/Task'
+import { useTagStore } from '../../stores/Tag'
+import { useStageStore } from '../../stores/Stage'
+import { useSettingsStore } from '../../stores/Settings'
+import { getLogger } from '../../utils/logger'
+import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
+import { isConfirmOpen, useDangerConfirm } from '../../utils/confirm.helper'
 import { useConfirm } from 'primevue/useconfirm'
-import { compareTagNames } from '../utils/tag.helper'
-import { infoTooltip } from '../utils/tooltip.helper'
-import { toChecklistInput } from '../utils/checklist.helper'
-import { dayLabel } from '../utils/date.helper'
+import { compareTagNames } from '../../utils/tag.helper'
+import { infoTooltip } from '../../utils/tooltip.helper'
+import { toChecklistInput } from '../../utils/checklist.helper'
+import { dayLabel } from '../../utils/date.helper'
 import {
   defaultRecurrenceValue,
   sameRecurrenceInput,
   summaryToInput,
   toRecurrenceInput,
   toRecurrenceValue,
-} from '../utils/recurrence.helper'
+} from '../../utils/recurrence.helper'
 import { useI18n } from 'vue-i18n'
 
 // Éditeur Markdown (md-editor-v3 et CodeMirror) dans un chunk à part, pour ne pas
 // alourdir le démarrage : préchargé au montage, et attendu avant d'ouvrir le
 // dialogue. Le formulaire s'affiche d'un bloc, sans que la description apparaisse
 // après coup et décale les champs suivants (et le popover des tags ouvert dessus).
-const MarkdownEditor = shallowRef<Component | null>(null)
+const KanbanMarkdownEditor = shallowRef<Component | null>(null)
 
 /** Charge l'éditeur Markdown une seule fois. */
 async function loadMarkdownEditor() {
-  MarkdownEditor.value ??= (await import('./MarkdownEditor.vue')).default
+  KanbanMarkdownEditor.value ??= (await import('./KanbanMarkdownEditor.vue')).default
 }
 
 onMounted(() => {
@@ -443,10 +443,10 @@ function requestClose(event?: MouseEvent) {
 }
 
 // Sélecteur de tags, pour enregistrer un renommage en cours avant la tâche
-const tagSelectRef = ref<InstanceType<typeof TagSelect> | null>(null)
+const tagSelectRef = ref<InstanceType<typeof KanbanTagSelect> | null>(null)
 
 // Checklist, pour ajouter le point en cours de saisie avant un enregistrement au clavier
-const checklistRef = ref<InstanceType<typeof TaskChecklist> | null>(null)
+const checklistRef = ref<InstanceType<typeof KanbanTaskChecklist> | null>(null)
 
 // Formulaire, soumis aussi par les raccourcis clavier (même validation que le bouton
 // Enregistrer). Ses valeurs courantes (`states`) disent si une saisie est en cours.

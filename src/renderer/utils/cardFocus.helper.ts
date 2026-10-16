@@ -1,4 +1,4 @@
-// Titre d'une carte (bouton qui l'ouvre) et colonne du tableau, cf. StageTaskList et Kanban
+// Titre d'une carte (bouton qui l'ouvre) et colonne du tableau, cf. KanbanStageTaskList et Kanban
 const CARD_TITLE = '[data-testid="task-card-open"]'
 const COLUMN = '[data-stage-id]'
 

@@ -82,11 +82,11 @@ import { computed, nextTick, ref } from 'vue'
 import Button from 'primevue/button'
 import { MdEditor, MdPreview, type ExposeParam } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
-import { useSettingsStore } from '../stores/Settings'
+import { useSettingsStore } from '../../stores/Settings'
 // Le helper configure aussi md-editor-v3 à son premier import
-import { MARKDOWN_EDITOR_TOOLBARS, markdownEditorLanguage } from '../utils/markdownEditor.helper'
+import { MARKDOWN_EDITOR_TOOLBARS, markdownEditorLanguage } from '../../utils/markdownEditor.helper'
 import { useI18n } from 'vue-i18n'
-import { infoTooltip } from '../utils/tooltip.helper'
+import { infoTooltip } from '../../utils/tooltip.helper'
 
 /**
  * Champ Markdown d'un formulaire, avec un mode écriture (md-editor-v3 : barre

@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
 
 /**
- * Tests E2E de l'écran de tâche (TaskDialog), feature principale de l'app :
+ * Tests E2E de l'écran de tâche (KanbanTaskDialog), feature principale de l'app :
  * création, valeurs par défaut, annulation, édition et archivage d'une tâche
  * depuis le tableau Kanban.
  *

@@ -12,13 +12,13 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ContextMenu from 'primevue/contextmenu'
-import { useTagStore } from '../stores/Tag'
-import type { Task } from '../types/task.types'
-import type { Stage } from '../types/stage.types'
-import type { Tag } from '../types/tag.types'
-import { compareTagNames } from '../utils/tag.helper'
-import { quickStartDate, type QuickDay } from '../utils/date.helper'
-import { getTagColorStyle } from '../constants/tag.constants'
+import { useTagStore } from '../../stores/Tag'
+import type { Task } from '../../types/task.types'
+import type { Stage } from '../../types/stage.types'
+import type { Tag } from '../../types/tag.types'
+import { compareTagNames } from '../../utils/tag.helper'
+import { quickStartDate, type QuickDay } from '../../utils/date.helper'
+import { getTagColorStyle } from '../../constants/tag.constants'
 
 /**
  * Menu contextuel des cartes du tableau (clic droit, ou touche Menu sur le

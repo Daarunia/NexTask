@@ -271,9 +271,9 @@ import {
   type RecurrenceEndType,
   type RecurrenceFrequency,
   type RecurrenceSummary,
-} from '../../main/shared/recurrence.constants'
-import { isoWeekday } from '../../main/shared/recurrence.helper'
-import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.schema'
+} from '../../../main/shared/recurrence.constants'
+import { isoWeekday } from '../../../main/shared/recurrence.helper'
+import type { RecurrenceFormValue, RecurrencePreset } from '../../schemas/task.schema'
 import {
   WEEKDAYS,
   describeRecurrence,
@@ -290,11 +290,11 @@ import {
   waitingForArchiveLabel,
   weekdayLetter,
   weekdayName,
-} from '../utils/recurrence.helper'
+} from '../../utils/recurrence.helper'
 import { useI18n } from 'vue-i18n'
 
 /**
- * Champ « Répéter » du formulaire de tâche (cf. TaskDialog) : préréglages
+ * Champ « Répéter » du formulaire de tâche (cf. KanbanTaskDialog) : préréglages
  * calculés depuis la date de début (selon le calendrier), bloc
  * « Personnaliser… » (calendrier ou après l'archivage de la précédente),
  * résumé en clair de la règle et prochaine date.

@@ -2,8 +2,8 @@ import { Page, Locator, expect } from '@playwright/test'
 import type { MonthlyMode } from '../../src/main/shared/recurrence.constants'
 
 /**
- * Objet du champ « Répéter » de l'écran de tâche (RecurrenceFields, dans
- * TaskDialog) : préréglages, bloc « Personnaliser… » (point de départ des
+ * Objet du champ « Répéter » de l'écran de tâche (KanbanRecurrenceFields, dans
+ * KanbanTaskDialog) : préréglages, bloc « Personnaliser… » (point de départ des
  * dates, jour du mois en mensuel), résumé de la règle et prochaine date, case
  * « Appliquer aux prochaines occurrences ».
  */

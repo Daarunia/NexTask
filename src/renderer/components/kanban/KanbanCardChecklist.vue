@@ -54,9 +54,9 @@ import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import Popover from 'primevue/popover'
-import ChecklistBadge from './ChecklistBadge.vue'
-import type { Task } from '../types/task.types'
-import { checklistProgress } from '../utils/checklist.helper'
+import ChecklistBadge from '../ChecklistBadge.vue'
+import type { Task } from '../../types/task.types'
+import { checklistProgress } from '../../utils/checklist.helper'
 
 /**
  * Checklist d'une carte du tableau, dont le badge d'avancement ouvre une bulle

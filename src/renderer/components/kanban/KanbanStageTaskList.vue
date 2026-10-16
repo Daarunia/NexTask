@@ -76,7 +76,7 @@
 
             <!-- Avancement de la checklist (« 2/6 »), vert quand tout est coché, absent sans point.
                  Un clic ouvre la bulle où cocher les points sans passer par le dialogue -->
-            <CardChecklist
+            <KanbanCardChecklist
               :task="element"
               :disabled="isDragging"
               @check-item="(itemId: number, checked: boolean) => $emit('check-item', element, itemId, checked)"
@@ -149,24 +149,24 @@
 import { computed } from 'vue'
 import draggable from 'vuedraggable'
 import Button from 'primevue/button'
-import TagChip from './TagChip.vue'
-import CardChecklist from './CardChecklist.vue'
-import { Task } from '../types/task.types'
-import { Tag } from '../types/tag.types'
-import { useTagStore } from '../stores/Tag'
-import { useSettingsStore } from '../stores/Settings'
-import { compareTagNames } from '../utils/tag.helper'
-import { recurrenceTooltip } from '../utils/recurrence.helper'
-import { descriptionExcerpt, hasDescription } from '../utils/description.helper'
-import { infoTooltip } from '../utils/tooltip.helper'
-import { dayState, longDateLabel, shortDateLabel, type DayState } from '../utils/date.helper'
-import { useNow } from '../utils/now.helper'
-import { useTaskStore } from '../stores/Task'
-import type { RecurrenceSummary } from '../../main/shared/recurrence.constants'
-import { DND_OPTIONS } from '../constants/dnd.constants'
-import { isDragging, setDragging } from '../utils/dnd.helper'
-import { useDangerConfirm } from '../utils/confirm.helper'
-import { focusNeighborCard } from '../utils/cardFocus.helper'
+import TagChip from '../TagChip.vue'
+import KanbanCardChecklist from './KanbanCardChecklist.vue'
+import { Task } from '../../types/task.types'
+import { Tag } from '../../types/tag.types'
+import { useTagStore } from '../../stores/Tag'
+import { useSettingsStore } from '../../stores/Settings'
+import { compareTagNames } from '../../utils/tag.helper'
+import { recurrenceTooltip } from '../../utils/recurrence.helper'
+import { descriptionExcerpt, hasDescription } from '../../utils/description.helper'
+import { infoTooltip } from '../../utils/tooltip.helper'
+import { dayState, longDateLabel, shortDateLabel, type DayState } from '../../utils/date.helper'
+import { useNow } from '../../utils/now.helper'
+import { useTaskStore } from '../../stores/Task'
+import type { RecurrenceSummary } from '../../../main/shared/recurrence.constants'
+import { DND_OPTIONS } from '../../constants/dnd.constants'
+import { isDragging, setDragging } from '../../utils/dnd.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
+import { focusNeighborCard } from '../../utils/cardFocus.helper'
 import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(

@@ -13,10 +13,10 @@ function tagNamePattern(name: string): RegExp {
 }
 
 /**
- * Objet page du sélecteur de tags façon Notion (TagSelect) dans l'écran de
+ * Objet page du sélecteur de tags façon Notion (KanbanTagSelect) dans l'écran de
  * tâche.
  *
- * Couvre le champ fermé du TaskDialog, la vue liste du popover (recherche,
+ * Couvre le champ fermé du KanbanTaskDialog, la vue liste du popover (recherche,
  * sélection, création, retrait, clavier) et la vue édition d'un tag (nom,
  * compteur, couleurs, suppression, retour). Le ciblage repose uniquement sur
  * les `data-testid` et attributs `data-*` des composants de tags.
@@ -24,7 +24,7 @@ function tagNamePattern(name: string): RegExp {
 export class TagPicker {
   readonly page: Page
 
-  // Champ fermé dans le TaskDialog
+  // Champ fermé dans le KanbanTaskDialog
   readonly field: Locator
   readonly fieldChips: Locator
 
@@ -121,7 +121,7 @@ export class TagPicker {
     return this.panel.locator(`[data-testid="tag-edit-color"][data-color="${color}"]`)
   }
 
-  /** Ouvre le popover depuis le champ fermé du TaskDialog. */
+  /** Ouvre le popover depuis le champ fermé du KanbanTaskDialog. */
   async open() {
     await this.field.click()
     await expect(this.panel).toBeVisible()

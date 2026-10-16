@@ -71,7 +71,7 @@
     </Message>
 
     <!-- Nouveau modèle créé tout de suite avec les textes des points (parcours P6) -->
-    <SaveAsTemplateDialog
+    <KanbanSaveAsTemplateDialog
       v-model:visible="saveOpen"
       :items="modelValue"
       :taskTitle="taskTitle"
@@ -161,15 +161,15 @@ import Popover from 'primevue/popover'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import { useI18n } from 'vue-i18n'
-import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem } from './ChecklistItemsEditor.vue'
-import SaveAsTemplateDialog from './SaveAsTemplateDialog.vue'
-import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
-import type { ChecklistTemplate } from '../types/checklistTemplate.types'
-import { appendTemplateItems, checklistProgress, progressLabel, toTemplateItems } from '../utils/checklist.helper'
-import { normalizeSearchText } from '../utils/search.helper'
-import { getLogger } from '../utils/logger'
-import { useErrorToast } from '../utils/toast.helper'
-import { useDangerConfirm } from '../utils/confirm.helper'
+import ChecklistItemsEditor, { type ChecklistEditorItem, newChecklistEditorItem } from '../ChecklistItemsEditor.vue'
+import KanbanSaveAsTemplateDialog from './KanbanSaveAsTemplateDialog.vue'
+import { useChecklistTemplateStore } from '../../stores/ChecklistTemplate'
+import type { ChecklistTemplate } from '../../types/checklistTemplate.types'
+import { appendTemplateItems, checklistProgress, progressLabel, toTemplateItems } from '../../utils/checklist.helper'
+import { normalizeSearchText } from '../../utils/search.helper'
+import { getLogger } from '../../utils/logger'
+import { useErrorToast } from '../../utils/toast.helper'
+import { useDangerConfirm } from '../../utils/confirm.helper'
 
 /**
  * Section « Checklist » du dialogue de tâche (parcours P1 et P3), sous la
