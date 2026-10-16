@@ -41,9 +41,14 @@ macOS and Linux builds can be produced from source (see [Build](#build)).
 - **System integration**: minimize to tray, launch at startup, remembers window size and position.
 - **100% offline and private**: your data never leaves your computer.
 
-The interface is currently available in French.
-
 <br clear="right">
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/checklists-dark.png">
+    <img width="760" alt="Checklist templates page with a Release template and its six items" src="docs/screenshots/checklists-light.png">
+  </picture>
+</p>
 
 ## Tech stack
 

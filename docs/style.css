@@ -451,6 +451,12 @@ footer a {
   text-align: left;
 }
 
+/* Capture dans un cadre de fenêtre, à côté d'un texte */
+.window.window-inline {
+  margin: 0;
+  max-width: none;
+}
+
 .section-head.flush {
   margin-bottom: 0;
 }
