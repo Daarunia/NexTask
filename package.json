@@ -79,7 +79,7 @@
     "prettier": "^3.9.10",
     "primeicons": "^8.0.2",
     "primevue": "^5.0.2",
-    "prisma": "^7.10.0",
+    "prisma": "^7.10.1",
     "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
