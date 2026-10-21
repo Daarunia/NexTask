@@ -92,9 +92,10 @@ export interface StagePlacement {
 }
 
 /**
- * Place d'une tâche posée dans une colonne. Seul endroit qui dérive le tableau
- * d'une tâche de sa colonne, toute écriture de `stageId` passe donc par ici
- * (règle d'or, une tâche avec une colonne a le tableau de cette colonne).
+ * Place d'une tâche posée dans une colonne. Seul endroit, avec stageBoardIds
+ * pour l'import, qui dérive le tableau d'une tâche de sa colonne, toute
+ * écriture de `stageId` passe donc par ici (règle d'or, une tâche avec une
+ * colonne a le tableau de cette colonne).
  *
  * @param tx Client Prisma de la transaction en cours
  * @param stageId Id de la colonne
@@ -103,6 +104,19 @@ export interface StagePlacement {
 export async function stagePlacement(tx: TransactionClient, stageId: number): Promise<StagePlacement | null> {
   const stage = await tx.stage.findUnique({ where: { id: stageId }, select: { id: true, boardId: true } })
   return stage && { stageId: stage.id, boardId: stage.boardId }
+}
+
+/**
+ * Tableau de chaque colonne de la base, lu d'un coup. Pendant de
+ * stagePlacement pour les écritures en masse (import), qui placent des
+ * milliers de tâches sans une requête par tâche.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @returns Id du tableau de chaque colonne, par id de colonne
+ */
+export async function stageBoardIds(tx: TransactionClient): Promise<Map<number, number>> {
+  const stages = await tx.stage.findMany({ select: { id: true, boardId: true } })
+  return new Map(stages.map((stage) => [stage.id, stage.boardId]))
 }
 
 /**
