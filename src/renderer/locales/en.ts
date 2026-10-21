@@ -481,6 +481,7 @@ export const en: MessageSchema = {
       reloadFailed: 'Reload failed',
       reloadFailedDetail: 'The data was imported. Restart NexTask to display it.',
       counts: {
+        boards: '{count} board | {count} board | {count} boards',
         stages: '{count} column | {count} column | {count} columns',
         tasks: '{count} task | {count} task | {count} tasks',
         tags: '{count} tag | {count} tag | {count} tags',

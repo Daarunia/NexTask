@@ -473,6 +473,7 @@ export const zh: MessageSchema = {
       reloadFailed: '无法重新加载',
       reloadFailedDetail: '数据已导入。请重新启动 NexTask 以显示。',
       counts: {
+        boards: '{count} 个看板 | {count} 个看板 | {count} 个看板',
         stages: '{count} 列 | {count} 列 | {count} 列',
         tasks: '{count} 个任务 | {count} 个任务 | {count} 个任务',
         tags: '{count} 个标签 | {count} 个标签 | {count} 个标签',

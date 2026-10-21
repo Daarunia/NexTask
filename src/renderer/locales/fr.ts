@@ -490,6 +490,7 @@ export const fr = {
       reloadFailed: 'Rechargement impossible',
       reloadFailedDetail: 'Les données ont été importées. Relance NexTask pour les afficher.',
       counts: {
+        boards: '{count} tableau | {count} tableau | {count} tableaux',
         stages: '{count} colonne | {count} colonne | {count} colonnes',
         tasks: '{count} tâche | {count} tâche | {count} tâches',
         tags: '{count} tag | {count} tag | {count} tags',

@@ -484,6 +484,7 @@ export const pt: MessageSchema = {
       reloadFailed: 'Recarregamento impossível',
       reloadFailedDetail: 'Os dados foram importados. Reinicie o NexTask para exibi-los.',
       counts: {
+        boards: '{count} quadro | {count} quadro | {count} quadros',
         stages: '{count} coluna | {count} coluna | {count} colunas',
         tasks: '{count} tarefa | {count} tarefa | {count} tarefas',
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',

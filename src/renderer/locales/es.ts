@@ -483,6 +483,7 @@ export const es: MessageSchema = {
       reloadFailed: 'Recarga imposible',
       reloadFailedDetail: 'Los datos se han importado. Reinicia NexTask para verlos.',
       counts: {
+        boards: '{count} tablero | {count} tablero | {count} tableros',
         stages: '{count} columna | {count} columna | {count} columnas',
         tasks: '{count} tarea | {count} tarea | {count} tareas',
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',
