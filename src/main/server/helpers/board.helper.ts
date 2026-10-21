@@ -1,12 +1,20 @@
 import type { Board, Prisma } from '../../prisma/generated/prisma/client.js'
+import { boardKey } from '../../shared/board.helper.js'
 
 type TransactionClient = Prisma.TransactionClient
+
+/**
+ * Clés des colonnes d'un nouveau tableau en mode `default`, dans l'ordre
+ * (`boards.defaultStages` des catalogues du main, mêmes textes que la seed
+ * 01_initial_stages.sql de chaque langue).
+ */
+export const DEFAULT_STAGE_KEYS = ['todo', 'inProgress', 'waiting', 'done'] as const
 
 /**
  * Ordre d'affichage des tableaux et des colonnes, par position puis par id
  * (deux positions égales restent dans un ordre stable).
  */
-const POSITION_ORDER = [{ position: 'asc' }, { id: 'asc' }] satisfies Prisma.BoardOrderByWithRelationInput[]
+export const POSITION_ORDER = [{ position: 'asc' }, { id: 'asc' }] satisfies Prisma.BoardOrderByWithRelationInput[]
 
 /**
  * Premier tableau, dans l'ordre d'affichage. Null seulement pour une base
@@ -16,6 +24,28 @@ const POSITION_ORDER = [{ position: 'asc' }, { id: 'asc' }] satisfies Prisma.Boa
  */
 export async function firstBoard(tx: TransactionClient): Promise<Board | null> {
   return tx.board.findFirst({ orderBy: POSITION_ORDER })
+}
+
+/**
+ * Cherche un tableau par son nom, sans tenir compte de la casse.
+ *
+ * @param tx Client Prisma (transaction ou client global)
+ * @param name Nom recherché (nettoyé ici)
+ * @returns Le tableau trouvé, ou `null`
+ */
+export async function findBoardByName(tx: TransactionClient, name: string): Promise<Board | null> {
+  return tx.board.findUnique({ where: { nameKey: boardKey(name.trim()) } })
+}
+
+/**
+ * Position d'un tableau ajouté en dernier, après la plus grande position (0
+ * s'il n'y en a aucun).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ */
+export async function nextBoardPosition(tx: TransactionClient): Promise<number> {
+  const { _max } = await tx.board.aggregate({ _max: { position: true } })
+  return _max.position === null ? 0 : _max.position + 1
 }
 
 /**

@@ -35,6 +35,13 @@ export const fr = {
   boards: {
     // Nom du tableau créé quand il n'en existe aucun, même texte que la seed 00_initial_board.sql
     defaultName: 'Mon tableau',
+    // Colonnes d'un nouveau tableau en mode « default », mêmes textes que la seed 01_initial_stages.sql
+    defaultStages: {
+      todo: 'A faire',
+      inProgress: 'En cours',
+      waiting: 'En attente',
+      done: 'Terminé',
+    },
   },
   dataTransfer: {
     exportTitle: 'Exporter les données',

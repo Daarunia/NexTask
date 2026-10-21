@@ -28,6 +28,12 @@ export const pt: MainMessages = {
   },
   boards: {
     defaultName: 'Meu quadro',
+    defaultStages: {
+      todo: 'A fazer',
+      inProgress: 'Em andamento',
+      waiting: 'Em espera',
+      done: 'Concluído',
+    },
   },
   dataTransfer: {
     exportTitle: 'Exportar os dados',

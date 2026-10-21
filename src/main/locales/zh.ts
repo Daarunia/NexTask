@@ -28,6 +28,12 @@ export const zh: MainMessages = {
   },
   boards: {
     defaultName: '我的看板',
+    defaultStages: {
+      todo: '待办',
+      inProgress: '进行中',
+      waiting: '等待中',
+      done: '已完成',
+    },
   },
   dataTransfer: {
     exportTitle: '导出数据',

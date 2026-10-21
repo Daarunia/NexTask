@@ -28,6 +28,12 @@ export const es: MainMessages = {
   },
   boards: {
     defaultName: 'Mi tablero',
+    defaultStages: {
+      todo: 'Por hacer',
+      inProgress: 'En curso',
+      waiting: 'En espera',
+      done: 'Hecho',
+    },
   },
   dataTransfer: {
     exportTitle: 'Exportar los datos',

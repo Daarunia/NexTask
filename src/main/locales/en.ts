@@ -28,6 +28,12 @@ export const en: MainMessages = {
   },
   boards: {
     defaultName: 'My board',
+    defaultStages: {
+      todo: 'To do',
+      inProgress: 'In progress',
+      waiting: 'Waiting',
+      done: 'Done',
+    },
   },
   dataTransfer: {
     exportTitle: 'Export data',
