@@ -31,6 +31,11 @@ export const fr = {
     // Nom de la copie d'un modèle, numérotée ensuite si elle est déjà prise
     copyName: '{name} (copie)',
   },
+  // Tableaux
+  boards: {
+    // Nom du tableau créé quand il n'en existe aucun, même texte que la seed 00_initial_board.sql
+    defaultName: 'Mon tableau',
+  },
   dataTransfer: {
     exportTitle: 'Exporter les données',
     importTitle: 'Importer des données',

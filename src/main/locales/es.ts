@@ -26,6 +26,9 @@ export const es: MainMessages = {
   checklists: {
     copyName: '{name} (copia)',
   },
+  boards: {
+    defaultName: 'Mi tablero',
+  },
   dataTransfer: {
     exportTitle: 'Exportar los datos',
     importTitle: 'Importar datos',

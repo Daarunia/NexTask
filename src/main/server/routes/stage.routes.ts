@@ -199,13 +199,15 @@ export default async function stagesRoutes(fastify) {
   /**
    * POST /stages
    *
-   * Crée une nouvelle stage avec les données fournies.
+   * Crée une nouvelle stage avec les données fournies, dans le premier
+   * tableau (ordre des tableaux, puis id).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {string} req.body.position - Position
    * @param {string} req.body.name - Nom
-   * @returns {Promise<Object>} Objet Stage créé
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<Object|{error: string}>} Objet Stage créé, 409 s'il n'existe aucun tableau
    */
   fastify.post(
     '/stages',
@@ -221,11 +223,24 @@ export default async function stagesRoutes(fastify) {
           },
           required: ['name', 'position'],
         },
-        response: { 200: stageSchema },
+        response: {
+          200: stageSchema,
+          409: errorResponse,
+        },
       },
     },
-    async (req) => {
-      return prisma.stage.create({ data: req.body })
+    async (req, reply) => {
+      const board = await prisma.board.findFirst({
+        orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        select: { id: true },
+      })
+      // Les seeds créent toujours un tableau, ce cas ne vient que d'une base abîmée
+      if (!board) {
+        Logger.warn('Création de colonne refusée, aucun tableau en base')
+        reply.code(409)
+        return { error: 'Aucun tableau pour accueillir la colonne' }
+      }
+      return prisma.stage.create({ data: { ...req.body, boardId: board.id } })
     },
   )
 

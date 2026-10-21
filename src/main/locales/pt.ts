@@ -26,6 +26,9 @@ export const pt: MainMessages = {
   checklists: {
     copyName: '{name} (cópia)',
   },
+  boards: {
+    defaultName: 'Meu quadro',
+  },
   dataTransfer: {
     exportTitle: 'Exportar os dados',
     importTitle: 'Importar dados',

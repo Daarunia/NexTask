@@ -26,6 +26,9 @@ export const zh: MainMessages = {
   checklists: {
     copyName: '{name}（副本）',
   },
+  boards: {
+    defaultName: '我的看板',
+  },
   dataTransfer: {
     exportTitle: '导出数据',
     importTitle: '导入数据',

@@ -1,10 +1,12 @@
 import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
+import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'
 import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
-import { translate } from '../../i18n.js'
+import { t, translate } from '../../i18n.js'
+import { boardKey } from '../../shared/board.helper.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
 import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
@@ -171,6 +173,22 @@ const importErrorSchema = {
  */
 function stageColor(color: string | null | undefined): TagColor | null {
   return TAG_COLORS.includes(color as TagColor) ? (color as TagColor) : null
+}
+
+/**
+ * Tableau qui reçoit les données importées. Le premier tableau existant
+ * (ordre des tableaux, puis id), sinon un tableau créé sous le nom par défaut
+ * de la langue de l'interface, l'app exigeant toujours au moins un tableau.
+ * @param tx Client Prisma de la transaction d'import
+ */
+async function importBoardId(tx: Prisma.TransactionClient): Promise<number> {
+  const board = await tx.board.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }], select: { id: true } })
+  if (board) return board.id
+
+  const name = t('boards.defaultName')
+  const created = await tx.board.create({ data: { name, nameKey: boardKey(name), position: 0 }, select: { id: true } })
+  Logger.info(`Tableau « ${name} » créé pour l'import, aucun tableau en base`)
+  return created.id
 }
 
 /** Fichier d'import, une fois validé par Fastify. */
@@ -502,6 +520,10 @@ export default async function dataRoutes(fastify) {
             await tx.tag.deleteMany()
             await tx.stage.deleteMany()
 
+            // Un export ne porte pas de tableau, colonnes, séries et tâches
+            // rejoignent donc le premier tableau, créé s'il n'en existe aucun
+            const boardId = await importBoardId(tx)
+
             // Champs repris un par un : une propriété inconnue du fichier n'atteint pas Prisma
             await tx.stage.createMany({
               data: data.stages.map(({ id, name, position, color }) => ({
@@ -509,6 +531,7 @@ export default async function dataRoutes(fastify) {
                 name,
                 position,
                 color: stageColor(color),
+                boardId,
               })),
             })
             await tx.tag.createMany({
@@ -560,6 +583,7 @@ export default async function dataRoutes(fastify) {
                   description: recurrence.description,
                   version: recurrence.version,
                   stageId: recurrence.stageId,
+                  boardId,
                   createdAt: recurrence.createdAt,
                   updatedAt: recurrence.updatedAt,
                   checklistItems: seriesChecklists[index].texts,
@@ -580,6 +604,7 @@ export default async function dataRoutes(fastify) {
                   isHistorized: task.isHistorized,
                   historizationDate: task.historizationDate,
                   stageId: task.stageId,
+                  boardId,
                   startDate: task.startDate,
                   notifiedAt: task.notifiedAt,
                   createdAt: task.createdAt,

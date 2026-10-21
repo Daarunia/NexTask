@@ -26,6 +26,9 @@ export const en: MainMessages = {
   checklists: {
     copyName: '{name} (copy)',
   },
+  boards: {
+    defaultName: 'My board',
+  },
   dataTransfer: {
     exportTitle: 'Export data',
     importTitle: 'Import data',
