@@ -1,16 +1,19 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { DAILY, getSeries, localDate, plusMinutes, runRecurrences, seriesTasks } from '../../helpers/recurrence.helper'
 
 /**
  * Tests E2E de la règle d'or des tableaux, tenue par le serveur seul. Une
  * tâche avec une colonne a le tableau de cette colonne, une tâche archivée
  * garde son tableau. Chaque écriture de `stageId` (création, modification,
- * lot, archivage, restauration, duplication, ajout rapide) est suivie d'une
- * relecture par GET /tasks, et un `boardId` envoyé par le client est ignoré.
+ * lot, archivage, restauration, duplication, ajout rapide, déplacement) est
+ * suivie d'une relecture par GET /tasks, et un `boardId` envoyé par le client
+ * est ignoré.
  *
- * Ici avec le seul tableau par défaut, dont l'id change à chaque reset et se
- * lit donc sur les colonnes (GET /stages), jamais en dur.
+ * D'abord avec le seul tableau par défaut, puis avec un second tableau créé
+ * par POST /boards (restauration, ajout rapide, séries, déplacement). Les ids
+ * changent à chaque reset et se lisent donc par l'API, jamais en dur.
  *
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
@@ -38,6 +41,9 @@ interface ApiTask {
   stageId: number | null
   boardId: number | null
   isHistorized: boolean
+  recurrenceId: number | null
+  // Résumé de la série, null hors série
+  recurrence: { id: number; boardId: number | null } | null
 }
 
 /** Colonnes triées par position, et leur tableau commun. */
@@ -313,5 +319,181 @@ test.describe('Ajout rapide', () => {
     await setLastBoard(page, UNKNOWN_ID)
     const gone = await quickAdd(page.request, { title: 'Tableau disparu' })
     expect(await listedTask(page.request, gone.id)).toMatchObject({ stageId: stages[0].id, boardId })
+  })
+})
+
+/**
+ * Crée un tableau par POST /boards, et renvoie son id et ses colonnes triées.
+ * @param request Contexte de requête Playwright
+ * @param name Nom du tableau
+ * @param mode Colonnes du tableau, les quatre par défaut ou aucune
+ */
+async function createBoard(
+  request: APIRequestContext,
+  name: string,
+  mode: 'default' | 'empty' = 'default',
+): Promise<{ boardId: number; stages: ApiStage[] }> {
+  const res = await request.post(`${API}/boards`, { data: { name, columns: { mode } } })
+  expect(res.status(), await res.text()).toBe(201)
+  const board = (await res.json()) as { id: number; stages: ApiStage[] }
+  return { boardId: board.id, stages: board.stages }
+}
+
+/**
+ * Crée une tâche récurrente quotidienne, à partir de demain, par POST /tasks.
+ * @param request Contexte de requête Playwright
+ * @param stageId Colonne de la tâche, et du modèle de sa série
+ * @param title Titre
+ */
+async function createRecurring(request: APIRequestContext, stageId: number, title: string): Promise<ApiTask> {
+  return createTask(request, stageId, title, { startDate: localDate(1).toISOString(), recurrence: DAILY })
+}
+
+test.describe('Second tableau', () => {
+  test('restauration sans place : première colonne du tableau d’origine, pas du premier tableau', async ({ page }) => {
+    const first = await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const task = await createTask(page.request, second.stages[2].id, 'Revient chez elle')
+    expect((await page.request.put(`${API}/tasks/${task.id}`)).ok()).toBeTruthy()
+    expect(await listedTask(page.request, task.id)).toMatchObject({ stageId: null, boardId: second.boardId })
+
+    // Le tableau de repli ne sert pas, la tâche a encore son tableau
+    const res = await page.request.post(`${API}/tasks/${task.id}/restore?boardId=${first.boardId}`)
+    expect(res.ok(), await res.text()).toBeTruthy()
+    expect(await listedTask(page.request, task.id)).toMatchObject({
+      stageId: second.stages[0].id,
+      boardId: second.boardId,
+      isHistorized: false,
+    })
+  })
+
+  test('restauration d’une tâche au tableau supprimé : tableau de ?boardId=, sinon le premier', async ({ page }) => {
+    const first = await layout(page.request)
+    const target = await createBoard(page.request, 'Cible')
+    const doomed = await createBoard(page.request, 'Supprimé')
+    const withFallback = await createTask(page.request, doomed.stages[1].id, 'Avec repli')
+    const withoutFallback = await createTask(page.request, doomed.stages[1].id, 'Sans repli')
+    const gone = await createTask(page.request, doomed.stages[1].id, 'Repli disparu')
+
+    expect((await page.request.delete(`${API}/boards/${doomed.boardId}`)).ok()).toBeTruthy()
+    for (const task of [withFallback, withoutFallback, gone]) {
+      expect(await listedTask(page.request, task.id)).toMatchObject({ isHistorized: true, boardId: null })
+    }
+
+    const restored = await page.request.post(`${API}/tasks/${withFallback.id}/restore?boardId=${target.boardId}`)
+    expect(restored.ok(), await restored.text()).toBeTruthy()
+    expect(await listedTask(page.request, withFallback.id)).toMatchObject({
+      stageId: target.stages[0].id,
+      boardId: target.boardId,
+    })
+
+    expect((await page.request.post(`${API}/tasks/${withoutFallback.id}/restore`)).ok()).toBeTruthy()
+    expect(await listedTask(page.request, withoutFallback.id)).toMatchObject({
+      stageId: first.stages[0].id,
+      boardId: first.boardId,
+    })
+
+    // Tableau de repli disparu lui aussi : premier tableau
+    const fallbackGone = await page.request.post(`${API}/tasks/${gone.id}/restore?boardId=${doomed.boardId}`)
+    expect(fallbackGone.ok(), await fallbackGone.text()).toBeTruthy()
+    expect(await listedTask(page.request, gone.id)).toMatchObject({
+      stageId: first.stages[0].id,
+      boardId: first.boardId,
+    })
+  })
+
+  test('ajout rapide : première colonne du dernier tableau affiché, premier tableau s’il est vide', async ({
+    page,
+  }) => {
+    const first = await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const empty = await createBoard(page.request, 'Vide', 'empty')
+    const quickAdd = async (data: { title: string; stageId?: number }) => {
+      const res = await page.request.post(`${API}/tasks/quick-add`, { data })
+      expect(res.ok(), await res.text()).toBeTruthy()
+      return listedTask(page.request, ((await res.json()) as ApiTask).id)
+    }
+
+    await setLastBoard(page, second.boardId)
+    expect(await quickAdd({ title: 'Vers le second' })).toMatchObject({
+      stageId: second.stages[0].id,
+      boardId: second.boardId,
+    })
+
+    // Colonne explicite d'un autre tableau que le dernier affiché
+    expect(await quickAdd({ title: 'Choisie', stageId: first.stages[1].id })).toMatchObject({
+      stageId: first.stages[1].id,
+      boardId: first.boardId,
+    })
+
+    // Dernier tableau sans colonne : premier tableau (choix du lot 2, plutôt qu'un 409)
+    await setLastBoard(page, empty.boardId)
+    expect(await quickAdd({ title: 'Repli' })).toMatchObject({ stageId: first.stages[0].id, boardId: first.boardId })
+  })
+
+  test('la série garde le tableau de sa tâche, même après la suppression de la colonne du modèle', async ({ page }) => {
+    await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const origin = await createRecurring(page.request, second.stages[2].id, 'Série du second')
+    expect(origin.recurrence).toMatchObject({ boardId: second.boardId })
+    expect(await getSeries(page.request, origin.recurrenceId!)).toMatchObject({ boardId: second.boardId })
+
+    // Colonne du modèle supprimée : l'occurrence naît dans la première colonne du même tableau
+    expect((await page.request.delete(`${API}/stages/${second.stages[2].id}`)).ok()).toBeTruthy()
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+    const [, next] = await seriesTasks(page.request, origin.recurrenceId!)
+    expect(next).toMatchObject({ stageId: second.stages[0].id, boardId: second.boardId })
+  })
+
+  test('PATCH /tasks/:id vers un autre tableau : la série suit, PATCH /tasks/batch : elle reste', async ({ page }) => {
+    const first = await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const single = await createRecurring(page.request, first.stages[0].id, 'Seule')
+    const batched = await createRecurring(page.request, first.stages[0].id, 'En lot')
+
+    const patched = await page.request.patch(`${API}/tasks/${single.id}`, {
+      data: { stageId: second.stages[1].id, position: 0 },
+    })
+    expect(patched.ok(), await patched.text()).toBeTruthy()
+    expect(await listedTask(page.request, single.id)).toMatchObject({
+      stageId: second.stages[1].id,
+      boardId: second.boardId,
+      recurrence: { boardId: second.boardId },
+    })
+
+    const batch = await page.request.patch(`${API}/tasks/batch`, {
+      data: [{ id: batched.id, stageId: second.stages[1].id, position: 1 }],
+    })
+    expect(batch.ok(), await batch.text()).toBeTruthy()
+    expect(await listedTask(page.request, batched.id)).toMatchObject({
+      stageId: second.stages[1].id,
+      boardId: second.boardId,
+      recurrence: { boardId: first.boardId },
+    })
+  })
+
+  test('duplication et déplacement : tableau de la colonne, boardId envoyé ignoré', async ({ page }) => {
+    const first = await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const source = await createTask(page.request, second.stages[1].id, 'Source')
+
+    const duplicated = await page.request.post(`${API}/tasks/${source.id}/duplicate`, {
+      data: { title: 'Copie', boardId: first.boardId },
+    })
+    expect(duplicated.ok(), await duplicated.text()).toBeTruthy()
+    const copy = (await duplicated.json()) as ApiTask
+    expect(await listedTask(page.request, copy.id)).toMatchObject({
+      stageId: second.stages[1].id,
+      boardId: second.boardId,
+    })
+
+    const moved = await page.request.post(`${API}/tasks/${copy.id}/move`, {
+      data: { stageId: first.stages[2].id, boardId: second.boardId },
+    })
+    expect(moved.ok(), await moved.text()).toBeTruthy()
+    expect(await listedTask(page.request, copy.id)).toMatchObject({
+      stageId: first.stages[2].id,
+      boardId: first.boardId,
+    })
   })
 })
