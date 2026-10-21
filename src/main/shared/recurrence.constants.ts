@@ -96,6 +96,8 @@ export interface RecurrenceSummary {
   // date de la prochaine occurrence (pas de sa création) ; null une fois la série terminée,
   // ou en mode `completion` tant qu'une occurrence attend son archivage
   nextRunAt: string | null
+  // Tableau des prochaines occurrences, null si ce tableau a été supprimé (absent d'un cache antérieur)
+  boardId?: number | null
 }
 
 /**

@@ -39,6 +39,8 @@ const recurrenceSummaryProperties = {
   // date de la prochaine occurrence (sa création peut être anticipée), null une fois la série
   // terminée ou, après archivage, tant qu'une occurrence est au tableau
   nextRunAt: nullableDate,
+  // Tableau des prochaines occurrences, null si ce tableau a été supprimé
+  boardId: { type: ['integer', 'null'] },
 }
 
 /** Schéma de réponse du résumé d'une série. */
