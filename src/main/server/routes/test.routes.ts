@@ -22,8 +22,8 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags et les colonnes puis rejoue les seeds
- *                                    (sans les tags ni les modèles de checklist par défaut),
+ * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags, les colonnes et les tableaux
+ *                                    puis rejoue les seeds (un seul tableau, sans les tags ni les modèles de checklist par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
  *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide
  *                                    et remet la mise à jour à son état de départ
@@ -48,9 +48,10 @@ export default async function testRoutes(fastify) {
    * POST /test/reset
    *
    * Remet la base dans un état propre et déterministe : suppression de toutes
-   * les checklists (modèles compris), de toutes les tâches, de tous les tags puis
-   * de toutes les colonnes, et réapplication des seeds initiaux
-   * (source unique de vérité : les fichiers .sql du dossier seeds).
+   * les checklists (modèles compris), de toutes les tâches, de tous les tags, de
+   * toutes les colonnes puis de tous les tableaux, et réapplication des seeds
+   * initiaux (source unique de vérité : les fichiers .sql du dossier seeds). La
+   * seed du tableau par défaut en recrée un seul, d'un nouvel id à chaque reset.
    *
    * Les tags et les modèles de checklist par défaut sont retirés ensuite, les
    * tests partant de listes vides, sauf si `seedTags` ou `seedTemplates` est demandé.
@@ -96,6 +97,8 @@ export default async function testRoutes(fastify) {
       // Les liens tâche-tag sont déjà partis en cascade avec les tâches
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
+      // Tableaux en dernier, car les colonnes les référencent
+      await prisma.board.deleteMany()
 
       // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
       // relus par le renderer au rechargement qui suit le reset. Avant les
