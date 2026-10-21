@@ -7,7 +7,8 @@ import type { Task } from '../../src/renderer/types/task.types'
 /**
  * Tests unitaires du store des tableaux (stores/Board.ts), avec une Pinia
  * neuve par test. Tableau affiché et ses replis, enregistrement du dernier
- * tableau, suppression d'un tableau et compteur de tâches.
+ * tableau, suppression d'un tableau et compteur de tâches. Puis les actions
+ * du store Task qui passent d'un tableau à l'autre (déplacement, restauration).
  *
  * Le pont des paramètres du preload et l'API sont simulés, comme la
  * préférence de thème de l'OS lue au chargement du store des paramètres.
@@ -247,5 +248,56 @@ describe('deleteBoard', () => {
 
     expect(store.getAllBoards).toHaveLength(3)
     expect(useStageStore().getAllStages).toHaveLength(3)
+  })
+})
+
+describe('moveTaskToStage', () => {
+  test('met la tâche dans le tableau et la colonne visés, en bas sans position', async () => {
+    loadSample()
+    api.post.mockResolvedValueOnce({ ...task(10, 3, 7), position: 1 })
+    const taskStore = useTaskStore()
+
+    await taskStore.moveTaskToStage(10, 3)
+
+    expect(api.post).toHaveBeenCalledWith('/tasks/10/move', { stageId: 3, position: undefined })
+    expect(useBoardStore().taskCount(5)).toBe(1)
+    expect(useBoardStore().taskCount(7)).toBe(2)
+    expect(taskStore.getAllTasks.find((t) => t.id === 12)?.position).toBe(0)
+  })
+
+  test('fait descendre les tâches de la colonne visée à cette position ou après', async () => {
+    loadSample()
+    api.post.mockResolvedValueOnce(task(10, 3, 7))
+    const taskStore = useTaskStore()
+
+    await taskStore.moveTaskToStage(10, 3, 0)
+
+    expect(api.post).toHaveBeenCalledWith('/tasks/10/move', { stageId: 3, position: 0 })
+    expect(taskStore.getAllTasks.find((t) => t.id === 12)?.position).toBe(1)
+    // Une tâche d'une autre colonne ne bouge pas
+    expect(taskStore.getAllTasks.find((t) => t.id === 11)?.position).toBe(0)
+  })
+})
+
+describe('restoreTask', () => {
+  test('passe le tableau de repli au serveur', async () => {
+    loadSample()
+    api.post.mockResolvedValueOnce({ ...task(13, 3, 7), removedOccurrenceId: null })
+
+    await useTaskStore().restoreTask(13, undefined, 7)
+
+    expect(api.post).toHaveBeenCalledWith('/tasks/13/restore', undefined, { params: { boardId: 7 } })
+    expect(useBoardStore().taskCount(7)).toBe(2)
+  })
+
+  test('garde la place demandée, sans tableau de repli', async () => {
+    loadSample()
+    api.post.mockResolvedValueOnce({ ...task(13, 1, 5), removedOccurrenceId: null })
+
+    await useTaskStore().restoreTask(13, { stageId: 1, position: 0 })
+
+    expect(api.post).toHaveBeenCalledWith('/tasks/13/restore', undefined, {
+      params: { stageId: 1, position: 0, boardId: undefined },
+    })
   })
 })

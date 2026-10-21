@@ -179,15 +179,21 @@ export const useTaskStore = defineStore('task', {
      * @param id ID de la tâche
      * @param place Colonne et position à reprendre (annulation d'un archivage).
      *   Sans place, ou si la colonne n'existe plus, le serveur la met en bas de
-     *   la première colonne.
+     *   la première colonne de son tableau.
+     * @param fallbackBoardId Tableau où la restaurer si le sien a été supprimé
+     *   (tableau affiché). Sans lui, le serveur prend le premier tableau.
      * @returns La tâche restaurée (avec sa colonne et sa position), et l'occurrence retirée
      */
-    async restoreTask(id: number, place?: { stageId: number; position: number }): Promise<RestoreResult> {
+    async restoreTask(
+      id: number,
+      place?: { stageId: number; position: number },
+      fallbackBoardId?: number,
+    ): Promise<RestoreResult> {
       try {
         const { removedOccurrenceId, ...restored } = await api.post<Task & { removedOccurrenceId?: number | null }>(
           `/tasks/${id}/restore`,
           undefined,
-          { params: place },
+          { params: { ...place, boardId: fallbackBoardId } },
         )
         this.insertCachedTask(restored)
 
@@ -215,7 +221,7 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Ajoute au cache une tâche placée au tableau par le serveur (restauration,
-     * ajout rapide, occurrence d'une tâche récurrente). Comme côté serveur, les
+     * ajout rapide, occurrence d'une tâche récurrente, déplacement). Comme côté serveur, les
      * autres tâches actives de sa colonne, à sa position ou après, descendent
      * d'un cran. Sans cache chargé, rien à faire : le prochain chargement la ramènera.
      * @param inserted Tâche telle que renvoyée par le serveur
@@ -242,6 +248,27 @@ export const useTaskStore = defineStore('task', {
       }
 
       this.allEntities.data = data
+    },
+
+    /**
+     * Déplace une tâche vers une colonne, de son tableau ou d'un autre, avec sa
+     * série si le tableau change (POST /tasks/:id/move). Sert aussi à annuler,
+     * avec l'ancienne colonne et l'ancienne position. Le cache suit le serveur,
+     * les tâches de la colonne visée à cette position ou après descendent d'un cran.
+     * @param id Id de la tâche
+     * @param stageId Colonne visée
+     * @param position Position dans cette colonne, en bas si absente
+     * @returns La tâche déplacée, avec son tableau et sa série à jour
+     */
+    async moveTaskToStage(id: number, stageId: number, position?: number): Promise<Task> {
+      try {
+        const moved = await api.post<Task>(`/tasks/${id}/move`, { stageId, position })
+        this.insertCachedTask(moved)
+        return moved
+      } catch (error) {
+        getLogger().error(`Erreur lors du déplacement de la tâche ${id} vers la colonne ${stageId} :`, error)
+        throw error
+      }
     },
 
     /**
