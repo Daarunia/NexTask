@@ -298,6 +298,25 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Historise dans le cache les tâches actives d'un tableau supprimé, et
+     * détache de lui toutes ses tâches, archivées comprises. Le serveur a déjà
+     * archivé les tâches avec DELETE /boards/:id, puis mis leur `boardId` à
+     * null en supprimant le tableau.
+     * @param boardId ID du tableau supprimé
+     */
+    markBoardTasksArchived(boardId: number) {
+      if (!this.allEntities) return
+
+      const now = new Date()
+
+      this.allEntities.data = this.allEntities.data.map((task) => {
+        if (task.boardId !== boardId) return task
+        if (task.isHistorized) return { ...task, boardId: null }
+        return { ...task, isHistorized: true, historizationDate: now, boardId: null }
+      })
+    },
+
+    /**
      * Supprime une tâche par ID
      * @param id ID de la tâche
      */
@@ -456,10 +475,12 @@ export const useTaskStore = defineStore('task', {
      * Mise à jour partielle d'un ensemble de tâches
      * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés).
      *   Les tags ne passent pas par ce batch : l'API les refuse. `stageId` null retire la
-     *   tâche de sa colonne, comme un archivage.
+     *   tâche de sa colonne, comme un archivage. `boardId` non plus, le serveur le déduit de la colonne.
      */
     async updateTaskBatch(
-      tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId'>> & { stageId?: number | null }>,
+      tasks: Array<
+        Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId' | 'boardId'>> & { stageId?: number | null }
+      >,
     ): Promise<void> {
       if (!tasks.length) return
 

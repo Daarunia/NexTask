@@ -25,6 +25,17 @@ export const useStageStore = defineStore('stage', {
     getAllStages(state): Stage[] {
       return state.allEntities?.data ?? []
     },
+
+    /**
+     * Getter pour récupérer les colonnes d'un tableau, triées par position puis
+     * par id comme côté serveur (sans contrôle du TTL, cf. getAllTasks)
+     */
+    getStagesOfBoard(state): (boardId: number) => Stage[] {
+      return (boardId: number) =>
+        (state.allEntities?.data ?? [])
+          .filter((stage) => stage.boardId === boardId)
+          .sort((a, b) => a.position - b.position || a.id - b.id)
+    },
   },
   actions: {
     setAllStagesCache(data: Stage[]) {
@@ -79,12 +90,14 @@ export const useStageStore = defineStore('stage', {
      * Création d'une colonne
      * @param name Nom de la colonne
      * @param position Position de la colonne
+     * @param boardId Tableau de la colonne. Sans lui, le serveur la met dans le premier tableau.
      */
-    async saveStage(name: string, position: number): Promise<Stage> {
+    async saveStage(name: string, position: number, boardId?: number): Promise<Stage> {
       try {
         const payload = {
           name,
           position,
+          boardId,
         }
 
         const newStage = await api.post<Stage>(`/stages`, payload)
@@ -123,6 +136,17 @@ export const useStageStore = defineStore('stage', {
         throw error
       }
     },
+    /**
+     * Retire du cache les colonnes d'un tableau supprimé (parties en cascade
+     * côté serveur avec DELETE /boards/:id). Leurs tâches sont archivées dans
+     * le cache par `markBoardTasksArchived` du store Task.
+     * @param boardId Id du tableau supprimé
+     */
+    removeBoardStages(boardId: number) {
+      if (!this.allEntities) return
+      this.allEntities.data = this.allEntities.data.filter((stage) => stage.boardId !== boardId)
+    },
+
     /**
      * Change la couleur d'une colonne
      * @param id Id de la colonne
