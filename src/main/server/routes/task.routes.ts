@@ -14,6 +14,7 @@ import {
   taskChecklistTexts,
 } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
+import { stagePlacement, withStageBoard } from '../helpers/board.helper.js'
 import {
   createSeries,
   onArchiveStatesChanged,
@@ -80,6 +81,8 @@ type TaskUpdateBody = Omit<Prisma.TaskUncheckedUpdateInput, 'tags' | 'checklist'
 /**
  * Met à jour plusieurs tâches dans la transaction de PATCH /tasks/batch, puis
  * fait suivre leurs séries (archivage ou restauration, cf. onArchiveStatesChanged).
+ * Le tableau d'une tâche suit la colonne envoyée, et reste le même pour une
+ * tâche archivée (`stageId` null). Une colonne inconnue annule tout le lot.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param tasks Tâches à mettre à jour (id requis)
@@ -99,7 +102,11 @@ async function updateTaskBatch(
 
   const updated: Prisma.TaskGetPayload<{ include: typeof taskInclude }>[] = []
   for (const t of tasks) {
-    const data = withArchiveDate({ ...t }, wasArchived.has(t.id), now)
+    // Le tableau suit la colonne, même celle d'un autre tableau (la série, elle,
+    // ne suit pas, c'est le rôle d'un déplacement de tâche entre tableaux)
+    const fields = await withStageBoard(tx, t)
+    if (!fields) throw new Error(`Colonne ${t.stageId} introuvable pour la tâche ${t.id}`)
+    const data = withArchiveDate(fields, wasArchived.has(t.id), now)
 
     // startDate repoussée dans le futur → on réarme la notification.
     if (data.startDate && new Date(data.startDate) > now) {
@@ -235,7 +242,7 @@ export default async function taskRoutes(fastify) {
    * obligatoire). Avec `checklistItems`, la tâche naît avec sa checklist,
    * textes nettoyés et vides retirés, les points cochés datés de maintenant
    * (cf. planChecklistSync). Tags, tâche, checklist et série sont écrits dans
-   * une même transaction.
+   * une même transaction. Le tableau de la tâche est celui de sa colonne.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
@@ -250,7 +257,8 @@ export default async function taskRoutes(fastify) {
    * @param {Object[]} [req.body.checklistItems] - Points de la checklist, dans l'ordre (cf. ChecklistItemInput)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task créé, avec ses tags, sa checklist et sa série,
-   *   400 si la règle de répétition est incohérente ou si un point est invalide
+   *   400 si la règle de répétition est incohérente ou si un point est invalide,
+   *   404 si la colonne n'existe pas
    */
   fastify.post(
     '/tasks',
@@ -273,7 +281,7 @@ export default async function taskRoutes(fastify) {
           },
           required: ['stageId', 'position', 'title', 'version', 'description'],
         },
-        response: { 200: taskSchema, 400: errorResponse },
+        response: { 200: taskSchema, 400: errorResponse, 404: errorResponse },
       },
     },
     async (req, reply) => {
@@ -290,9 +298,18 @@ export default async function taskRoutes(fastify) {
       const now = new Date()
 
       return prisma.$transaction(async (tx) => {
+        // Avant toute écriture, car la réponse d'erreur valide la transaction
+        const placement = await stagePlacement(tx, data.stageId as number)
+        if (!placement) {
+          Logger.warn(`Création de tâche refusée, colonne ${data.stageId} introuvable`)
+          reply.code(404)
+          return { error: 'Colonne non trouvée' }
+        }
+
         const tagIds = tags ? await resolveTagIds(tx, tags) : []
+        // Placement en dernier, il remplace un `boardId` envoyé par le client
         const task = await tx.task.create({
-          data: { ...data, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
+          data: { ...data, ...placement, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
         })
 
         // Checklist écrite avant la série, qui pourra en reprendre les textes
@@ -336,6 +353,9 @@ export default async function taskRoutes(fastify) {
    * archivage » : la série calcule sa prochaine date ou se remet en attente
    * (cf. onArchiveStatesChanged).
    *
+   * Le tableau de la tâche suit `stageId` quand il désigne une colonne, et ne
+   * change pas avec `stageId: null` (archivage). Le client ne l'envoie jamais.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
    * @param {number} req.params.id - ID de la tâche
@@ -347,7 +367,7 @@ export default async function taskRoutes(fastify) {
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task mis à jour avec ses tags, sa checklist
    *   et sa série, 400 si la règle de répétition est incohérente ou si un point est invalide,
-   *   404 si la tâche n'existe pas,
+   *   404 si la tâche ou la colonne n'existe pas,
    *   500 pour toute autre erreur
    */
   fastify.patch(
@@ -418,12 +438,20 @@ export default async function taskRoutes(fastify) {
             }
           }
 
+          // Avant toute écriture, car la réponse d'erreur valide la transaction
+          const fields = await withStageBoard(tx, data)
+          if (!fields) {
+            Logger.warn(`Mise à jour de la tâche ${id} impossible, colonne ${data.stageId} introuvable`)
+            reply.code(404)
+            return { error: 'Colonne non trouvée' }
+          }
+
           const tagIds = tags === undefined ? undefined : await resolveTagIds(tx, tags)
 
           const task = await tx.task.update({
             where: { id },
             data: {
-              ...withArchiveDate(data, current.isHistorized, now),
+              ...withArchiveDate(fields, current.isHistorized, now),
               ...(tagIds && { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } }),
             },
           })
@@ -802,8 +830,9 @@ export default async function taskRoutes(fastify) {
    * colonne (les tâches suivantes descendent d'un cran). La copie reprend la
    * version, la description, la date de début (et son rappel déjà envoyé, pour
    * ne pas notifier deux fois), les tags et les textes des points de la
-   * checklist, tous décochés. Elle ne fait partie d'aucune série. Le titre est
-   * choisi par le renderer, dans la langue de l'interface.
+   * checklist, tous décochés, ainsi que son tableau. Elle ne fait partie
+   * d'aucune série. Le titre est choisi par le renderer, dans la langue de
+   * l'interface.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -857,6 +886,7 @@ export default async function taskRoutes(fastify) {
             version: source.version,
             description: source.description,
             stageId: source.stageId,
+            boardId: source.boardId,
             position,
             startDate: source.startDate,
             notifiedAt: source.notifiedAt,
@@ -877,7 +907,9 @@ export default async function taskRoutes(fastify) {
    *
    * Met à jour plusieurs tâches en une seule requête, dans une transaction.
    * Archivage et désarchivage comme pour PATCH /tasks/:id (date d'archivage,
-   * séries « après archivage »).
+   * séries « après archivage »). Le tableau de chaque tâche suit sa colonne,
+   * même celle d'un autre tableau, sans que sa série suive. Une colonne
+   * inconnue annule tout le lot (500).
    *
    * @param {Object} req - Requête Fastify
    * @param {Array<Object>} req.body - Tableau des tâches à mettre à jour
