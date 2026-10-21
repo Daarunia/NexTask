@@ -18,6 +18,43 @@ export async function firstBoard(tx: TransactionClient): Promise<Board | null> {
   return tx.board.findFirst({ orderBy: POSITION_ORDER })
 }
 
+/**
+ * Tableau retenu pour placer une tâche, le premier candidat qui existe encore,
+ * sinon le premier tableau. Un candidat nul ou absent est sauté.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param candidates Ids de tableau, par ordre de préférence
+ * @returns Id du tableau, null s'il n'existe aucun tableau
+ */
+export async function boardOrFirst(
+  tx: TransactionClient,
+  candidates: Array<number | null | undefined>,
+): Promise<number | null> {
+  for (const id of candidates) {
+    if (id === null || id === undefined) continue
+    const board = await tx.board.findUnique({ where: { id }, select: { id: true } })
+    if (board) return board.id
+  }
+  return (await firstBoard(tx))?.id ?? null
+}
+
+/**
+ * Première colonne d'un tableau, dans l'ordre d'affichage (même ordre que
+ * GET /stages).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param boardId Id du tableau
+ * @returns Colonne et tableau, null si le tableau n'a aucune colonne
+ */
+export async function firstStageOf(tx: TransactionClient, boardId: number): Promise<StagePlacement | null> {
+  const stage = await tx.stage.findFirst({
+    where: { boardId },
+    orderBy: POSITION_ORDER,
+    select: { id: true, boardId: true },
+  })
+  return stage && { stageId: stage.id, boardId: stage.boardId }
+}
+
 /** Place d'une tâche, sa colonne et le tableau de cette colonne. */
 export interface StagePlacement {
   stageId: number
