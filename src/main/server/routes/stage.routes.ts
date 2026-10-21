@@ -4,6 +4,7 @@ import { stageSchema } from '../schemas/stageSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'
 import { taskInclude } from '../helpers/task.helper.js'
 import { onArchiveStatesChanged } from '../helpers/recurrence.helper.js'
+import { firstBoard } from '../helpers/board.helper.js'
 import { TAG_COLORS } from '../../shared/tag.constants.js'
 
 /**
@@ -84,7 +85,8 @@ export default async function stagesRoutes(fastify) {
   /**
    * PATCH /stages/:id
    *
-   * Met à jour les informations d'une stage existante.
+   * Met à jour les informations d'une stage existante. Son tableau ne change
+   * pas, un `boardId` reçu est ignoré.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -119,10 +121,14 @@ export default async function stagesRoutes(fastify) {
     },
     async (req, reply) => {
       const id = Number(req.params.id)
+      // Champs repris un par un, car Fastify laisse passer une propriété non
+      // déclarée du corps, et un `boardId` changerait le tableau de la colonne
+      // sans ses tâches
+      const { name, position, color } = req.body as { name?: string; position?: number; color?: string | null }
       try {
         return await prisma.stage.update({
           where: { id },
-          data: req.body,
+          data: { name, position, color },
         })
       } catch (error) {
         Logger.warn(`Échec de la mise à jour de la stage ${id} (traitée comme introuvable) :`, error)
@@ -199,48 +205,61 @@ export default async function stagesRoutes(fastify) {
   /**
    * POST /stages
    *
-   * Crée une nouvelle stage avec les données fournies, dans le premier
-   * tableau (ordre des tableaux, puis id).
+   * Crée une nouvelle stage avec les données fournies, dans le tableau
+   * `boardId`, ou à défaut dans le premier tableau (ordre des tableaux, puis id).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {string} req.body.position - Position
    * @param {string} req.body.name - Nom
+   * @param {number} [req.body.boardId] - Tableau de la colonne (le premier si absent)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Stage créé, 409 s'il n'existe aucun tableau
+   * @returns {Promise<Object|{error: string}>} Objet Stage créé, 404 si le tableau
+   *   demandé n'existe pas, 409 s'il n'existe aucun tableau
    */
   fastify.post(
     '/stages',
     {
       schema: {
-        description: 'Crée une nouvelle stage',
+        description: 'Crée une nouvelle stage, dans le tableau indiqué ou le premier',
         tags: ['Stage'],
         body: {
           type: 'object',
           properties: {
             name: requiredLabel,
             position: { type: 'integer' },
+            boardId: { type: 'integer' },
           },
           required: ['name', 'position'],
         },
         response: {
           200: stageSchema,
+          404: errorResponse,
           409: errorResponse,
         },
       },
     },
     async (req, reply) => {
-      const board = await prisma.board.findFirst({
-        orderBy: [{ position: 'asc' }, { id: 'asc' }],
-        select: { id: true },
-      })
+      const { name, position, boardId } = req.body as { name: string; position: number; boardId?: number }
+
+      if (boardId !== undefined) {
+        const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true } })
+        if (!board) {
+          Logger.warn(`Création de colonne refusée, tableau ${boardId} introuvable`)
+          reply.code(404)
+          return { error: 'Tableau non trouvé' }
+        }
+        return prisma.stage.create({ data: { name, position, boardId } })
+      }
+
+      const board = await firstBoard(prisma)
       // Les seeds créent toujours un tableau, ce cas ne vient que d'une base abîmée
       if (!board) {
         Logger.warn('Création de colonne refusée, aucun tableau en base')
         reply.code(409)
         return { error: 'Aucun tableau pour accueillir la colonne' }
       }
-      return prisma.stage.create({ data: { ...req.body, boardId: board.id } })
+      return prisma.stage.create({ data: { name, position, boardId: board.id } })
     },
   )
 
