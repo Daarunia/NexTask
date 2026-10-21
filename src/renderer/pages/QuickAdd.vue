@@ -55,6 +55,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import InputText from 'primevue/inputtext'
 import SelectButton from 'primevue/selectbutton'
 import { useStageStore } from '../stores/Stage'
+import { useBoardStore } from '../stores/Board'
 import { useTaskStore } from '../stores/Task'
 import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
 import type { Stage } from '../types/stage.types'
@@ -66,6 +67,7 @@ import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const taskStore = useTaskStore()
 const templateStore = useChecklistTemplateStore()
 const { t } = useI18n()
@@ -101,6 +103,18 @@ async function loadStages() {
     stageId.value = stages.value[0]?.id ?? null
   } catch (err) {
     logger.error('Ajout rapide : colonnes non chargées, la tâche ira dans la première colonne', err)
+  }
+}
+
+/**
+ * Tableaux, chargés en parallèle des colonnes. Sans eux, la tâche peut encore
+ * être ajoutée dans la colonne choisie.
+ */
+async function loadBoards() {
+  try {
+    await boardStore.loadAllBoards()
+  } catch (err) {
+    logger.error('Ajout rapide : tableaux non chargés', err)
   }
 }
 
@@ -149,6 +163,7 @@ onMounted(() => {
   globalThis.addEventListener('focus', focusTitle)
   focusTitle()
   loadStages()
+  loadBoards()
   loadTemplates()
 })
 

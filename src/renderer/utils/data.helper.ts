@@ -1,4 +1,5 @@
 import type { DataCounts } from '../../main/shared/data.constants'
+import { useBoardStore } from '../stores/Board'
 import { useStageStore } from '../stores/Stage'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
@@ -6,13 +7,16 @@ import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
 import { t } from '../i18n'
 
 /**
- * Après un import, qui a remplacé toutes les données, vide les caches du
- * tableau (colonnes et tâches, rechargées à l'ouverture du tableau) et des
- * modèles de checklist (rechargés à l'ouverture de leur page ou du dialogue),
- * puis relit les tags. Sans cela, les stores serviraient les anciennes données
- * jusqu'à l'expiration de leur TTL.
+ * Après un import, qui a remplacé toutes les données, vide les caches des
+ * tableaux, des colonnes et des tâches (rechargés à l'ouverture du Kanban) et
+ * des modèles de checklist (rechargés à l'ouverture de leur page ou du
+ * dialogue), puis relit les tags. Sans cela, les stores serviraient les
+ * anciennes données jusqu'à l'expiration de leur TTL. Le tableau choisi est
+ * oublié avec le cache, le Kanban se replie sur `lastBoardId` s'il existe
+ * encore, sinon sur le premier tableau.
  */
 export async function reloadDataAfterImport(): Promise<void> {
+  useBoardStore().$reset()
   useStageStore().$reset()
   useTaskStore().$reset()
   useChecklistTemplateStore().$reset()
