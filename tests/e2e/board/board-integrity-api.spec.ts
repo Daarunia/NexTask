@@ -7,7 +7,7 @@ import { DAILY, getSeries, localDate, plusMinutes, runRecurrences, seriesTasks }
  * Tests E2E de la règle d'or des tableaux, tenue par le serveur seul. Une
  * tâche avec une colonne a le tableau de cette colonne, une tâche archivée
  * garde son tableau. Chaque écriture de `stageId` (création, modification,
- * lot, archivage, restauration, duplication, ajout rapide, déplacement) est
+ * lot, archivage, restauration, duplication, ajout rapide, déplacement, import) est
  * suivie d'une relecture par GET /tasks, et un `boardId` envoyé par le client
  * est ignoré.
  *
@@ -495,5 +495,47 @@ test.describe('Second tableau', () => {
       stageId: first.stages[2].id,
       boardId: first.boardId,
     })
+  })
+})
+
+test.describe('Import', () => {
+  /** Ligne du fichier d'export qui porte un tableau. */
+  interface ExportedRow {
+    id: number
+    title: string
+    stageId: number | null
+    boardId: number | null
+  }
+
+  test('le tableau d’une tâche ou d’une série à colonne vient de sa colonne, jamais du fichier', async ({ page }) => {
+    const first = await layout(page.request)
+    const second = await createBoard(page.request, 'Second')
+    const active = await createTask(page.request, second.stages[1].id, 'Active')
+    const recurring = await createRecurring(page.request, second.stages[0].id, 'Récurrente')
+    const lost = await createTask(page.request, second.stages[0].id, 'Tableau perdu')
+    const kept = await createTask(page.request, first.stages[0].id, 'Tableau gardé')
+    for (const task of [lost, kept]) expect((await page.request.put(`${API}/tasks/${task.id}`)).ok()).toBeTruthy()
+
+    const exported = await (await page.request.get(`${API}/data/export`)).json()
+    // Fichier retouché, tableaux faux pour les lignes qui ont une colonne, inconnu pour une archive
+    const lie = (row: ExportedRow) => {
+      if (row.id === lost.id) return { ...row, boardId: UNKNOWN_ID }
+      return row.stageId === null ? row : { ...row, boardId: first.boardId }
+    }
+    const file = {
+      ...exported,
+      tasks: (exported.tasks as ExportedRow[]).map(lie),
+      recurrences: (exported.recurrences as ExportedRow[]).map(lie),
+    }
+    const res = await page.request.post(`${API}/data/import`, { data: file })
+    expect(res.ok(), await res.text()).toBeTruthy()
+
+    expect(await listedTask(page.request, active.id)).toMatchObject({ boardId: second.boardId })
+    expect(await listedTask(page.request, recurring.id)).toMatchObject({
+      boardId: second.boardId,
+      recurrence: { boardId: second.boardId },
+    })
+    expect(await listedTask(page.request, lost.id)).toMatchObject({ isHistorized: true, boardId: null })
+    expect(await listedTask(page.request, kept.id)).toMatchObject({ isHistorized: true, boardId: first.boardId })
   })
 })
