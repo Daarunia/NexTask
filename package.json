@@ -55,7 +55,7 @@
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
     "@playwright/test": "^1.64.1",
-    "@primeuix/themes": "^3.0.2",
+    "@primeuix/themes": "^3.1.0",
     "@primevue/auto-import-resolver": "^5.0.3",
     "@primevue/forms": "^5.0.3",
     "@tailwindcss/postcss": "^4.3.3",
