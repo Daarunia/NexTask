@@ -7,6 +7,8 @@ import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { t, translate } from '../../i18n.js'
 import { boardKey } from '../../shared/board.helper.js'
+import { BOARD_NAME_MAX_LENGTH } from '../../shared/board.constants.js'
+import { POSITION_ORDER } from '../helpers/board.helper.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
 import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
@@ -24,6 +26,23 @@ const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
 // Date optionnelle d'un export (null = absente)
 const nullableDate = { type: ['string', 'null'], format: 'date-time' }
 
+/**
+ * Tableau exporté. Le nom est borné comme à la saisie, un export de l'app ne
+ * dépasse jamais la limite.
+ */
+const exportedBoardSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    name: { type: 'string', pattern: String.raw`\S`, maxLength: BOARD_NAME_MAX_LENGTH },
+    // nom de couleur de la palette des tags (ex. "sky"), null sans couleur
+    color: { type: ['string', 'null'] },
+    position: { type: 'integer' },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'name', 'position'],
+}
+
 /** Colonne exportée. */
 const exportedStageSchema = {
   type: 'object',
@@ -33,6 +52,8 @@ const exportedStageSchema = {
     position: { type: 'integer' },
     // Couleur facultative : un export antérieur aux couleurs de colonne reste importable
     color: { type: ['string', 'null'] },
+    // Tableau de la colonne, absent des exports antérieurs aux tableaux
+    boardId: { type: 'integer' },
   },
   required: ['id', 'name', 'position'],
 }
@@ -91,6 +112,9 @@ const exportedTaskSchema = {
     historizationDate: nullableDate,
     // null pour une tâche archivée (détachée de sa colonne)
     stageId: { type: ['integer', 'null'] },
+    // Tableau de la tâche, absent des exports antérieurs aux tableaux. Ignoré à l'import
+    // pour une tâche active, qui prend le tableau de sa colonne
+    boardId: { type: ['integer', 'null'] },
     startDate: nullableDate,
     notifiedAt: nullableDate,
     createdAt: { type: 'string', format: 'date-time' },
@@ -116,6 +140,8 @@ const exportSchema = {
     version: { type: 'integer' },
     appVersion: { type: 'string' },
     exportedAt: { type: 'string', format: 'date-time' },
+    // Tableaux, facultatifs : un export antérieur aux tableaux reste importable
+    boards: { type: 'array', items: exportedBoardSchema },
     stages: { type: 'array', items: exportedStageSchema },
     tags: { type: 'array', items: exportedTagSchema },
     tasks: { type: 'array', items: exportedTaskSchema },
@@ -351,7 +377,7 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
 
 /**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
- * (colonnes, tâches archivées comprises et leurs checklists, tags, séries
+ * (tableaux, colonnes, tâches archivées comprises et leurs checklists, tags, séries
  * récurrentes, modèles de checklist). Les paramètres de l'app n'en font pas
  * partie.
  *
@@ -366,9 +392,10 @@ export default async function dataRoutes(fastify) {
   /**
    * GET /data/export
    *
-   * Renvoie toutes les colonnes, tous les tags, toutes les tâches (archivées
-   * comprises, tags désignés par leur id, points de checklist avec leur état
-   * coché), toutes les séries récurrentes (règle, état et modèle des
+   * Renvoie tous les tableaux (dans leur ordre), toutes les colonnes avec leur
+   * tableau, tous les tags, toutes les tâches (archivées comprises, tableau
+   * compris, tags désignés par leur id, points de checklist avec leur état
+   * coché), toutes les séries récurrentes (règle, état, tableau et modèle des
    * occurrences, textes des points compris) et tous les modèles de checklist
    * (nom, position, textes des points), avec l'identifiant et la version du
    * format. Les ids sont conservés, l'import les reprend tels quels, sauf ceux
@@ -381,16 +408,20 @@ export default async function dataRoutes(fastify) {
     {
       schema: {
         description:
-          'Exporte toutes les colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
+          'Exporte tous les tableaux, colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
         tags: ['Data'],
         response: { 200: exportSchema },
       },
     },
     async () => {
       // Lecture groupée, pour un instantané cohérent de toutes les tables
-      const [stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
+      const [boards, stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
+        prisma.board.findMany({
+          select: { id: true, name: true, color: true, position: true, createdAt: true },
+          orderBy: POSITION_ORDER,
+        }),
         prisma.stage.findMany({
-          select: { id: true, name: true, position: true, color: true },
+          select: { id: true, name: true, position: true, color: true, boardId: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
@@ -410,7 +441,7 @@ export default async function dataRoutes(fastify) {
       ])
 
       Logger.info(
-        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
+        `Export : ${boards.length} tableau(x), ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
       )
 
       return {
@@ -418,6 +449,7 @@ export default async function dataRoutes(fastify) {
         version: EXPORT_VERSION,
         appVersion: APP_VERSION,
         exportedAt: new Date(),
+        boards,
         stages,
         tags,
         tasks: tasks.map(({ tags: taskTags, checklist, ...task }) => ({
