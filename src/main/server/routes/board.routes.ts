@@ -10,6 +10,7 @@ import {
 } from '../schemas/boardSchema.js'
 import { errorResponse, idParam } from '../schemas/common.js'
 import { taskInclude } from '../helpers/task.helper.js'
+import { endSeries, onArchiveStatesChanged } from '../helpers/recurrence.helper.js'
 import { DEFAULT_STAGE_KEYS, POSITION_ORDER, findBoardByName, nextBoardPosition } from '../helpers/board.helper.js'
 import { boardKey } from '../../shared/board.helper.js'
 import type { BoardColumnsMode } from '../../shared/board.constants.js'
@@ -78,6 +79,7 @@ async function stageRowsFor(tx: Prisma.TransactionClient, columns: BoardColumns)
  * - POST   /boards        → Crée un tableau en dernier, avec ses colonnes
  * - PATCH  /boards/batch  → Change la position de plusieurs tableaux
  * - PATCH  /boards/:id    → Renomme et/ou recolore un tableau
+ * - DELETE /boards/:id    → Supprime un tableau, archive ses tâches et termine ses séries
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -341,6 +343,99 @@ export default async function boardRoutes(fastify) {
         }
         throw error
       }
+    },
+  )
+
+  /**
+   * DELETE /boards/:id
+   *
+   * Supprime un tableau, dans une transaction. Ses tâches actives sont
+   * archivées (sans colonne, datées de maintenant), et les séries « après
+   * archivage » ainsi libérées suivent (cf. onArchiveStatesChanged), comme
+   * pour DELETE /stages/:id. Ses séries en cours sont ensuite terminées, puis
+   * le tableau est supprimé. Ses colonnes partent en cascade, ses tâches
+   * archivées et ses séries gardent leur place dans les archives et la liste
+   * des séries, avec `boardId` à null. Le dernier tableau ne se supprime pas,
+   * l'app en exige au moins un.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.params - Paramètres de la requête
+   * @param {number} req.params.id - ID du tableau
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<{message: string, archived: number}|{error: string}>} Message de succès et
+   *   nombre de tâches archivées, 404 si le tableau n'existe pas, 409 s'il est le dernier
+   */
+  fastify.delete(
+    '/boards/:id',
+    {
+      schema: {
+        description: 'Supprime un tableau, archive ses tâches actives et termine ses séries',
+        tags: ['Board'],
+        params: idParam,
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              // Nombre de tâches actives archivées avec le tableau
+              archived: { type: 'integer' },
+            },
+          },
+          404: errorResponse,
+          409: errorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const id = Number(req.params.id)
+      const now = new Date()
+
+      // Transaction : si la suppression échoue, aucune tâche n'est archivée et aucune série terminée
+      const result = await prisma.$transaction(async (tx) => {
+        const board = await tx.board.findUnique({ where: { id }, select: { id: true } })
+        if (!board) return { error: 404 as const }
+        if ((await tx.board.count()) <= 1) return { error: 409 as const }
+
+        // Tâches de ses colonnes, et tâches actives qui le désignent (filet de la règle d'or)
+        const where = { OR: [{ stage: { boardId: id } }, { boardId: id, isHistorized: false }] }
+        const tasks = await tx.task.findMany({ where, select: { id: true, recurrenceId: true, isHistorized: true } })
+        await tx.task.updateMany({ where, data: { isHistorized: true, historizationDate: now, stageId: null } })
+
+        // Occurrences archivées avec leur tableau, séries « après archivage » libérées
+        await onArchiveStatesChanged(
+          tx,
+          tasks.map((task) => ({
+            wasArchived: task.isHistorized,
+            task: { recurrenceId: task.recurrenceId, isHistorized: true, historizationDate: now },
+          })),
+          now,
+        )
+
+        // Séries du tableau, ou dont le modèle vise l'une de ses colonnes
+        const series = await tx.recurrence.findMany({
+          where: { status: { not: 'ended' }, OR: [{ boardId: id }, { stage: { boardId: id } }] },
+        })
+        for (const item of series) await endSeries(tx, item)
+
+        await tx.board.delete({ where: { id } })
+        return { archived: tasks.length, ended: series.length }
+      })
+
+      if ('error' in result) {
+        if (result.error === 404) {
+          Logger.warn(`Suppression du tableau ${id} impossible, tableau introuvable`)
+          reply.code(404)
+          return { error: NOT_FOUND }
+        }
+        Logger.warn(`Suppression du tableau ${id} refusée, c'est le dernier tableau`)
+        reply.code(409)
+        return { error: 'Le dernier tableau ne peut pas être supprimé' }
+      }
+
+      Logger.info(
+        `Tableau ${id} supprimé, ${result.archived} tâche(s) archivée(s), ${result.ended} série(s) terminée(s)`,
+      )
+      return { message: 'Tableau supprimé', archived: result.archived }
     },
   )
 }
