@@ -92,6 +92,10 @@ const schema = {
     uniqueItems: true,
     default: DEFAULT_SETTINGS.collapsedStageIds,
   },
+  lastBoardId: {
+    type: ['integer', 'null'],
+    default: DEFAULT_SETTINGS.lastBoardId,
+  },
   notificationsEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.notificationsEnabled,
@@ -163,8 +167,9 @@ export function isSettingsKey(key: unknown): key is SettingsKeys {
 /**
  * Remet les paramètres à leurs valeurs par défaut, en une seule écriture. La
  * dernière taille et position de la fenêtre, tenue par le main et non réglable,
- * est conservée, comme les colonnes repliées (état d'affichage du tableau). Les écouteurs `onDidChange` (zone de notification, lancement
- * au démarrage) suivent les clés modifiées.
+ * est conservée, comme les colonnes repliées et le dernier tableau affiché
+ * (états d'affichage du tableau). Les écouteurs `onDidChange` (zone de
+ * notification, lancement au démarrage) suivent les clés modifiées.
  *
  * @returns Paramètres après la remise à zéro
  */
@@ -174,6 +179,7 @@ export function resetSettings(): AppSettings {
     ...defaults,
     windowState: settingsStore.get('windowState'),
     collapsedStageIds: settingsStore.get('collapsedStageIds'),
+    lastBoardId: settingsStore.get('lastBoardId'),
   })
   return settingsStore.store
 }

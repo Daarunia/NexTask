@@ -88,6 +88,7 @@ export interface AppSettings {
   rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   collapsedStageIds: number[] // colonnes repliées sur le tableau, état d'affichage gardé d'un lancement à l'autre
+  lastBoardId: number | null // dernier tableau affiché, rouvert au lancement et repli de l'ajout rapide, null au départ
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
@@ -116,6 +117,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   rememberTagFilter: false,
   tagFilterIds: [],
   collapsedStageIds: [],
+  lastBoardId: null,
   notificationsEnabled: true,
   notificationStyle: 'reminder',
   closeToTray: false,
