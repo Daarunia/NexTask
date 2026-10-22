@@ -783,7 +783,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 8px 20px rgb(0 0 0 / 0.2);
 }
 
-/* ⋯ d'une ligne, visible au survol, au clavier et menu ouvert */
+/* ⋯ d'une ligne, visible au survol, au focus clavier et menu ouvert */
 .more {
   @apply grid shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 opacity-0;
   width: 24px;
@@ -796,7 +796,8 @@ onBeforeUnmount(() => {
 }
 
 .board-row:hover .more,
-.board-row:focus-within .more,
+.board-row:focus-visible .more,
+.more:focus-visible,
 .board-row.menu-open .more {
   opacity: 1;
 }
@@ -815,6 +816,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-bottom: 1px solid var(--p-primary-color);
   padding: 0;
+  height: 24px; /* hauteur du ⋯ remplacé, la ligne ne bouge pas */
   font: inherit;
   color: var(--p-text-color);
 }

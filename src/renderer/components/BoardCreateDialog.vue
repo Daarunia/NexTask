@@ -329,6 +329,7 @@ async function create() {
 }
 
 .radio-text label {
+  font-size: 14px;
   cursor: pointer;
 }
 
