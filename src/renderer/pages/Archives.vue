@@ -579,9 +579,10 @@ async function deletePermanently(task: Task) {
   @apply inline-flex min-w-0 items-center gap-1.5;
 }
 
+/* Largeur fixe, le champ ne bouge pas d'un choix à l'autre, un nom long est tronqué */
 .archives-board-filter {
   @apply shrink-0;
-  max-width: 14rem;
+  width: 13rem;
 }
 
 .recurrence-icon {

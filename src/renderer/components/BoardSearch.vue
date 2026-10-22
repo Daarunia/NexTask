@@ -40,7 +40,7 @@
         autocomplete="off"
         spellcheck="false"
         :aria-label="t('board.searchLabel')"
-        :aria-expanded="listOpen"
+        :aria-expanded="listOpen && items.length > 0"
         aria-controls="board-search-list"
         :aria-activedescendant="listOpen && activeItem ? optionId(activeItem) : undefined"
         :placeholder="boardFilter.tagIds.length || boardFilter.statuses.length ? '' : t('board.searchPlaceholder')"
@@ -90,6 +90,7 @@
           data-testid="search-scope-board"
           :class="['scope-chip', { 'is-on': scope === 'board' }]"
           :aria-pressed="scope === 'board'"
+          @mouseenter="titleIfTruncated"
           @click="setScope('board')"
         >
           {{ boardStore.current?.name }}
@@ -106,6 +107,7 @@
       </div>
 
       <ul
+        v-if="items.length"
         id="board-search-list"
         data-testid="search-list"
         class="search-list"
@@ -187,7 +189,7 @@ import { useTagStore } from '../stores/Tag'
 import { useStageStore } from '../stores/Stage'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
-import { infoTooltip } from '../utils/tooltip.helper'
+import { infoTooltip, titleIfTruncated } from '../utils/tooltip.helper'
 import {
   highlightParts,
   normalizeSearchText,
@@ -389,7 +391,8 @@ const groups = computed(() => {
 
 const items = computed(() => groups.value.flatMap((group) => group.items))
 const activeItem = computed(() => items.value[activeIndex.value])
-const listOpen = computed(() => focused.value && !listDismissed.value && items.value.length > 0)
+// Avec plusieurs tableaux, la liste s'ouvre même sans option, pour garder les puces de portée
+const listOpen = computed(() => focused.value && !listDismissed.value && (items.value.length > 0 || multiBoard.value))
 
 /**
  * Id DOM d'une option, pour `aria-activedescendant`.

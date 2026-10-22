@@ -222,6 +222,24 @@ test.describe('Portée de la recherche avec plusieurs tableaux', () => {
     await expect(tagFilter.statusOption('En retard')).toContainText('1')
   })
 
+  test('saisie vide sans filtre rapide dans le tableau affiché, les puces restent proposées', async ({
+    page,
+    tagFilter,
+  }) => {
+    await seedBoards(page)
+
+    // Rien à proposer dans le tableau affiché, la liste est vide mais les puces sont là
+    await tagFilter.input.click()
+    await expect(tagFilter.scope).toBeVisible()
+    await expect(tagFilter.list).toBeHidden()
+    await expect(tagFilter.input).toHaveAttribute('aria-expanded', 'false')
+
+    // Tous les tableaux, le filtre rapide de la tâche en retard de « Perso » apparaît
+    await tagFilter.scopeAll.click()
+    await expect(tagFilter.statusOption('En retard')).toContainText('1')
+    await expect(tagFilter.input).toHaveAttribute('aria-expanded', 'true')
+  })
+
   test('les puces se parcourent au clavier, Échap rend le focus au champ', async ({ page, tagFilter }) => {
     await seedBoards(page)
 
