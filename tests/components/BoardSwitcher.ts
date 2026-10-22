@@ -12,8 +12,9 @@ export interface BoardCreateOptions {
 /**
  * Objet du sélecteur de tableau de l'en-tête (BoardSwitcher), affiché sur la
  * page du tableau seulement. Le bouton porte le tableau affiché, la liste
- * ouverte une ligne par tableau dans leur ordre, chacune avec sa poignée et
- * son menu ⋯, puis « Nouveau tableau » qui ouvre le dialogue de création.
+ * ouverte une ligne par tableau dans leur ordre, chacune avec sa poignée, son
+ * bouton de sélection (qui reçoit le focus) et son menu ⋯, puis « Nouveau
+ * tableau » qui ouvre le dialogue de création.
  */
 export class BoardSwitcher {
   readonly page: Page
@@ -60,6 +61,15 @@ export class BoardSwitcher {
    */
   row(name: string): Locator {
     return this.rows.filter({ has: this.page.getByTestId('board-row-name').getByText(name, { exact: true }) })
+  }
+
+  /**
+   * Bouton de sélection de la ligne d'un tableau, celui qui reçoit le focus
+   * et porte `aria-current` pour le tableau affiché.
+   * @param name Nom exact du tableau
+   */
+  rowButton(name: string): Locator {
+    return this.row(name).getByTestId('board-row-select')
   }
 
   /**

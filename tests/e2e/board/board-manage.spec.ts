@@ -198,7 +198,7 @@ test.describe('Renommage et couleur', () => {
     await page.keyboard.press('Escape')
     await expect(boardSwitcher.renameInput).toBeHidden()
     await expect(boardSwitcher.menu).toBeVisible()
-    await expect(boardSwitcher.row(SECOND_BOARD)).toBeFocused()
+    await expect(boardSwitcher.rowButton(SECOND_BOARD)).toBeFocused()
 
     // Nom vide refusé, le champ reste ouvert
     await boardSwitcher.startRename(SECOND_BOARD)
@@ -337,6 +337,9 @@ test.describe('Suppression d’un tableau', () => {
     await expect(taskBoard.confirmPopup).toContainText(
       'Supprimer « Perso » ? Ses 2 colonnes seront supprimées. Sa tâche active sera archivée.',
     )
+    // Le ⋯ qui porte la bulle reste affiché, même sans survol de sa ligne
+    await page.mouse.move(0, 0)
+    await expect(boardSwitcher.row(SECOND_BOARD).getByTestId('board-row-menu')).toHaveCSS('opacity', '1')
     await taskBoard.confirmRejectButton.click()
     await expect(taskBoard.confirmPopup).toBeHidden()
     await expect(boardSwitcher.menu).toBeVisible()

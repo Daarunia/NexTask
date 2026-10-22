@@ -1,5 +1,5 @@
 <template>
-  <!-- Tableau affiché, un clic ouvre la liste des tableaux -->
+  <!-- Tableau affiché, un clic ouvre la liste des tableaux (Popover au rôle dialog) -->
   <button
     v-if="current"
     ref="button"
@@ -7,13 +7,16 @@
     class="switcher"
     data-testid="board-switcher"
     :data-board-id="current.id"
-    aria-haspopup="menu"
+    aria-haspopup="dialog"
     :aria-expanded="open"
     :aria-label="t('boards.switcherLabel', { name: current.name })"
     @click="toggle"
   >
     <BoardDot :color="current.color" />
-    <span data-testid="board-switcher-name" class="switcher-name">{{ current.name }}</span>
+    <!-- Nom complet en infobulle native s'il est tronqué -->
+    <span data-testid="board-switcher-name" class="switcher-name" @mouseenter="titleIfTruncated">{{
+      current.name
+    }}</span>
     <i class="pi pi-chevron-down switcher-chevron" aria-hidden="true"></i>
   </button>
 
@@ -32,33 +35,29 @@
     <div class="pop" data-testid="board-switcher-menu" @keydown.esc="onEscape">
       <div class="pop-title" aria-hidden="true">{{ t('boards.title') }}</div>
 
-      <div ref="list" class="pop-list" role="menu" :aria-label="t('boards.title')" @keydown="onListKeydown">
+      <!-- Liste de tableaux, chaque ligne a son bouton de sélection et son ⋯ côte à côte,
+           jamais l'un dans l'autre. Flèches d'une ligne à l'autre (cf. onListKeydown). -->
+      <div ref="list" class="pop-list" @keydown="onListKeydown">
         <!-- Ordre par glisser-déposer sur la poignée, figé pendant un renommage. Ligne entière
              cliquable, sa poignée et son ⋯ gardent leur propre action. -->
         <draggable
           :list="local"
+          tag="ul"
           itemKey="id"
           v-bind="DND_OPTIONS"
           handle=".board-grip"
           :disabled="editingId !== null"
           class="flex flex-col"
+          :aria-label="t('boards.title')"
           @start="setDragging(true)"
           @end="onDragEnd"
         >
           <template #item="{ element: board, index }">
-            <div
-              role="menuitem"
-              tabindex="0"
+            <li
               data-testid="board-row"
               :data-board-id="board.id"
-              :class="[
-                'board-row',
-                { current: board.id === current?.id, 'menu-open': menuBoard?.id === board.id && menuOpen },
-              ]"
-              :aria-current="board.id === current?.id ? 'true' : undefined"
+              :class="['board-row', { current: board.id === current?.id, 'menu-open': anchoredId === board.id }]"
               @click="onRowClick($event, board)"
-              @keydown.enter.self.prevent="choose(board.id)"
-              @keydown.space.self.prevent="choose(board.id)"
             >
               <span
                 class="board-grip"
@@ -68,37 +67,57 @@
               >
                 <i class="pi pi-bars" aria-hidden="true"></i>
               </span>
-              <BoardDot :color="board.color" />
 
               <!-- Renommage en place, Entrée enregistre, Échap annule -->
-              <input
-                v-if="editingId === board.id"
-                :ref="setRenameInput"
-                v-model="editedName"
-                data-testid="board-row-rename"
-                class="board-rename"
-                spellcheck="false"
-                autocomplete="off"
-                :maxlength="BOARD_NAME_MAX_LENGTH"
-                :aria-label="t('boards.renameLabel', { name: board.name })"
-                :aria-invalid="renameInvalid || undefined"
-                @input="renameInvalid = false"
-                @keydown.enter.prevent.stop="commitRename(board)"
-                @keydown.esc.prevent.stop="finishRename()"
-                @blur="onRenameBlur(board)"
-              />
+              <template v-if="editingId === board.id">
+                <BoardDot :color="board.color" />
+                <input
+                  :ref="setRenameInput"
+                  v-model="editedName"
+                  data-testid="board-row-rename"
+                  class="board-rename"
+                  spellcheck="false"
+                  autocomplete="off"
+                  :maxlength="BOARD_NAME_MAX_LENGTH"
+                  :aria-label="t('boards.renameLabel', { name: board.name })"
+                  :aria-invalid="renameInvalid || undefined"
+                  @input="renameInvalid = false"
+                  @keydown.enter.prevent.stop="commitRename(board)"
+                  @keydown.esc.prevent.stop="finishRename()"
+                  @blur="onRenameBlur(board)"
+                />
+              </template>
               <template v-else>
-                <span data-testid="board-row-name" class="board-row-name">{{ board.name }}</span>
-                <span
-                  data-testid="board-row-count"
-                  class="n"
-                  :title="
-                    t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))
-                  "
+                <!-- Sélection du tableau, le clic remonte à la ligne (cf. onRowClick) -->
+                <button
+                  type="button"
+                  data-testid="board-row-select"
+                  class="board-row-select"
+                  :aria-current="board.id === current?.id ? 'true' : undefined"
+                  :aria-keyshortcuts="index < BOARD_SHORTCUT_COUNT ? `Control+${index + 1}` : undefined"
                 >
-                  {{ boardStore.taskCount(board.id) }}
-                </span>
-                <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
+                  <BoardDot :color="board.color" />
+                  <span data-testid="board-row-name" class="board-row-name" @mouseenter="titleIfTruncated">{{
+                    board.name
+                  }}</span>
+                  <!-- Nombre seul à l'écran, avec son texte complet pour un lecteur d'écran -->
+                  <span
+                    data-testid="board-row-count"
+                    class="n"
+                    aria-hidden="true"
+                    :title="
+                      t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))
+                    "
+                  >
+                    {{ boardStore.taskCount(board.id) }}
+                  </span>
+                  <span class="sr-only">{{
+                    t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))
+                  }}</span>
+                  <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb" aria-hidden="true">{{
+                    t('boards.shortcut', { key: index + 1 })
+                  }}</kbd>
+                </button>
                 <button
                   type="button"
                   data-testid="board-row-menu"
@@ -112,7 +131,7 @@
                   <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
                 </button>
               </template>
-            </div>
+            </li>
           </template>
         </draggable>
       </div>
@@ -162,6 +181,7 @@ import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
 import { httpStatus } from '../utils/api.helper'
 import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
+import { titleIfTruncated } from '../utils/tooltip.helper'
 import { getLogger } from '../utils/logger'
 import { useErrorToast, useInfoToast } from '../utils/toast.helper'
 import { useDangerConfirm } from '../utils/confirm.helper'
@@ -184,6 +204,10 @@ const rowMenu = ref<InstanceType<typeof TieredMenu> | null>(null)
 const menuBoard = ref<Board | null>(null) // tableau de la ligne dont le menu est ouvert
 const menuOpen = ref(false)
 let menuTrigger: HTMLElement | null = null // ⋯ du menu ouvert, ancre de la confirmation de suppression
+const confirmingId = ref<number | null>(null) // tableau dont la suppression attend sa confirmation
+
+// Ligne dont le ⋯ reste affiché, menu ouvert ou confirmation de suppression ancrée dessus
+const anchoredId = computed(() => confirmingId.value ?? (menuOpen.value ? (menuBoard.value?.id ?? null) : null))
 
 // Renommage en place
 const editingId = ref<number | null>(null)
@@ -218,16 +242,12 @@ function toggle(event: MouseEvent) {
 }
 
 /**
- * Liste ouverte, le focus va sur la ligne du tableau affiché.
+ * Liste ouverte, le focus va sur le bouton du tableau affiché.
  */
 function onShow() {
   open.value = true
   document.addEventListener('click', onDocumentClick)
-  void nextTick(() =>
-    rows()
-      .find((row) => row.getAttribute('aria-current') === 'true')
-      ?.focus(),
-  )
+  void nextTick(() => list.value?.querySelector<HTMLElement>('.board-row-select[aria-current="true"]')?.focus())
 }
 
 /**
@@ -282,9 +302,17 @@ function rowOf(id: number): HTMLElement | undefined {
 }
 
 /**
+ * Place le focus sur le bouton de sélection d'une ligne.
+ * @param row Ligne de la liste
+ */
+function focusRow(row: HTMLElement | undefined) {
+  row?.querySelector<HTMLElement>('.board-row-select')?.focus()
+}
+
+/**
  * Flèches haut et bas d'une ligne à l'autre (en boucle), Début et Fin vers la
- * première et la dernière, depuis une ligne ou son ⋯. Entrée et Espace
- * sélectionnent (cf. la ligne). Ignorées pendant un renommage.
+ * première et la dernière, depuis le bouton d'une ligne ou son ⋯. Entrée et
+ * Espace sélectionnent (bouton natif). Ignorées pendant un renommage.
  * @param event Touche pressée dans la liste
  */
 function onListKeydown(event: KeyboardEvent) {
@@ -301,11 +329,12 @@ function onListKeydown(event: KeyboardEvent) {
   if (target === undefined) return
 
   event.preventDefault()
-  items[target].focus()
+  focusRow(items[target])
 }
 
 /**
- * Clic sur une ligne, qui affiche son tableau. Ignoré sur ses boutons et
+ * Clic sur une ligne ou sur son bouton de sélection (Entrée et Espace
+ * compris), qui affiche son tableau. Ignoré sur sa poignée et son ⋯, et
  * pendant son renommage.
  * @param event Clic
  * @param board Tableau de la ligne
@@ -474,7 +503,7 @@ function startRename(board: Board) {
 function finishRename() {
   const id = editingId.value
   editingId.value = null
-  if (id !== null) void nextTick(() => rowOf(id)?.focus())
+  if (id !== null) void nextTick(() => focusRow(rowOf(id)))
 }
 
 /**
@@ -560,8 +589,13 @@ function askDelete(board: Board) {
   const stages = stageStore.getStagesOfBoard(board.id).length
   const tasks = boardStore.taskCount(board.id)
 
+  // Le ⋯ qui porte la bulle reste affiché jusqu'à sa fermeture
+  confirmingId.value = board.id
   confirmDanger({
     target: menuTrigger ?? undefined,
+    onClose: () => {
+      confirmingId.value = null
+    },
     message: t('boards.deleteConfirm', {
       name: board.name,
       stages: t('boards.deleteConfirmStages', { count: stages }, stages),
@@ -681,7 +715,8 @@ onBeforeUnmount(() => {
 }
 
 .board-row {
-  @apply flex w-full cursor-pointer items-center gap-2.5 rounded-md text-left;
+  /* relative, le texte masqué (sr-only, en absolu) reste dans le défilement de la liste */
+  @apply relative flex w-full cursor-pointer items-center gap-2.5 rounded-md text-left;
   padding: 7px 6px 7px 8px;
   font: inherit;
   font-size: 14px;
@@ -689,13 +724,20 @@ onBeforeUnmount(() => {
 }
 
 .board-row:hover,
-.board-row:focus-visible {
+.board-row:has(.board-row-select:focus-visible) {
   background-color: var(--p-content-hover-background);
-  outline: none;
 }
 
 .board-row.current {
   background-color: var(--p-highlight-background);
+}
+
+/* Bouton de sélection, toute la ligne entre la poignée et le ⋯, sans habillage */
+.board-row-select {
+  @apply flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left;
+  font: inherit;
+  color: inherit;
+  outline: none;
 }
 
 .board-row.current .board-row-name {
@@ -704,7 +746,7 @@ onBeforeUnmount(() => {
 }
 
 /* Ligne courante au clavier, le fond teinté est déjà pris */
-.board-row.current:focus-visible {
+.board-row.current:has(.board-row-select:focus-visible) {
   box-shadow: inset 0 0 0 1px var(--p-primary-color);
 }
 
@@ -796,8 +838,7 @@ onBeforeUnmount(() => {
 }
 
 .board-row:hover .more,
-.board-row:focus-visible .more,
-.more:focus-visible,
+.board-row:focus-within .more,
 .board-row.menu-open .more {
   opacity: 1;
 }

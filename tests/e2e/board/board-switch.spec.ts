@@ -121,7 +121,7 @@ test.describe('Changement de tableau', () => {
     await boardSwitcher.expectCurrent(DEFAULT_BOARD)
     expect(await boardSwitcher.names()).toEqual([DEFAULT_BOARD, SECOND_BOARD])
     await expect(boardSwitcher.row(SECOND_BOARD).getByTestId('board-row-count')).toHaveText('1')
-    await expect(boardSwitcher.row(DEFAULT_BOARD)).toHaveAttribute('aria-current', 'true')
+    await expect(boardSwitcher.rowButton(DEFAULT_BOARD)).toHaveAttribute('aria-current', 'true')
     await expect(taskBoard.taskCard('Tâche du tableau par défaut')).toBeVisible()
     await expect(taskBoard.taskCard('Tâche perso')).toHaveCount(0)
 
@@ -156,15 +156,15 @@ test.describe('Changement de tableau', () => {
 
     // Focus sur la ligne du tableau affiché à l'ouverture
     await boardSwitcher.open()
-    await expect(boardSwitcher.row(DEFAULT_BOARD)).toBeFocused()
+    await expect(boardSwitcher.rowButton(DEFAULT_BOARD)).toBeFocused()
 
     await page.keyboard.press('ArrowDown')
-    await expect(boardSwitcher.row(SECOND_BOARD)).toBeFocused()
+    await expect(boardSwitcher.rowButton(SECOND_BOARD)).toBeFocused()
     // En boucle
     await page.keyboard.press('ArrowDown')
-    await expect(boardSwitcher.row(DEFAULT_BOARD)).toBeFocused()
+    await expect(boardSwitcher.rowButton(DEFAULT_BOARD)).toBeFocused()
     await page.keyboard.press('ArrowUp')
-    await expect(boardSwitcher.row(SECOND_BOARD)).toBeFocused()
+    await expect(boardSwitcher.rowButton(SECOND_BOARD)).toBeFocused()
 
     // Ctrl+1 ignoré dans le menu ouvert
     await page.keyboard.press('Control+1')
@@ -294,5 +294,43 @@ test.describe('Changement de tableau', () => {
     await header.goHome()
     await expect(boardSwitcher.button).toBeVisible()
     await boardSwitcher.expectCurrent(DEFAULT_BOARD)
+  })
+})
+
+test.describe('Accessibilité du sélecteur', () => {
+  test('liste de boutons, sans bouton imbriqué, nom complet au survol d’un nom tronqué', async ({
+    page,
+    boardSwitcher,
+  }) => {
+    const longName = 'Un tableau au nom bien trop long pour tenir dans le sélecteur'.slice(0, 60)
+    const created = await page.request.post(`${API}/boards`, { data: { name: longName, columns: { mode: 'empty' } } })
+    expect(created.status(), await created.text()).toBe(201)
+    await reload(page)
+
+    // Bouton qui ouvre un dialogue (le Popover), état ouvert annoncé
+    await expect(boardSwitcher.button).toHaveAttribute('aria-haspopup', 'dialog')
+    await expect(boardSwitcher.button).toHaveAttribute('aria-expanded', 'false')
+    await boardSwitcher.open()
+    await expect(boardSwitcher.button).toHaveAttribute('aria-expanded', 'true')
+
+    // Une ligne par tableau dans une liste, sélection et ⋯ côte à côte
+    await expect(boardSwitcher.menu.getByRole('list')).toHaveCount(1)
+    await expect(boardSwitcher.menu.getByRole('listitem')).toHaveCount(2)
+    await expect(boardSwitcher.menu.locator('button button, [role="menuitem"] button')).toHaveCount(0)
+    await expect(boardSwitcher.rowButton(DEFAULT_BOARD)).toHaveAttribute('aria-keyshortcuts', 'Control+1')
+    await expect(boardSwitcher.rowButton(DEFAULT_BOARD)).toHaveAccessibleName(`${DEFAULT_BOARD} Aucune tâche active`)
+
+    // Nom tronqué, texte complet en infobulle native au survol, rien pour un nom entier
+    const rowName = boardSwitcher.row(longName).getByTestId('board-row-name')
+    await rowName.hover()
+    await expect(rowName).toHaveAttribute('title', longName)
+    const shortName = boardSwitcher.row(DEFAULT_BOARD).getByTestId('board-row-name')
+    await shortName.hover()
+    await expect(shortName).not.toHaveAttribute('title')
+
+    // Bouton du sélecteur sur le tableau au nom long
+    await boardSwitcher.select(longName)
+    await boardSwitcher.currentName.hover()
+    await expect(boardSwitcher.currentName).toHaveAttribute('title', longName)
   })
 })
