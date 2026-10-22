@@ -258,12 +258,14 @@ function isCollapsed(stageId: number): boolean {
 
 /**
  * Replie ou déplie une colonne et mémorise l'état. Les ids des colonnes
- * supprimées depuis sont oubliés au passage.
+ * supprimées depuis sont oubliés au passage. Ceux des autres tableaux restent,
+ * le tri se fait donc sur les colonnes du store, tous tableaux confondus.
  * @param stageId Id de la colonne
  * @param collapsed Vrai pour la replier
  */
 async function setStageCollapsed(stageId: number, collapsed: boolean) {
-  const ids = settings.collapsedStageIds.filter((id) => id !== stageId && taskLists.has(id))
+  const existing = new Set(stageStore.getAllStages.map((stage) => stage.id))
+  const ids = settings.collapsedStageIds.filter((id) => id !== stageId && existing.has(id))
   if (collapsed) ids.push(stageId)
 
   try {
