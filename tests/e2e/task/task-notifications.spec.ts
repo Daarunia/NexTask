@@ -172,6 +172,32 @@ test('le clic ramène au tableau depuis une autre page avant d’ouvrir la tâch
   await expect(taskBoard.titleInput).toHaveValue('Depuis paramètres')
 })
 
+test("le clic sur la notification d'une tâche d'un autre tableau y bascule puis l'ouvre", async ({
+  page,
+  taskBoard,
+  boardSwitcher,
+}) => {
+  // Second tableau avec les colonnes par défaut, tâche dans sa première colonne
+  const created = await page.request.post(`${API}/boards`, {
+    data: { name: 'Second', columns: { mode: 'default' } },
+  })
+  expect(created.status()).toBe(201)
+  const board = (await created.json()) as { id: number; stages: { id: number; position: number }[] }
+  const stageId = [...board.stages].sort((a, b) => a.position - b.position)[0].id
+  const task = await createTask(page.request, stageId, { title: 'Sur le second', startDate: pastDate() })
+
+  await page.reload()
+  await expect(page.getByTestId('stage-column').first()).toBeVisible()
+  await expect(taskBoard.taskCard('Sur le second')).toHaveCount(0)
+  await boardSwitcher.expectCurrent('Mon tableau')
+
+  await clickNotification(page.request, [task.id])
+
+  await expect(taskBoard.dialog).toBeVisible()
+  await expect(taskBoard.titleInput).toHaveValue('Sur le second')
+  await boardSwitcher.expectCurrent('Second')
+})
+
 test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", async ({ page, taskBoard }) => {
   const stageId = await firstStageId(page.request)
   const first = await createTask(page.request, stageId, { title: 'Groupée 1', startDate: pastDate() })

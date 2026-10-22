@@ -1100,16 +1100,30 @@ const stopRecurrenceListener = globalThis.recurrence.onTasksCreated((tasks) => t
 onBeforeUnmount(stopRecurrenceListener)
 
 /**
- * Ouvre en édition la tâche demandée par un clic sur sa notification. Ignorée
- * si elle a quitté le tableau entre-temps, ou si le dialogue est déjà ouvert
- * (la saisie en cours n'est pas remplacée).
+ * Ouvre en édition la tâche demandée par un clic sur sa notification ou sur un
+ * résultat de la recherche. Ignorée si elle a quitté le tableau entre-temps, ou
+ * si le dialogue est déjà ouvert (la saisie en cours n'est pas remplacée).
+ *
+ * Une tâche d'un autre tableau est laissée sans consommer la demande. C'est le
+ * cas quand `showTask` change de tableau, ce Kanban voit la demande avant
+ * d'être démonté et celui du tableau de la tâche la traite à son montage.
  */
 function openRequestedTask() {
   const taskId = taskStore.taskToOpen
   if (taskId === null) return
+  if (!board.find(taskId) && isOnOtherBoard(taskId)) return
   taskStore.taskToOpen = null
 
   openTask(taskId)
+}
+
+/**
+ * Vrai si la tâche est active dans le cache, sur un autre tableau que celui affiché.
+ * @param taskId Id de la tâche
+ */
+function isOnOtherBoard(taskId: number): boolean {
+  const boardId = taskStore.getAllTasks.find((task) => task.id === taskId)?.boardId
+  return boardId !== null && boardId !== undefined && boardId !== props.boardId
 }
 
 // Demande reçue tableau affiché, ou avant (autre page) : traitée une fois le

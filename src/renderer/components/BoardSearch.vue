@@ -149,6 +149,7 @@ import { useI18n } from 'vue-i18n'
 import TagChip from './TagChip.vue'
 import { useBoardFilterStore } from '../stores/BoardFilter'
 import { useTaskStore } from '../stores/Task'
+import { useBoardStore } from '../stores/Board'
 import { useTagStore } from '../stores/Tag'
 import { useStageStore } from '../stores/Stage'
 import { useErrorToast } from '../utils/toast.helper'
@@ -202,6 +203,7 @@ const STATUS_ICONS: Record<TaskStatus, string> = {
 const { t } = useI18n()
 const boardFilter = useBoardFilterStore()
 const taskStore = useTaskStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const stageStore = useStageStore()
 const showError = useErrorToast()
@@ -367,7 +369,8 @@ function choose(item: SearchItem) {
     boardFilter.addStatus(item.status)
     setText('')
   } else if (item.kind === 'task') {
-    taskStore.requestOpenTask(item.id)
+    // Tâche d'un autre tableau, ce tableau est d'abord affiché
+    void boardStore.showTask(item.id)
     input.value?.blur()
   }
   listDismissed.value = true
