@@ -189,7 +189,6 @@ export const en: MessageSchema = {
       noStage: 'no column',
       failed: 'Task not sent',
       sent: 'Task sent to {name}',
-      sentDetail: 'Added at the bottom of its first column',
       undoFailedDetail: 'The task was not put back in its column.',
     },
     menu: {

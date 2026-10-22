@@ -190,7 +190,6 @@ export const es: MessageSchema = {
       noStage: 'sin columna',
       failed: 'Tarea no enviada',
       sent: 'Tarea enviada a {name}',
-      sentDetail: 'Añadida al final de su primera columna',
       undoFailedDetail: 'La tarea no ha vuelto a su columna.',
     },
     menu: {

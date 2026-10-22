@@ -189,7 +189,6 @@ export const zh: MessageSchema = {
       noStage: '无列',
       failed: '任务未发送',
       sent: '任务已发送到 {name}',
-      sentDetail: '已添加到其第一列的底部',
       undoFailedDetail: '任务未放回其列。',
     },
     menu: {

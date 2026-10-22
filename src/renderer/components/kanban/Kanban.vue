@@ -682,9 +682,11 @@ async function moveTaskToBoard(taskId: number, boardId: number) {
   logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
   if (!location) return
 
-  const place = { stageId: location.stageId, position: location.list[location.index].position }
+  // Titre de la tâche en précision, comme les autres toasts d'annulation
+  const task = location.list[location.index]
+  const place = { stageId: location.stageId, position: task.position }
   showUndo(t('boards.send.sent', { name: target.name }), {
-    detail: t('boards.send.sentDetail'),
+    detail: task.title,
     undo: () => undoMoveToBoard(taskId, boardId, place),
   })
 }
