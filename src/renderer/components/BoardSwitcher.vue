@@ -46,8 +46,16 @@
           <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
         </button>
       </div>
+
+      <hr class="pop-sep" />
+      <button type="button" class="pop-link" data-testid="board-new" @click="openCreate()">
+        <i class="pi pi-plus" aria-hidden="true"></i>
+        {{ t('boards.newBoard') }}
+      </button>
     </div>
   </Popover>
+
+  <BoardCreateDialog v-model:visible="createVisible" :preset="createPreset" />
 </template>
 
 <script setup lang="ts">
@@ -55,6 +63,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import Popover from 'primevue/popover'
 import { useI18n } from 'vue-i18n'
 import BoardDot from './BoardDot.vue'
+import BoardCreateDialog, { type BoardCreatePreset } from './BoardCreateDialog.vue'
 import { useBoardStore } from '../stores/Board'
 import { BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
 import { isInOverlay } from '../utils/keyboard.helper'
@@ -66,6 +75,10 @@ const button = ref<HTMLButtonElement | null>(null)
 const popover = ref<InstanceType<typeof Popover> | null>(null)
 const list = ref<HTMLElement | null>(null)
 const open = ref(false)
+
+// Dialogue de création, et ses valeurs de départ
+const createVisible = ref(false)
+const createPreset = ref<BoardCreatePreset>({ name: '', color: null, mode: 'default', fromBoardId: 0 })
 
 // Tableaux dans l'ordre choisi, et tableau affiché (null avant le chargement)
 const boards = computed(() => boardStore.getAllBoards)
@@ -127,6 +140,17 @@ function choose(id: number) {
   popover.value?.hide()
   void boardStore.select(id)
   button.value?.focus()
+}
+
+/**
+ * Ferme la liste et ouvre le dialogue de création, vide par défaut (colonnes
+ * par défaut, copie proposée depuis le tableau affiché).
+ * @param preset Valeurs de départ du dialogue
+ */
+function openCreate(preset?: BoardCreatePreset) {
+  popover.value?.hide()
+  createPreset.value = preset ?? { name: '', color: null, mode: 'default', fromBoardId: current.value?.id ?? 0 }
+  createVisible.value = true
 }
 
 /**
@@ -243,6 +267,31 @@ onBeforeUnmount(() => globalThis.removeEventListener('keydown', onGlobalKeydown)
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--p-text-muted-color);
+}
+
+.pop-sep {
+  border: 0;
+  border-top: 1px solid var(--p-content-border-color);
+  margin: 4px 2px;
+}
+
+/* Entrée « Nouveau tableau », en lien d'accent */
+.pop-link {
+  @apply flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent text-left;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--p-primary-color);
+}
+
+.pop-link .pi {
+  font-size: 0.75rem;
+}
+
+.pop-link:hover,
+.pop-link:focus-visible {
+  background-color: var(--p-highlight-background);
+  outline: none;
 }
 
 .kb {

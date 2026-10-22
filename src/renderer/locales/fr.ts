@@ -179,6 +179,29 @@ export const fr = {
     switcherLabel: 'Tableau affiché « {name} », changer de tableau',
     shortcut: 'Ctrl {key}',
     taskCount: 'Aucune tâche active | {count} tâche active | {count} tâches actives',
+    newBoard: 'Nouveau tableau',
+    create: {
+      title: 'Nouveau tableau',
+      nameLabel: 'Nom',
+      namePlaceholder: 'Ex. Projet maison',
+      nameRequired: 'Donne un nom au tableau.',
+      nameTaken: 'Un tableau porte déjà ce nom.',
+      colorLabel: 'Couleur',
+      columnsLabel: 'Colonnes de départ',
+      modes: {
+        default: 'Colonnes par défaut',
+        copy: 'Copier les colonnes d’un tableau',
+        empty: 'Aucune colonne',
+      },
+      modeHints: {
+        default: 'A faire, En cours, En attente, Terminé',
+        copy: 'Noms et couleurs, sans les tâches',
+        empty: 'Tableau vide, à construire',
+      },
+      copyFrom: 'Tableau à copier',
+      submit: 'Créer le tableau',
+      failed: 'Tableau non créé',
+    },
   },
   task: {
     dialog: {

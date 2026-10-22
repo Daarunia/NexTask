@@ -172,6 +172,29 @@ export const en: MessageSchema = {
     switcherLabel: 'Current board “{name}”, switch board',
     shortcut: 'Ctrl {key}',
     taskCount: 'No active task | {count} active task | {count} active tasks',
+    newBoard: 'New board',
+    create: {
+      title: 'New board',
+      nameLabel: 'Name',
+      namePlaceholder: 'E.g. Home project',
+      nameRequired: 'Give the board a name.',
+      nameTaken: 'A board already has this name.',
+      colorLabel: 'Color',
+      columnsLabel: 'Starting columns',
+      modes: {
+        default: 'Default columns',
+        copy: 'Copy the columns of a board',
+        empty: 'No columns',
+      },
+      modeHints: {
+        default: 'To do, In progress, Waiting, Done',
+        copy: 'Names and colors, without the tasks',
+        empty: 'Empty board, to build up',
+      },
+      copyFrom: 'Board to copy',
+      submit: 'Create board',
+      failed: 'Board not created',
+    },
   },
   task: {
     dialog: {

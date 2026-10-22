@@ -172,6 +172,29 @@ export const pt: MessageSchema = {
     switcherLabel: 'Quadro atual «{name}», trocar de quadro',
     shortcut: 'Ctrl {key}',
     taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',
+    newBoard: 'Novo quadro',
+    create: {
+      title: 'Novo quadro',
+      nameLabel: 'Nome',
+      namePlaceholder: 'Ex. Projeto casa',
+      nameRequired: 'Dê um nome ao quadro.',
+      nameTaken: 'Já existe um quadro com este nome.',
+      colorLabel: 'Cor',
+      columnsLabel: 'Colunas iniciais',
+      modes: {
+        default: 'Colunas padrão',
+        copy: 'Copiar as colunas de um quadro',
+        empty: 'Nenhuma coluna',
+      },
+      modeHints: {
+        default: 'A fazer, Em andamento, Em espera, Concluído',
+        copy: 'Nomes e cores, sem as tarefas',
+        empty: 'Quadro vazio, a construir',
+      },
+      copyFrom: 'Quadro a copiar',
+      submit: 'Criar quadro',
+      failed: 'Quadro não criado',
+    },
   },
   task: {
     dialog: {

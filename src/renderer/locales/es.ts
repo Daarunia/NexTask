@@ -172,6 +172,29 @@ export const es: MessageSchema = {
     switcherLabel: 'Tablero actual «{name}», cambiar de tablero',
     shortcut: 'Ctrl {key}',
     taskCount: 'Ninguna tarea activa | {count} tarea activa | {count} tareas activas',
+    newBoard: 'Nuevo tablero',
+    create: {
+      title: 'Nuevo tablero',
+      nameLabel: 'Nombre',
+      namePlaceholder: 'Ej. Proyecto casa',
+      nameRequired: 'Ponle un nombre al tablero.',
+      nameTaken: 'Ya hay un tablero con este nombre.',
+      colorLabel: 'Color',
+      columnsLabel: 'Columnas iniciales',
+      modes: {
+        default: 'Columnas por defecto',
+        copy: 'Copiar las columnas de un tablero',
+        empty: 'Ninguna columna',
+      },
+      modeHints: {
+        default: 'Por hacer, En curso, En espera, Hecho',
+        copy: 'Nombres y colores, sin las tareas',
+        empty: 'Tablero vacío, por construir',
+      },
+      copyFrom: 'Tablero que copiar',
+      submit: 'Crear el tablero',
+      failed: 'Tablero no creado',
+    },
   },
   task: {
     dialog: {

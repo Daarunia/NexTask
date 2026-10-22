@@ -172,6 +172,29 @@ export const zh: MessageSchema = {
     switcherLabel: '当前看板“{name}”，切换看板',
     shortcut: 'Ctrl {key}',
     taskCount: '没有进行中的任务 | {count} 个进行中的任务 | {count} 个进行中的任务',
+    newBoard: '新建看板',
+    create: {
+      title: '新建看板',
+      nameLabel: '名称',
+      namePlaceholder: '例如：家庭项目',
+      nameRequired: '请为看板命名。',
+      nameTaken: '已有同名看板。',
+      colorLabel: '颜色',
+      columnsLabel: '初始列',
+      modes: {
+        default: '默认列',
+        copy: '复制某个看板的列',
+        empty: '不创建列',
+      },
+      modeHints: {
+        default: '待办、进行中、等待中、已完成',
+        copy: '名称和颜色，不含任务',
+        empty: '空看板，自行搭建',
+      },
+      copyFrom: '要复制的看板',
+      submit: '创建看板',
+      failed: '看板未创建',
+    },
   },
   task: {
     dialog: {
