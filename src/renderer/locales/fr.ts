@@ -530,18 +530,18 @@ export const fr = {
       openFolderFailedDetail: "Le dossier n'a pas pu être ouvert.",
       export: 'Exporter les données',
       exportDescription:
-        "Colonnes, tâches (archives comprises) et tags dans un fichier JSON. Les paramètres n'en font pas partie.",
+        "Tableaux, colonnes, tâches (archives comprises) et tags dans un fichier JSON. Les paramètres n'en font pas partie.",
       exportButton: 'Exporter…',
       import: 'Importer des données',
       importDescription:
-        "Remplace toutes les colonnes, tâches et tags par ceux d'un fichier exporté. Un fichier invalide ne modifie rien.",
+        "Remplace tous les tableaux, colonnes, tâches et tags par ceux d'un fichier exporté. Un fichier invalide ne modifie rien.",
       importButton: 'Importer…',
       exported: 'Données exportées',
       exportedDetail: '{counts} dans {path}',
       exportFailed: 'Export impossible',
       exportFailedDetail: "Le fichier n'a pas été écrit.",
       importConfirm:
-        'Toutes les colonnes, tâches, tags et modèles de checklist actuels seront remplacés par ceux du fichier. Continuer ?',
+        'Tous les tableaux, colonnes, tâches, tags et modèles de checklist actuels seront remplacés par ceux du fichier. Continuer ?',
       chooseFile: 'Choisir le fichier',
       importRejected: 'Import refusé',
       importRejectedDetail: "{reason}. Aucune donnée n'a été modifiée.",
@@ -620,7 +620,7 @@ export const fr = {
     reset: {
       title: 'Réinitialiser les paramètres',
       description:
-        'Tous les réglages de cette page reviennent à leurs valeurs par défaut. Les colonnes, tâches et tags ne sont pas touchés.',
+        'Tous les réglages de cette page reviennent à leurs valeurs par défaut. Les tableaux, colonnes, tâches et tags ne sont pas touchés.',
       button: 'Réinitialiser…',
       confirm: 'Tous les paramètres reviendront à leurs valeurs par défaut. Continuer ?',
       accept: 'Réinitialiser',

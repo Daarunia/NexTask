@@ -172,7 +172,7 @@ export const pt: MessageSchema = {
     allBoards: 'Todos os quadros',
     deletedBoard: 'Quadro excluído',
     searchScope: 'Escopo da pesquisa',
-    switcherLabel: 'Quadro atual «{name}», trocar de quadro',
+    switcherLabel: 'Quadro atual “{name}”, trocar de quadro',
     shortcut: 'Ctrl {key}',
     taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',
     newBoard: 'Novo quadro',
@@ -182,12 +182,12 @@ export const pt: MessageSchema = {
     copyName: '{name} (cópia)',
     deleteConfirm: 'Excluir “{name}”? {stages} {tasks}',
     deleteConfirmStages:
-      'Ele não tem colunas. | A coluna dele será excluída. | As {count} colunas dele serão excluídas.',
+      'O quadro não tem colunas. | A coluna do quadro será excluída. | As {count} colunas do quadro serão excluídas.',
     deleteConfirmTasks:
-      'Nenhuma tarefa ativa a arquivar. | A tarefa ativa dele será arquivada. | As {count} tarefas ativas dele serão arquivadas.',
+      'Nenhuma tarefa ativa para arquivar. | A tarefa ativa do quadro será arquivada. | As {count} tarefas ativas do quadro serão arquivadas.',
     deleted: 'Quadro excluído',
     deletedDetail:
-      'Ele não tinha tarefas ativas | A tarefa dele está nos arquivos | As {count} tarefas dele estão nos arquivos',
+      'O quadro não tinha tarefas ativas | A tarefa dele está no arquivo | As {count} tarefas dele estão no arquivo',
     deleteFailed: 'Quadro não excluído',
     send: {
       menu: 'Outro quadro',
@@ -219,7 +219,7 @@ export const pt: MessageSchema = {
       modeHints: {
         default: 'A fazer, Em andamento, Em espera, Concluído',
         copy: 'Nomes e cores, sem as tarefas',
-        empty: 'Quadro vazio, a construir',
+        empty: 'Quadro vazio, para montar do zero',
       },
       copyFrom: 'Quadro a copiar',
       submit: 'Criar quadro',
@@ -522,18 +522,18 @@ export const pt: MessageSchema = {
       openFolderFailedDetail: 'Não foi possível abrir a pasta.',
       export: 'Exportar os dados',
       exportDescription:
-        'Colunas, tarefas (arquivadas incluídas) e etiquetas em um arquivo JSON. As configurações não são incluídas.',
+        'Quadros, colunas, tarefas (arquivadas incluídas) e etiquetas em um arquivo JSON. As configurações não são incluídas.',
       exportButton: 'Exportar…',
       import: 'Importar dados',
       importDescription:
-        'Substitui todas as colunas, tarefas e etiquetas pelas de um arquivo exportado. Um arquivo inválido não altera nada.',
+        'Substitui todos os quadros, colunas, tarefas e etiquetas pelos de um arquivo exportado. Um arquivo inválido não altera nada.',
       importButton: 'Importar…',
       exported: 'Dados exportados',
       exportedDetail: '{counts} em {path}',
       exportFailed: 'Exportação impossível',
       exportFailedDetail: 'O arquivo não foi gravado.',
       importConfirm:
-        'Todas as colunas, tarefas, etiquetas e modelos de checklist atuais serão substituídos pelos do arquivo. Continuar?',
+        'Todos os quadros, colunas, tarefas, etiquetas e modelos de checklist atuais serão substituídos pelos do arquivo. Continuar?',
       chooseFile: 'Escolher o arquivo',
       importRejected: 'Importação recusada',
       importRejectedDetail: '{reason}. Nenhum dado foi alterado.',
@@ -610,7 +610,7 @@ export const pt: MessageSchema = {
     reset: {
       title: 'Redefinir as configurações',
       description:
-        'Todas as configurações desta página voltam aos valores padrão. Colunas, tarefas e etiquetas não são alteradas.',
+        'Todas as configurações desta página voltam aos valores padrão. Quadros, colunas, tarefas e etiquetas não são alterados.',
       button: 'Redefinir…',
       confirm: 'Todas as configurações voltarão aos valores padrão. Continuar?',
       accept: 'Redefinir',
@@ -690,7 +690,7 @@ export const pt: MessageSchema = {
     restoreFailed: 'Restauração impossível',
     restoreNoStage: 'O quadro não tem nenhuma coluna para restaurar a tarefa.',
     restoreHere: 'Restaurar aqui',
-    restoreHereItem: 'Restaurar {title} em «{board}»',
+    restoreHereItem: 'Restaurar {title} em “{board}”',
     boardFilter: 'Filtrar por quadro',
     noMatchBoard: 'Nenhuma tarefa arquivada neste quadro.',
     restoreFailedDetail: 'A tarefa não foi restaurada.',

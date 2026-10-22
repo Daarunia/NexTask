@@ -181,12 +181,12 @@ export const es: MessageSchema = {
     reorderFailed: 'Orden de los tableros no guardado',
     copyName: '{name} (copia)',
     deleteConfirm: '¿Eliminar «{name}»? {stages} {tasks}',
-    deleteConfirmStages: 'No tiene columnas. | Su columna se eliminará. | Sus {count} columnas se eliminarán.',
+    deleteConfirmStages: 'No tiene columnas. | Se eliminará su columna. | Se eliminarán sus {count} columnas.',
     deleteConfirmTasks:
-      'Ninguna tarea activa que archivar. | Su tarea activa se archivará. | Sus {count} tareas activas se archivarán.',
+      'No hay ninguna tarea activa que archivar. | Se archivará su tarea activa. | Se archivarán sus {count} tareas activas.',
     deleted: 'Tablero eliminado',
     deletedDetail:
-      'No tenía ninguna tarea activa | Su tarea está en los archivos | Sus {count} tareas están en los archivos',
+      'No tenía ninguna tarea activa | Su tarea está en el archivo | Sus {count} tareas están en el archivo',
     deleteFailed: 'Tablero no eliminado',
     send: {
       menu: 'Otro tablero',
@@ -197,7 +197,7 @@ export const es: MessageSchema = {
     },
     menu: {
       label: 'Acciones del tablero «{name}»',
-      rename: 'Cambiar nombre',
+      rename: 'Renombrar',
       color: 'Color',
       duplicateColumns: 'Duplicar las columnas',
       lastBoard: 'El último tablero no se puede eliminar',
@@ -218,7 +218,7 @@ export const es: MessageSchema = {
       modeHints: {
         default: 'Por hacer, En curso, En espera, Hecho',
         copy: 'Nombres y colores, sin las tareas',
-        empty: 'Tablero vacío, por construir',
+        empty: 'Tablero vacío, para construir desde cero',
       },
       copyFrom: 'Tablero que copiar',
       submit: 'Crear el tablero',
@@ -520,18 +520,18 @@ export const es: MessageSchema = {
       openFolderFailedDetail: 'No se ha podido abrir la carpeta.',
       export: 'Exportar los datos',
       exportDescription:
-        'Columnas, tareas (archivadas incluidas) y etiquetas en un archivo JSON. Los ajustes no se incluyen.',
+        'Tableros, columnas, tareas (archivadas incluidas) y etiquetas en un archivo JSON. Los ajustes no se incluyen.',
       exportButton: 'Exportar…',
       import: 'Importar datos',
       importDescription:
-        'Sustituye todas las columnas, tareas y etiquetas por las de un archivo exportado. Un archivo no válido no cambia nada.',
+        'Sustituye todos los tableros, columnas, tareas y etiquetas por las de un archivo exportado. Un archivo no válido no cambia nada.',
       importButton: 'Importar…',
       exported: 'Datos exportados',
       exportedDetail: '{counts} en {path}',
       exportFailed: 'Exportación imposible',
       exportFailedDetail: 'El archivo no se ha escrito.',
       importConfirm:
-        'Todas las columnas, tareas, etiquetas y plantillas de checklist actuales se sustituirán por las del archivo. ¿Continuar?',
+        'Todos los tableros, columnas, tareas, etiquetas y plantillas de checklist actuales se sustituirán por las del archivo. ¿Continuar?',
       chooseFile: 'Elegir el archivo',
       importRejected: 'Importación rechazada',
       importRejectedDetail: '{reason}. No se ha modificado ningún dato.',
@@ -610,7 +610,7 @@ export const es: MessageSchema = {
     reset: {
       title: 'Restablecer los ajustes',
       description:
-        'Todos los ajustes de esta página vuelven a sus valores por defecto. Las columnas, tareas y etiquetas no se tocan.',
+        'Todos los ajustes de esta página vuelven a sus valores por defecto. Los tableros, columnas, tareas y etiquetas no se tocan.',
       button: 'Restablecer…',
       confirm: 'Todos los ajustes volverán a sus valores por defecto. ¿Continuar?',
       accept: 'Restablecer',
