@@ -259,7 +259,7 @@ function isCollapsed(stageId: number): boolean {
 /**
  * Replie ou déplie une colonne et mémorise l'état. Les ids des colonnes
  * supprimées depuis sont oubliés au passage. Ceux des autres tableaux restent,
- * le tri se fait donc sur les colonnes du store, tous tableaux confondus.
+ * car le filtre porte sur les colonnes du store, tous tableaux confondus.
  * @param stageId Id de la colonne
  * @param collapsed Vrai pour la replier
  */
