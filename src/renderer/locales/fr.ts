@@ -184,11 +184,21 @@ export const fr = {
     moveBoard: 'Déplacer « {name} »',
     reorderFailed: 'Ordre des tableaux non enregistré',
     copyName: '{name} (copie)',
+    deleteConfirm: 'Supprimer « {name} » ? {stages} {tasks}',
+    deleteConfirmStages:
+      'Il n’a aucune colonne. | Sa colonne sera supprimée. | Ses {count} colonnes seront supprimées.',
+    deleteConfirmTasks:
+      'Aucune tâche active à archiver. | Sa tâche active sera archivée. | Ses {count} tâches actives seront archivées.',
+    deleted: 'Tableau supprimé',
+    deletedDetail:
+      'Il n’avait aucune tâche active | Sa tâche est dans les archives | Ses {count} tâches sont dans les archives',
+    deleteFailed: 'Tableau non supprimé',
     menu: {
       label: 'Actions du tableau « {name} »',
       rename: 'Renommer',
       color: 'Couleur',
       duplicateColumns: 'Dupliquer les colonnes',
+      lastBoard: 'Le dernier tableau ne peut pas être supprimé',
     },
     create: {
       title: 'Nouveau tableau',

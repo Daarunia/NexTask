@@ -177,11 +177,20 @@ export const es: MessageSchema = {
     moveBoard: 'Mover «{name}»',
     reorderFailed: 'Orden de los tableros no guardado',
     copyName: '{name} (copia)',
+    deleteConfirm: '¿Eliminar «{name}»? {stages} {tasks}',
+    deleteConfirmStages: 'No tiene columnas. | Su columna se eliminará. | Sus {count} columnas se eliminarán.',
+    deleteConfirmTasks:
+      'Ninguna tarea activa que archivar. | Su tarea activa se archivará. | Sus {count} tareas activas se archivarán.',
+    deleted: 'Tablero eliminado',
+    deletedDetail:
+      'No tenía ninguna tarea activa | Su tarea está en los archivos | Sus {count} tareas están en los archivos',
+    deleteFailed: 'Tablero no eliminado',
     menu: {
       label: 'Acciones del tablero «{name}»',
       rename: 'Cambiar nombre',
       color: 'Color',
       duplicateColumns: 'Duplicar las columnas',
+      lastBoard: 'El último tablero no se puede eliminar',
     },
     create: {
       title: 'Nuevo tablero',

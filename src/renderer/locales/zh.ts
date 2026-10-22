@@ -177,11 +177,19 @@ export const zh: MessageSchema = {
     moveBoard: '移动“{name}”',
     reorderFailed: '看板顺序未保存',
     copyName: '{name}（副本）',
+    deleteConfirm: '删除“{name}”？{stages}{tasks}',
+    deleteConfirmStages: '它没有列。 | 其中的 {count} 列将被删除。 | 其中的 {count} 列将被删除。',
+    deleteConfirmTasks:
+      '没有要归档的进行中任务。 | 其中的 {count} 个进行中任务将被归档。 | 其中的 {count} 个进行中任务将被归档。',
+    deleted: '看板已删除',
+    deletedDetail: '它没有进行中的任务 | 其中的 {count} 个任务已移入归档 | 其中的 {count} 个任务已移入归档',
+    deleteFailed: '看板未删除',
     menu: {
       label: '看板“{name}”的操作',
       rename: '重命名',
       color: '颜色',
       duplicateColumns: '复制列',
+      lastBoard: '无法删除最后一个看板',
     },
     create: {
       title: '新建看板',

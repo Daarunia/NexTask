@@ -151,6 +151,7 @@ import { useI18n } from 'vue-i18n'
 import BoardDot from './BoardDot.vue'
 import BoardCreateDialog, { type BoardCreatePreset } from './BoardCreateDialog.vue'
 import { useBoardStore } from '../stores/Board'
+import { useStageStore } from '../stores/Stage'
 import type { Board } from '../types/board.types'
 import { BOARD_NAME_MAX_LENGTH, BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
 import { boardKey } from '../../main/shared/board.helper'
@@ -162,12 +163,16 @@ import { setDragging } from '../utils/dnd.helper'
 import { httpStatus } from '../utils/api.helper'
 import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
 import { getLogger } from '../utils/logger'
-import { useErrorToast } from '../utils/toast.helper'
+import { useErrorToast, useInfoToast } from '../utils/toast.helper'
+import { useDangerConfirm } from '../utils/confirm.helper'
 
 const boardStore = useBoardStore()
 const { t } = useI18n()
 const logger = getLogger()
 const showError = useErrorToast()
+const showInfo = useInfoToast()
+const confirmDanger = useDangerConfirm()
+const stageStore = useStageStore()
 
 const button = ref<HTMLButtonElement | null>(null)
 const popover = ref<InstanceType<typeof Popover> | null>(null)
@@ -178,6 +183,7 @@ const open = ref(false)
 const rowMenu = ref<InstanceType<typeof TieredMenu> | null>(null)
 const menuBoard = ref<Board | null>(null) // tableau de la ligne dont le menu est ouvert
 const menuOpen = ref(false)
+let menuTrigger: HTMLElement | null = null // ⋯ du menu ouvert, ancre de la confirmation de suppression
 
 // Renommage en place
 const editingId = ref<number | null>(null)
@@ -352,6 +358,7 @@ async function onDragEnd() {
  */
 function toggleRowMenu(event: MouseEvent, board: Board) {
   menuBoard.value = board
+  menuTrigger = event.currentTarget as HTMLElement
   rowMenu.value?.toggle(event)
 }
 
@@ -371,6 +378,7 @@ const rowMenuPt = {
 const rowMenuItems = computed<MenuItem[]>(() => {
   const board = menuBoard.value
   if (!board) return []
+  const last = boards.value.length <= 1
 
   return [
     {
@@ -404,6 +412,17 @@ const rowMenuItems = computed<MenuItem[]>(() => {
       label: t('boards.menu.duplicateColumns'),
       icon: 'pi pi-copy',
       command: () => setTimeout(() => duplicateColumns(board)),
+    },
+    { separator: true },
+    {
+      label: t('common.delete'),
+      icon: 'pi pi-trash',
+      class: 'board-menu-danger',
+      // Dernier tableau, aucun appel au serveur, l'infobulle explique pourquoi
+      disabled: last,
+      title: last ? t('boards.menu.lastBoard') : undefined,
+      // Après la fermeture du menu, pour que la confirmation ne soit pas refermée aussitôt
+      command: () => setTimeout(() => askDelete(board)),
     },
   ]
 })
@@ -530,6 +549,43 @@ function duplicateColumns(board: Board) {
     mode: 'copy',
     fromBoardId: board.id,
   })
+}
+
+/**
+ * « Supprimer », après confirmation dans une bulle ancrée sur le ⋯ de la
+ * ligne, qui donne le nombre de colonnes supprimées et de tâches archivées.
+ * @param board Tableau à supprimer
+ */
+function askDelete(board: Board) {
+  const stages = stageStore.getStagesOfBoard(board.id).length
+  const tasks = boardStore.taskCount(board.id)
+
+  confirmDanger({
+    target: menuTrigger ?? undefined,
+    message: t('boards.deleteConfirm', {
+      name: board.name,
+      stages: t('boards.deleteConfirmStages', { count: stages }, stages),
+      tasks: t('boards.deleteConfirmTasks', { count: tasks }, tasks),
+    }),
+    acceptLabel: t('common.delete'),
+    accept: () => deleteBoard(board),
+  })
+}
+
+/**
+ * Supprime un tableau, ses tâches actives étant archivées par le serveur. Le
+ * premier tableau restant est affiché si c'était le tableau affiché. Pas
+ * d'annulation, un toast dit où sont passées les tâches.
+ * @param board Tableau à supprimer
+ */
+async function deleteBoard(board: Board) {
+  try {
+    const archived = await boardStore.deleteBoard(board.id)
+    showInfo(t('boards.deleted'), t('boards.deletedDetail', { count: archived }, archived))
+  } catch (error) {
+    logger.error(`Erreur lors de la suppression du tableau ${board.id} depuis le sélecteur :`, error)
+    showError(t('boards.deleteFailed'))
+  }
 }
 
 /**
@@ -793,5 +849,14 @@ onBeforeUnmount(() => {
 
 .board-pop .p-popover-content {
   padding: 6px;
+}
+
+/* « Supprimer » du menu ⋯ en rouge, comme dans la maquette */
+.board-row-menu .board-menu-danger:not(.p-disabled) :is(.p-tieredmenu-item-label, .p-tieredmenu-item-icon) {
+  color: var(--p-red-600);
+}
+
+.app-dark .board-row-menu .board-menu-danger:not(.p-disabled) :is(.p-tieredmenu-item-label, .p-tieredmenu-item-icon) {
+  color: var(--p-red-400);
 }
 </style>

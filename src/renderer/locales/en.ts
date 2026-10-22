@@ -177,11 +177,19 @@ export const en: MessageSchema = {
     moveBoard: 'Move “{name}”',
     reorderFailed: 'Board order not saved',
     copyName: '{name} (copy)',
+    deleteConfirm: 'Delete “{name}”? {stages} {tasks}',
+    deleteConfirmStages: 'It has no columns. | Its column will be deleted. | Its {count} columns will be deleted.',
+    deleteConfirmTasks:
+      'No active task to archive. | Its active task will be archived. | Its {count} active tasks will be archived.',
+    deleted: 'Board deleted',
+    deletedDetail: 'It had no active task | Its task is in the archives | Its {count} tasks are in the archives',
+    deleteFailed: 'Board not deleted',
     menu: {
       label: 'Actions of the board “{name}”',
       rename: 'Rename',
       color: 'Color',
       duplicateColumns: 'Duplicate the columns',
+      lastBoard: 'The last board cannot be deleted',
     },
     create: {
       title: 'New board',

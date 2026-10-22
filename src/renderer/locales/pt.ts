@@ -177,11 +177,21 @@ export const pt: MessageSchema = {
     moveBoard: 'Mover “{name}”',
     reorderFailed: 'Ordem dos quadros não salva',
     copyName: '{name} (cópia)',
+    deleteConfirm: 'Excluir “{name}”? {stages} {tasks}',
+    deleteConfirmStages:
+      'Ele não tem colunas. | A coluna dele será excluída. | As {count} colunas dele serão excluídas.',
+    deleteConfirmTasks:
+      'Nenhuma tarefa ativa a arquivar. | A tarefa ativa dele será arquivada. | As {count} tarefas ativas dele serão arquivadas.',
+    deleted: 'Quadro excluído',
+    deletedDetail:
+      'Ele não tinha tarefas ativas | A tarefa dele está nos arquivos | As {count} tarefas dele estão nos arquivos',
+    deleteFailed: 'Quadro não excluído',
     menu: {
       label: 'Ações do quadro “{name}”',
       rename: 'Renomear',
       color: 'Cor',
       duplicateColumns: 'Duplicar as colunas',
+      lastBoard: 'O último quadro não pode ser excluído',
     },
     create: {
       title: 'Novo quadro',
