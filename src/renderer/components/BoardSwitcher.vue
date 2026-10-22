@@ -51,12 +51,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import Popover from 'primevue/popover'
 import { useI18n } from 'vue-i18n'
 import BoardDot from './BoardDot.vue'
 import { useBoardStore } from '../stores/Board'
 import { BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
+import { isInOverlay } from '../utils/keyboard.helper'
 
 const boardStore = useBoardStore()
 const { t } = useI18n()
@@ -127,6 +128,28 @@ function choose(id: number) {
   void boardStore.select(id)
   button.value?.focus()
 }
+
+/**
+ * Ctrl+1 à Ctrl+9 affichent les neuf premiers tableaux, sans ouvrir la liste.
+ * La touche se lit par son code, car sur un clavier AZERTY Ctrl+1 donne « & ».
+ * Ignorés avec Alt, Maj ou Méta, et dans un dialogue ou un menu ouvert (la
+ * liste des tableaux comprise).
+ * @param event Touche pressée
+ */
+function onGlobalKeydown(event: KeyboardEvent) {
+  if (!event.ctrlKey || event.altKey || event.shiftKey || event.metaKey || event.defaultPrevented) return
+
+  const digit = /^(?:Digit|Numpad)([1-9])$/.exec(event.code)?.[1]
+  if (!digit || isInOverlay(event.target) || isInOverlay(document.activeElement)) return
+
+  event.preventDefault()
+  const board = boards.value[Number(digit) - 1]
+  if (board && board.id !== current.value?.id) void boardStore.select(board.id)
+}
+
+// Écouteur posé tant que le sélecteur est affiché, donc sur la page du tableau seulement
+onMounted(() => globalThis.addEventListener('keydown', onGlobalKeydown))
+onBeforeUnmount(() => globalThis.removeEventListener('keydown', onGlobalKeydown))
 </script>
 
 <style scoped>
