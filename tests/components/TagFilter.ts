@@ -29,6 +29,10 @@ export class TagFilter {
   readonly dndHint: Locator
   // « Aucune tâche ne correspond au filtre »
   readonly emptyMessage: Locator
+  // Puces de portée en tête de la liste (plusieurs tableaux), tableau affiché ou tous
+  readonly scope: Locator
+  readonly scopeBoard: Locator
+  readonly scopeAll: Locator
 
   /**
    * Constructeur
@@ -49,6 +53,9 @@ export class TagFilter {
     this.clearButton = page.getByTestId('search-clear')
     this.dndHint = page.getByTestId('filter-dnd-hint')
     this.emptyMessage = page.getByTestId('filter-empty')
+    this.scope = this.root.getByTestId('search-scope')
+    this.scopeBoard = this.scope.getByTestId('search-scope-board')
+    this.scopeAll = this.scope.getByTestId('search-scope-all')
   }
 
   /**
@@ -65,6 +72,14 @@ export class TagFilter {
    */
   taskOption(title: string): Locator {
     return this.list.getByRole('option', { name: title, exact: true }).and(this.taskOptions)
+  }
+
+  /**
+   * « Tableau · Colonne » d'une tâche proposée, présent pour une tâche d'un autre tableau.
+   * @param title Titre exact de la tâche
+   */
+  taskOptionBoard(title: string): Locator {
+    return this.taskOption(title).getByTestId('search-option-board')
   }
 
   /**
