@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { DEFAULT_BOARD, createBoard, createTaskIn, type ApiStage } from '../../helpers/board.helper'
 import {
   DAILY,
   createRecurringTask,
@@ -25,9 +26,6 @@ import {
  * Isolation, base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
-/** Nom du tableau par défaut en français (seed `00_initial_board.sql`). */
-const DEFAULT_BOARD = 'Mon tableau'
-
 /** Première colonne du tableau par défaut (seed `01_initial_stages.sql`). */
 const DEFAULT_COLUMN = 'A faire'
 
@@ -37,14 +35,6 @@ const SECOND_STAGES = ['Idées', 'Fait']
 
 /** Tableau sans colonne. */
 const EMPTY_BOARD = 'Vide'
-
-/** Colonne telle que renvoyée par l'API. */
-interface ApiStage {
-  id: number
-  name: string
-  position: number
-  boardId: number
-}
 
 /** Tâche telle que renvoyée par l'API. */
 interface ApiTask {
@@ -64,37 +54,23 @@ interface Boards {
 }
 
 /**
- * Crée un tableau par POST /boards et renvoie son id.
- * @param request Contexte de requête Playwright
- * @param name Nom du tableau
- * @param color Couleur de la palette, null sans couleur
- */
-async function createBoard(request: APIRequestContext, name: string, color: string | null): Promise<number> {
-  const res = await request.post(`${API}/boards`, { data: { name, color, columns: { mode: 'empty' } } })
-  expect(res.status(), await res.text()).toBe(201)
-  return ((await res.json()) as { id: number }).id
-}
-
-/**
  * Crée « Perso » et ses colonnes, au besoin « Vide », et renvoie les ids utiles.
  * @param request Contexte de requête Playwright
  * @param withEmpty Vrai pour créer aussi le tableau sans colonne
  */
 async function createBoards(request: APIRequestContext, withEmpty = false): Promise<Boards> {
-  const secondId = await createBoard(request, SECOND_BOARD, 'emerald')
+  const second = await createBoard(request, SECOND_BOARD, 'emerald', SECOND_STAGES)
   if (withEmpty) await createBoard(request, EMPTY_BOARD, null)
 
-  const secondStageIds: number[] = []
-  for (const [position, name] of SECOND_STAGES.entries()) {
-    const res = await request.post(`${API}/stages`, { data: { name, position, boardId: secondId } })
-    expect(res.ok(), await res.text()).toBeTruthy()
-    secondStageIds.push(((await res.json()) as ApiStage).id)
-  }
-
   const stages = (await (await request.get(`${API}/stages`)).json()) as ApiStage[]
-  const defaultStage = stages.find((stage) => stage.name === DEFAULT_COLUMN && stage.boardId !== secondId)!
+  const defaultStage = stages.find((stage) => stage.name === DEFAULT_COLUMN && stage.boardId !== second.id)!
 
-  return { defaultId: defaultStage.boardId, secondId, defaultStageId: defaultStage.id, secondStageIds }
+  return {
+    defaultId: defaultStage.boardId,
+    secondId: second.id,
+    defaultStageId: defaultStage.id,
+    secondStageIds: second.stageIds,
+  }
 }
 
 /**
@@ -104,12 +80,7 @@ async function createBoards(request: APIRequestContext, withEmpty = false): Prom
  * @param titles Titres des tâches
  */
 async function createTasks(request: APIRequestContext, stageId: number, ...titles: string[]) {
-  for (const [position, title] of titles.entries()) {
-    const res = await request.post(`${API}/tasks`, {
-      data: { stageId, position, title, version: '1.0.0', description: '' },
-    })
-    expect(res.ok(), await res.text()).toBeTruthy()
-  }
+  for (const [position, title] of titles.entries()) await createTaskIn(request, stageId, title, { position })
 }
 
 /**

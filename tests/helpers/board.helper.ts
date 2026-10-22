@@ -4,7 +4,8 @@ import { API } from './api.helper'
 
 /**
  * Appels API partagés par les tests E2E qui ont besoin de plusieurs tableaux
- * (ajout rapide, recherche, archives).
+ * (sélecteur, gestion, envoi d'une tâche, ajout rapide, recherche, archives,
+ * séries).
  *
  * Le tableau par défaut (« Mon tableau » et les colonnes des seeds) est là à
  * chaque test. Les ids de tableau s'incrémentent d'un reset à l'autre, ils se
@@ -18,6 +19,7 @@ export const DEFAULT_BOARD = 'Mon tableau'
 export interface ApiStage {
   id: number
   name: string
+  color: string | null
   position: number
   boardId: number
 }

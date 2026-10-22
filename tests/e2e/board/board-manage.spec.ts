@@ -1,6 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { DEFAULT_BOARD, createBoard, createTaskIn, type ApiStage } from '../../helpers/board.helper'
 
 /**
  * Tests E2E de la gestion des tableaux depuis le sélecteur de l'en-tête.
@@ -14,9 +15,6 @@ import { API } from '../../helpers/api.helper'
  *
  * Isolation, base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
-
-/** Nom du tableau par défaut en français (seed `00_initial_board.sql`). */
-const DEFAULT_BOARD = 'Mon tableau'
 
 /** Colonnes par défaut d'un nouveau tableau en français (`boards.defaultStages` du main). */
 const DEFAULT_STAGES = ['A faire', 'En cours', 'En attente', 'Terminé']
@@ -34,15 +32,6 @@ interface ApiBoard {
   name: string
   color: string | null
   position: number
-}
-
-/** Colonne telle que renvoyée par l'API. */
-interface ApiStage {
-  id: number
-  name: string
-  color: string | null
-  position: number
-  boardId: number
 }
 
 /**
@@ -77,37 +66,20 @@ async function apiBoard(request: APIRequestContext, name: string): Promise<ApiBo
  * @param request Contexte de requête Playwright
  */
 async function createSecondBoard(request: APIRequestContext): Promise<{ boardId: number; stageId: number }> {
-  const created = await request.post(`${API}/boards`, {
-    data: { name: SECOND_BOARD, color: 'emerald', columns: { mode: 'empty' } },
-  })
-  expect(created.status(), await created.text()).toBe(201)
-  const boardId = ((await created.json()) as { id: number }).id
+  const { id, stageIds } = await createBoard(
+    request,
+    SECOND_BOARD,
+    'emerald',
+    SECOND_STAGES.map((stage) => stage.name),
+  )
 
-  const stageIds: number[] = []
-  for (const [position, { name, color }] of SECOND_STAGES.entries()) {
-    const res = await request.post(`${API}/stages`, { data: { name, position, boardId } })
-    expect(res.ok(), await res.text()).toBeTruthy()
-    const stage = (await res.json()) as ApiStage
-    if (color) {
-      const patched = await request.patch(`${API}/stages/${stage.id}`, { data: { color } })
-      expect(patched.ok(), await patched.text()).toBeTruthy()
-    }
-    stageIds.push(stage.id)
+  // Couleurs des colonnes, que POST /stages ne prend pas
+  for (const [index, { color }] of SECOND_STAGES.entries()) {
+    if (!color) continue
+    const patched = await request.patch(`${API}/stages/${stageIds[index]}`, { data: { color } })
+    expect(patched.ok(), await patched.text()).toBeTruthy()
   }
-  return { boardId, stageId: stageIds[0] }
-}
-
-/**
- * Crée une tâche par POST /tasks, en haut de sa colonne.
- * @param request Contexte de requête Playwright
- * @param stageId Colonne de la tâche
- * @param title Titre
- */
-async function createTask(request: APIRequestContext, stageId: number, title: string) {
-  const res = await request.post(`${API}/tasks`, {
-    data: { stageId, position: 0, title, version: '1.0.0', description: '' },
-  })
-  expect(res.ok(), await res.text()).toBeTruthy()
+  return { boardId: id, stageId: stageIds[0] }
 }
 
 /**
@@ -289,7 +261,7 @@ test.describe('Duplication des colonnes', () => {
     boardSwitcher,
   }) => {
     const { stageId } = await createSecondBoard(page.request)
-    await createTask(page.request, stageId, 'Tâche à ne pas copier')
+    await createTaskIn(page.request, stageId, 'Tâche à ne pas copier')
     await reload(page)
 
     await boardSwitcher.openRowMenu(SECOND_BOARD)
@@ -327,7 +299,7 @@ test.describe('Suppression d’un tableau', () => {
     boardSwitcher,
   }) => {
     const { boardId, stageId } = await createSecondBoard(page.request)
-    await createTask(page.request, stageId, 'Tâche perso')
+    await createTaskIn(page.request, stageId, 'Tâche perso')
     await reload(page)
     await boardSwitcher.select(SECOND_BOARD)
 

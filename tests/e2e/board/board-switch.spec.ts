@@ -1,6 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { DEFAULT_BOARD, createBoard, createTaskIn, type ApiStage } from '../../helpers/board.helper'
 import type { AppSettings } from '../../../src/main/shared/settings.constants'
 
 /**
@@ -19,20 +20,9 @@ import type { AppSettings } from '../../../src/main/shared/settings.constants'
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
-/** Nom du tableau par défaut en français (seed `00_initial_board.sql`). */
-const DEFAULT_BOARD = 'Mon tableau'
-
 /** Second tableau, et ses colonnes. */
 const SECOND_BOARD = 'Perso'
 const SECOND_STAGES = ['Idées', 'Fait']
-
-/** Colonne telle que renvoyée par l'API. */
-interface ApiStage {
-  id: number
-  name: string
-  position: number
-  boardId: number
-}
 
 /** Tableaux créés pour un test. */
 interface Boards {
@@ -48,43 +38,19 @@ interface Boards {
  * @param request Contexte de requête Playwright
  */
 async function createSecondBoard(request: APIRequestContext): Promise<Boards> {
-  const created = await request.post(`${API}/boards`, {
-    data: { name: SECOND_BOARD, color: 'emerald', columns: { mode: 'empty' } },
-  })
-  expect(created.status(), await created.text()).toBe(201)
-  const secondId = ((await created.json()) as { id: number }).id
-
-  const secondStages: ApiStage[] = []
-  for (const [position, name] of SECOND_STAGES.entries()) {
-    const res = await request.post(`${API}/stages`, { data: { name, position, boardId: secondId } })
-    expect(res.ok(), await res.text()).toBeTruthy()
-    secondStages.push(await res.json())
-  }
+  const second = await createBoard(request, SECOND_BOARD, 'emerald', SECOND_STAGES)
 
   const stages = (await (await request.get(`${API}/stages`)).json()) as ApiStage[]
   const defaultStage = stages
-    .filter((stage) => stage.boardId !== secondId)
+    .filter((stage) => stage.boardId !== second.id)
     .sort((a, b) => a.position - b.position || a.id - b.id)[0]
 
   return {
     defaultId: defaultStage.boardId,
-    secondId,
+    secondId: second.id,
     defaultStageId: defaultStage.id,
-    secondStageId: secondStages[0].id,
+    secondStageId: second.stageIds[0],
   }
-}
-
-/**
- * Crée une tâche par POST /tasks, en haut de sa colonne.
- * @param request Contexte de requête Playwright
- * @param stageId Colonne de la tâche
- * @param title Titre
- */
-async function createTask(request: APIRequestContext, stageId: number, title: string) {
-  const res = await request.post(`${API}/tasks`, {
-    data: { stageId, position: 0, title, version: '1.0.0', description: '' },
-  })
-  expect(res.ok(), await res.text()).toBeTruthy()
 }
 
 /**
@@ -113,8 +79,8 @@ test.describe('Changement de tableau', () => {
     boardSwitcher,
   }) => {
     const boards = await createSecondBoard(page.request)
-    await createTask(page.request, boards.defaultStageId, 'Tâche du tableau par défaut')
-    await createTask(page.request, boards.secondStageId, 'Tâche perso')
+    await createTaskIn(page.request, boards.defaultStageId, 'Tâche du tableau par défaut')
+    await createTaskIn(page.request, boards.secondStageId, 'Tâche perso')
     await reload(page)
 
     // Tableau par défaut au lancement, liste des tableaux dans leur ordre avec leur nombre de tâches
@@ -213,8 +179,8 @@ test.describe('Changement de tableau', () => {
 
   test('le tableau garde ses changements après un aller-retour', async ({ page, taskBoard, boardSwitcher }) => {
     const boards = await createSecondBoard(page.request)
-    await createTask(page.request, boards.defaultStageId, 'Carte déplacée')
-    await createTask(page.request, boards.defaultStageId, 'Carte archivée')
+    await createTaskIn(page.request, boards.defaultStageId, 'Carte déplacée')
+    await createTaskIn(page.request, boards.defaultStageId, 'Carte archivée')
     await reload(page)
 
     const [first, second] = await taskBoard.stageTitles()
