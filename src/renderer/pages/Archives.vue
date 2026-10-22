@@ -136,11 +136,16 @@
             </div>
 
             <div class="flex shrink-0 gap-1 self-start">
+              <!-- « Restaurer ici », dans le tableau courant, pour une tâche dont le tableau a été supprimé -->
               <Button
                 data-testid="btn-restore-task"
                 icon="pi pi-replay"
-                :label="t('archives.restore')"
-                :aria-label="t('archives.restoreItem', { title: task.title })"
+                :label="task.boardId === null ? t('archives.restoreHere') : t('archives.restore')"
+                :aria-label="
+                  task.boardId === null && boardStore.current
+                    ? t('archives.restoreHereItem', { title: task.title, board: boardStore.current.name })
+                    : t('archives.restoreItem', { title: task.title })
+                "
                 severity="secondary"
                 size="small"
                 text
@@ -442,9 +447,11 @@ function removeFromList(id: number) {
 }
 
 /**
- * Restaure une tâche en bas de la première colonne du tableau. L'occurrence
- * née de son archivage (série « après archivage »), si le serveur la retire,
- * quitte le cache du tableau (cf. restoreTask)
+ * Restaure une tâche en bas de la première colonne de son tableau, sans
+ * changer le tableau affiché. Celle d'un tableau supprimé rejoint le tableau
+ * courant (repli du serveur). L'occurrence née de son archivage (série
+ * « après archivage »), si le serveur la retire, quitte le cache du tableau
+ * (cf. restoreTask)
  * @param task Tâche archivée
  */
 async function restore(task: Task) {
@@ -452,7 +459,7 @@ async function restore(task: Task) {
   busyIds.add(task.id)
 
   try {
-    const { removed } = await taskStore.restoreTask(task.id)
+    const { removed } = await taskStore.restoreTask(task.id, undefined, boardStore.current?.id)
     removeFromList(task.id)
     // Occurrence née de son archivage, retirée avec la restauration : ses tags perdent une tâche
     if (removed) {
