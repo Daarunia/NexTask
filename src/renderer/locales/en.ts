@@ -176,10 +176,12 @@ export const en: MessageSchema = {
     renameLabel: 'New name of the board “{name}”',
     moveBoard: 'Move “{name}”',
     reorderFailed: 'Board order not saved',
+    copyName: '{name} (copy)',
     menu: {
       label: 'Actions of the board “{name}”',
       rename: 'Rename',
       color: 'Color',
+      duplicateColumns: 'Duplicate the columns',
     },
     create: {
       title: 'New board',

@@ -176,10 +176,12 @@ export const zh: MessageSchema = {
     renameLabel: '看板“{name}”的新名称',
     moveBoard: '移动“{name}”',
     reorderFailed: '看板顺序未保存',
+    copyName: '{name}（副本）',
     menu: {
       label: '看板“{name}”的操作',
       rename: '重命名',
       color: '颜色',
+      duplicateColumns: '复制列',
     },
     create: {
       title: '新建看板',

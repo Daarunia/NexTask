@@ -176,10 +176,12 @@ export const pt: MessageSchema = {
     renameLabel: 'Novo nome do quadro “{name}”',
     moveBoard: 'Mover “{name}”',
     reorderFailed: 'Ordem dos quadros não salva',
+    copyName: '{name} (cópia)',
     menu: {
       label: 'Ações do quadro “{name}”',
       rename: 'Renomear',
       color: 'Cor',
+      duplicateColumns: 'Duplicar as colunas',
     },
     create: {
       title: 'Novo quadro',

@@ -176,10 +176,12 @@ export const es: MessageSchema = {
     renameLabel: 'Nuevo nombre del tablero «{name}»',
     moveBoard: 'Mover «{name}»',
     reorderFailed: 'Orden de los tableros no guardado',
+    copyName: '{name} (copia)',
     menu: {
       label: 'Acciones del tablero «{name}»',
       rename: 'Cambiar nombre',
       color: 'Color',
+      duplicateColumns: 'Duplicar las columnas',
     },
     create: {
       title: 'Nuevo tablero',

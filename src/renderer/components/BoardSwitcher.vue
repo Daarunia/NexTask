@@ -153,6 +153,8 @@ import BoardCreateDialog, { type BoardCreatePreset } from './BoardCreateDialog.v
 import { useBoardStore } from '../stores/Board'
 import type { Board } from '../types/board.types'
 import { BOARD_NAME_MAX_LENGTH, BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
+import { boardKey } from '../../main/shared/board.helper'
+import { duplicateName } from '../../main/shared/checklistTemplate.helper'
 import type { TagColor } from '../../main/shared/tag.constants'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../constants/tag.constants'
 import { DND_OPTIONS } from '../constants/dnd.constants'
@@ -398,6 +400,11 @@ const rowMenuItems = computed<MenuItem[]>(() => {
         })),
       ],
     },
+    {
+      label: t('boards.menu.duplicateColumns'),
+      icon: 'pi pi-copy',
+      command: () => setTimeout(() => duplicateColumns(board)),
+    },
   ]
 })
 
@@ -508,6 +515,21 @@ async function saveName(board: Board, name: string) {
       showError(t('board.renameCanceled'))
     }
   }
+}
+
+/**
+ * « Dupliquer les colonnes », le dialogue de création en mode copie de ce
+ * tableau, avec sa couleur et le nom « Nom (copie) », numéroté s'il est pris.
+ * @param board Tableau dont les colonnes sont copiées
+ */
+function duplicateColumns(board: Board) {
+  const taken = new Set(boards.value.map((b) => boardKey(b.name)))
+  openCreate({
+    name: duplicateName(t('boards.copyName', { name: board.name }), taken, BOARD_NAME_MAX_LENGTH),
+    color: board.color,
+    mode: 'copy',
+    fromBoardId: board.id,
+  })
 }
 
 /**

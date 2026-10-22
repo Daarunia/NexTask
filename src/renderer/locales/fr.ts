@@ -183,10 +183,12 @@ export const fr = {
     renameLabel: 'Nouveau nom du tableau « {name} »',
     moveBoard: 'Déplacer « {name} »',
     reorderFailed: 'Ordre des tableaux non enregistré',
+    copyName: '{name} (copie)',
     menu: {
       label: 'Actions du tableau « {name} »',
       rename: 'Renommer',
       color: 'Couleur',
+      duplicateColumns: 'Dupliquer les colonnes',
     },
     create: {
       title: 'Nouveau tableau',
