@@ -33,66 +33,88 @@
       <div class="pop-title" aria-hidden="true">{{ t('boards.title') }}</div>
 
       <div ref="list" class="pop-list" role="menu" :aria-label="t('boards.title')" @keydown="onListKeydown">
-        <!-- Ligne entière cliquable, ses boutons (⋯) gardent leur propre action -->
-        <div
-          v-for="(board, index) in boards"
-          :key="board.id"
-          role="menuitem"
-          tabindex="0"
-          data-testid="board-row"
-          :data-board-id="board.id"
-          :class="[
-            'board-row',
-            { current: board.id === current?.id, 'menu-open': menuBoard?.id === board.id && menuOpen },
-          ]"
-          :aria-current="board.id === current?.id ? 'true' : undefined"
-          @click="onRowClick($event, board)"
-          @keydown.enter.self.prevent="choose(board.id)"
-          @keydown.space.self.prevent="choose(board.id)"
+        <!-- Ordre par glisser-déposer sur la poignée, figé pendant un renommage. Ligne entière
+             cliquable, sa poignée et son ⋯ gardent leur propre action. -->
+        <draggable
+          :list="local"
+          itemKey="id"
+          v-bind="DND_OPTIONS"
+          handle=".board-grip"
+          :disabled="editingId !== null"
+          class="flex flex-col"
+          @start="setDragging(true)"
+          @end="onDragEnd"
         >
-          <BoardDot :color="board.color" />
+          <template #item="{ element: board, index }">
+            <div
+              role="menuitem"
+              tabindex="0"
+              data-testid="board-row"
+              :data-board-id="board.id"
+              :class="[
+                'board-row',
+                { current: board.id === current?.id, 'menu-open': menuBoard?.id === board.id && menuOpen },
+              ]"
+              :aria-current="board.id === current?.id ? 'true' : undefined"
+              @click="onRowClick($event, board)"
+              @keydown.enter.self.prevent="choose(board.id)"
+              @keydown.space.self.prevent="choose(board.id)"
+            >
+              <span
+                class="board-grip"
+                data-testid="board-row-grip"
+                data-row-control
+                :title="t('boards.moveBoard', { name: board.name })"
+              >
+                <i class="pi pi-bars" aria-hidden="true"></i>
+              </span>
+              <BoardDot :color="board.color" />
 
-          <!-- Renommage en place, Entrée enregistre, Échap annule -->
-          <input
-            v-if="editingId === board.id"
-            :ref="setRenameInput"
-            v-model="editedName"
-            data-testid="board-row-rename"
-            class="board-rename"
-            spellcheck="false"
-            autocomplete="off"
-            :maxlength="BOARD_NAME_MAX_LENGTH"
-            :aria-label="t('boards.renameLabel', { name: board.name })"
-            :aria-invalid="renameInvalid || undefined"
-            @input="renameInvalid = false"
-            @keydown.enter.prevent.stop="commitRename(board)"
-            @keydown.esc.prevent.stop="finishRename()"
-            @blur="onRenameBlur(board)"
-          />
-          <template v-else>
-            <span data-testid="board-row-name" class="board-row-name">{{ board.name }}</span>
-            <span
-              data-testid="board-row-count"
-              class="n"
-              :title="t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))"
-            >
-              {{ boardStore.taskCount(board.id) }}
-            </span>
-            <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
-            <button
-              type="button"
-              data-testid="board-row-menu"
-              data-row-control
-              class="more"
-              aria-haspopup="menu"
-              :aria-expanded="menuBoard?.id === board.id && menuOpen"
-              :aria-label="t('boards.menu.label', { name: board.name })"
-              @click="toggleRowMenu($event, board)"
-            >
-              <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
-            </button>
+              <!-- Renommage en place, Entrée enregistre, Échap annule -->
+              <input
+                v-if="editingId === board.id"
+                :ref="setRenameInput"
+                v-model="editedName"
+                data-testid="board-row-rename"
+                class="board-rename"
+                spellcheck="false"
+                autocomplete="off"
+                :maxlength="BOARD_NAME_MAX_LENGTH"
+                :aria-label="t('boards.renameLabel', { name: board.name })"
+                :aria-invalid="renameInvalid || undefined"
+                @input="renameInvalid = false"
+                @keydown.enter.prevent.stop="commitRename(board)"
+                @keydown.esc.prevent.stop="finishRename()"
+                @blur="onRenameBlur(board)"
+              />
+              <template v-else>
+                <span data-testid="board-row-name" class="board-row-name">{{ board.name }}</span>
+                <span
+                  data-testid="board-row-count"
+                  class="n"
+                  :title="
+                    t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))
+                  "
+                >
+                  {{ boardStore.taskCount(board.id) }}
+                </span>
+                <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
+                <button
+                  type="button"
+                  data-testid="board-row-menu"
+                  data-row-control
+                  class="more"
+                  aria-haspopup="menu"
+                  :aria-expanded="menuBoard?.id === board.id && menuOpen"
+                  :aria-label="t('boards.menu.label', { name: board.name })"
+                  @click="toggleRowMenu($event, board)"
+                >
+                  <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
+                </button>
+              </template>
+            </div>
           </template>
-        </div>
+        </draggable>
       </div>
 
       <hr class="pop-sep" />
@@ -120,10 +142,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import Popover from 'primevue/popover'
 import TieredMenu from 'primevue/tieredmenu'
 import type { MenuItem } from 'primevue/menuitem'
+import draggable from 'vuedraggable'
 import { useI18n } from 'vue-i18n'
 import BoardDot from './BoardDot.vue'
 import BoardCreateDialog, { type BoardCreatePreset } from './BoardCreateDialog.vue'
@@ -132,6 +155,8 @@ import type { Board } from '../types/board.types'
 import { BOARD_NAME_MAX_LENGTH, BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
 import type { TagColor } from '../../main/shared/tag.constants'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../constants/tag.constants'
+import { DND_OPTIONS } from '../constants/dnd.constants'
+import { setDragging } from '../utils/dnd.helper'
 import { httpStatus } from '../utils/api.helper'
 import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
 import { getLogger } from '../utils/logger'
@@ -165,6 +190,16 @@ const createPreset = ref<BoardCreatePreset>({ name: '', color: null, mode: 'defa
 // Tableaux dans l'ordre choisi, et tableau affiché (null avant le chargement)
 const boards = computed(() => boardStore.getAllBoards)
 const current = computed(() => boardStore.current)
+
+// Copie locale de la liste, que vuedraggable réordonne sur place
+const local = ref<Board[]>([])
+watch(
+  boards,
+  (all) => {
+    local.value = [...all]
+  },
+  { immediate: true },
+)
 
 /**
  * Ouvre ou ferme la liste des tableaux, sous le bouton.
@@ -281,6 +316,31 @@ function choose(id: number) {
   popover.value?.hide()
   void boardStore.select(id)
   button.value?.focus()
+}
+
+/**
+ * Fin d'un glisser-déposer. Les positions changées sont appliquées tout de
+ * suite (Ctrl+1 à Ctrl+9 suivent le nouvel ordre), puis enregistrées. Un
+ * échec remet l'ordre précédent et prévient par un toast.
+ */
+async function onDragEnd() {
+  setDragging(false)
+
+  const previous = new Map(boards.value.map((board) => [board.id, board.position]))
+  const moves = local.value
+    .map((board, position) => ({ board, position }))
+    .filter(({ board, position }) => board.position !== position)
+  if (!moves.length) return
+
+  for (const { board, position } of moves) board.position = position
+
+  try {
+    await boardStore.reorderBoards(moves.map(({ board, position }) => ({ id: board.id, position })))
+  } catch {
+    for (const { board } of moves) board.position = previous.get(board.id) ?? board.position
+    local.value = [...boards.value]
+    showError(t('boards.reorderFailed'))
+  }
 }
 
 /**
@@ -612,6 +672,37 @@ onBeforeUnmount(() => {
   border: 1px solid var(--p-form-field-border-color);
   border-radius: 4px;
   padding: 0 4px;
+}
+
+/* Poignée visible au survol de la ligne */
+.board-grip {
+  @apply flex shrink-0 cursor-grab opacity-0;
+  margin-left: -4px;
+  color: var(--p-text-muted-color);
+}
+
+.board-grip .pi {
+  font-size: 0.75rem;
+}
+
+.board-row:hover .board-grip {
+  opacity: 0.8;
+}
+
+/* Emplacement de dépôt et ligne tenue pendant un glisser-déposer */
+.board-row.dnd-ghost {
+  background-color: var(--p-highlight-background);
+  outline: 2px dashed var(--p-primary-color);
+  outline-offset: -2px;
+}
+
+.board-row.dnd-ghost > * {
+  visibility: hidden;
+}
+
+.board-row.dnd-dragging {
+  background-color: var(--p-content-background);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.2);
 }
 
 /* ⋯ d'une ligne, visible au survol, au clavier et menu ouvert */

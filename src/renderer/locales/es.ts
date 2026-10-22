@@ -174,6 +174,8 @@ export const es: MessageSchema = {
     taskCount: 'Ninguna tarea activa | {count} tarea activa | {count} tareas activas',
     newBoard: 'Nuevo tablero',
     renameLabel: 'Nuevo nombre del tablero «{name}»',
+    moveBoard: 'Mover «{name}»',
+    reorderFailed: 'Orden de los tableros no guardado',
     menu: {
       label: 'Acciones del tablero «{name}»',
       rename: 'Cambiar nombre',

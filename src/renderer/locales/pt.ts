@@ -174,6 +174,8 @@ export const pt: MessageSchema = {
     taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',
     newBoard: 'Novo quadro',
     renameLabel: 'Novo nome do quadro “{name}”',
+    moveBoard: 'Mover “{name}”',
+    reorderFailed: 'Ordem dos quadros não salva',
     menu: {
       label: 'Ações do quadro “{name}”',
       rename: 'Renomear',

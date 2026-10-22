@@ -181,6 +181,8 @@ export const fr = {
     taskCount: 'Aucune tâche active | {count} tâche active | {count} tâches actives',
     newBoard: 'Nouveau tableau',
     renameLabel: 'Nouveau nom du tableau « {name} »',
+    moveBoard: 'Déplacer « {name} »',
+    reorderFailed: 'Ordre des tableaux non enregistré',
     menu: {
       label: 'Actions du tableau « {name} »',
       rename: 'Renommer',

@@ -174,6 +174,8 @@ export const zh: MessageSchema = {
     taskCount: '没有进行中的任务 | {count} 个进行中的任务 | {count} 个进行中的任务',
     newBoard: '新建看板',
     renameLabel: '看板“{name}”的新名称',
+    moveBoard: '移动“{name}”',
+    reorderFailed: '看板顺序未保存',
     menu: {
       label: '看板“{name}”的操作',
       rename: '重命名',

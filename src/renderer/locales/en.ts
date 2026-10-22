@@ -174,6 +174,8 @@ export const en: MessageSchema = {
     taskCount: 'No active task | {count} active task | {count} active tasks',
     newBoard: 'New board',
     renameLabel: 'New name of the board “{name}”',
+    moveBoard: 'Move “{name}”',
+    reorderFailed: 'Board order not saved',
     menu: {
       label: 'Actions of the board “{name}”',
       rename: 'Rename',
