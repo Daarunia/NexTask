@@ -169,6 +169,8 @@ export const en: MessageSchema = {
   },
   boards: {
     title: 'Boards',
+    allBoards: 'All boards',
+    searchScope: 'Search scope',
     switcherLabel: 'Current board “{name}”, switch board',
     shortcut: 'Ctrl {key}',
     taskCount: 'No active task | {count} active task | {count} active tasks',

@@ -169,6 +169,8 @@ export const pt: MessageSchema = {
   },
   boards: {
     title: 'Quadros',
+    allBoards: 'Todos os quadros',
+    searchScope: 'Escopo da pesquisa',
     switcherLabel: 'Quadro atual «{name}», trocar de quadro',
     shortcut: 'Ctrl {key}',
     taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',

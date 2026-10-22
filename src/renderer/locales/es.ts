@@ -169,6 +169,8 @@ export const es: MessageSchema = {
   },
   boards: {
     title: 'Tableros',
+    allBoards: 'Todos los tableros',
+    searchScope: 'Alcance de la búsqueda',
     switcherLabel: 'Tablero actual «{name}», cambiar de tablero',
     shortcut: 'Ctrl {key}',
     taskCount: 'Ninguna tarea activa | {count} tarea activa | {count} tareas activas',

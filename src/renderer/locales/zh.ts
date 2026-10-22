@@ -169,6 +169,8 @@ export const zh: MessageSchema = {
   },
   boards: {
     title: '看板',
+    allBoards: '所有看板',
+    searchScope: '搜索范围',
     switcherLabel: '当前看板“{name}”，切换看板',
     shortcut: 'Ctrl {key}',
     taskCount: '没有进行中的任务 | {count} 个进行中的任务 | {count} 个进行中的任务',

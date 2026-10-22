@@ -176,6 +176,8 @@ export const fr = {
   // Tableaux (entité Board), à ne pas confondre avec la section board du Kanban affiché
   boards: {
     title: 'Tableaux',
+    allBoards: 'Tous les tableaux',
+    searchScope: 'Portée de la recherche',
     switcherLabel: 'Tableau affiché « {name} », changer de tableau',
     shortcut: 'Ctrl {key}',
     taskCount: 'Aucune tâche active | {count} tâche active | {count} tâches actives',
