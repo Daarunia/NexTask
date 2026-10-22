@@ -178,8 +178,9 @@ import type { TagColor } from '../../../main/shared/tag.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
-  stages: Stage[]
-  tasks: Task[]
+  boardId: number // tableau affiché, celui des colonnes créées
+  stages: Stage[] // colonnes du tableau
+  tasks: Task[] // tâches actives de ses colonnes
 }>()
 
 const logger = getLogger()
@@ -856,7 +857,7 @@ async function createStage() {
   let newStage: Stage
 
   try {
-    newStage = await stageStore.saveStage(name, stagesLocal.value.length)
+    newStage = await stageStore.saveStage(name, stagesLocal.value.length, props.boardId)
   } catch {
     // La saisie est conservée pour pouvoir réessayer
     showError(t('board.stageCreateFailed'), t('board.stageCreateFailedDetail'))
