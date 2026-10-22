@@ -661,13 +661,14 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
  * première colonne de ce tableau. La colonne est choisie dans le cache, le
  * serveur reste juge (colonne supprimée entre-temps). La carte quitte le
  * tableau affiché une fois le déplacement enregistré, le cache des tâches
- * suit par le store.
+ * suit par le store. Le toast propose de l'annuler.
  * @param taskId Id de la tâche
  * @param boardId Tableau d'arrivée
  */
 async function moveTaskToBoard(taskId: number, boardId: number) {
+  const target = boardStore.getAllBoards.find((candidate) => candidate.id === boardId)
   const stage = stageStore.getStagesOfBoard(boardId)[0]
-  if (!stage || !board.find(taskId)) return
+  if (!target || !stage || !board.find(taskId)) return
 
   try {
     await taskStore.moveTaskToStage(taskId, stage.id)
@@ -676,8 +677,43 @@ async function moveTaskToBoard(taskId: number, boardId: number) {
     return
   }
 
-  board.remove(taskId)
+  // Place de la carte (position persistée), reprise si l'envoi est annulé
+  const location = board.remove(taskId)
   logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
+  if (!location) return
+
+  const place = { stageId: location.stageId, position: location.list[location.index].position }
+  showUndo(t('boards.send.sent', { name: target.name }), {
+    detail: t('boards.send.sentDetail'),
+    undo: () => undoMoveToBoard(taskId, boardId, place),
+  })
+}
+
+// Kanban démonté (autre tableau, autre page), cf. undoMoveToBoard
+let unmounted = false
+onBeforeUnmount(() => (unmounted = true))
+
+/**
+ * Annule l'envoi d'une carte vers un autre tableau, par la même route avec
+ * son ancienne colonne et son ancienne position. La série revient avec elle.
+ * Annulé depuis le tableau d'arrivée (Ctrl+Z après en avoir changé), où la
+ * carte est encore affichée, le tableau d'origine est réaffiché avec elle.
+ * @param taskId Id de la tâche
+ * @param boardId Tableau où elle a été envoyée
+ * @param place Colonne et position de la carte avant l'envoi
+ */
+async function undoMoveToBoard(taskId: number, boardId: number, place: { stageId: number; position: number }) {
+  let restored: Task
+  try {
+    restored = await taskStore.moveTaskToStage(taskId, place.stageId, place.position)
+  } catch {
+    showError(t('board.undoFailed'), t('boards.send.undoFailedDetail'))
+    return
+  }
+
+  board.insert(restored)
+  logger.debug('Envoi vers un autre tableau annulé', restored)
+  if (unmounted && boardStore.current?.id === boardId) await boardStore.select(props.boardId)
 }
 
 /**

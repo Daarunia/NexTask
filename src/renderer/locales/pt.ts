@@ -190,6 +190,9 @@ export const pt: MessageSchema = {
       menu: 'Outro quadro',
       noStage: 'sem coluna',
       failed: 'Tarefa não enviada',
+      sent: 'Tarefa enviada para {name}',
+      sentDetail: 'Adicionada ao final da primeira coluna',
+      undoFailedDetail: 'A tarefa não voltou à sua coluna.',
     },
     menu: {
       label: 'Ações do quadro “{name}”',

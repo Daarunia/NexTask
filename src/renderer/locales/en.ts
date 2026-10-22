@@ -188,6 +188,9 @@ export const en: MessageSchema = {
       menu: 'Other board',
       noStage: 'no column',
       failed: 'Task not sent',
+      sent: 'Task sent to {name}',
+      sentDetail: 'Added at the bottom of its first column',
+      undoFailedDetail: 'The task was not put back in its column.',
     },
     menu: {
       label: 'Actions of the board “{name}”',

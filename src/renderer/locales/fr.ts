@@ -198,6 +198,9 @@ export const fr = {
       menu: 'Autre tableau',
       noStage: 'sans colonne',
       failed: 'Tâche non envoyée',
+      sent: 'Tâche envoyée vers {name}',
+      sentDetail: 'Ajoutée en bas de sa première colonne',
+      undoFailedDetail: 'La tâche n’a pas été remise dans sa colonne.',
     },
     menu: {
       label: 'Actions du tableau « {name} »',

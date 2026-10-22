@@ -188,6 +188,9 @@ export const zh: MessageSchema = {
       menu: '其他看板',
       noStage: '无列',
       failed: '任务未发送',
+      sent: '任务已发送到 {name}',
+      sentDetail: '已添加到其第一列的底部',
+      undoFailedDetail: '任务未放回其列。',
     },
     menu: {
       label: '看板“{name}”的操作',
