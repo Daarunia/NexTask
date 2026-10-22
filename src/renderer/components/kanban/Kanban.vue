@@ -124,12 +124,14 @@
   <!-- Menu contextuel des cartes, partagé de même -->
   <KanbanCardMenu
     ref="cardMenu"
+    :boardId="boardId"
     :stages="stagesLocal"
     @open="openTask"
     @duplicate="duplicateTask"
     @toggle-tag="toggleTaskTag"
     @start-date="setStartDate"
     @move="moveTask"
+    @move-board="moveTaskToBoard"
     @archive="askArchiveTask"
   />
 
@@ -156,6 +158,7 @@ import KanbanStageTaskList from './KanbanStageTaskList.vue'
 import KanbanTaskDialog from './KanbanTaskDialog.vue'
 import { useTaskStore } from '../../stores/Task'
 import { useStageStore } from '../../stores/Stage'
+import { useBoardStore } from '../../stores/Board'
 import { useTagStore } from '../../stores/Tag'
 import { useSettingsStore } from '../../stores/Settings'
 import { useBoardFilterStore } from '../../stores/BoardFilter'
@@ -186,6 +189,7 @@ const props = defineProps<{
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
 const boardFilter = useBoardFilterStore()
@@ -650,6 +654,30 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
     restorePersistedTasks()
     showError(t('board.moveCanceled'))
   }
+}
+
+/**
+ * Envoie une carte vers un autre tableau depuis son menu, en bas de la
+ * première colonne de ce tableau. La colonne est choisie dans le cache, le
+ * serveur reste juge (colonne supprimée entre-temps). La carte quitte le
+ * tableau affiché une fois le déplacement enregistré, le cache des tâches
+ * suit par le store.
+ * @param taskId Id de la tâche
+ * @param boardId Tableau d'arrivée
+ */
+async function moveTaskToBoard(taskId: number, boardId: number) {
+  const stage = stageStore.getStagesOfBoard(boardId)[0]
+  if (!stage || !board.find(taskId)) return
+
+  try {
+    await taskStore.moveTaskToStage(taskId, stage.id)
+  } catch {
+    showError(t('boards.send.failed'))
+    return
+  }
+
+  board.remove(taskId)
+  logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
 }
 
 /**

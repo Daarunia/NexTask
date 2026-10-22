@@ -193,6 +193,12 @@ export const fr = {
     deletedDetail:
       'Il n’avait aucune tâche active | Sa tâche est dans les archives | Ses {count} tâches sont dans les archives',
     deleteFailed: 'Tableau non supprimé',
+    // Envoi d’une tâche vers un autre tableau, depuis le menu de sa carte
+    send: {
+      menu: 'Autre tableau',
+      noStage: 'sans colonne',
+      failed: 'Tâche non envoyée',
+    },
     menu: {
       label: 'Actions du tableau « {name} »',
       rename: 'Renommer',

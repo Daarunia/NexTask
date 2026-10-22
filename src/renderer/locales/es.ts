@@ -185,6 +185,11 @@ export const es: MessageSchema = {
     deletedDetail:
       'No tenía ninguna tarea activa | Su tarea está en los archivos | Sus {count} tareas están en los archivos',
     deleteFailed: 'Tablero no eliminado',
+    send: {
+      menu: 'Otro tablero',
+      noStage: 'sin columna',
+      failed: 'Tarea no enviada',
+    },
     menu: {
       label: 'Acciones del tablero «{name}»',
       rename: 'Cambiar nombre',

@@ -184,6 +184,11 @@ export const zh: MessageSchema = {
     deleted: '看板已删除',
     deletedDetail: '它没有进行中的任务 | 其中的 {count} 个任务已移入归档 | 其中的 {count} 个任务已移入归档',
     deleteFailed: '看板未删除',
+    send: {
+      menu: '其他看板',
+      noStage: '无列',
+      failed: '任务未发送',
+    },
     menu: {
       label: '看板“{name}”的操作',
       rename: '重命名',

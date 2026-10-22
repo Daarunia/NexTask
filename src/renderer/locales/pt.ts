@@ -186,6 +186,11 @@ export const pt: MessageSchema = {
     deletedDetail:
       'Ele não tinha tarefas ativas | A tarefa dele está nos arquivos | As {count} tarefas dele estão nos arquivos',
     deleteFailed: 'Quadro não excluído',
+    send: {
+      menu: 'Outro quadro',
+      noStage: 'sem coluna',
+      failed: 'Tarefa não enviada',
+    },
     menu: {
       label: 'Ações do quadro “{name}”',
       rename: 'Renomear',

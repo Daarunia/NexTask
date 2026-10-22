@@ -184,6 +184,11 @@ export const en: MessageSchema = {
     deleted: 'Board deleted',
     deletedDetail: 'It had no active task | Its task is in the archives | Its {count} tasks are in the archives',
     deleteFailed: 'Board not deleted',
+    send: {
+      menu: 'Other board',
+      noStage: 'no column',
+      failed: 'Task not sent',
+    },
     menu: {
       label: 'Actions of the board “{name}”',
       rename: 'Rename',

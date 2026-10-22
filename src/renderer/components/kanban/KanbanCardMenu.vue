@@ -2,6 +2,7 @@
   <ContextMenu
     ref="menu"
     :model="items"
+    :pt="menuPt"
     data-testid="card-menu"
     :aria-label="t('board.cardMenu.label', { title: task?.title ?? '' })"
     @hide="onHide"
@@ -13,6 +14,9 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ContextMenu from 'primevue/contextmenu'
 import { useTagStore } from '../../stores/Tag'
+import { useBoardStore } from '../../stores/Board'
+import { useStageStore } from '../../stores/Stage'
+import type { MenuItem } from 'primevue/menuitem'
 import type { Task } from '../../types/task.types'
 import type { Stage } from '../../types/stage.types'
 import type { Tag } from '../../types/tag.types'
@@ -24,7 +28,7 @@ import { getTagColorStyle } from '../../constants/tag.constants'
  * Menu contextuel des cartes du tableau (clic droit, ou touche Menu sur le
  * titre), une seule instance pour tout le tableau. Il propose les actions de
  * la carte et les remonte au Kanban, qui les fait : ouvrir, dupliquer, tags,
- * date de début, déplacement et archivage.
+ * date de début, déplacement (dans le tableau ou vers un autre) et archivage.
  */
 
 /** Place de la carte dans sa colonne à l'ouverture du menu. */
@@ -35,6 +39,7 @@ export interface CardPlace {
 }
 
 const props = defineProps<{
+  boardId: number // tableau affiché
   stages: Stage[] // colonnes du tableau, dans l'ordre
 }>()
 
@@ -44,6 +49,7 @@ const emit = defineEmits<{
   'toggle-tag': [task: Task, tagId: number]
   'start-date': [task: Task, startDate: Date | null]
   move: [taskId: number, stageId: number, place: 'top' | 'bottom']
+  'move-board': [taskId: number, boardId: number]
   archive: [task: Task, card: HTMLElement | null]
 }>()
 
@@ -55,6 +61,13 @@ const MENU_TAG_COUNT = 12
 
 const { t } = useI18n()
 const tagStore = useTagStore()
+const boardStore = useBoardStore()
+const stageStore = useStageStore()
+
+// Annexe d'une entrée, affichée à droite en discret (cf. style.css)
+const menuPt = {
+  itemLink: ({ context }: { context: { item: MenuItem } }) => ({ 'data-annex': context.item.annex }),
+}
 
 const menu = ref<InstanceType<typeof ContextMenu> | null>(null)
 const task = ref<Task | null>(null)
@@ -76,8 +89,39 @@ function menuTags(current: Task): Tag[] {
   return [...tagStore.getAllTags.filter((tag) => carried.has(tag.id)), ...mostUsed].sort(compareTagNames)
 }
 
+/**
+ * Sous-menu « Autre tableau », une entrée par autre tableau dans leur ordre,
+ * avec sa pastille et le nom de sa première colonne, où la tâche arrivera.
+ * Un tableau sans colonne est grisé. Aucun sous-menu avec un seul tableau.
+ * @param current Tâche de la carte
+ */
+function otherBoardsItems(current: Task): MenuItem[] {
+  const others = boardStore.getAllBoards.filter((board) => board.id !== props.boardId)
+  if (!others.length) return []
+
+  return [
+    {
+      label: t('boards.send.menu'),
+      icon: 'pi pi-clone',
+      items: others.map((board) => {
+        const first = stageStore.getStagesOfBoard(board.id)[0]
+        return {
+          label: board.name,
+          // Pastille à la couleur du tableau, cercle vide sans couleur (comme le menu ⋯ du sélecteur)
+          icon: board.color ? 'pi pi-circle-fill' : 'pi pi-circle',
+          class: board.color ? 'menu-swatch-option' : undefined,
+          style: board.color ? { '--swatch': getTagColorStyle(board.color).swatch } : undefined,
+          annex: first?.name ?? t('boards.send.noStage'),
+          disabled: !first,
+          command: () => emit('move-board', current.id, board.id),
+        }
+      }),
+    },
+  ]
+}
+
 // Calculé pour suivre la langue de l'interface
-const items = computed(() => {
+const items = computed<MenuItem[]>(() => {
   const current = task.value
   const at = place.value
   if (!current || !at) return []
@@ -128,6 +172,7 @@ const items = computed(() => {
         command: () => emit('move', current.id, stage.id, 'bottom'),
       })),
     },
+    ...otherBoardsItems(current),
     {
       label: t('board.cardMenu.moveTop'),
       icon: 'pi pi-arrow-up',
