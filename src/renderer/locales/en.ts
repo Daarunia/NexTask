@@ -170,6 +170,7 @@ export const en: MessageSchema = {
   boards: {
     title: 'Boards',
     allBoards: 'All boards',
+    deletedBoard: 'Deleted board',
     searchScope: 'Search scope',
     switcherLabel: 'Current board “{name}”, switch board',
     shortcut: 'Ctrl {key}',
@@ -685,6 +686,8 @@ export const en: MessageSchema = {
     archivedOn: 'Archived on {date}',
     restoreFailed: 'Restore failed',
     restoreNoStage: 'Add a column to the board to restore the task to it.',
+    boardFilter: 'Filter by board',
+    noMatchBoard: 'No archived task in this board.',
     restoreFailedDetail: 'The task was not restored.',
     deleted: 'Task deleted',
     deleteFailed: 'Deletion failed',

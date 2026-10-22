@@ -170,6 +170,7 @@ export const es: MessageSchema = {
   boards: {
     title: 'Tableros',
     allBoards: 'Todos los tableros',
+    deletedBoard: 'Tablero eliminado',
     searchScope: 'Alcance de la búsqueda',
     switcherLabel: 'Tablero actual «{name}», cambiar de tablero',
     shortcut: 'Ctrl {key}',
@@ -689,6 +690,8 @@ export const es: MessageSchema = {
     archivedOn: 'Archivada el {date}',
     restoreFailed: 'Restauración imposible',
     restoreNoStage: 'Añade una columna al tablero para restaurar la tarea en ella.',
+    boardFilter: 'Filtrar por tablero',
+    noMatchBoard: 'Ninguna tarea archivada en este tablero.',
     restoreFailedDetail: 'La tarea no se ha restaurado.',
     deleted: 'Tarea eliminada',
     deleteFailed: 'Eliminación imposible',

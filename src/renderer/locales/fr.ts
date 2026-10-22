@@ -177,6 +177,7 @@ export const fr = {
   boards: {
     title: 'Tableaux',
     allBoards: 'Tous les tableaux',
+    deletedBoard: 'Tableau supprimé',
     searchScope: 'Portée de la recherche',
     switcherLabel: 'Tableau affiché « {name} », changer de tableau',
     shortcut: 'Ctrl {key}',
@@ -700,6 +701,8 @@ export const fr = {
     archivedOn: 'Archivée le {date}',
     restoreFailed: 'Restauration impossible',
     restoreNoStage: 'Ajoute une colonne au tableau pour y restaurer la tâche.',
+    boardFilter: 'Filtrer par tableau',
+    noMatchBoard: 'Aucune tâche archivée dans ce tableau.',
     restoreFailedDetail: "La tâche n'a pas été restaurée.",
     deleted: 'Tâche supprimée',
     deleteFailed: 'Suppression impossible',

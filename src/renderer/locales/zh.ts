@@ -170,6 +170,7 @@ export const zh: MessageSchema = {
   boards: {
     title: '看板',
     allBoards: '所有看板',
+    deletedBoard: '已删除的看板',
     searchScope: '搜索范围',
     switcherLabel: '当前看板“{name}”，切换看板',
     shortcut: 'Ctrl {key}',
@@ -674,6 +675,8 @@ export const zh: MessageSchema = {
     archivedOn: '归档于 {date}',
     restoreFailed: '无法恢复',
     restoreNoStage: '请先在看板上添加一列，才能将任务恢复到其中。',
+    boardFilter: '按看板筛选',
+    noMatchBoard: '此看板中没有已归档的任务。',
     restoreFailedDetail: '任务未恢复。',
     deleted: '任务已删除',
     deleteFailed: '无法删除',

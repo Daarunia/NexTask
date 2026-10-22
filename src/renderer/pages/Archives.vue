@@ -21,19 +21,48 @@
           {{ t('archives.empty') }}
         </p>
 
-        <!-- Recherche dans le titre, la description et les points de la checklist, comme au tableau -->
-        <InputText
-          v-else
-          v-model="query"
-          data-testid="archives-search"
-          type="search"
-          :placeholder="t('archives.search')"
-          :aria-label="t('archives.search')"
-          spellcheck="false"
-        />
+        <div v-else class="flex items-center gap-2">
+          <!-- Recherche dans le titre, la description et les points de la checklist, comme au tableau -->
+          <InputText
+            v-model="query"
+            data-testid="archives-search"
+            type="search"
+            :placeholder="t('archives.search')"
+            :aria-label="t('archives.search')"
+            spellcheck="false"
+            class="min-w-0 flex-1"
+          />
+
+          <!-- Filtre par tableau, avec plusieurs tableaux ou des tâches d'un tableau supprimé -->
+          <Select
+            v-if="showBoards"
+            v-model="boardFilter"
+            data-testid="archives-board-filter"
+            :options="boardOptions"
+            optionLabel="label"
+            optionValue="value"
+            :aria-label="t('archives.boardFilter')"
+            class="archives-board-filter"
+          >
+            <template #value="{ value }">
+              <span class="archives-board-option">
+                <i v-if="value === 'all'" class="pi pi-clone archives-muted text-sm" aria-hidden="true"></i>
+                <BoardDot v-else :color="optionColor(value)" />
+                <span class="truncate">{{ optionLabel(value) }}</span>
+              </span>
+            </template>
+            <template #option="{ option }">
+              <span class="archives-board-option">
+                <i v-if="option.value === 'all'" class="pi pi-clone archives-muted text-sm" aria-hidden="true"></i>
+                <BoardDot v-else :color="option.color" />
+                <span class="truncate">{{ option.label }}</span>
+              </span>
+            </template>
+          </Select>
+        </div>
 
         <p v-if="visibleTasks.length && !shownTasks.length" data-testid="archives-no-match" class="archives-muted">
-          {{ t('archives.noMatch') }}
+          {{ terms.length ? t('archives.noMatch') : t('archives.noMatchBoard') }}
         </p>
 
         <!-- De la plus récemment archivée à la plus ancienne (ordre du serveur) -->
@@ -78,9 +107,20 @@
                   :aria-label="recurrenceTooltip(recurrenceOf(task)!)"
                 ></i>
               </div>
-              <time data-testid="archived-task-date" :datetime="isoDate(task)" class="archives-muted text-sm">
-                {{ archivedLabel(task) }}
-              </time>
+              <div class="archives-muted flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm">
+                <!-- Tableau de la tâche, avec plusieurs tableaux ou pour un tableau supprimé -->
+                <template v-if="showBoards && boardLabel(task)">
+                  <span data-testid="archived-task-board" class="archives-board-option">
+                    <BoardDot :color="boardOf(task)?.color ?? null" />
+                    <i v-if="task.boardId === null">{{ boardLabel(task) }}</i>
+                    <span v-else class="truncate">{{ boardLabel(task) }}</span>
+                  </span>
+                  <span aria-hidden="true">·</span>
+                </template>
+                <time data-testid="archived-task-date" :datetime="isoDate(task)">
+                  {{ archivedLabel(task) }}
+                </time>
+              </div>
 
               <!-- Nom et couleur lus dans le store Tag, comme sur les cartes -->
               <div v-if="visibleTags(task).length" class="flex flex-wrap gap-1">
@@ -184,11 +224,17 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
+import Select from 'primevue/select'
 import TagChip from '../components/TagChip.vue'
+import BoardDot from '../components/BoardDot.vue'
 import ChecklistBadge from '../components/ChecklistBadge.vue'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
+import { useBoardStore } from '../stores/Board'
+import { useSettingsStore } from '../stores/Settings'
 import type { Tag } from '../types/tag.types'
+import type { Board } from '../types/board.types'
+import type { TagColor } from '../../main/shared/tag.constants'
 import { compareTagNames } from '../utils/tag.helper'
 import { recurrenceTooltip } from '../utils/recurrence.helper'
 import { infoTooltip } from '../utils/tooltip.helper'
@@ -208,6 +254,8 @@ const showUndo = useUndoToast()
 const { t } = useI18n()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
+const boardStore = useBoardStore()
+const settings = useSettingsStore()
 
 // Tâches affichées : sans celles dont la suppression est en attente
 const visibleTasks = computed(() => tasks.value.filter((task) => !pendingDeletions.has(task.id)))
@@ -216,12 +264,83 @@ const visibleTasks = computed(() => tasks.value.filter((task) => !pendingDeletio
 const query = ref('')
 const terms = computed(() => searchTerms(query.value))
 
-// Tâches qui contiennent tous les mots recherchés
-const shownTasks = computed(() => visibleTasks.value.filter((task) => taskMatchesFilter(task, terms.value, [])))
+/** Filtre par tableau, tous, un tableau par son id, ou les tâches d'un tableau supprimé. */
+type BoardFilter = 'all' | 'deleted' | number
+
+// Filtre par tableau, remis à « Tous les tableaux » en quittant la page
+const boardFilter = ref<BoardFilter>('all')
+
+// Tâche d'un tableau supprimé parmi les archives
+const hasDeletedBoard = computed(() => visibleTasks.value.some((task) => task.boardId === null))
+
+// Tableau de chaque ligne et filtre affichés avec plusieurs tableaux, ou pour signaler un tableau supprimé
+const showBoards = computed(() => boardStore.getAllBoards.length > 1 || hasDeletedBoard.value)
+
+// Choix du filtre, « Tous les tableaux », chaque tableau dans son ordre, puis « Tableau supprimé » s'il sert
+const boardOptions = computed(() => [
+  { value: 'all' as BoardFilter, label: t('boards.allBoards'), color: null },
+  ...boardStore.getAllBoards.map((board) => ({
+    value: board.id as BoardFilter,
+    label: board.name,
+    color: board.color,
+  })),
+  ...(hasDeletedBoard.value ? [{ value: 'deleted' as BoardFilter, label: t('boards.deletedBoard'), color: null }] : []),
+])
+
+/**
+ * Libellé d'un choix du filtre, pour la valeur affichée.
+ * @param value Choix du filtre
+ */
+function optionLabel(value: BoardFilter): string {
+  return boardOptions.value.find((option) => option.value === value)?.label ?? ''
+}
+
+/**
+ * Couleur de la pastille d'un choix du filtre, pour la valeur affichée.
+ * @param value Choix du filtre
+ */
+function optionColor(value: BoardFilter): TagColor | null {
+  return boardOptions.value.find((option) => option.value === value)?.color ?? null
+}
+
+/**
+ * Vrai si la tâche passe le filtre par tableau.
+ * @param task Tâche archivée
+ */
+function inBoardFilter(task: Task): boolean {
+  if (boardFilter.value === 'all') return true
+  if (boardFilter.value === 'deleted') return task.boardId === null
+  return task.boardId === boardFilter.value
+}
+
+// Tâches du tableau choisi qui contiennent tous les mots recherchés
+const shownTasks = computed(() =>
+  visibleTasks.value.filter((task) => inBoardFilter(task) && taskMatchesFilter(task, terms.value, [])),
+)
 
 const countLabel = computed(() =>
-  terms.value.length ? `${shownTasks.value.length}/${visibleTasks.value.length}` : String(visibleTasks.value.length),
+  terms.value.length || boardFilter.value !== 'all'
+    ? `${shownTasks.value.length}/${visibleTasks.value.length}`
+    : String(visibleTasks.value.length),
 )
+
+/**
+ * Tableau d'une tâche archivée, s'il existe encore.
+ * @param task Tâche archivée
+ */
+function boardOf(task: Task): Board | undefined {
+  return boardStore.getAllBoards.find((board) => board.id === task.boardId)
+}
+
+/**
+ * Nom du tableau d'une tâche, « Tableau supprimé » s'il n'existe plus, vide
+ * pour un tableau encore inconnu du cache.
+ * @param task Tâche archivée
+ */
+function boardLabel(task: Task): string {
+  if (task.boardId === null) return t('boards.deletedBoard')
+  return boardOf(task)?.name ?? ''
+}
 
 const status = ref<'loading' | 'error' | 'ready'>('loading')
 
@@ -248,13 +367,19 @@ function toggleDetails(id: number) {
 }
 
 /**
- * Charge les tâches archivées, et relit les tags (nom, couleur) de leurs chips
+ * Charge les tâches archivées, relit les tags (nom, couleur) de leurs chips,
+ * et charge les tableaux de leurs lignes (cache du store)
  */
 async function load() {
   status.value = 'loading'
 
   try {
-    const [archived] = await Promise.all([taskStore.loadArchivedTasks(), tagStore.loadAllTags(true)])
+    const [archived] = await Promise.all([
+      taskStore.loadArchivedTasks(),
+      tagStore.loadAllTags(true),
+      boardStore.loadAllBoards(),
+      settings.whenLoaded(),
+    ])
     tasks.value = archived
     status.value = 'ready'
   } catch (error) {
@@ -440,6 +565,16 @@ async function deletePermanently(task: Task) {
 
 .archives-muted {
   color: var(--p-text-muted-color);
+}
+
+/* Pastille et nom d'un tableau, dans le filtre et sur une ligne */
+.archives-board-option {
+  @apply inline-flex min-w-0 items-center gap-1.5;
+}
+
+.archives-board-filter {
+  @apply shrink-0;
+  max-width: 14rem;
 }
 
 .recurrence-icon {

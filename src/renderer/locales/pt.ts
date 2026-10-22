@@ -170,6 +170,7 @@ export const pt: MessageSchema = {
   boards: {
     title: 'Quadros',
     allBoards: 'Todos os quadros',
+    deletedBoard: 'Quadro excluído',
     searchScope: 'Escopo da pesquisa',
     switcherLabel: 'Quadro atual «{name}», trocar de quadro',
     shortcut: 'Ctrl {key}',
@@ -688,6 +689,8 @@ export const pt: MessageSchema = {
     archivedOn: 'Arquivada em {date}',
     restoreFailed: 'Restauração impossível',
     restoreNoStage: 'Adicione uma coluna ao quadro para restaurar a tarefa nela.',
+    boardFilter: 'Filtrar por quadro',
+    noMatchBoard: 'Nenhuma tarefa arquivada neste quadro.',
     restoreFailedDetail: 'A tarefa não foi restaurada.',
     deleted: 'Tarefa excluída',
     deleteFailed: 'Exclusão impossível',
