@@ -12,7 +12,7 @@ import { API } from '../../helpers/api.helper'
  * test, « Perso » est créé par POST /boards avec deux colonnes colorées quand
  * le test en a besoin. Les ids se lisent par l'API.
  *
- * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
+ * Isolation, base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
 
 /** Nom du tableau par défaut en français (seed `00_initial_board.sql`). */
