@@ -838,7 +838,7 @@ onBeforeUnmount(() => {
 }
 
 .board-row:hover .more,
-.board-row:focus-within .more,
+.board-row:has(:focus-visible) .more,
 .board-row.menu-open .more {
   opacity: 1;
 }
