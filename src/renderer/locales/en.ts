@@ -167,6 +167,12 @@ export const en: MessageSchema = {
       label: 'Actions for the task {title}',
     },
   },
+  boards: {
+    title: 'Boards',
+    switcherLabel: 'Current board “{name}”, switch board',
+    shortcut: 'Ctrl {key}',
+    taskCount: 'No active task | {count} active task | {count} active tasks',
+  },
   task: {
     dialog: {
       newTask: 'New task',

@@ -167,6 +167,12 @@ export const es: MessageSchema = {
       label: 'Acciones de la tarea {title}',
     },
   },
+  boards: {
+    title: 'Tableros',
+    switcherLabel: 'Tablero actual «{name}», cambiar de tablero',
+    shortcut: 'Ctrl {key}',
+    taskCount: 'Ninguna tarea activa | {count} tarea activa | {count} tareas activas',
+  },
   task: {
     dialog: {
       newTask: 'Nueva tarea',

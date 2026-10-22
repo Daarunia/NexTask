@@ -173,6 +173,13 @@ export const fr = {
       label: 'Actions de la tâche {title}',
     },
   },
+  // Tableaux (entité Board), à ne pas confondre avec la section board du Kanban affiché
+  boards: {
+    title: 'Tableaux',
+    switcherLabel: 'Tableau affiché « {name} », changer de tableau',
+    shortcut: 'Ctrl {key}',
+    taskCount: 'Aucune tâche active | {count} tâche active | {count} tâches actives',
+  },
   task: {
     dialog: {
       newTask: 'Nouvelle tâche',

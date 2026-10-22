@@ -167,6 +167,12 @@ export const zh: MessageSchema = {
       label: '任务 {title} 的操作',
     },
   },
+  boards: {
+    title: '看板',
+    switcherLabel: '当前看板“{name}”，切换看板',
+    shortcut: 'Ctrl {key}',
+    taskCount: '没有进行中的任务 | {count} 个进行中的任务 | {count} 个进行中的任务',
+  },
   task: {
     dialog: {
       newTask: '新任务',

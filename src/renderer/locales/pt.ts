@@ -167,6 +167,12 @@ export const pt: MessageSchema = {
       label: 'Ações da tarefa {title}',
     },
   },
+  boards: {
+    title: 'Quadros',
+    switcherLabel: 'Quadro atual «{name}», trocar de quadro',
+    shortcut: 'Ctrl {key}',
+    taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',
+  },
   task: {
     dialog: {
       newTask: 'Nova tarefa',
