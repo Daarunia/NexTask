@@ -173,6 +173,12 @@ export const en: MessageSchema = {
     shortcut: 'Ctrl {key}',
     taskCount: 'No active task | {count} active task | {count} active tasks',
     newBoard: 'New board',
+    renameLabel: 'New name of the board “{name}”',
+    menu: {
+      label: 'Actions of the board “{name}”',
+      rename: 'Rename',
+      color: 'Color',
+    },
     create: {
       title: 'New board',
       nameLabel: 'Name',

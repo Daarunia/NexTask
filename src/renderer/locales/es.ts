@@ -173,6 +173,12 @@ export const es: MessageSchema = {
     shortcut: 'Ctrl {key}',
     taskCount: 'Ninguna tarea activa | {count} tarea activa | {count} tareas activas',
     newBoard: 'Nuevo tablero',
+    renameLabel: 'Nuevo nombre del tablero «{name}»',
+    menu: {
+      label: 'Acciones del tablero «{name}»',
+      rename: 'Cambiar nombre',
+      color: 'Color',
+    },
     create: {
       title: 'Nuevo tablero',
       nameLabel: 'Nombre',

@@ -173,6 +173,12 @@ export const pt: MessageSchema = {
     shortcut: 'Ctrl {key}',
     taskCount: 'Nenhuma tarefa ativa | {count} tarefa ativa | {count} tarefas ativas',
     newBoard: 'Novo quadro',
+    renameLabel: 'Novo nome do quadro “{name}”',
+    menu: {
+      label: 'Ações do quadro “{name}”',
+      rename: 'Renomear',
+      color: 'Cor',
+    },
     create: {
       title: 'Novo quadro',
       nameLabel: 'Nome',

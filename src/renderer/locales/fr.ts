@@ -180,6 +180,12 @@ export const fr = {
     shortcut: 'Ctrl {key}',
     taskCount: 'Aucune tâche active | {count} tâche active | {count} tâches actives',
     newBoard: 'Nouveau tableau',
+    renameLabel: 'Nouveau nom du tableau « {name} »',
+    menu: {
+      label: 'Actions du tableau « {name} »',
+      rename: 'Renommer',
+      color: 'Couleur',
+    },
     create: {
       title: 'Nouveau tableau',
       nameLabel: 'Nom',

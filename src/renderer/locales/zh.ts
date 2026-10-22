@@ -173,6 +173,12 @@ export const zh: MessageSchema = {
     shortcut: 'Ctrl {key}',
     taskCount: '没有进行中的任务 | {count} 个进行中的任务 | {count} 个进行中的任务',
     newBoard: '新建看板',
+    renameLabel: '看板“{name}”的新名称',
+    menu: {
+      label: '看板“{name}”的操作',
+      rename: '重命名',
+      color: '颜色',
+    },
     create: {
       title: '新建看板',
       nameLabel: '名称',

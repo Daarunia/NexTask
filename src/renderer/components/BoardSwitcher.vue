@@ -17,34 +17,82 @@
     <i class="pi pi-chevron-down switcher-chevron" aria-hidden="true"></i>
   </button>
 
-  <!-- Le Popover porte déjà le rôle dialog, il reçoit ici son nom accessible -->
-  <Popover ref="popover" class="board-pop" :aria-label="t('boards.title')" @show="onShow" @hide="open = false">
-    <div class="pop" data-testid="board-switcher-menu">
+  <!-- Le Popover porte déjà le rôle dialog, il reçoit ici son nom accessible. Échap et le
+       clic ailleurs sont gérés ici, pour qu'Échap ferme d'abord un renommage, le menu ⋯ ou
+       une confirmation, et qu'un clic dans ces deux derniers laisse la liste ouverte. -->
+  <Popover
+    ref="popover"
+    class="board-pop"
+    :aria-label="t('boards.title')"
+    :dismissable="false"
+    :close-on-escape="false"
+    @show="onShow"
+    @hide="onHide"
+  >
+    <div class="pop" data-testid="board-switcher-menu" @keydown.esc="onEscape">
       <div class="pop-title" aria-hidden="true">{{ t('boards.title') }}</div>
 
       <div ref="list" class="pop-list" role="menu" :aria-label="t('boards.title')" @keydown="onListKeydown">
-        <button
+        <!-- Ligne entière cliquable, ses boutons (⋯) gardent leur propre action -->
+        <div
           v-for="(board, index) in boards"
           :key="board.id"
-          type="button"
           role="menuitem"
+          tabindex="0"
           data-testid="board-row"
           :data-board-id="board.id"
-          :class="['board-row', { current: board.id === current?.id }]"
+          :class="[
+            'board-row',
+            { current: board.id === current?.id, 'menu-open': menuBoard?.id === board.id && menuOpen },
+          ]"
           :aria-current="board.id === current?.id ? 'true' : undefined"
-          @click="choose(board.id)"
+          @click="onRowClick($event, board)"
+          @keydown.enter.self.prevent="choose(board.id)"
+          @keydown.space.self.prevent="choose(board.id)"
         >
           <BoardDot :color="board.color" />
-          <span data-testid="board-row-name" class="board-row-name">{{ board.name }}</span>
-          <span
-            data-testid="board-row-count"
-            class="n"
-            :title="t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))"
-          >
-            {{ boardStore.taskCount(board.id) }}
-          </span>
-          <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
-        </button>
+
+          <!-- Renommage en place, Entrée enregistre, Échap annule -->
+          <input
+            v-if="editingId === board.id"
+            :ref="setRenameInput"
+            v-model="editedName"
+            data-testid="board-row-rename"
+            class="board-rename"
+            spellcheck="false"
+            autocomplete="off"
+            :maxlength="BOARD_NAME_MAX_LENGTH"
+            :aria-label="t('boards.renameLabel', { name: board.name })"
+            :aria-invalid="renameInvalid || undefined"
+            @input="renameInvalid = false"
+            @keydown.enter.prevent.stop="commitRename(board)"
+            @keydown.esc.prevent.stop="finishRename()"
+            @blur="onRenameBlur(board)"
+          />
+          <template v-else>
+            <span data-testid="board-row-name" class="board-row-name">{{ board.name }}</span>
+            <span
+              data-testid="board-row-count"
+              class="n"
+              :title="t('boards.taskCount', { count: boardStore.taskCount(board.id) }, boardStore.taskCount(board.id))"
+            >
+              {{ boardStore.taskCount(board.id) }}
+            </span>
+            <kbd v-if="index < BOARD_SHORTCUT_COUNT" class="kb">{{ t('boards.shortcut', { key: index + 1 }) }}</kbd>
+            <button
+              type="button"
+              data-testid="board-row-menu"
+              data-row-control
+              class="more"
+              aria-haspopup="menu"
+              :aria-expanded="menuBoard?.id === board.id && menuOpen"
+              :aria-label="t('boards.menu.label', { name: board.name })"
+              @click="toggleRowMenu($event, board)"
+            >
+              <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
+            </button>
+          </template>
+        </div>
       </div>
 
       <hr class="pop-sep" />
@@ -55,26 +103,60 @@
     </div>
   </Popover>
 
+  <!-- Actions d'un tableau, ouvertes par le ⋯ de sa ligne. Un clic dans ce menu laisse la
+       liste ouverte (cf. onDocumentClick). -->
+  <TieredMenu
+    ref="rowMenu"
+    :model="rowMenuItems"
+    popup
+    class="board-row-menu"
+    data-testid="board-menu"
+    :pt="rowMenuPt"
+    @show="menuOpen = true"
+    @hide="menuOpen = false"
+  />
+
   <BoardCreateDialog v-model:visible="createVisible" :preset="createPreset" />
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, type ComponentPublicInstance } from 'vue'
 import Popover from 'primevue/popover'
+import TieredMenu from 'primevue/tieredmenu'
+import type { MenuItem } from 'primevue/menuitem'
 import { useI18n } from 'vue-i18n'
 import BoardDot from './BoardDot.vue'
 import BoardCreateDialog, { type BoardCreatePreset } from './BoardCreateDialog.vue'
 import { useBoardStore } from '../stores/Board'
-import { BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
-import { isInOverlay } from '../utils/keyboard.helper'
+import type { Board } from '../types/board.types'
+import { BOARD_NAME_MAX_LENGTH, BOARD_SHORTCUT_COUNT } from '../../main/shared/board.constants'
+import type { TagColor } from '../../main/shared/tag.constants'
+import { TAG_COLOR_STYLES, getTagColorStyle } from '../constants/tag.constants'
+import { httpStatus } from '../utils/api.helper'
+import { isEditableTarget, isInOverlay } from '../utils/keyboard.helper'
+import { getLogger } from '../utils/logger'
+import { useErrorToast } from '../utils/toast.helper'
 
 const boardStore = useBoardStore()
 const { t } = useI18n()
+const logger = getLogger()
+const showError = useErrorToast()
 
 const button = ref<HTMLButtonElement | null>(null)
 const popover = ref<InstanceType<typeof Popover> | null>(null)
 const list = ref<HTMLElement | null>(null)
 const open = ref(false)
+
+// Menu ⋯ d'une ligne, une seule instance pour toutes les lignes
+const rowMenu = ref<InstanceType<typeof TieredMenu> | null>(null)
+const menuBoard = ref<Board | null>(null) // tableau de la ligne dont le menu est ouvert
+const menuOpen = ref(false)
+
+// Renommage en place
+const editingId = ref<number | null>(null)
+const editedName = ref('')
+const renameInvalid = ref(false)
+let renameInput: HTMLInputElement | null = null
 
 // Dialogue de création, et ses valeurs de départ
 const createVisible = ref(false)
@@ -97,11 +179,50 @@ function toggle(event: MouseEvent) {
  */
 function onShow() {
   open.value = true
+  document.addEventListener('click', onDocumentClick)
   void nextTick(() =>
     rows()
       .find((row) => row.getAttribute('aria-current') === 'true')
       ?.focus(),
   )
+}
+
+/**
+ * Liste fermée, un renommage en cours est abandonné (la perte de focus qui
+ * précède un clic ailleurs l'a déjà enregistré).
+ */
+function onHide() {
+  open.value = false
+  editingId.value = null
+  document.removeEventListener('click', onDocumentClick)
+}
+
+/**
+ * Un clic hors de la liste la ferme, sauf sur le bouton (qui la referme
+ * lui-même), dans le menu ⋯ ou dans la confirmation de suppression, ajoutés
+ * au body. Le chemin de l'événement est celui du clic, même si l'entrée
+ * cliquée a déjà disparu (menu refermé par son entrée).
+ * @param event Clic dans la fenêtre
+ */
+function onDocumentClick(event: MouseEvent) {
+  const inside = event
+    .composedPath()
+    .some(
+      (node) =>
+        node === button.value ||
+        (node instanceof Element && node.matches('.board-pop, .board-row-menu, .p-confirmpopup')),
+    )
+  if (!inside) popover.value?.hide()
+}
+
+/**
+ * Échap dans la liste, hors renommage (qui l'arrête), la ferme et rend le
+ * focus au bouton. Le menu ⋯ et la confirmation, ajoutés au body, gardent
+ * leur Échap.
+ */
+function onEscape() {
+  popover.value?.hide()
+  button.value?.focus()
 }
 
 /** Lignes de la liste ouverte, dans l'ordre affiché. */
@@ -110,16 +231,24 @@ function rows(): HTMLElement[] {
 }
 
 /**
+ * Ligne d'un tableau dans la liste ouverte.
+ * @param id Id du tableau
+ */
+function rowOf(id: number): HTMLElement | undefined {
+  return rows().find((row) => row.dataset.boardId === String(id))
+}
+
+/**
  * Flèches haut et bas d'une ligne à l'autre (en boucle), Début et Fin vers la
- * première et la dernière. Entrée sélectionne (clic du bouton), Échap ferme et
- * rend le focus au bouton (géré par le Popover).
+ * première et la dernière, depuis une ligne ou son ⋯. Entrée et Espace
+ * sélectionnent (cf. la ligne). Ignorées pendant un renommage.
  * @param event Touche pressée dans la liste
  */
 function onListKeydown(event: KeyboardEvent) {
   const items = rows()
-  if (!items.length) return
+  if (!items.length || isEditableTarget(event.target)) return
 
-  const index = items.indexOf(document.activeElement as HTMLElement)
+  const index = items.findIndex((row) => row.contains(document.activeElement))
   const target = {
     ArrowDown: (index + 1) % items.length,
     ArrowUp: (index - 1 + items.length) % items.length,
@@ -133,6 +262,18 @@ function onListKeydown(event: KeyboardEvent) {
 }
 
 /**
+ * Clic sur une ligne, qui affiche son tableau. Ignoré sur ses boutons et
+ * pendant son renommage.
+ * @param event Clic
+ * @param board Tableau de la ligne
+ */
+function onRowClick(event: MouseEvent, board: Board) {
+  if (editingId.value === board.id) return
+  if ((event.target as Element).closest('[data-row-control]')) return
+  choose(board.id)
+}
+
+/**
  * Affiche un tableau, puis ferme la liste et rend le focus au bouton.
  * @param id Id du tableau
  */
@@ -140,6 +281,173 @@ function choose(id: number) {
   popover.value?.hide()
   void boardStore.select(id)
   button.value?.focus()
+}
+
+/**
+ * Ouvre ou ferme le menu ⋯ d'une ligne, ancré sur son bouton.
+ * @param event Clic sur le ⋯
+ * @param board Tableau de la ligne
+ */
+function toggleRowMenu(event: MouseEvent, board: Board) {
+  menuBoard.value = board
+  rowMenu.value?.toggle(event)
+}
+
+/**
+ * Titre (infobulle) d'une entrée du menu ⋯, posé sur son élément de liste.
+ * Sert à expliquer une entrée désactivée.
+ */
+const rowMenuPt = {
+  item: ({ context }: { context: { item: MenuItem } }) => ({ title: context.item.title }),
+}
+
+/**
+ * Entrées du menu ⋯ pour le tableau de la ligne. Calculé pour suivre la
+ * langue de l'interface. Les actions qui posent le focus attendent la
+ * fermeture du menu, qui rendrait sinon le focus à son bouton.
+ */
+const rowMenuItems = computed<MenuItem[]>(() => {
+  const board = menuBoard.value
+  if (!board) return []
+
+  return [
+    {
+      label: t('boards.menu.rename'),
+      icon: 'pi pi-pencil',
+      command: () => setTimeout(() => startRename(board)),
+    },
+    {
+      label: t('boards.menu.color'),
+      // Pastille à la couleur du tableau, cercle vide sans couleur
+      icon: board.color ? 'pi pi-circle-fill' : 'pi pi-circle',
+      class: board.color ? 'menu-swatch-option' : undefined,
+      style: board.color ? { '--swatch': getTagColorStyle(board.color).swatch } : undefined,
+      items: [
+        {
+          label: t('board.noColor'),
+          icon: 'pi pi-ban',
+          class: board.color ? undefined : 'menu-option-current',
+          command: () => setColor(board, null),
+        },
+        ...TAG_COLOR_STYLES.map((color) => ({
+          label: t(`tagColors.${color.name}`),
+          icon: 'pi pi-circle-fill',
+          class: ['menu-swatch-option', { 'menu-option-current': board.color === color.name }],
+          style: { '--swatch': color.swatch },
+          command: () => setColor(board, color.name),
+        })),
+      ],
+    },
+  ]
+})
+
+/**
+ * Change la couleur d'un tableau, affichée tout de suite et rétablie si
+ * l'enregistrement échoue.
+ * @param board Tableau
+ * @param color Couleur de la palette, `null` pour la retirer
+ */
+async function setColor(board: Board, color: TagColor | null) {
+  const previous = board.color
+  if (previous === color) return
+  board.color = color
+
+  try {
+    await boardStore.setBoardColor(board.id, color)
+  } catch {
+    board.color = previous
+    showError(t('board.colorNotSaved'))
+  }
+}
+
+/**
+ * Ref de fonction du champ de renommage, seul de la liste.
+ * @param el Champ monté, `null` au démontage
+ */
+function setRenameInput(el: Element | ComponentPublicInstance | null) {
+  renameInput = el as HTMLInputElement | null
+}
+
+/**
+ * Passe la ligne d'un tableau en renommage, nom actuel sélectionné.
+ * @param board Tableau
+ */
+function startRename(board: Board) {
+  editingId.value = board.id
+  editedName.value = board.name
+  renameInvalid.value = false
+  void nextTick(() => {
+    renameInput?.focus()
+    renameInput?.select()
+  })
+}
+
+/**
+ * Termine le renommage sans rien enregistrer, et rend le focus à la ligne.
+ */
+function finishRename() {
+  const id = editingId.value
+  editingId.value = null
+  if (id !== null) void nextTick(() => rowOf(id)?.focus())
+}
+
+/**
+ * Entrée dans le champ. Un nom vide est refusé (le champ reste ouvert), un
+ * nom inchangé termine sans appel au serveur.
+ * @param board Tableau renommé
+ */
+function commitRename(board: Board) {
+  if (editingId.value !== board.id) return
+  const name = editedName.value.trim()
+  if (!name) {
+    renameInvalid.value = true
+    return
+  }
+  if (name === board.name) {
+    finishRename()
+    return
+  }
+  void saveName(board, name)
+}
+
+/**
+ * Perte de focus du champ. Enregistre un nom changé, abandonne un nom vide ou
+ * inchangé. Ignorée si le renommage est déjà terminé (le retrait du champ,
+ * après Entrée ou Échap, peut la déclencher).
+ * @param board Tableau renommé
+ */
+function onRenameBlur(board: Board) {
+  if (editingId.value !== board.id) return
+  const name = editedName.value.trim()
+  if (!name || name === board.name) {
+    editingId.value = null
+    return
+  }
+  void saveName(board, name)
+}
+
+/**
+ * Enregistre le nouveau nom, affiché tout de suite. Un refus du serveur (nom
+ * déjà pris, 409) remet l'ancien nom et l'explique dans un toast.
+ * @param board Tableau renommé
+ * @param name Nouveau nom, nettoyé
+ */
+async function saveName(board: Board, name: string) {
+  const previous = board.name
+  board.name = name
+  finishRename()
+
+  try {
+    await boardStore.renameBoard(board.id, name)
+  } catch (error) {
+    board.name = previous
+    if (httpStatus(error) === 409) {
+      showError(t('board.renameCanceled'), t('boards.create.nameTaken'))
+    } else {
+      logger.error(`Erreur lors du renommage du tableau ${board.id} depuis le sélecteur :`, error)
+      showError(t('board.renameCanceled'))
+    }
+  }
 }
 
 /**
@@ -173,7 +481,10 @@ function onGlobalKeydown(event: KeyboardEvent) {
 
 // Écouteur posé tant que le sélecteur est affiché, donc sur la page du tableau seulement
 onMounted(() => globalThis.addEventListener('keydown', onGlobalKeydown))
-onBeforeUnmount(() => globalThis.removeEventListener('keydown', onGlobalKeydown))
+onBeforeUnmount(() => {
+  globalThis.removeEventListener('keydown', onGlobalKeydown)
+  document.removeEventListener('click', onDocumentClick)
+})
 </script>
 
 <style scoped>
@@ -232,7 +543,7 @@ onBeforeUnmount(() => globalThis.removeEventListener('keydown', onGlobalKeydown)
 }
 
 .board-row {
-  @apply flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent text-left;
+  @apply flex w-full cursor-pointer items-center gap-2.5 rounded-md text-left;
   padding: 7px 6px 7px 8px;
   font: inherit;
   font-size: 14px;
@@ -301,6 +612,50 @@ onBeforeUnmount(() => globalThis.removeEventListener('keydown', onGlobalKeydown)
   border: 1px solid var(--p-form-field-border-color);
   border-radius: 4px;
   padding: 0 4px;
+}
+
+/* ⋯ d'une ligne, visible au survol, au clavier et menu ouvert */
+.more {
+  @apply grid shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 opacity-0;
+  width: 24px;
+  height: 24px;
+  color: var(--p-text-muted-color);
+}
+
+.more .pi {
+  font-size: 0.875rem;
+}
+
+.board-row:hover .more,
+.board-row:focus-within .more,
+.board-row.menu-open .more {
+  opacity: 1;
+}
+
+.more:hover,
+.more:focus-visible,
+.board-row.menu-open .more {
+  background-color: var(--p-content-hover-background);
+  color: var(--p-text-color);
+  outline: none;
+}
+
+/* Champ du renommage en place, à la place du nom */
+.board-rename {
+  @apply min-w-0 flex-1 bg-transparent outline-none;
+  border: 0;
+  border-bottom: 1px solid var(--p-primary-color);
+  padding: 0;
+  font: inherit;
+  color: var(--p-text-color);
+}
+
+.board-rename[aria-invalid='true'] {
+  border-bottom-color: var(--p-red-600);
+}
+
+.app-dark .board-rename[aria-invalid='true'] {
+  border-bottom-color: var(--p-red-400);
 }
 </style>
 
