@@ -681,6 +681,8 @@ export const zh: MessageSchema = {
     titleLabel: '任务标题',
     placeholder: '新任务…',
     templateLabel: '清单模板',
+    boardLabel: '任务所在看板',
+    stageLabel: '任务所在列',
     noStage: '请先在看板上添加一列，才能记下任务。',
     failed: '任务未添加。按 Enter 重试。',
     hint: '按 Enter 添加 · 按 Esc 关闭',

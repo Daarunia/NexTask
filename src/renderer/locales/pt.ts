@@ -695,6 +695,8 @@ export const pt: MessageSchema = {
     titleLabel: 'Título da tarefa',
     placeholder: 'Nova tarefa…',
     templateLabel: 'Modelo de checklist',
+    boardLabel: 'Quadro da tarefa',
+    stageLabel: 'Coluna da tarefa',
     noStage: 'Adicione uma coluna ao quadro para anotar a tarefa nela.',
     failed: 'A tarefa não foi adicionada. Tente de novo com Enter.',
     hint: 'Enter para adicionar · Esc para fechar',

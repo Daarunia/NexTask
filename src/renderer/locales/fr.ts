@@ -707,6 +707,8 @@ export const fr = {
     titleLabel: 'Titre de la tâche',
     placeholder: 'Nouvelle tâche…',
     templateLabel: 'Modèle de checklist',
+    boardLabel: 'Tableau de la tâche',
+    stageLabel: 'Colonne de la tâche',
     noStage: 'Ajoute une colonne au tableau pour y noter la tâche.',
     failed: "La tâche n'a pas été ajoutée. Réessaie avec Entrée.",
     hint: 'Entrée pour ajouter · Échap pour fermer',

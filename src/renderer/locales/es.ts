@@ -696,6 +696,8 @@ export const es: MessageSchema = {
     titleLabel: 'Título de la tarea',
     placeholder: 'Nueva tarea…',
     templateLabel: 'Plantilla de checklist',
+    boardLabel: 'Tablero de la tarea',
+    stageLabel: 'Columna de la tarea',
     noStage: 'Añade una columna al tablero para anotar la tarea en ella.',
     failed: 'La tarea no se ha añadido. Inténtalo de nuevo con Intro.',
     hint: 'Intro para añadir · Esc para cerrar',

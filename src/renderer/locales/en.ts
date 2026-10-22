@@ -692,6 +692,8 @@ export const en: MessageSchema = {
     titleLabel: 'Task title',
     placeholder: 'New task…',
     templateLabel: 'Checklist template',
+    boardLabel: 'Board of the task',
+    stageLabel: 'Column of the task',
     noStage: 'Add a column to the board to note the task in it.',
     failed: 'The task was not added. Try again with Enter.',
     hint: 'Enter to add · Esc to close',
