@@ -73,7 +73,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "md-editor-v3": "^7.1.0",
-    "node-abi": "^4.38.0",
+    "node-abi": "^4.39.0",
     "picocolors": "^1.1.1",
     "pinia": "^4.1.0",
     "prettier": "^3.9.10",
