@@ -41,12 +41,13 @@ if (IS_TEST) {
   DB_FILE = 'dev.db'
 }
 
-// Dossier des données de l'app : base, sauvegardes (userData en prod, racine
-// du projet en dev et en test)
+// Dossier des données de l'app : base par défaut, sauvegardes (userData en
+// prod, racine du projet en dev et en test)
 export const DATA_PATH = CURRENT_PATH
 
-// Chemin vers la base de données
-export const DB_PATH = path.join(DATA_PATH, DB_FILE)
+// Emplacement par défaut de la base. L'emplacement réellement utilisé, que
+// l'utilisateur peut changer, est donné par database/location.ts (DB_PATH)
+export const DEFAULT_DB_PATH = path.join(DATA_PATH, DB_FILE)
 
 // Sauvegardes automatiques de la base, dans un dossier à part en test pour ne
 // jamais toucher à celles du dev (le reset de test le vide)
@@ -61,6 +62,16 @@ if (IS_TEST) {
   SETTINGS_NAME = 'config.dev'
 }
 export const SETTINGS_FILE = SETTINGS_NAME
+
+// Nom du fichier qui garde l'emplacement de la base (electron-store, dans
+// userData), isolé comme les paramètres en test et en dev
+let STORAGE_NAME = 'storage'
+if (IS_TEST) {
+  STORAGE_NAME = `storage.test${TEST_SUFFIX}`
+} else if (IS_DEV) {
+  STORAGE_NAME = 'storage.dev'
+}
+export const STORAGE_FILE = STORAGE_NAME
 
 // Port du serveur Fastify : fixe en test et en dev, libre (0, choisi par le
 // système) en prod, cf. api.constants.ts

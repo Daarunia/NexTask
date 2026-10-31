@@ -16,6 +16,14 @@ import { getRestorableWindowState, trackWindowState } from './system/windowState
 import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
+import {
+  ensureDatabaseAvailable,
+  getDatabaseLocation,
+  moveDatabase,
+  openDatabase,
+  showDatabaseFailure,
+  useDefaultDatabase,
+} from './system/databaseLocation.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { setupExternalLinks } from './system/externalLinks.js'
@@ -255,6 +263,10 @@ app.whenReady().then(async () => {
   // et les fenêtres
   setupI18n()
 
+  // Base hors de l'emplacement par défaut : présente et libre, sinon
+  // l'utilisateur en décide (l'app peut alors quitter ou redémarrer)
+  if (!(await ensureDatabaseAvailable())) return
+
   try {
     // Migrations
     setupDatabase()
@@ -263,10 +275,11 @@ app.whenReady().then(async () => {
     applySeeds(getLocale())
   } catch (err) {
     // La migration ou la seed fautive a été annulée : on n'ouvre pas l'app sur
-    // une base qui ne correspond pas au code
+    // une base qui ne correspond pas au code (une base déplacée propose de
+    // revenir à l'emplacement par défaut)
     Logger.error('Erreur du lancement des migrations ou des seeds :', err)
     if (!IS_TEST) {
-      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.databaseFailed')}\n\n${err}`)
+      await showDatabaseFailure(`${t('startup.databaseFailed')}\n\n${err}`)
     }
     app.quit()
     return
@@ -415,6 +428,14 @@ ipcMain.handle('folders:open', (_, kind: unknown) => {
 
   return openFolder(kind)
 })
+
+// Emplacement de la base (cf. system/databaseLocation) : lu par les Paramètres,
+// puis changé après une boîte de dialogue native. Un nouvel emplacement
+// enregistré fait redémarrer l'app.
+ipcMain.handle('database:location', () => getDatabaseLocation())
+ipcMain.handle('database:move', (event) => moveDatabase(BrowserWindow.fromWebContents(event.sender)))
+ipcMain.handle('database:open', (event) => openDatabase(BrowserWindow.fromWebContents(event.sender)))
+ipcMain.handle('database:useDefault', (event) => useDefaultDatabase(BrowserWindow.fromWebContents(event.sender)))
 
 // Version de l'app, affichée dans la section « À propos » des Paramètres
 ipcMain.handle('about:version', () => APP_VERSION)

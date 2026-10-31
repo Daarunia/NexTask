@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import Logger from 'electron-log'
-import { BACKUPS_PATH, DB_PATH } from '../constants.js'
+import { BACKUPS_PATH } from '../constants.js'
+import { DB_PATH } from '../database/location.js'
 import { settingsStore } from '../stores/settings.js'
 
 /**
@@ -57,14 +58,16 @@ function listBackups(): string[] {
 }
 
 /**
- * Copie la base dans un fichier, via un fichier temporaire renommé à la fin :
- * une copie interrompue ne laisse pas de sauvegarde tronquée.
+ * Copie une base dans un fichier, via un fichier temporaire renommé à la fin :
+ * une copie interrompue ne laisse pas de copie tronquée. Passe par l'API de
+ * sauvegarde de SQLite, sûre même pendant que l'app utilise la base.
  *
- * @param target Chemin de la sauvegarde
+ * @param target Chemin de la copie
+ * @param source Base copiée, celle de l'app par défaut
  */
-async function copyDatabase(target: string): Promise<void> {
+export async function copyDatabase(target: string, source = DB_PATH): Promise<void> {
   const temporary = `${target}.tmp`
-  const db = new Database(DB_PATH, { fileMustExist: true })
+  const db = new Database(source, { fileMustExist: true })
 
   try {
     await db.backup(temporary)

@@ -3,18 +3,20 @@ import path from 'node:path'
 import { shell } from 'electron'
 import Logger from 'electron-log'
 import { DATA_PATH, IS_TEST } from '../constants.js'
+import { DB_PATH } from '../database/location.js'
 
 /**
  * Ouverture des dossiers de l'app dans l'explorateur de fichiers du système,
- * à la demande du renderer (IPC) : dossier des données (base, sauvegardes) et
- * dossier des journaux d'electron-log.
+ * à la demande du renderer (IPC) : dossier des données (base par défaut,
+ * sauvegardes), dossier de la base (ailleurs si l'utilisateur l'a déplacée,
+ * cf. database/location.ts) et dossier des journaux d'electron-log.
  *
  * En mode test, rien ne s'ouvre : le dossier demandé est seulement noté, et
  * les tests le relisent via GET /test/opened-folders.
  */
 
 /** Dossiers que le renderer peut faire ouvrir. */
-export const FOLDER_KINDS = ['data', 'logs'] as const
+export const FOLDER_KINDS = ['data', 'database', 'logs'] as const
 
 /** Dossier que le renderer peut faire ouvrir. */
 export type FolderKind = (typeof FOLDER_KINDS)[number]
@@ -44,6 +46,7 @@ export function isFolderKind(kind: unknown): kind is FolderKind {
  */
 function folderPath(kind: FolderKind): string {
   if (kind === 'data') return DATA_PATH
+  if (kind === 'database') return path.dirname(DB_PATH)
   // Dossier du fichier de log courant (cf. transport fichier d'electron-log)
   return path.dirname(Logger.transports.file.getFile().path)
 }
