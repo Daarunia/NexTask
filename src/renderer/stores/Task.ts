@@ -3,7 +3,12 @@ import { CACHE_TTL } from '../constants/time.constants'
 import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
-import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type {
+  RecurrenceListItem,
+  RecurrenceStatus,
+  RecurrenceSummary,
+  SeriesPlacement,
+} from '../../main/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
@@ -18,6 +23,16 @@ import { withSavedItem } from '../utils/checklist.helper'
 export interface RestoreResult {
   task: Task
   removed: Pick<Task, 'id' | 'tags'> | null
+}
+
+/**
+ * Déplacement d'une tâche : la tâche à sa nouvelle place, et la place du
+ * modèle de sa série avant le déplacement quand celui-ci l'a changée (envoi
+ * vers un autre tableau), null sinon. À rendre à l'annulation.
+ */
+export interface MoveResult {
+  task: Task
+  previousSeries: SeriesPlacement | null
 }
 
 /**
@@ -253,18 +268,30 @@ export const useTaskStore = defineStore('task', {
     /**
      * Déplace une tâche vers une colonne, de son tableau ou d'un autre, avec sa
      * série si le tableau change (POST /tasks/:id/move). Sert aussi à annuler,
-     * avec l'ancienne colonne et l'ancienne position. Le cache suit le serveur,
-     * les tâches de la colonne visée à cette position ou après descendent d'un cran.
+     * avec l'ancienne colonne, l'ancienne position et l'ancienne place de la
+     * série. Le cache suit le serveur, les tâches de la colonne visée à cette
+     * position ou après descendent d'un cran.
      * @param id Id de la tâche
      * @param stageId Colonne visée
      * @param position Position dans cette colonne, en bas si absente
-     * @returns La tâche déplacée, avec son tableau et sa série à jour
+     * @param seriesPlace Place à rendre à la série (annulation, `previousSeries`
+     *   d'un déplacement), sinon la série suit la tâche
+     * @returns La tâche déplacée, avec son tableau et sa série à jour, et la
+     *   place de la série avant le déplacement s'il l'a changée
      */
-    async moveTaskToStage(id: number, stageId: number, position?: number): Promise<Task> {
+    async moveTaskToStage(
+      id: number,
+      stageId: number,
+      position?: number,
+      seriesPlace?: SeriesPlacement | null,
+    ): Promise<MoveResult> {
       try {
-        const moved = await api.post<Task>(`/tasks/${id}/move`, { stageId, position })
+        const { previousSeries, ...moved } = await api.post<Task & { previousSeries?: SeriesPlacement | null }>(
+          `/tasks/${id}/move`,
+          { stageId, position, seriesPlace: seriesPlace ?? undefined },
+        )
         this.insertCachedTask(moved)
-        return moved
+        return { task: moved, previousSeries: previousSeries ?? null }
       } catch (error) {
         getLogger().error(`Erreur lors du déplacement de la tâche ${id} vers la colonne ${stageId} :`, error)
         throw error

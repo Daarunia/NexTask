@@ -1,5 +1,6 @@
 import type { Board, Prisma } from '../../prisma/generated/prisma/client.js'
 import { boardKey } from '../../shared/board.helper.js'
+import type { SeriesPlacement } from '../../shared/recurrence.constants.js'
 
 type TransactionClient = Prisma.TransactionClient
 
@@ -128,6 +129,26 @@ export interface StagePlacement {
 export async function stagePlacement(tx: TransactionClient, stageId: number): Promise<StagePlacement | null> {
   const stage = await tx.stage.findUnique({ where: { id: stageId }, select: { id: true, boardId: true } })
   return stage && { stageId: stage.id, boardId: stage.boardId }
+}
+
+/**
+ * Place à rendre au modèle d'une série, reçue du client (annulation d'un
+ * déplacement de tâche). Une colonne qui existe donne aussi son tableau
+ * (règle d'or, comme pour une tâche). Une colonne ou un tableau supprimé
+ * entre-temps devient null, comme l'aurait fait sa suppression
+ * (`onDelete: SetNull`) si la série était restée en place.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param place Colonne et tableau demandés, chacun éventuellement null
+ * @returns Colonne et tableau à écrire dans la série
+ */
+export async function seriesPlacement(tx: TransactionClient, place: SeriesPlacement): Promise<SeriesPlacement> {
+  const stage = place.stageId === null ? null : await stagePlacement(tx, place.stageId)
+  if (stage) return stage
+
+  const board =
+    place.boardId === null ? null : await tx.board.findUnique({ where: { id: place.boardId }, select: { id: true } })
+  return { stageId: null, boardId: board?.id ?? null }
 }
 
 /**

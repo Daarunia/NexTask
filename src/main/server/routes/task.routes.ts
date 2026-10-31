@@ -14,7 +14,13 @@ import {
   taskChecklistTexts,
 } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
-import { firstStageAmong, stagePlacement, withStageBoard, type StagePlacement } from '../helpers/board.helper.js'
+import {
+  firstStageAmong,
+  seriesPlacement,
+  stagePlacement,
+  withStageBoard,
+  type StagePlacement,
+} from '../helpers/board.helper.js'
 import {
   createSeries,
   onArchiveStatesChanged,
@@ -24,7 +30,7 @@ import {
   recurrenceInputProblem,
 } from '../helpers/recurrence.helper.js'
 import { settingsStore } from '../../stores/settings.js'
-import type { RecurrenceInput } from '../../shared/recurrence.constants.js'
+import type { RecurrenceInput, SeriesPlacement } from '../../shared/recurrence.constants.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from 'electron-log'
 
@@ -49,6 +55,26 @@ type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags' | 'checklist'
 const restoreResponse = {
   ...taskSchema,
   properties: { ...taskSchema.properties, removedOccurrenceId: { type: ['integer', 'null'] } },
+}
+
+// Place du modèle d'une série (cf. SeriesPlacement), colonne et tableau null s'ils ont été supprimés
+const seriesPlacementProperties = {
+  stageId: { type: ['integer', 'null'] },
+  boardId: { type: ['integer', 'null'] },
+}
+
+/**
+ * Réponse de POST /tasks/:id/move : la tâche déplacée, et la place du modèle
+ * de sa série avant le déplacement quand celui-ci l'a changée, null sinon.
+ * L'annulation la renvoie dans `seriesPlace`. À déclarer ici, sinon Fastify
+ * la retire de la réponse.
+ */
+const moveResponse = {
+  ...taskSchema,
+  properties: {
+    ...taskSchema.properties,
+    previousSeries: { type: ['object', 'null'], properties: seriesPlacementProperties },
+  },
 }
 
 /**
@@ -932,8 +958,16 @@ export default async function taskRoutes(fastify) {
    * `position` elle va en bas de la colonne. Son tableau devient celui de la
    * colonne. Si le tableau change et que la tâche est l'occurrence d'une série
    * en cours, la série prend la colonne et le tableau de la tâche, ses
-   * prochaines occurrences naîtront donc dans le nouveau tableau. La même
-   * route sert à annuler, avec l'ancienne colonne et l'ancienne position.
+   * prochaines occurrences naîtront donc dans le nouveau tableau. Sa place
+   * d'avant est alors renvoyée dans `previousSeries` (null si la série n'a
+   * pas changé).
+   *
+   * La même route sert à annuler, avec l'ancienne colonne, l'ancienne
+   * position et `seriesPlace`, le `previousSeries` reçu : la série reprend
+   * alors cette place plutôt que celle de la tâche, colonne du modèle
+   * supprimée (null) comprise. Une colonne de `seriesPlace` qui existe donne
+   * son tableau, une colonne ou un tableau supprimé depuis devient null (cf.
+   * seriesPlacement). Sans changement de tableau, `seriesPlace` est ignoré.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -941,9 +975,10 @@ export default async function taskRoutes(fastify) {
    * @param {Object} req.body - Corps de la requête
    * @param {number} req.body.stageId - Colonne visée
    * @param {number} [req.body.position] - Position dans cette colonne (en bas si absente)
+   * @param {Object} [req.body.seriesPlace] - Place à rendre à la série (annulation), cf. SeriesPlacement
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object|{error: string}>} Objet Task déplacé, avec sa série à jour,
-   *   404 si la tâche ou la colonne n'existe pas, 409 si la tâche est archivée
+   * @returns {Promise<Object|{error: string}>} Objet Task déplacé, avec sa série à jour
+   *   (et `previousSeries`), 404 si la tâche ou la colonne n'existe pas, 409 si la tâche est archivée
    */
   fastify.post(
     '/tasks/:id/move',
@@ -957,11 +992,16 @@ export default async function taskRoutes(fastify) {
           properties: {
             stageId: { type: 'integer' },
             position: { type: 'integer', minimum: 0 },
+            seriesPlace: {
+              type: 'object',
+              properties: seriesPlacementProperties,
+              required: ['stageId', 'boardId'],
+            },
           },
           required: ['stageId'],
         },
         response: {
-          200: taskSchema,
+          200: moveResponse,
           404: errorResponse,
           409: errorResponse,
         },
@@ -970,7 +1010,11 @@ export default async function taskRoutes(fastify) {
     async (req, reply) => {
       const id = Number(req.params.id)
       // Champs repris un par un, Fastify laissant passer une propriété non déclarée du corps
-      const { stageId, position } = req.body as { stageId: number; position?: number }
+      const { stageId, position, seriesPlace } = req.body as {
+        stageId: number
+        position?: number
+        seriesPlace?: SeriesPlacement
+      }
 
       // Transaction : la position calculée reste valable au moment de l'écriture
       return prisma.$transaction(async (tx) => {
@@ -1000,10 +1044,17 @@ export default async function taskRoutes(fastify) {
         }
         await tx.task.update({ where: { id }, data: { ...placement, position: target } })
 
+        // Place de la série avant le déplacement, si celui-ci la change
+        let previousSeries: SeriesPlacement | null = null
         if (placement.boardId !== task.boardId) {
-          // Série en cours : ses prochaines occurrences suivent la tâche dans son nouveau tableau
+          // Série en cours : ses prochaines occurrences suivent la tâche dans son nouveau tableau,
+          // ou reprennent leur place d'avant l'envoi s'il est annulé
           const series = task.recurrence?.status === 'ended' ? null : task.recurrence
-          if (series) await tx.recurrence.update({ where: { id: series.id }, data: { ...placement } })
+          if (series) {
+            previousSeries = { stageId: series.stageId, boardId: series.boardId }
+            const data = seriesPlace ? await seriesPlacement(tx, seriesPlace) : placement
+            await tx.recurrence.update({ where: { id: series.id }, data })
+          }
 
           const withSeries = series ? `, série ${series.id} comprise` : ''
           Logger.info(
@@ -1012,7 +1063,8 @@ export default async function taskRoutes(fastify) {
           )
         }
 
-        return tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
+        const moved = await tx.task.findUniqueOrThrow({ where: { id }, include: taskInclude })
+        return { ...moved, previousSeries }
       })
     },
   )

@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import type { SeriesPlacement } from '../../../src/main/shared/recurrence.constants'
 import {
   DAILY,
   createRecurringTask,
@@ -18,7 +19,8 @@ import {
  * Tests E2E du déplacement d'une tâche (POST /tasks/:id/move), vers une autre
  * colonne de son tableau ou vers un autre tableau. En bas de la colonne ou à
  * une position, série en cours qui suit la tâche dans son nouveau tableau,
- * aller-retour qui rend l'état de départ, refus.
+ * aller-retour qui rend l'état de départ, annulation qui rend à la série sa
+ * propre place (`previousSeries` renvoyé dans `seriesPlace`), refus.
  *
  * Deux tableaux, celui par défaut (A) et un second créé par POST /boards (B),
  * dont les ids se lisent par l'API à chaque test.
@@ -86,13 +88,16 @@ async function createTask(
   return res.json()
 }
 
+/** Réponse de POST /tasks/:id/move : la tâche, et la place de sa série avant le déplacement s'il l'a changée. */
+type MovedTask = RecurringTask & { previousSeries: SeriesPlacement | null }
+
 /**
  * Déplace une tâche par POST /tasks/:id/move, et renvoie la réponse.
  * @param request Contexte de requête Playwright
  * @param id Id de la tâche
- * @param data Colonne visée et position éventuelle
+ * @param data Colonne visée, position et place de la série éventuelles
  */
-async function move(request: APIRequestContext, id: number, data: Record<string, unknown>): Promise<RecurringTask> {
+async function move(request: APIRequestContext, id: number, data: Record<string, unknown>): Promise<MovedTask> {
   const res = await request.post(`${API}/tasks/${id}/move`, { data })
   expect(res.ok(), await res.text()).toBeTruthy()
   return res.json()
@@ -122,7 +127,7 @@ test.describe('Déplacement', () => {
     const moved = await move(page.request, task.id, { stageId: b.stages[0].id })
     expect(moved).toMatchObject({ id: task.id, stageId: b.stages[0].id, boardId: b.boardId, position: 2 })
     // Réponse complète, comme les autres routes des tâches
-    expect(moved).toMatchObject({ tags: [], checklist: null, recurrence: null })
+    expect(moved).toMatchObject({ tags: [], checklist: null, recurrence: null, previousSeries: null })
 
     expect(await getTask(page.request, task.id)).toMatchObject({ stageId: b.stages[0].id, boardId: b.boardId })
     expect(await titlesIn(page.request, b.stages[0].id)).toEqual(['B1', 'B2', 'Voyageuse'])
@@ -150,7 +155,7 @@ test.describe('Déplacement', () => {
     })
 
     const moved = await move(page.request, task.id, { stageId: a.stages[2].id })
-    expect(moved).toMatchObject({ stageId: a.stages[2].id, boardId: a.boardId })
+    expect(moved).toMatchObject({ stageId: a.stages[2].id, boardId: a.boardId, previousSeries: null })
 
     // La prochaine occurrence naît dans la colonne du modèle, inchangée
     expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
@@ -192,7 +197,7 @@ test.describe('Série', () => {
     await setSeriesStatus(page.request, task.recurrenceId!, 'ended')
 
     const moved = await move(page.request, task.id, { stageId: b.stages[0].id })
-    expect(moved).toMatchObject({ boardId: b.boardId })
+    expect(moved).toMatchObject({ boardId: b.boardId, previousSeries: null })
     expect(moved.recurrence).toMatchObject({ status: 'ended', boardId: a.boardId })
   })
 
@@ -211,9 +216,14 @@ test.describe('Série', () => {
 
     const there = await move(page.request, task.id, { stageId: b.stages[0].id })
     expect(there).toMatchObject({ boardId: b.boardId, recurrence: { boardId: b.boardId } })
+    expect(there.previousSeries).toEqual({ stageId: a.stages[0].id, boardId: a.boardId })
 
-    // Annulation : ancienne colonne et ancienne position
-    const back = await move(page.request, task.id, { stageId: before.stageId, position: before.position })
+    // Annulation : ancienne colonne, ancienne position et ancienne place de la série
+    const back = await move(page.request, task.id, {
+      stageId: before.stageId,
+      position: before.position,
+      seriesPlace: there.previousSeries,
+    })
     expect(back).toMatchObject({
       stageId: before.stageId,
       boardId: before.boardId,
@@ -225,6 +235,119 @@ test.describe('Série', () => {
     expect(await titlesIn(page.request, b.stages[0].id)).toEqual([])
 
     // La prochaine occurrence naît de nouveau dans la colonne de départ
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+    const [, next] = await seriesTasks(page.request, task.recurrenceId!)
+    expect(next).toMatchObject({ stageId: a.stages[0].id, boardId: a.boardId })
+  })
+
+  test('annulation : la série reprend la colonne de son modèle, pas celle de la tâche', async ({ page }) => {
+    const { a, b } = await twoBoards(page.request)
+    const task = await createRecurringTask(page.request, {
+      title: 'Avancée',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      stageId: a.stages[0].id,
+    })
+    // Dans son tableau, la tâche avance sans toucher au modèle (première colonne)
+    const before = await move(page.request, task.id, { stageId: a.stages[1].id })
+
+    const there = await move(page.request, task.id, { stageId: b.stages[0].id })
+    expect(there.previousSeries).toEqual({ stageId: a.stages[0].id, boardId: a.boardId })
+
+    const back = await move(page.request, task.id, {
+      stageId: before.stageId,
+      position: before.position,
+      seriesPlace: there.previousSeries,
+    })
+    expect(back).toMatchObject({ stageId: a.stages[1].id, boardId: a.boardId, recurrence: { boardId: a.boardId } })
+    // L'annulation a changé la série à son tour : place d'avant, sur B
+    expect(back.previousSeries).toEqual({ stageId: b.stages[0].id, boardId: b.boardId })
+
+    // La prochaine occurrence naît dans la colonne du modèle, pas dans celle où était la tâche
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+    const [, next] = await seriesTasks(page.request, task.recurrenceId!)
+    expect(next).toMatchObject({ stageId: a.stages[0].id, boardId: a.boardId })
+  })
+
+  test('annulation : une série sans colonne de modèle reste sans colonne', async ({ page }) => {
+    const { a, b } = await twoBoards(page.request)
+    const task = await createRecurringTask(page.request, {
+      title: 'Orpheline',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      stageId: a.stages[0].id,
+    })
+    // Tâche dans la troisième colonne, puis colonne du modèle supprimée : série sans colonne, sur A
+    const before = await move(page.request, task.id, { stageId: a.stages[2].id })
+    expect((await page.request.delete(`${API}/stages/${a.stages[0].id}`)).ok()).toBeTruthy()
+
+    const there = await move(page.request, task.id, { stageId: b.stages[0].id })
+    expect(there.previousSeries).toEqual({ stageId: null, boardId: a.boardId })
+
+    const back = await move(page.request, task.id, {
+      stageId: before.stageId,
+      position: before.position,
+      seriesPlace: there.previousSeries,
+    })
+    expect(back).toMatchObject({ stageId: a.stages[2].id, boardId: a.boardId, recurrence: { boardId: a.boardId } })
+
+    // Sans colonne, l'occurrence naît dans la première colonne restante de A, pas dans celle de la tâche
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+    const [, next] = await seriesTasks(page.request, task.recurrenceId!)
+    expect(next).toMatchObject({ stageId: a.stages[1].id, boardId: a.boardId })
+  })
+
+  test('seriesPlace : une colonne donne son tableau, une colonne ou un tableau disparu devient null', async ({
+    page,
+  }) => {
+    const { a, b } = await twoBoards(page.request)
+    const task = await createRecurringTask(page.request, {
+      title: 'Replacée',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      stageId: a.stages[0].id,
+    })
+
+    // Tableau envoyé contraire à la colonne : celui de la colonne l'emporte
+    await move(page.request, task.id, { stageId: b.stages[0].id })
+    const mismatched = await move(page.request, task.id, {
+      stageId: a.stages[0].id,
+      seriesPlace: { stageId: a.stages[1].id, boardId: b.boardId },
+    })
+    expect(mismatched.recurrence).toMatchObject({ boardId: a.boardId })
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+    const [, second] = await seriesTasks(page.request, task.recurrenceId!)
+    expect(second).toMatchObject({ stageId: a.stages[1].id, boardId: a.boardId })
+
+    // Colonne et tableau inconnus : série sans colonne ni tableau, pas d'erreur
+    await move(page.request, task.id, { stageId: b.stages[0].id })
+    const unknown = await move(page.request, task.id, {
+      stageId: a.stages[0].id,
+      seriesPlace: { stageId: UNKNOWN_ID, boardId: UNKNOWN_ID },
+    })
+    expect(unknown.recurrence).toMatchObject({ boardId: null })
+
+    // Sans tableau, la série retombe sur le premier tableau (A) et sa première colonne
+    expect(await runRecurrences(page.request, plusMinutes(localDate(3), 1))).toMatchObject({ created: 1 })
+    const [, , third] = await seriesTasks(page.request, task.recurrenceId!)
+    expect(third).toMatchObject({ stageId: a.stages[0].id, boardId: a.boardId })
+  })
+
+  test('seriesPlace est ignoré sans changement de tableau', async ({ page }) => {
+    const { a, b } = await twoBoards(page.request)
+    const task = await createRecurringTask(page.request, {
+      title: 'Sédentaire',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      stageId: a.stages[0].id,
+    })
+
+    const moved = await move(page.request, task.id, {
+      stageId: a.stages[2].id,
+      seriesPlace: { stageId: b.stages[1].id, boardId: b.boardId },
+    })
+    expect(moved).toMatchObject({ previousSeries: null, recurrence: { boardId: a.boardId } })
+
     expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
     const [, next] = await seriesTasks(page.request, task.recurrenceId!)
     expect(next).toMatchObject({ stageId: a.stages[0].id, boardId: a.boardId })

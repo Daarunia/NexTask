@@ -178,6 +178,7 @@ import { useDangerConfirm } from '../../utils/confirm.helper'
 import { isEditableTarget, isInOverlay } from '../../utils/keyboard.helper'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../../constants/tag.constants'
 import type { TagColor } from '../../../main/shared/tag.constants'
+import type { SeriesPlacement } from '../../../main/shared/recurrence.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -670,8 +671,9 @@ async function moveTaskToBoard(taskId: number, boardId: number) {
   const stage = stageStore.getStagesOfBoard(boardId)[0]
   if (!target || !stage || !board.find(taskId)) return
 
+  let previousSeries: SeriesPlacement | null
   try {
-    await taskStore.moveTaskToStage(taskId, stage.id)
+    previousSeries = (await taskStore.moveTaskToStage(taskId, stage.id)).previousSeries
   } catch {
     showError(t('boards.send.failed'))
     return
@@ -682,9 +684,10 @@ async function moveTaskToBoard(taskId: number, boardId: number) {
   logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
   if (!location) return
 
-  // Titre de la tâche en précision, comme les autres toasts d'annulation
+  // Titre de la tâche en précision, comme les autres toasts d'annulation. La
+  // série, si elle a suivi la carte, reprendra sa propre place, pas celle de la carte
   const task = location.list[location.index]
-  const place = { stageId: location.stageId, position: task.position }
+  const place = { stageId: location.stageId, position: task.position, series: previousSeries }
   showUndo(t('boards.send.sent', { name: target.name }), {
     detail: task.title,
     undo: () => undoMoveToBoard(taskId, boardId, place),
@@ -697,17 +700,24 @@ onBeforeUnmount(() => (unmounted = true))
 
 /**
  * Annule l'envoi d'une carte vers un autre tableau, par la même route avec
- * son ancienne colonne et son ancienne position. La série revient avec elle.
- * Annulé depuis le tableau d'arrivée (Ctrl+Z après en avoir changé), où la
- * carte est encore affichée, le tableau d'origine est réaffiché avec elle.
+ * son ancienne colonne et son ancienne position. La série revient avec elle,
+ * à sa propre place d'avant l'envoi (colonne du modèle, même supprimée), pas
+ * à celle de la carte. Annulé depuis le tableau d'arrivée (Ctrl+Z après en
+ * avoir changé), où la carte est encore affichée, le tableau d'origine est
+ * réaffiché avec elle.
  * @param taskId Id de la tâche
  * @param boardId Tableau où elle a été envoyée
- * @param place Colonne et position de la carte avant l'envoi
+ * @param place Colonne et position de la carte avant l'envoi, et place de sa
+ *   série si l'envoi l'a changée (null sinon)
  */
-async function undoMoveToBoard(taskId: number, boardId: number, place: { stageId: number; position: number }) {
+async function undoMoveToBoard(
+  taskId: number,
+  boardId: number,
+  place: { stageId: number; position: number; series: SeriesPlacement | null },
+) {
   let restored: Task
   try {
-    restored = await taskStore.moveTaskToStage(taskId, place.stageId, place.position)
+    restored = (await taskStore.moveTaskToStage(taskId, place.stageId, place.position, place.series)).task
   } catch {
     showError(t('board.undoFailed'), t('boards.send.undoFailedDetail'))
     return

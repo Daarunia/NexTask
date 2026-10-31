@@ -277,6 +277,36 @@ describe('moveTaskToStage', () => {
     // Une tâche d'une autre colonne ne bouge pas
     expect(taskStore.getAllTasks.find((t) => t.id === 11)?.position).toBe(0)
   })
+
+  test('renvoie la place d’avant de la série, hors de la tâche mise en cache', async () => {
+    loadSample()
+    api.post.mockResolvedValueOnce({ ...task(10, 3, 7), previousSeries: { stageId: null, boardId: 5 } })
+    const taskStore = useTaskStore()
+
+    const result = await taskStore.moveTaskToStage(10, 3)
+
+    expect(result.previousSeries).toEqual({ stageId: null, boardId: 5 })
+    expect(result.task).not.toHaveProperty('previousSeries')
+    expect(taskStore.getAllTasks.find((t) => t.id === 10)).not.toHaveProperty('previousSeries')
+  })
+
+  test('annulation : rend sa place à la série, null devient absent', async () => {
+    loadSample()
+    api.post.mockResolvedValue({ ...task(10, 1, 5), previousSeries: null })
+    const taskStore = useTaskStore()
+
+    const result = await taskStore.moveTaskToStage(10, 1, 0, { stageId: null, boardId: 5 })
+    expect(api.post).toHaveBeenLastCalledWith('/tasks/10/move', {
+      stageId: 1,
+      position: 0,
+      seriesPlace: { stageId: null, boardId: 5 },
+    })
+    expect(result.previousSeries).toBeNull()
+
+    // Envoi qui n'avait pas changé la série : rien à lui rendre, null n'est pas envoyé (refusé par le schéma)
+    await taskStore.moveTaskToStage(10, 1, 0, null)
+    expect(api.post.mock.lastCall?.[1].seriesPlace).toBeUndefined()
+  })
 })
 
 describe('restoreTask', () => {

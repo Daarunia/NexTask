@@ -101,6 +101,17 @@ export interface RecurrenceSummary {
 }
 
 /**
+ * Place du modèle d'une série : colonne et tableau de ses prochaines
+ * occurrences, null s'ils ont été supprimés. Renvoyée par un déplacement de
+ * tâche qui l'a changée, et rendue à la série par son annulation (POST
+ * /tasks/:id/move).
+ */
+export interface SeriesPlacement {
+  stageId: number | null
+  boardId: number | null
+}
+
+/**
  * Série de la liste des Paramètres (GET /recurrences) : son résumé et le
  * titre du modèle de ses occurrences.
  */
