@@ -468,7 +468,7 @@ export default async function taskRoutes(fastify) {
           // Avant toute écriture, car la réponse d'erreur valide la transaction
           const fields = await withStageBoard(tx, data)
           if (!fields) {
-            Logger.warn(`Mise à jour de la tâche ${id} impossible, colonne ${data.stageId} introuvable`)
+            Logger.warn(`Mise à jour de la tâche ${id} impossible, colonne ${JSON.stringify(data.stageId)} introuvable`)
             reply.code(404)
             return { error: 'Colonne non trouvée' }
           }

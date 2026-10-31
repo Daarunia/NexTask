@@ -61,7 +61,7 @@ onMounted(() => {
   // Clic sur une notification qui n'annonçait qu'une tâche, retour au tableau de la tâche, qui l'ouvre
   if (!bare.value) {
     stopOpenTaskListener = globalThis.notifications.onOpenTask((taskId) => {
-      void boardStore.showTask(taskId)
+      boardStore.showTask(taskId)
       router.push({ name: 'Home' })
     })
   }

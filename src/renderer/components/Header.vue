@@ -109,7 +109,7 @@ function togglePalette(event: MouseEvent) {
 const isDev = import.meta.env.DEV
 
 function toggleDevTools() {
-  window.devTools.toggle()
+  globalThis.devTools.toggle()
 }
 
 // Page courante, la navigation passe par le rail (cf. AppRail)

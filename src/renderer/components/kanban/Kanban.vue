@@ -669,7 +669,7 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
 async function moveTaskToBoard(taskId: number, boardId: number) {
   const target = boardStore.getAllBoards.find((candidate) => candidate.id === boardId)
   const stage = stageStore.getStagesOfBoard(boardId)[0]
-  if (!target || !stage || !board.find(taskId)) return
+  if (!target || !stage || board.find(taskId) === null) return
 
   let previousSeries: SeriesPlacement | null
   try {
@@ -1187,7 +1187,7 @@ onBeforeUnmount(stopRecurrenceListener)
 function openRequestedTask() {
   const taskId = taskStore.taskToOpen
   if (taskId === null) return
-  if (!board.find(taskId) && isOnOtherBoard(taskId)) return
+  if (board.find(taskId) === null && isOnOtherBoard(taskId)) return
   taskStore.taskToOpen = null
 
   openTask(taskId)

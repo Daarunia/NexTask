@@ -449,7 +449,7 @@ function choose(item: SearchItem) {
     setText('')
   } else if (item.kind === 'task') {
     // Tâche d'un autre tableau, ce tableau est d'abord affiché
-    void boardStore.showTask(item.id)
+    boardStore.showTask(item.id)
     input.value?.blur()
   }
   listDismissed.value = true

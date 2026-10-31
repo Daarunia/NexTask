@@ -351,7 +351,7 @@ function onRowClick(event: MouseEvent, board: Board) {
  */
 function choose(id: number) {
   popover.value?.hide()
-  void boardStore.select(id)
+  boardStore.select(id)
   button.value?.focus()
 }
 
@@ -651,7 +651,7 @@ function onGlobalKeydown(event: KeyboardEvent) {
 
   event.preventDefault()
   const board = boards.value[Number(digit) - 1]
-  if (board && board.id !== current.value?.id) void boardStore.select(board.id)
+  if (board && board.id !== current.value?.id) boardStore.select(board.id)
 }
 
 // Écouteur posé tant que le sélecteur est affiché, donc sur la page du tableau seulement

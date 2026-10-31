@@ -46,7 +46,7 @@
       <!-- Couleur facultative, palette des tags -->
       <div class="flex flex-col gap-1.5">
         <span :id="colorLabelId" class="field-label">{{ t('boards.create.colorLabel') }}</span>
-        <div class="swatches" role="group" :aria-labelledby="colorLabelId">
+        <fieldset class="swatches" :aria-labelledby="colorLabelId">
           <button
             v-for="option in colorOptions"
             :key="option ?? 'none'"
@@ -61,7 +61,7 @@
           >
             <BoardDot :color="option" />
           </button>
-        </div>
+        </fieldset>
       </div>
 
       <!-- Colonnes de départ, le tableau à copier se choisit dans sa ligne -->
@@ -255,7 +255,7 @@ async function create() {
   }
 
   visible.value = false
-  void boardStore.select(board.id)
+  boardStore.select(board.id)
 }
 </script>
 
@@ -283,7 +283,7 @@ async function create() {
 }
 
 .swatches {
-  @apply flex flex-wrap gap-2;
+  @apply flex flex-wrap gap-2 m-0 p-0 border-0 min-w-0;
 }
 
 /* Pastille de 18 px dans un rond de 24 px, cerclé à la couleur d'accent si choisie */
