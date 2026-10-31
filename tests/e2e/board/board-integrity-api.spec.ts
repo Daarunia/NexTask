@@ -269,7 +269,7 @@ test.describe('Restauration', () => {
     expect(await listedTask(page.request, inPlace.id)).toMatchObject({ stageId: stages[2].id, position: 0, boardId })
   })
 
-  test('409 quand le tableau de la tâche n’a plus aucune colonne', async ({ page }) => {
+  test('409 quand le tableau de la tâche, seul tableau, n’a plus aucune colonne', async ({ page }) => {
     const { stages, boardId } = await layout(page.request)
     const task = await createTask(page.request, stages[0].id, 'Sans colonne')
     for (const stage of stages) {
@@ -397,6 +397,49 @@ test.describe('Second tableau', () => {
     const fallbackGone = await page.request.post(`${API}/tasks/${gone.id}/restore?boardId=${doomed.boardId}`)
     expect(fallbackGone.ok(), await fallbackGone.text()).toBeTruthy()
     expect(await listedTask(page.request, gone.id)).toMatchObject({
+      stageId: first.stages[0].id,
+      boardId: first.boardId,
+    })
+  })
+
+  test('restauration sans place, tableau de la tâche sans colonne : tableau de ?boardId=, sinon le premier', async ({
+    page,
+  }) => {
+    const first = await layout(page.request)
+    const emptied = await createBoard(page.request, 'Vidé')
+    const shown = await createBoard(page.request, 'Affiché')
+    const empty = await createBoard(page.request, 'Vide', 'empty')
+    const withFallback = await createTask(page.request, emptied.stages[1].id, 'Avec repli')
+    const withoutFallback = await createTask(page.request, emptied.stages[1].id, 'Sans repli')
+    const emptyFallback = await createTask(page.request, emptied.stages[1].id, 'Repli vide')
+
+    // Colonnes supprimées : tâches archivées, le tableau existe encore et reste le leur
+    for (const stage of emptied.stages) {
+      expect((await page.request.delete(`${API}/stages/${stage.id}`)).ok()).toBeTruthy()
+    }
+    for (const task of [withFallback, withoutFallback, emptyFallback]) {
+      expect(await listedTask(page.request, task.id)).toMatchObject({ isHistorized: true, boardId: emptied.boardId })
+    }
+
+    // Tableau de l'interface plutôt qu'un 409
+    const restored = await page.request.post(`${API}/tasks/${withFallback.id}/restore?boardId=${shown.boardId}`)
+    expect(restored.ok(), await restored.text()).toBeTruthy()
+    expect(await listedTask(page.request, withFallback.id)).toMatchObject({
+      stageId: shown.stages[0].id,
+      boardId: shown.boardId,
+      isHistorized: false,
+    })
+
+    expect((await page.request.post(`${API}/tasks/${withoutFallback.id}/restore`)).ok()).toBeTruthy()
+    expect(await listedTask(page.request, withoutFallback.id)).toMatchObject({
+      stageId: first.stages[0].id,
+      boardId: first.boardId,
+    })
+
+    // Tableau de l'interface sans colonne lui aussi : premier tableau
+    const emptyShown = await page.request.post(`${API}/tasks/${emptyFallback.id}/restore?boardId=${empty.boardId}`)
+    expect(emptyShown.ok(), await emptyShown.text()).toBeTruthy()
+    expect(await listedTask(page.request, emptyFallback.id)).toMatchObject({
       stageId: first.stages[0].id,
       boardId: first.boardId,
     })

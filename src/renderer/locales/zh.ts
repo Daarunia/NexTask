@@ -690,7 +690,7 @@ export const zh: MessageSchema = {
     unknownDate: '归档日期未知',
     archivedOn: '归档于 {date}',
     restoreFailed: '无法恢复',
-    restoreNoStage: '该看板没有可用于恢复任务的列。',
+    restoreNoStage: '没有任何看板有可用于恢复任务的列。',
     restoreHere: '恢复到此处',
     restoreHereItem: '将 {title} 恢复到“{board}”',
     boardFilter: '按看板筛选',

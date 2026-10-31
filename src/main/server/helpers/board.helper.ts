@@ -85,6 +85,30 @@ export async function firstStageOf(tx: TransactionClient, boardId: number): Prom
   return stage && { stageId: stage.id, boardId: stage.boardId }
 }
 
+/**
+ * Première colonne du premier candidat qui existe encore et a une colonne,
+ * sinon celle du premier tableau. Un candidat nul ou absent est sauté, un
+ * tableau supprimé ou sans colonne aussi.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param candidates Ids de tableau, par ordre de préférence
+ * @returns Colonne et tableau, null si aucun de ces tableaux n'a de colonne
+ */
+export async function firstStageAmong(
+  tx: TransactionClient,
+  candidates: Array<number | null | undefined>,
+): Promise<StagePlacement | null> {
+  for (const id of candidates) {
+    if (id === null || id === undefined) continue
+    // Tableau supprimé : aucune colonne ne le désigne
+    const stage = await firstStageOf(tx, id)
+    if (stage) return stage
+  }
+
+  const first = await firstBoard(tx)
+  return first && firstStageOf(tx, first.id)
+}
+
 /** Place d'une tâche, sa colonne et le tableau de cette colonne. */
 export interface StagePlacement {
   stageId: number

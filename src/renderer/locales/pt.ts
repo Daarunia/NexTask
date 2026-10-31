@@ -707,7 +707,7 @@ export const pt: MessageSchema = {
     unknownDate: 'Data de arquivamento desconhecida',
     archivedOn: 'Arquivada em {date}',
     restoreFailed: 'Restauração impossível',
-    restoreNoStage: 'O quadro não tem nenhuma coluna para restaurar a tarefa.',
+    restoreNoStage: 'Nenhum quadro tem uma coluna para restaurar a tarefa.',
     restoreHere: 'Restaurar aqui',
     restoreHereItem: 'Restaurar {title} em “{board}”',
     boardFilter: 'Filtrar por quadro',

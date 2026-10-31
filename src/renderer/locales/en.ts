@@ -704,7 +704,7 @@ export const en: MessageSchema = {
     unknownDate: 'Unknown archive date',
     archivedOn: 'Archived on {date}',
     restoreFailed: 'Restore failed',
-    restoreNoStage: 'The board has no column to restore the task to.',
+    restoreNoStage: 'No board has a column to restore the task to.',
     restoreHere: 'Restore here',
     restoreHereItem: 'Restore {title} to “{board}”',
     boardFilter: 'Filter by board',

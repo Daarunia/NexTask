@@ -14,14 +14,7 @@ import {
   taskChecklistTexts,
 } from '../helpers/checklist.helper.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
-import {
-  boardOrFirst,
-  firstBoard,
-  firstStageOf,
-  stagePlacement,
-  withStageBoard,
-  type StagePlacement,
-} from '../helpers/board.helper.js'
+import { firstStageAmong, stagePlacement, withStageBoard, type StagePlacement } from '../helpers/board.helper.js'
 import {
   createSeries,
   onArchiveStatesChanged,
@@ -139,30 +132,6 @@ async function updateTaskBatch(
 }
 
 /**
- * Colonne de repli de l'ajout rapide, quand aucune colonne existante n'est
- * demandée. La première du dernier tableau affiché, sinon celle du premier
- * tableau (dernier tableau inconnu, supprimé ou sans colonne).
- *
- * @param tx Client Prisma de la transaction en cours
- * @param lastBoardId Dernier tableau affiché (paramètre `lastBoardId`), null s'il n'est pas connu
- * @returns Colonne et tableau, null si aucun de ces tableaux n'a de colonne
- */
-async function quickAddFallback(
-  tx: Prisma.TransactionClient,
-  lastBoardId: number | null,
-): Promise<StagePlacement | null> {
-  const boardId = await boardOrFirst(tx, [lastBoardId])
-  if (boardId === null) return null
-
-  const stage = await firstStageOf(tx, boardId)
-  if (stage) return stage
-
-  // Dernier tableau sans colonne, repli sur le premier tableau s'il est autre
-  const first = await firstBoard(tx)
-  return first === null || first.id === boardId ? null : firstStageOf(tx, first.id)
-}
-
-/**
  * Plugin de routes Fastify pour la gestion des tâches (Task)
  *
  * Fournit les endpoints CRUD pour l'entité `Task` :
@@ -172,7 +141,7 @@ async function quickAddFallback(
  * - PATCH  /tasks/:id   → Modifie une tâche existante
  * - DELETE /tasks/:id   → Supprime une tâche existante
  * - PUT    /tasks/:id   → Archive (historise) une tâche
- * - POST   /tasks/:id/restore → Restaure une tâche archivée (à sa place ou en bas de la première colonne de son tableau)
+ * - POST   /tasks/:id/restore → Restaure une tâche archivée (à sa place ou en bas de la première colonne de son tableau, sinon d'un tableau de repli)
  * - POST   /tasks/quick-add   → Crée une tâche depuis l'ajout rapide
  * - POST   /tasks/:id/move    → Déplace une tâche vers une colonne, d'un autre tableau au besoin, avec sa série
  *
@@ -681,12 +650,13 @@ export default async function taskRoutes(fastify) {
    * tableau. Ses tags sont conservés.
    *
    * Sans paramètre, elle va en bas de la première colonne (plus petite
-   * position) de son tableau. Si ce tableau a été supprimé, celui de `boardId`
-   * est pris (tableau affiché par l'interface), puis le premier tableau. Avec
-   * `stageId` et `position` (annulation d'un archivage), elle reprend cette
-   * place : les tâches qui l'occupent descendent d'un cran. Si cette colonne
-   * n'existe plus, la place par défaut est utilisée. Dans tous les cas, son
-   * tableau devient celui de la colonne retenue.
+   * position) de son tableau. Si ce tableau a été supprimé ou n'a aucune
+   * colonne, celui de `boardId` est pris (tableau affiché par l'interface),
+   * puis le premier tableau, comme pour l'ajout rapide. Avec `stageId` et
+   * `position` (annulation d'un archivage), elle reprend cette place : les
+   * tâches qui l'occupent descendent d'un cran. Si cette colonne n'existe
+   * plus, la place par défaut est utilisée. Dans tous les cas, son tableau
+   * devient celui de la colonne retenue.
    *
    * Occurrence d'une série « après archivage » : la série l'attend de
    * nouveau, et l'occurrence née de son archivage est retirée si elle n'a pas
@@ -699,17 +669,18 @@ export default async function taskRoutes(fastify) {
    * @param {Object} req.query - Paramètres de requête
    * @param {number} [req.query.stageId] - Colonne où restaurer la tâche
    * @param {number} [req.query.position] - Position dans cette colonne
-   * @param {number} [req.query.boardId] - Tableau de repli, pour une tâche dont le tableau a été supprimé
+   * @param {number} [req.query.boardId] - Tableau de repli, pour une tâche dont le tableau a été supprimé ou n'a aucune colonne
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task restauré avec ses tags (et
    *   `removedOccurrenceId`), 404 si la tâche n'existe pas, 409 si elle n'est pas
-   *   archivée ou si le tableau retenu n'a aucune colonne
+   *   archivée ou si aucun de ces tableaux n'a de colonne
    */
   fastify.post(
     '/tasks/:id/restore',
     {
       schema: {
-        description: 'Restaure une tâche archivée, à la place indiquée ou en bas de la première colonne de son tableau',
+        description:
+          'Restaure une tâche archivée, à la place indiquée ou en bas de la première colonne de son tableau (sinon du tableau de repli, puis du premier)',
         tags: ['Task'],
         params: idParam,
         // En query plutôt qu'en corps : la restauration depuis les archives n'envoie rien
@@ -757,13 +728,15 @@ export default async function taskRoutes(fastify) {
           position = place.position
           await makeRoomAt(tx, placement.stageId, position)
         } else {
-          // Tableau de la tâche, sinon celui de l'interface, sinon le premier
-          const boardId = await boardOrFirst(tx, [task.boardId, place.boardId])
-          const firstStage = boardId === null ? null : await firstStageOf(tx, boardId)
+          // Tableau de la tâche, sinon celui de l'interface, sinon le premier : le premier qui a une colonne
+          const firstStage = await firstStageAmong(tx, [task.boardId, place.boardId])
           if (!firstStage) {
-            Logger.warn(`Restauration de la tâche ${id} impossible, le tableau ${boardId} n'a aucune colonne`)
+            Logger.warn(
+              `Restauration de la tâche ${id} impossible, ni son tableau ${task.boardId}, ni le tableau ` +
+                `de repli ${place.boardId}, ni le premier tableau n'a de colonne`,
+            )
             reply.code(409)
-            return { error: "Le tableau n'a aucune colonne pour restaurer la tâche" }
+            return { error: 'Aucune colonne pour restaurer la tâche' }
           }
 
           // En bas de la colonne : après la plus grande position de ses tâches actives
@@ -839,9 +812,10 @@ export default async function taskRoutes(fastify) {
       const { newTaskPosition, defaultTaskVersion } = settingsStore.store
 
       return prisma.$transaction(async (tx) => {
+        // Colonne demandée, sinon première colonne du dernier tableau affiché, sinon du premier
         const placement =
           (stageId === undefined ? null : await stagePlacement(tx, stageId)) ??
-          (await quickAddFallback(tx, settingsStore.get('lastBoardId')))
+          (await firstStageAmong(tx, [settingsStore.get('lastBoardId')]))
         if (!placement) {
           reply.code(409)
           return { error: 'Aucune colonne pour ajouter la tâche' }

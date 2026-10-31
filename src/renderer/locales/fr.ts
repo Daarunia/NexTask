@@ -719,7 +719,7 @@ export const fr = {
     unknownDate: "Date d'archivage inconnue",
     archivedOn: 'Archivée le {date}',
     restoreFailed: 'Restauration impossible',
-    restoreNoStage: 'Le tableau n’a aucune colonne pour y restaurer la tâche.',
+    restoreNoStage: 'Aucun tableau n’a de colonne pour y restaurer la tâche.',
     restoreHere: 'Restaurer ici',
     restoreHereItem: 'Restaurer {title} dans « {board} »',
     boardFilter: 'Filtrer par tableau',

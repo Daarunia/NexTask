@@ -154,7 +154,7 @@ test("une tâche d'un tableau supprimé se restaure ici, dans le tableau affich�
   await expect.poll(() => taskBoard.columnTaskTitles('Courses')).toEqual(['Ancienne idée de voyage'])
 })
 
-test("un tableau sans colonne ne reprend pas sa tâche, avec un message qui l'explique", async ({
+test('la tâche d’un tableau sans colonne se restaure dans le tableau affiché', async ({
   page,
   header,
   archivesPage,
@@ -167,8 +167,32 @@ test("un tableau sans colonne ne reprend pas sa tâche, avec un message qui l'ex
   await header.goArchives()
   await archivesPage.restore('Sans colonne')
 
+  await expect(archivesPage.item('Sans colonne')).toHaveCount(0)
+  expect(await getTask(page.request, id)).toMatchObject({
+    isHistorized: false,
+    stageId: await defaultStageId(page.request),
+    boardId: await defaultBoardId(page.request),
+  })
+})
+
+test("sans colonne dans aucun tableau, la tâche reste archivée avec un message qui l'explique", async ({
+  page,
+  header,
+  archivesPage,
+}) => {
+  const perso = await createBoard(page.request, 'Perso', 'emerald', ['Idées'])
+  const id = await createArchived(page.request, perso.stageIds[0], 'Sans colonne')
+  const stages = (await (await page.request.get(`${API}/stages`)).json()) as { id: number }[]
+  for (const stage of stages) {
+    expect((await page.request.delete(`${API}/stages/${stage.id}`)).ok()).toBeTruthy()
+  }
+  await page.reload()
+
+  await header.goArchives()
+  await archivesPage.restore('Sans colonne')
+
   await expect(page.locator('.p-toast-message-error')).toContainText(
-    'Le tableau n’a aucune colonne pour y restaurer la tâche.',
+    'Aucun tableau n’a de colonne pour y restaurer la tâche.',
   )
   await expect(archivesPage.item('Sans colonne')).toBeVisible()
   expect(await getTask(page.request, id)).toMatchObject({ isHistorized: true, boardId: perso.id })

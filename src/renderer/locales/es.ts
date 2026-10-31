@@ -709,7 +709,7 @@ export const es: MessageSchema = {
     unknownDate: 'Fecha de archivado desconocida',
     archivedOn: 'Archivada el {date}',
     restoreFailed: 'Restauración imposible',
-    restoreNoStage: 'El tablero no tiene ninguna columna para restaurar la tarea.',
+    restoreNoStage: 'Ningún tablero tiene una columna para restaurar la tarea.',
     restoreHere: 'Restaurar aquí',
     restoreHereItem: 'Restaurar {title} en «{board}»',
     boardFilter: 'Filtrar por tablero',
