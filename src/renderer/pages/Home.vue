@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
 import { useStageStore } from '../stores/Stage'
+import { useBoardStore } from '../stores/Board'
 import { useTagStore } from '../stores/Tag'
 import { useSettingsStore } from '../stores/Settings'
 import { useBoardFilterStore } from '../stores/BoardFilter'
@@ -21,11 +22,14 @@ const { t } = useI18n()
 
 // Liste de stages et de tâches
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const taskStore = useTaskStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
 const tasks = ref<Task[]>([])
 const stages = ref<Stage[]>([])
+// Tableau passé au Kanban, null tant qu'aucun n'est chargé
+const shownBoardId = ref<number | null>(null)
 
 // État du chargement du tableau
 const status = ref<'loading' | 'error' | 'ready'>('loading')
@@ -48,8 +52,8 @@ function saveFilter(save: Promise<void>) {
 }
 
 /**
- * Chargement des colonnes et des tâches, et en parallèle des tags pour que les
- * chips des cartes aient leur nom dès le premier affichage.
+ * Chargement des tableaux, des colonnes et des tâches, et en parallèle des
+ * tags pour que les chips des cartes aient leur nom dès le premier affichage.
  * En cas d'échec, un toast prévient l'utilisateur et l'écran propose de réessayer.
  */
 async function loadBoard() {
@@ -57,7 +61,12 @@ async function loadBoard() {
 
   try {
     // Paramètres attendus aussi : ils portent le filtre mémorisé
-    await Promise.all([stageStore.loadAllStages(), tagStore.loadAllTags(), settings.whenLoaded()])
+    await Promise.all([
+      boardStore.loadAllBoards(),
+      stageStore.loadAllStages(),
+      tagStore.loadAllTags(),
+      settings.whenLoaded(),
+    ])
   } catch (error) {
     logger.error('Erreur lors du chargement du tableau :', error)
     showError(t('board.loadFailed'), t('board.loadFailedDetail'))
@@ -65,15 +74,35 @@ async function loadBoard() {
     return
   }
 
-  stages.value = stageStore.getAllStages
-  tasks.value = taskStore.getAllTasks
-  logger.debug('Stages récupérées : ', stages.value)
-  logger.debug('Tâches récupérées : ', tasks.value)
-
+  showCurrentBoard()
   saveFilter(boardFilter.restoreTags())
 
   status.value = 'ready'
 }
+
+/**
+ * Passe au Kanban les colonnes et les tâches du tableau courant. Instantané du
+ * cache, comme avant les tableaux, car le Kanban ne lit ses props qu'au montage
+ * et la clé sur l'id du tableau le remonte à chaque changement.
+ */
+function showCurrentBoard() {
+  const board = boardStore.current
+  const boardStages = board ? stageStore.getStagesOfBoard(board.id) : []
+  const stageIds = new Set(boardStages.map((stage) => stage.id))
+
+  stages.value = boardStages
+  tasks.value = taskStore.getAllTasks.filter((task) => stageIds.has(task.stageId))
+  shownBoardId.value = board?.id ?? null
+  logger.debug(`Tableau ${board?.id} affiché`, { stages: stages.value, tasks: tasks.value })
+}
+
+// Changement de tableau (sélecteur, raccourci, tableau supprimé), avant le rendu qui remonte le Kanban
+watch(
+  () => boardStore.current?.id,
+  () => {
+    if (status.value === 'ready') showCurrentBoard()
+  },
+)
 
 onMounted(loadBoard)
 </script>
@@ -82,7 +111,13 @@ onMounted(loadBoard)
   <div class="flex h-full flex-col">
     <template v-if="status === 'ready'">
       <div class="min-h-0 flex-1">
-        <Kanban :stages="stages" :tasks="tasks" />
+        <Kanban
+          v-if="shownBoardId !== null"
+          :key="shownBoardId"
+          :boardId="shownBoardId"
+          :stages="stages"
+          :tasks="tasks"
+        />
       </div>
     </template>
     <div

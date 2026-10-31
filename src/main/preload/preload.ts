@@ -42,7 +42,17 @@ contextBridge.exposeInMainWorld('devTools', {
 // Ouverture des dossiers de l'app dans l'explorateur de fichiers (cf. system/folders)
 contextBridge.exposeInMainWorld('folders', {
   openData: () => ipcRenderer.invoke('folders:open', 'data'),
+  openDatabase: () => ipcRenderer.invoke('folders:open', 'database'),
   openLogs: () => ipcRenderer.invoke('folders:open', 'logs'),
+})
+
+// Emplacement de la base : lu, puis changé via les boîtes de dialogue natives
+// (cf. system/databaseLocation), l'app redémarrant pour ouvrir la base choisie
+contextBridge.exposeInMainWorld('database', {
+  getLocation: () => ipcRenderer.invoke('database:location'),
+  move: () => ipcRenderer.invoke('database:move'),
+  open: () => ipcRenderer.invoke('database:open'),
+  useDefault: () => ipcRenderer.invoke('database:useDefault'),
 })
 
 // Section « À propos » des Paramètres : version et liens externes (cf. system/about)

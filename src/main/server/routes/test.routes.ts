@@ -8,6 +8,7 @@ import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../system/folders.js'
+import { getDatabaseLocationForTest, resetDatabaseLocationForTest } from '../../system/databaseLocation.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../system/about.js'
 import { clearOpenedUrls, getOpenedUrls } from '../../system/externalLinks.js'
 import { settingsStore } from '../../stores/settings.js'
@@ -22,17 +23,18 @@ import Logger from 'electron-log'
  * l'app tourne avec `--test`).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
- * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags et les colonnes puis rejoue les seeds
- *                                    (sans les tags ni les modèles de checklist par défaut),
+ * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags, les colonnes et les tableaux
+ *                                    puis rejoue les seeds (un seul tableau, sans les tags ni les modèles de checklist par défaut),
  *                                    remet les paramètres à leurs valeurs par défaut, vide le dossier des sauvegardes,
- *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide
- *                                    et remet la mise à jour à son état de départ
+ *                                    oublie les dossiers et les liens ouverts, ferme la fenêtre d'ajout rapide,
+ *                                    remet la mise à jour à son état de départ et oublie l'emplacement de la base enregistré
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/click-notification → simule le clic sur une notification de rappel (tâches annoncées en corps)
  * - POST /test/run-recurrences    → déclenche un passage de la génération des tâches récurrentes
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/database-location  → emplacement de la base enregistré et redémarrage demandé (simulé en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-urls        → liens cliqués dans une page, envoyés au navigateur par défaut (simulé en test)
  * - POST /test/open-quick-add     → ouvre la fenêtre d'ajout rapide (le raccourci global n'est pas enregistré en test)
@@ -48,9 +50,10 @@ export default async function testRoutes(fastify) {
    * POST /test/reset
    *
    * Remet la base dans un état propre et déterministe : suppression de toutes
-   * les checklists (modèles compris), de toutes les tâches, de tous les tags puis
-   * de toutes les colonnes, et réapplication des seeds initiaux
-   * (source unique de vérité : les fichiers .sql du dossier seeds).
+   * les checklists (modèles compris), de toutes les tâches, de tous les tags, de
+   * toutes les colonnes puis de tous les tableaux, et réapplication des seeds
+   * initiaux (source unique de vérité : les fichiers .sql du dossier seeds). La
+   * seed du tableau par défaut en recrée un seul, d'un nouvel id à chaque reset.
    *
    * Les tags et les modèles de checklist par défaut sont retirés ensuite, les
    * tests partant de listes vides, sauf si `seedTags` ou `seedTemplates` est demandé.
@@ -96,6 +99,8 @@ export default async function testRoutes(fastify) {
       // Les liens tâche-tag sont déjà partis en cascade avec les tâches
       await prisma.tag.deleteMany()
       await prisma.stage.deleteMany()
+      // Tableaux en dernier, car les colonnes les référencent
+      await prisma.board.deleteMany()
 
       // Paramètres remis à leurs valeurs par défaut (fichier config.test dédié),
       // relus par le renderer au rechargement qui suit le reset. Avant les
@@ -134,6 +139,9 @@ export default async function testRoutes(fastify) {
 
       // Mise à jour simulée par un test précédent
       resetUpdateForTest()
+
+      // Emplacement de la base enregistré par un test précédent
+      resetDatabaseLocationForTest()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }
@@ -356,7 +364,7 @@ export default async function testRoutes(fastify) {
    * l'ordre. En mode test, l'IPC `folders:open` ne fait que les noter, sans
    * ouvrir l'explorateur de fichiers.
    *
-   * @returns {Promise<Array<{kind: string, path: string}>>} Dossier (`data` ou `logs`) et son chemin absolu
+   * @returns {Promise<Array<{kind: string, path: string}>>} Dossier (`data`, `database` ou `logs`) et son chemin absolu
    */
   fastify.get(
     '/test/opened-folders',
@@ -379,6 +387,36 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedFolders(),
+  )
+
+  /**
+   * GET /test/database-location
+   *
+   * Emplacement de la base enregistré depuis le dernier reset, et redémarrage
+   * demandé ou non. En mode test, un changement d'emplacement est enregistré
+   * mais l'app ne redémarre pas : elle garde sa base de test.
+   *
+   * @returns {Promise<{storedPath: string|null, relaunchRequested: boolean}>} Chemin enregistré
+   *   (null pour l'emplacement par défaut) et demande de redémarrage
+   */
+  fastify.get(
+    '/test/database-location',
+    {
+      schema: {
+        description: 'Emplacement de la base enregistré et redémarrage demandé (tests E2E uniquement)',
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              storedPath: { type: ['string', 'null'] },
+              relaunchRequested: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async () => getDatabaseLocationForTest(),
   )
 
   /**

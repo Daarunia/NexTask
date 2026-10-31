@@ -16,11 +16,33 @@
       />
     </div>
 
-    <!-- Colonne de la tâche, la première par défaut -->
+    <!-- Tableau de la tâche, le dernier affiché par défaut. Ceux sans colonne ne sont pas proposés -->
+    <SelectButton
+      v-if="boards.length > 1"
+      v-model="boardId"
+      data-testid="quick-add-board"
+      :aria-label="t('quickAdd.boardLabel')"
+      :options="boards"
+      optionLabel="name"
+      optionValue="id"
+      :allowEmpty="false"
+      size="small"
+      class="flex-wrap"
+    >
+      <template #option="{ option }">
+        <span class="quick-add-board">
+          <BoardDot :color="option.color" />
+          <span>{{ option.name }}</span>
+        </span>
+      </template>
+    </SelectButton>
+
+    <!-- Colonne de la tâche dans ce tableau, la première par défaut -->
     <SelectButton
       v-if="stages.length > 1"
       v-model="stageId"
       data-testid="quick-add-stage"
+      :aria-label="t('quickAdd.stageLabel')"
       :options="stages"
       optionLabel="name"
       optionValue="id"
@@ -51,13 +73,16 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import SelectButton from 'primevue/selectbutton'
+import BoardDot from '../components/BoardDot.vue'
 import { useStageStore } from '../stores/Stage'
+import { useBoardStore } from '../stores/Board'
+import { useSettingsStore } from '../stores/Settings'
 import { useTaskStore } from '../stores/Task'
 import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
-import type { Stage } from '../types/stage.types'
+import type { Board } from '../types/board.types'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
 import { httpStatus } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
@@ -66,14 +91,20 @@ import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const taskStore = useTaskStore()
 const templateStore = useChecklistTemplateStore()
+const settings = useSettingsStore()
 const { t } = useI18n()
 
 const formRef = ref<HTMLFormElement | null>(null)
 const inputRef = ref<{ $el: HTMLInputElement } | null>(null)
 const title = ref('')
-const stages = ref<Stage[]>([])
+// Tableaux proposés, ceux qui ont au moins une colonne, et tableau choisi.
+// Celui-ci reste null si les tableaux n'ont pas pu être chargés, toutes les
+// colonnes sont alors proposées
+const boards = ref<Board[]>([])
+const boardId = ref<number | null>(null)
 const stageId = ref<number | null>(null)
 const templates = ref<ChecklistTemplate[]>([])
 const templateId = ref<number | null>(null)
@@ -91,17 +122,66 @@ function close() {
 }
 
 /**
- * Colonnes proposées, dans l'ordre du tableau. Sans elles, la tâche peut
- * encore être ajoutée : le serveur la met dans la première colonne.
+ * Colonnes proposées, celles du tableau choisi dans leur ordre (toutes si les
+ * tableaux n'ont pas pu être chargés)
  */
-async function loadStages() {
+const stages = computed(() =>
+  boardId.value === null
+    ? [...stageStore.getAllStages].sort((a, b) => a.position - b.position || a.id - b.id)
+    : stageStore.getStagesOfBoard(boardId.value),
+)
+
+// Changer de tableau présélectionne sa première colonne
+watch(boardId, () => {
+  stageId.value = stages.value[0]?.id ?? null
+})
+
+/**
+ * Colonnes, chargées en parallèle des tableaux. Sans elles, la tâche peut
+ * encore être ajoutée, car le serveur la met dans la première colonne.
+ * @returns Vrai si les colonnes sont chargées
+ */
+async function loadStages(): Promise<boolean> {
   try {
     await stageStore.loadAllStages()
-    stages.value = [...stageStore.getAllStages].sort((a, b) => a.position - b.position)
-    stageId.value = stages.value[0]?.id ?? null
+    return true
   } catch (err) {
     logger.error('Ajout rapide : colonnes non chargées, la tâche ira dans la première colonne', err)
+    return false
   }
+}
+
+/**
+ * Tableaux, chargés en parallèle des colonnes. Sans eux, toutes les colonnes
+ * sont proposées, comme avant les tableaux.
+ * @returns Vrai si les tableaux sont chargés
+ */
+async function loadBoards(): Promise<boolean> {
+  try {
+    await boardStore.loadAllBoards()
+    return true
+  } catch (err) {
+    logger.error('Ajout rapide : tableaux non chargés, toutes les colonnes sont proposées', err)
+    return false
+  }
+}
+
+/**
+ * Tableaux et colonnes proposés, avec la présélection du dernier tableau
+ * affiché dans la fenêtre principale (paramètre `lastBoardId`, relu à chaque
+ * ouverture car la fenêtre est recréée), puis de sa première colonne. Un
+ * tableau sans colonne n'est pas proposé, le premier qui en a une le remplace.
+ */
+async function loadPlaces() {
+  const [stagesLoaded, boardsLoaded] = await Promise.all([loadStages(), loadBoards(), settings.whenLoaded()])
+  if (!stagesLoaded) return
+
+  if (boardsLoaded) {
+    boards.value = boardStore.getAllBoards.filter((board) => stageStore.getStagesOfBoard(board.id).length)
+    const preferred = boards.value.find((board) => board.id === boardStore.current?.id) ?? boards.value[0]
+    boardId.value = preferred?.id ?? null
+  }
+  stageId.value = stages.value[0]?.id ?? null
 }
 
 /**
@@ -148,7 +228,7 @@ onMounted(() => {
   if (formRef.value) resizeObserver.observe(formRef.value)
   globalThis.addEventListener('focus', focusTitle)
   focusTitle()
-  loadStages()
+  loadPlaces()
   loadTemplates()
 })
 
@@ -175,6 +255,11 @@ onBeforeUnmount(() => {
 .quick-add-icon {
   @apply text-xl;
   color: var(--p-primary-color);
+}
+
+/* Pastille et nom d'un tableau, dans son bouton */
+.quick-add-board {
+  @apply inline-flex items-center gap-1.5;
 }
 
 .quick-add-muted {

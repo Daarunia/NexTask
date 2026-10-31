@@ -329,9 +329,9 @@ async function restartState(
 
 /**
  * Crée une série depuis sa tâche d'origine, première occurrence : le modèle
- * des occurrences reprend son contenu, sa colonne, ses tags et les textes des
- * points de sa checklist, sans leur état coché. La checklist est lue en base,
- * elle y est donc écrite avant l'appel. En mode
+ * des occurrences reprend son contenu, sa colonne et son tableau, ses tags et
+ * les textes des points de sa checklist, sans leur état coché. La checklist
+ * est lue en base, elle y est donc écrite avant l'appel. En mode
  * « après archivage », la série attend l'archivage de cette tâche.
  *
  * @param tx Client Prisma de la transaction en cours
@@ -361,6 +361,7 @@ export async function createSeries(
       description: task.description,
       version: task.version,
       stageId: task.stageId,
+      boardId: task.boardId,
       checklistItems,
       tags: { connect: tagIds.map((id) => ({ id })) },
     },
@@ -434,9 +435,10 @@ export async function updateSeriesRule(
  * Reporte le contenu modifié d'une occurrence sur le modèle de sa série
  * (« Appliquer aux prochaines occurrences ») : seuls les champs envoyés sont
  * repris. La colonne ne l'est que si la modification la change, un simple
- * déplacement de carte ne passant pas par ici. Les points de la checklist ne
- * le sont que si leurs textes ont changé (point ajouté, retiré, renommé ou
- * déplacé), cocher ou décocher ne touchant jamais au modèle.
+ * déplacement de carte ne passant pas par ici, et le tableau la suit. Les
+ * points de la checklist ne le sont que si leurs textes ont changé (point
+ * ajouté, retiré, renommé ou déplacé), cocher ou décocher ne touchant jamais
+ * au modèle.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param seriesId Id de la série
@@ -461,7 +463,7 @@ async function applyToSeriesTemplate(
       ...(changed.title && { title: task.title }),
       ...(changed.description && { description: task.description }),
       ...(changed.version && { version: task.version }),
-      ...(stageChanged && { stageId: task.stageId }),
+      ...(stageChanged && { stageId: task.stageId, boardId: task.boardId }),
       ...(checklistItems && { checklistItems }),
       ...(tagIds && { tags: { set: tagIds.map((id) => ({ id })) } }),
     },

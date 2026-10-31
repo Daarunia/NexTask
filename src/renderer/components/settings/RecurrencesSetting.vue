@@ -29,7 +29,20 @@
             :data-status="row.summary.status"
             :class="{ inactive: row.summary.status !== 'active' }"
           >
-            <td data-testid="settings-recurrence-title" class="font-medium">{{ row.title }}</td>
+            <td>
+              <span data-testid="settings-recurrence-title" class="font-medium">{{ row.title }}</span>
+              <!-- Tableau des occurrences, avec plusieurs tableaux ou pour un tableau supprimé -->
+              <span
+                v-if="showBoards && boardLabel(row)"
+                data-testid="settings-recurrence-board"
+                :data-board-id="row.boardId ?? undefined"
+                class="recurrence-board"
+              >
+                <BoardDot :color="boardOf(row)?.color ?? null" />
+                <i v-if="row.boardId === null">{{ boardLabel(row) }}</i>
+                <span v-else class="truncate">{{ boardLabel(row) }}</span>
+              </span>
+            </td>
             <td data-testid="settings-recurrence-rule" class="settings-muted">{{ describeRecurrence(row.summary) }}</td>
             <td data-testid="settings-recurrence-next" class="whitespace-nowrap">{{ nextLabel(row.summary) }}</td>
             <td>
@@ -102,7 +115,10 @@
 import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+import BoardDot from '../BoardDot.vue'
 import { useTaskStore } from '../../stores/Task'
+import { useBoardStore } from '../../stores/Board'
+import type { Board } from '../../types/board.types'
 import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
 import { hasNextDate, toRecurrenceRule } from '../../../main/shared/recurrence.helper'
 import {
@@ -117,7 +133,9 @@ import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
 
 /**
  * Liste des tâches récurrentes dans les Paramètres : règle, prochaine date,
- * mise en pause, reprise, arrêt (annulable) et réactivation.
+ * mise en pause, reprise, arrêt (annulable) et réactivation. Avec plusieurs
+ * tableaux, chaque série affiche celui de ses occurrences, « Tableau
+ * supprimé » pour une série dont le tableau a été supprimé.
  *
  * L'état des séries est celui du store Task, que lisent aussi les cartes du
  * tableau et des archives : une série mise en pause ou arrêtée ici grise
@@ -125,15 +143,17 @@ import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
  * viennent du chargement de la liste.
  */
 
-/** Ligne de la liste : titre du modèle et dernier état connu de la série. */
+/** Ligne de la liste : titre du modèle, dernier état connu de la série et son tableau. */
 interface RecurrenceRow {
   id: number
   title: string
   summary: RecurrenceSummary
+  boardId: number | null | undefined // absent d'un cache antérieur aux tableaux
 }
 
 const logger = getLogger()
 const taskStore = useTaskStore()
+const boardStore = useBoardStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
 const { t } = useI18n()
@@ -143,19 +163,49 @@ const items = ref<RecurrenceListItem[]>([])
 
 // Dernier état connu de chaque série (store), à défaut celui du chargement
 const rows = computed<RecurrenceRow[]>(() =>
-  items.value.map((item) => ({
-    id: item.id,
-    title: item.title,
-    summary: taskStore.getRecurrence(item.id) ?? item,
-  })),
+  items.value.map((item) => {
+    const summary = taskStore.getRecurrence(item.id) ?? item
+    return {
+      id: item.id,
+      title: item.title,
+      summary,
+      // Tableau suivi par le store (tâche envoyée ailleurs), sinon celui du chargement
+      boardId: summary.boardId === undefined ? item.boardId : summary.boardId,
+    }
+  }),
 )
 
-/** Relit les séries, une occurrence ayant pu être créée depuis le dernier passage. */
+// Tableau de chaque série affiché avec plusieurs tableaux, ou pour signaler un tableau supprimé
+const showBoards = computed(() => boardStore.getAllBoards.length > 1 || rows.value.some((row) => row.boardId === null))
+
+/**
+ * Tableau d'une série, s'il existe encore.
+ * @param row Série
+ */
+function boardOf(row: RecurrenceRow): Board | undefined {
+  return boardStore.getAllBoards.find((board) => board.id === row.boardId)
+}
+
+/**
+ * Nom du tableau d'une série, « Tableau supprimé » s'il n'existe plus, vide
+ * pour un tableau inconnu du cache ou une série d'un cache antérieur.
+ * @param row Série
+ */
+function boardLabel(row: RecurrenceRow): string {
+  if (row.boardId === null) return t('boards.deletedBoard')
+  return boardOf(row)?.name ?? ''
+}
+
+/**
+ * Relit les séries, une occurrence ayant pu être créée depuis le dernier
+ * passage, et charge les tableaux de leurs lignes (cache du store).
+ */
 async function load() {
   status.value = 'loading'
 
   try {
-    items.value = await taskStore.loadRecurrences()
+    const [recurrences] = await Promise.all([taskStore.loadRecurrences(), boardStore.loadAllBoards()])
+    items.value = recurrences
     status.value = 'ready'
   } catch (error) {
     logger.error('Erreur lors du chargement des tâches récurrentes des Paramètres :', error)
@@ -257,6 +307,12 @@ async function stop(row: RecurrenceRow) {
 .recurrence-table td:first-child {
   @apply rounded-l-md;
   overflow-wrap: anywhere;
+}
+
+/* Pastille et nom du tableau, sous le titre de la série */
+.recurrence-board {
+  @apply mt-0.5 flex min-w-0 items-center gap-1.5 text-xs;
+  color: var(--p-text-muted-color);
 }
 
 .recurrence-table td:last-child {

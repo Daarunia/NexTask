@@ -49,6 +49,11 @@ export class SettingsPage {
   readonly exportButton: Locator
   readonly importButton: Locator
   readonly autoBackupSwitch: Locator
+  readonly databaseLocationRow: Locator
+  readonly openDatabaseFolderButton: Locator
+  readonly moveDatabaseButton: Locator
+  readonly openDatabaseButton: Locator
+  readonly useDefaultLocationButton: Locator
   readonly openDataFolderButton: Locator
   readonly openLogsFolderButton: Locator
   readonly resetButton: Locator
@@ -133,6 +138,13 @@ export class SettingsPage {
     this.exportButton = this.root.getByTestId('btn-data-export')
     this.importButton = this.root.getByTestId('btn-data-import')
     this.autoBackupSwitch = this.root.getByRole('switch', { name: 'Sauvegarde automatique' })
+
+    // Section Organisation et données : emplacement de la base
+    this.databaseLocationRow = this.root.getByTestId('settings-row-database-location')
+    this.openDatabaseFolderButton = this.root.getByTestId('btn-open-database-folder')
+    this.moveDatabaseButton = this.root.getByTestId('btn-database-move')
+    this.openDatabaseButton = this.root.getByTestId('btn-database-open')
+    this.useDefaultLocationButton = this.root.getByTestId('btn-database-default')
 
     // Section Organisation et données : ouverture des dossiers
     this.openDataFolderButton = this.root.getByTestId('btn-open-data-folder')
@@ -347,6 +359,22 @@ export class SettingsPage {
    */
   async askImport() {
     await this.openPopupFrom(this.importButton)
+    await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ouvre la confirmation du déplacement de la base.
+   */
+  async askMoveDatabase() {
+    await this.openPopupFrom(this.moveDatabaseButton)
+    await expect(this.confirmPopup).toBeVisible()
+  }
+
+  /**
+   * Ouvre la confirmation de l'ouverture d'une autre base.
+   */
+  async askOpenDatabase() {
+    await this.openPopupFrom(this.openDatabaseButton)
     await expect(this.confirmPopup).toBeVisible()
   }
 

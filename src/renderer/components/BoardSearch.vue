@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="board-search" data-testid="board-search">
+  <div ref="root" class="board-search" data-testid="board-search" @focusin="onFocusIn" @focusout="onFocusOut">
     <div :class="['search-box', { 'is-focused': focused }]" @mousedown.self.prevent="input?.focus()">
       <i class="pi pi-search search-icon" aria-hidden="true"></i>
 
@@ -40,13 +40,11 @@
         autocomplete="off"
         spellcheck="false"
         :aria-label="t('board.searchLabel')"
-        :aria-expanded="listOpen"
+        :aria-expanded="listOpen && items.length > 0"
         aria-controls="board-search-list"
         :aria-activedescendant="listOpen && activeItem ? optionId(activeItem) : undefined"
         :placeholder="boardFilter.tagIds.length || boardFilter.statuses.length ? '' : t('board.searchPlaceholder')"
-        @focus="onFocus"
         @click="listDismissed = false"
-        @blur="onBlur"
         @keydown="onKeydown"
       />
 
@@ -77,69 +75,105 @@
     </div>
 
     <!-- Suggestions : recherche texte, tags et tâches correspondants -->
-    <ul
-      v-if="listOpen"
-      id="board-search-list"
-      data-testid="search-list"
-      class="search-list"
-      role="listbox"
-      :aria-label="t('board.searchLabel')"
-      @mousedown.prevent
-    >
-      <template v-for="(group, groupIndex) in groups" :key="group.kind">
-        <li v-if="groupIndex > 0" class="search-separator" role="presentation"></li>
-        <li v-if="group.label" class="search-group" role="presentation">{{ group.label }}</li>
-
-        <li
-          v-for="item in group.items"
-          :id="optionId(item)"
-          :key="optionId(item)"
-          :data-testid="`search-option-${item.kind}`"
-          :class="['search-option', { 'is-active': item === activeItem }]"
-          role="option"
-          :aria-selected="item === activeItem"
-          :aria-label="item.label"
-          @mouseenter="activeIndex = items.indexOf(item)"
-          @click="choose(item)"
+    <div v-if="listOpen" class="search-panel" @mousedown.prevent>
+      <!-- Portée, le tableau affiché ou tous les tableaux, s'il y en a plusieurs -->
+      <div
+        v-if="multiBoard"
+        data-testid="search-scope"
+        class="search-scope"
+        role="group"
+        :aria-label="t('boards.searchScope')"
+        @keydown.esc.prevent.stop="backToInput"
+      >
+        <button
+          type="button"
+          data-testid="search-scope-board"
+          :class="['scope-chip', { 'is-on': scope === 'board' }]"
+          :aria-pressed="scope === 'board'"
+          @mouseenter="titleIfTruncated"
+          @click="setScope('board')"
         >
-          <template v-if="item.kind === 'text'">
-            <i class="pi pi-search option-icon" aria-hidden="true"></i>
-            <span class="truncate">{{ t('board.searchText', { query: item.label }) }}</span>
-            <span class="option-meta">↵</span>
-          </template>
+          {{ boardStore.current?.name }}
+        </button>
+        <button
+          type="button"
+          data-testid="search-scope-all"
+          :class="['scope-chip', { 'is-on': scope === 'all' }]"
+          :aria-pressed="scope === 'all'"
+          @click="setScope('all')"
+        >
+          {{ t('boards.allBoards') }}
+        </button>
+      </div>
 
-          <template v-else-if="item.kind === 'status'">
-            <i :class="[STATUS_ICONS[item.status], 'option-icon']" aria-hidden="true"></i>
-            <span class="truncate">{{ item.label }}</span>
-            <span class="option-meta">{{ item.count }}</span>
-          </template>
+      <ul
+        v-if="items.length"
+        id="board-search-list"
+        data-testid="search-list"
+        class="search-list"
+        role="listbox"
+        :aria-label="t('board.searchLabel')"
+      >
+        <template v-for="(group, groupIndex) in groups" :key="group.kind">
+          <li v-if="groupIndex > 0" class="search-separator" role="presentation"></li>
+          <li v-if="group.label" class="search-group" role="presentation">{{ group.label }}</li>
 
-          <template v-else-if="item.kind === 'tag'">
-            <i class="pi pi-tag option-icon" aria-hidden="true"></i>
-            <TagChip :tagId="item.id" size="small" />
-          </template>
+          <li
+            v-for="item in group.items"
+            :id="optionId(item)"
+            :key="optionId(item)"
+            :data-testid="`search-option-${item.kind}`"
+            :class="['search-option', { 'is-active': item === activeItem }]"
+            role="option"
+            :aria-selected="item === activeItem"
+            :aria-label="item.label"
+            @mouseenter="activeIndex = items.indexOf(item)"
+            @click="choose(item)"
+          >
+            <template v-if="item.kind === 'text'">
+              <i class="pi pi-search option-icon" aria-hidden="true"></i>
+              <span class="truncate">{{ t('board.searchText', { query: item.label }) }}</span>
+              <span class="option-meta">↵</span>
+            </template>
 
-          <template v-else>
-            <i class="pi pi-file option-icon" aria-hidden="true"></i>
-            <span class="option-task">
-              <span class="truncate">
-                <template v-for="(part, index) in highlightParts(item.label, terms)" :key="index">
-                  <mark v-if="part.match">{{ part.text }}</mark>
-                  <template v-else>{{ part.text }}</template>
-                </template>
+            <template v-else-if="item.kind === 'status'">
+              <i :class="[STATUS_ICONS[item.status], 'option-icon']" aria-hidden="true"></i>
+              <span class="truncate">{{ item.label }}</span>
+              <span class="option-meta">{{ item.count }}</span>
+            </template>
+
+            <template v-else-if="item.kind === 'tag'">
+              <i class="pi pi-tag option-icon" aria-hidden="true"></i>
+              <TagChip :tagId="item.id" size="small" />
+            </template>
+
+            <template v-else>
+              <i class="pi pi-file option-icon" aria-hidden="true"></i>
+              <span class="option-task">
+                <span class="truncate">
+                  <template v-for="(part, index) in highlightParts(item.label, terms)" :key="index">
+                    <mark v-if="part.match">{{ part.text }}</mark>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
+                </span>
+                <span v-if="item.excerpt" class="option-excerpt truncate">
+                  <template v-for="(part, index) in highlightParts(item.excerpt, terms)" :key="index">
+                    <mark v-if="part.match">{{ part.text }}</mark>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
+                </span>
               </span>
-              <span v-if="item.excerpt" class="option-excerpt truncate">
-                <template v-for="(part, index) in highlightParts(item.excerpt, terms)" :key="index">
-                  <mark v-if="part.match">{{ part.text }}</mark>
-                  <template v-else>{{ part.text }}</template>
-                </template>
+              <!-- Tâche d'un autre tableau, sa pastille et « Tableau · Colonne » -->
+              <span v-if="item.board" data-testid="search-option-board" class="option-meta option-place">
+                <BoardDot :color="item.board.color" />
+                <span class="truncate">{{ item.board.name }} · {{ item.stage }}</span>
               </span>
-            </span>
-            <span class="option-meta truncate">{{ item.stage }}</span>
-          </template>
-        </li>
-      </template>
-    </ul>
+              <span v-else class="option-meta truncate">{{ item.stage }}</span>
+            </template>
+          </li>
+        </template>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -147,13 +181,15 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TagChip from './TagChip.vue'
+import BoardDot from './BoardDot.vue'
 import { useBoardFilterStore } from '../stores/BoardFilter'
 import { useTaskStore } from '../stores/Task'
+import { useBoardStore } from '../stores/Board'
 import { useTagStore } from '../stores/Tag'
 import { useStageStore } from '../stores/Stage'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
-import { infoTooltip } from '../utils/tooltip.helper'
+import { infoTooltip, titleIfTruncated } from '../utils/tooltip.helper'
 import {
   highlightParts,
   normalizeSearchText,
@@ -165,6 +201,8 @@ import {
   type TaskStatus,
 } from '../utils/search.helper'
 import type { Tag } from '../types/tag.types'
+import type { Task } from '../types/task.types'
+import type { Board } from '../types/board.types'
 
 /**
  * Barre de recherche globale du board, dans l'en-tête.
@@ -178,13 +216,19 @@ import type { Tag } from '../types/tag.types'
  * Les filtres rapides (en retard, aujourd'hui, checklist à terminer) sont
  * proposés dès le focus, puis tant que la saisie correspond à leur nom. Ils
  * s'affichent en chips devant celles des tags.
+ *
+ * Avec plusieurs tableaux, deux puces en tête de la liste choisissent la
+ * portée des tâches proposées et des compteurs des filtres rapides, le
+ * tableau affiché (par défaut, à chaque ouverture) ou tous les tableaux. Une
+ * tâche d'un autre tableau y bascule avant de s'ouvrir. Les tags proposés et
+ * le filtre du board ne dépendent pas de la portée.
  */
 
 type SearchItem =
   | { kind: 'text'; label: string }
   | { kind: 'status'; status: TaskStatus; label: string; count: number }
   | { kind: 'tag'; id: number; label: string }
-  | { kind: 'task'; id: number; label: string; excerpt: string; stage: string }
+  | { kind: 'task'; id: number; label: string; excerpt: string; stage: string; board: Board | null }
 
 // Délai avant de filtrer le board sur le texte saisi
 const SEARCH_DEBOUNCE_MS = 150
@@ -202,6 +246,7 @@ const STATUS_ICONS: Record<TaskStatus, string> = {
 const { t } = useI18n()
 const boardFilter = useBoardFilterStore()
 const taskStore = useTaskStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const stageStore = useStageStore()
 const showError = useErrorToast()
@@ -212,6 +257,8 @@ const text = ref(boardFilter.query)
 const focused = ref(false)
 const listDismissed = ref(false) // liste fermée par Échap ou un choix, rouverte à la frappe ou au clic
 const activeIndex = ref(0)
+// Portée des tâches proposées, remise au tableau affiché à chaque ouverture
+const scope = ref<'board' | 'all'>('board')
 
 const shortcutLabel = navigator.userAgent.includes('Mac') ? '⌘F' : 'Ctrl F'
 
@@ -219,6 +266,35 @@ const shortcutLabel = navigator.userAgent.includes('Mac') ? '⌘F' : 'Ctrl F'
 const tagMode = computed(() => text.value.trimStart().startsWith('#'))
 const needle = computed(() => normalizeSearchText(tagMode.value ? text.value.trimStart().slice(1) : text.value))
 const terms = computed(() => (tagMode.value ? [] : searchTerms(text.value)))
+
+// Portée proposée seulement s'il y a plusieurs tableaux
+const multiBoard = computed(() => boardStore.getAllBoards.length > 1)
+
+/**
+ * Tableau d'une tâche, celui de sa colonne pour une tâche d'un cache antérieur aux tableaux.
+ * @param task Tâche active
+ */
+function boardIdOf(task: Task): number | null | undefined {
+  return task.boardId ?? stageStore.getAllStages.find((stage) => stage.id === task.stageId)?.boardId
+}
+
+/**
+ * Tâches actives de la portée choisie, toutes avec un seul tableau.
+ */
+const scopedTasks = computed(() => {
+  const currentId = boardStore.current?.id
+  if (!multiBoard.value || scope.value === 'all' || currentId === undefined) return taskStore.getAllTasks
+  return taskStore.getAllTasks.filter((task) => boardIdOf(task) === currentId)
+})
+
+/**
+ * Change la portée, sans quitter la liste.
+ * @param value Tableau affiché ou tous les tableaux
+ */
+function setScope(value: 'board' | 'all') {
+  scope.value = value
+  activeIndex.value = 0
+}
 
 /**
  * Tags proposés : portés par au moins une tâche active, pas encore
@@ -259,7 +335,7 @@ const statusItems = computed<SearchItem[]>(() => {
   return TASK_STATUSES.filter((status) => !boardFilter.statuses.includes(status)).flatMap((status) => {
     const label = statusLabel(status)
     if (!normalizeSearchText(label).includes(needle.value)) return []
-    const count = taskStore.getAllTasks.filter((task) => taskHasStatus(task, status, now)).length
+    const count = scopedTasks.value.filter((task) => taskHasStatus(task, status, now)).length
     return count ? [{ kind: 'status' as const, status, label, count }] : []
   })
 })
@@ -272,17 +348,21 @@ const statusItems = computed<SearchItem[]>(() => {
 const taskItems = computed<SearchItem[]>(() => {
   if (tagMode.value || !terms.value.length) return []
 
-  return taskStore.getAllTasks
+  const currentId = boardStore.current?.id
+  return scopedTasks.value
     .filter((task) => taskMatchesFilter(task, terms.value, boardFilter.tagIds, boardFilter.statuses))
     .slice(0, MAX_TASK_SUGGESTIONS)
     .map((task) => {
       const inTitle = terms.value.every((term) => normalizeSearchText(task.title).includes(term))
+      const boardId = boardIdOf(task)
       return {
         kind: 'task',
         id: task.id,
         label: task.title,
         excerpt: inTitle ? '' : taskMatchExcerpt(task, terms.value),
         stage: stageStore.getAllStages.find((stage) => stage.id === task.stageId)?.name ?? '',
+        // Tableau affiché seulement pour une tâche d'un autre tableau
+        board: boardId === currentId ? null : (boardStore.getAllBoards.find((board) => board.id === boardId) ?? null),
       }
     })
 })
@@ -311,7 +391,8 @@ const groups = computed(() => {
 
 const items = computed(() => groups.value.flatMap((group) => group.items))
 const activeItem = computed(() => items.value[activeIndex.value])
-const listOpen = computed(() => focused.value && !listDismissed.value && items.value.length > 0)
+// Avec plusieurs tableaux, la liste s'ouvre même sans option, pour garder les puces de portée
+const listOpen = computed(() => focused.value && !listDismissed.value && (items.value.length > 0 || multiBoard.value))
 
 /**
  * Id DOM d'une option, pour `aria-activedescendant`.
@@ -367,7 +448,8 @@ function choose(item: SearchItem) {
     boardFilter.addStatus(item.status)
     setText('')
   } else if (item.kind === 'task') {
-    taskStore.requestOpenTask(item.id)
+    // Tâche d'un autre tableau, ce tableau est d'abord affiché
+    boardStore.showTask(item.id)
     input.value?.blur()
   }
   listDismissed.value = true
@@ -443,13 +525,32 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-function onFocus() {
+/**
+ * Entrée du focus dans la barre ou sa liste. Venue de l'extérieur, c'est une
+ * nouvelle ouverture, la portée revient au tableau affiché.
+ */
+function onFocusIn() {
+  if (focused.value) return
   focused.value = true
   listDismissed.value = false
+  scope.value = 'board'
 }
 
-function onBlur() {
+/**
+ * Sortie du focus. Un passage du champ aux puces de portée (Tab) garde la liste ouverte.
+ * @param event Perte du focus, avec l'élément qui le reçoit
+ */
+function onFocusOut(event: FocusEvent) {
+  if (event.relatedTarget instanceof Node && root.value?.contains(event.relatedTarget)) return
   focused.value = false
+}
+
+/**
+ * Échap sur une puce de portée, rend le focus au champ en fermant la liste.
+ */
+function backToInput() {
+  input.value?.focus()
+  listDismissed.value = true
 }
 
 /**
@@ -540,19 +641,60 @@ defineExpose({ focus: () => input.value?.focus() })
   color: var(--p-text-color);
 }
 
-.search-list {
+.search-panel {
   position: absolute;
   z-index: 50;
   top: calc(100% + 0.375rem);
   left: 0;
   right: 0;
+  display: flex;
+  flex-direction: column;
   max-height: 24rem;
-  overflow-y: auto;
   padding: 0.25rem;
   border: 1px solid var(--p-content-border-color);
   border-radius: var(--p-border-radius-md);
   background: var(--p-overlay-popover-background, var(--p-content-background));
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.search-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Portée de la recherche, deux puces comme la maquette */
+.search-scope {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.25rem 0.375rem;
+}
+
+.scope-chip {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.125rem 0.5625rem;
+  border: 1px solid var(--p-form-field-border-color);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+  cursor: pointer;
+}
+
+.scope-chip:hover {
+  color: var(--p-text-color);
+}
+
+.scope-chip.is-on {
+  border-color: var(--p-primary-color);
+  background: var(--p-highlight-background);
+  color: var(--p-primary-color);
+}
+
+.scope-chip:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 1px;
 }
 
 .search-group {
@@ -597,6 +739,13 @@ defineExpose({ focus: () => input.value?.focus() })
   margin-left: auto;
   max-width: 35%;
   flex-shrink: 0;
+}
+
+.option-place {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 45%;
 }
 
 /* Chip d'un filtre rapide, à l'accent pour la distinguer des tags */

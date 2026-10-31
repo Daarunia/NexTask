@@ -2,6 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { DEFAULT_BOARD, createBoard, defaultBoardId } from '../../helpers/board.helper'
 
 /**
  * Tests E2E de l'ajout rapide : route POST /tasks/quick-add (version et place
@@ -262,6 +263,129 @@ test.describe("Fenêtre d'ajout rapide", () => {
     await expect(win.getByTestId('quick-add-title')).toBeVisible()
     const tasks = (await (await page.request.get(`${API}/tasks`)).json()) as ApiTask[]
     expect(tasks).toEqual([])
+  })
+})
+
+test.describe("Fenêtre d'ajout rapide avec plusieurs tableaux", () => {
+  /**
+   * Bouton d'un tableau, ou d'une colonne, de la fenêtre d'ajout rapide.
+   * @param win Fenêtre d'ajout rapide
+   * @param row Rang des tableaux ou des colonnes
+   * @param name Nom exact
+   */
+  function option(win: Page, row: 'quick-add-board' | 'quick-add-stage', name: string) {
+    return win.getByTestId(row).getByRole('button', { name, exact: true })
+  }
+
+  /**
+   * Attend que le tableau choisi soit enregistré comme dernier tableau affiché,
+   * relu par la fenêtre d'ajout rapide à son ouverture.
+   * @param page Fenêtre principale
+   * @param boardId Id du tableau attendu
+   */
+  async function expectLastBoard(page: Page, boardId: number) {
+    await expect
+      .poll(() => page.evaluate(async () => ((await (globalThis as any).settings.getAll()) as any).lastBoardId))
+      .toBe(boardId)
+  }
+
+  test('choix du tableau puis de la colonne, sans proposer un tableau vide', async ({
+    electronApp,
+    page,
+    taskBoard,
+    boardSwitcher,
+  }) => {
+    const perso = await createBoard(page.request, 'Perso', 'emerald', ['Idées', 'Fait'])
+    await createBoard(page.request, 'Vide', null)
+    await page.reload()
+
+    const win = await openQuickAdd(electronApp, page)
+    await expect(win.getByTestId('quick-add-board').getByRole('button')).toHaveText([DEFAULT_BOARD, 'Perso'])
+    await expect(option(win, 'quick-add-board', DEFAULT_BOARD)).toHaveAttribute('aria-pressed', 'true')
+    await expect(option(win, 'quick-add-stage', FIRST_COLUMN)).toHaveAttribute('aria-pressed', 'true')
+
+    // Changer de tableau propose ses colonnes, la première choisie
+    await option(win, 'quick-add-board', 'Perso').click()
+    await expect(win.getByTestId('quick-add-stage').getByRole('button')).toHaveText(['Idées', 'Fait'])
+    await expect(option(win, 'quick-add-stage', 'Idées')).toHaveAttribute('aria-pressed', 'true')
+    await option(win, 'quick-add-stage', 'Fait').click()
+
+    const closed = win.waitForEvent('close')
+    await win.getByTestId('quick-add-title').fill('Arroser les plantes')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
+    await closed
+
+    const [task] = (await (await page.request.get(`${API}/tasks?isHistorized=false`)).json()) as (ApiTask & {
+      boardId: number
+    })[]
+    expect(task).toMatchObject({ title: 'Arroser les plantes', stageId: perso.stageIds[1], boardId: perso.id })
+
+    // Tableau affiché inchangé, la carte attend dans l'autre tableau
+    await expect(page.getByTestId('task-card')).toHaveCount(0)
+    await boardSwitcher.select('Perso')
+    await expect.poll(() => taskBoard.columnTaskTitles('Fait')).toEqual(['Arroser les plantes'])
+  })
+
+  test('présélection du dernier tableau affiché, et de sa première colonne', async ({
+    electronApp,
+    page,
+    boardSwitcher,
+  }) => {
+    const perso = await createBoard(page.request, 'Perso', 'emerald', ['Idées', 'Fait'])
+    await page.reload()
+    await boardSwitcher.select('Perso')
+    await expectLastBoard(page, perso.id)
+
+    let win = await openQuickAdd(electronApp, page)
+    await expect(option(win, 'quick-add-board', 'Perso')).toHaveAttribute('aria-pressed', 'true')
+    await expect(option(win, 'quick-add-stage', 'Idées')).toHaveAttribute('aria-pressed', 'true')
+
+    // Fenêtre fermée avant de changer de tableau, elle ne se ferme pas seule en mode test
+    const closed = win.waitForEvent('close')
+    await win.keyboard.down('Escape')
+    await closed
+
+    await boardSwitcher.select(DEFAULT_BOARD)
+    await expectLastBoard(page, await defaultBoardId(page.request))
+
+    win = await openQuickAdd(electronApp, page)
+    await expect(option(win, 'quick-add-board', DEFAULT_BOARD)).toHaveAttribute('aria-pressed', 'true')
+    await expect(option(win, 'quick-add-stage', FIRST_COLUMN)).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test("un tableau d'une seule colonne la prend sans proposer le rang des colonnes", async ({ electronApp, page }) => {
+    const solo = await createBoard(page.request, 'Solo', null, ['Unique'])
+    await page.reload()
+
+    const win = await openQuickAdd(electronApp, page)
+    await option(win, 'quick-add-board', 'Solo').click()
+    await expect(win.getByTestId('quick-add-stage')).toHaveCount(0)
+
+    const closed = win.waitForEvent('close')
+    await win.getByTestId('quick-add-title').fill('Seule colonne')
+    // Touche enfoncée seulement : l'envoi peut fermer la fenêtre avant le relâchement
+    await win.keyboard.down('Enter')
+    await closed
+
+    const tasks = (await (await page.request.get(`${API}/tasks?isHistorized=false`)).json()) as ApiTask[]
+    expect(tasks).toEqual([expect.objectContaining({ title: 'Seule colonne', stageId: solo.stageIds[0] })])
+  })
+
+  test('sans autre tableau ayant des colonnes, aucun rang des tableaux', async ({ electronApp, page }) => {
+    let win = await openQuickAdd(electronApp, page)
+    await expect(win.getByTestId('quick-add-stage')).toBeVisible()
+    await expect(win.getByTestId('quick-add-board')).toHaveCount(0)
+
+    const closed = win.waitForEvent('close')
+    await win.keyboard.down('Escape')
+    await closed
+
+    // Un tableau sans colonne n'est pas proposé
+    await createBoard(page.request, 'Vide', null)
+    win = await openQuickAdd(electronApp, page)
+    await expect(win.getByTestId('quick-add-stage')).toBeVisible()
+    await expect(win.getByTestId('quick-add-board')).toHaveCount(0)
   })
 })
 

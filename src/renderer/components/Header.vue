@@ -1,11 +1,19 @@
 <template>
   <!-- Hauteur fixe, car les raccourcis d'apparence disparaissent sur la page Paramètres -->
   <header class="flex h-14 shrink-0 items-center justify-between p-2 relative select-none">
-    <h1 class="ml-4 flex items-center gap-2 text-xl">
-      <AppLogo :size="26" style="color: var(--p-primary-color)" />
-      <!-- Le texte hérite déjà de la couleur d'accent : seul « Nex » est neutralisé. -->
-      <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
-    </h1>
+    <div class="ml-4 flex min-w-0 items-center gap-3.5">
+      <h1 class="flex shrink-0 items-center gap-2 text-xl">
+        <AppLogo :size="26" style="color: var(--p-primary-color)" />
+        <!-- Le texte hérite déjà de la couleur d'accent : seul « Nex » est neutralisé. -->
+        <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
+      </h1>
+
+      <!-- Sélecteur du tableau affiché, propre au tableau comme la recherche, séparé du logo par un filet -->
+      <template v-if="isHome">
+        <span class="header-separator" aria-hidden="true"></span>
+        <BoardSwitcher />
+      </template>
+    </div>
 
     <!-- Recherche globale, propre au tableau -->
     <BoardSearch v-if="isHome" class="mx-4" />
@@ -70,6 +78,7 @@ import Popover from 'primevue/popover'
 import PrimaryColorPicker from './PrimaryColorPicker.vue'
 import AppLogo from './AppLogo.vue'
 import BoardSearch from './BoardSearch.vue'
+import BoardSwitcher from './BoardSwitcher.vue'
 import { useSettingsStore } from '../stores/Settings.js'
 import { useErrorToast } from '../utils/toast.helper.js'
 import { useRoute } from 'vue-router'
@@ -100,10 +109,19 @@ function togglePalette(event: MouseEvent) {
 const isDev = import.meta.env.DEV
 
 function toggleDevTools() {
-  window.devTools.toggle()
+  globalThis.devTools.toggle()
 }
 
 // Page courante, la navigation passe par le rail (cf. AppRail)
 const isHome = computed(() => route.name === 'Home')
 const isSettings = computed(() => route.name === 'Settings')
 </script>
+
+<style scoped>
+.header-separator {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  background-color: var(--p-content-border-color);
+}
+</style>

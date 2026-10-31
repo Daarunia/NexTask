@@ -1,9 +1,14 @@
 import { describe, expect, test } from 'vitest'
 import {
+  boardPlacement,
   clampChecklistItems,
   cleanItemText,
+  findBoardProblem,
+  firstDuplicate,
+  importedBoards,
   importedSeriesChecklist,
   importedTaskChecklist,
+  paletteColor,
   planTemplateImport,
   truncateText,
 } from '../../src/main/server/helpers/dataImport.helper'
@@ -14,8 +19,8 @@ import {
 } from '../../src/main/shared/checklist.constants'
 
 /**
- * Tests unitaires des helpers de l'import des checklists (Vitest, cf.
- * vitest.config.ts), sans lancer l'app.
+ * Tests unitaires des helpers de l'import des checklists et des tableaux
+ * (Vitest, cf. vitest.config.ts), sans lancer l'app.
  */
 
 /** Paramètres des messages des listes raccourcies. */
@@ -170,5 +175,122 @@ describe('planTemplateImport', () => {
       { code: 'templateNameTruncated', params: { name, maxLength: CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } },
       { code: 'templateChecklistClamped', params: { name, ...LIMITS } },
     ])
+  })
+})
+
+describe('paletteColor', () => {
+  test('garde une couleur de la palette, retire une couleur inconnue ou absente', () => {
+    expect(paletteColor('sky')).toBe('sky')
+    expect(paletteColor('pink')).toBeNull()
+    expect(paletteColor(undefined)).toBeNull()
+  })
+})
+
+describe('firstDuplicate', () => {
+  test('renvoie le premier doublon, ou undefined', () => {
+    expect(firstDuplicate([1, 2, 3, 2, 1])).toBe(2)
+    expect(firstDuplicate(['a', 'b'])).toBeUndefined()
+  })
+})
+
+describe('findBoardProblem', () => {
+  const boards = [
+    { id: 10, name: 'Travail', position: 0 },
+    { id: 20, name: 'Perso', position: 1 },
+  ]
+
+  test('fichier antérieur aux tableaux, aucun contrôle', () => {
+    expect(findBoardProblem({ stages: [{ id: 1, boardId: 99 }] })).toBeNull()
+  })
+
+  test('accepte des tableaux cohérents, une colonne sans tableau prenant le premier', () => {
+    expect(findBoardProblem({ boards, stages: [{ id: 1, boardId: 20 }, { id: 2 }] })).toBeNull()
+  })
+
+  test('refuse un id de tableau en double', () => {
+    expect(findBoardProblem({ boards: [...boards, { id: 10, name: 'Autre', position: 2 }], stages: [] })).toEqual({
+      code: 'duplicateBoard',
+      params: { id: 10 },
+    })
+  })
+
+  test('refuse deux noms égaux une fois nettoyés, casse mise à part', () => {
+    expect(findBoardProblem({ boards: [...boards, { id: 30, name: ' PERSO ', position: 2 }], stages: [] })).toEqual({
+      code: 'duplicateBoardName',
+      params: { name: 'perso' },
+    })
+  })
+
+  test('refuse une colonne dans un tableau absent du fichier', () => {
+    expect(
+      findBoardProblem({
+        boards,
+        stages: [
+          { id: 1, boardId: 10 },
+          { id: 2, boardId: 99 },
+        ],
+      }),
+    ).toEqual({
+      code: 'stageUnknownBoard',
+      params: { id: 2 },
+    })
+  })
+
+  test('refuse des colonnes avec une liste de tableaux vide, accepte un fichier vide', () => {
+    expect(findBoardProblem({ boards: [], stages: [{ id: 1 }] })).toEqual({
+      code: 'stageUnknownBoard',
+      params: { id: 1 },
+    })
+    expect(findBoardProblem({ boards: [], stages: [] })).toBeNull()
+  })
+})
+
+describe('importedBoards', () => {
+  test('fichier antérieur aux tableaux, null', () => {
+    expect(importedBoards(undefined)).toBeNull()
+  })
+
+  test('trie par position puis id, nettoie le nom, calcule sa clé et retire une couleur inconnue', () => {
+    expect(
+      importedBoards([
+        { id: 30, name: 'Perso', color: 'sky', position: 1 },
+        { id: 20, name: ' Travail ', color: 'pink', position: 0, createdAt: '2026-01-01T00:00:00.000Z' },
+        { id: 10, name: 'Idées', position: 1 },
+      ]),
+    ).toEqual([
+      {
+        id: 20,
+        name: 'Travail',
+        nameKey: 'travail',
+        color: null,
+        position: 0,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+      { id: 10, name: 'Idées', nameKey: 'idées', color: null, position: 1, createdAt: undefined },
+      { id: 30, name: 'Perso', nameKey: 'perso', color: 'sky', position: 1, createdAt: undefined },
+    ])
+  })
+})
+
+describe('boardPlacement', () => {
+  test('fichier antérieur aux tableaux, tout rejoint le tableau par défaut', () => {
+    const placement = boardPlacement(null, 7)
+    expect(placement.stage(undefined)).toBe(7)
+    expect(placement.kept(undefined)).toBe(7)
+    expect(placement.kept(null)).toBe(7)
+  })
+
+  test('colonne sans tableau dans le premier, archive gardée seulement si son tableau est dans le fichier', () => {
+    const boards = importedBoards([
+      { id: 10, name: 'Travail', position: 0 },
+      { id: 20, name: 'Perso', position: 1 },
+    ])
+    const placement = boardPlacement(boards, 10)
+    expect(placement.stage(20)).toBe(20)
+    expect(placement.stage(undefined)).toBe(10)
+    expect(placement.kept(20)).toBe(20)
+    expect(placement.kept(99)).toBeNull()
+    expect(placement.kept(null)).toBeNull()
+    expect(placement.kept(undefined)).toBeNull()
   })
 })

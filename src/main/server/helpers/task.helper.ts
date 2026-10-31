@@ -20,6 +20,7 @@ export const recurrenceSummarySelect = {
   leadDays: true,
   status: true,
   nextRunAt: true,
+  boardId: true,
 } as const
 
 /**

@@ -25,10 +25,13 @@
       @submit="onSubmit"
       @keydown.capture="onSaveShortcut"
     >
-      <!-- En-tête : nature du dialogue et colonne de la tâche -->
+      <!-- En-tête : nature du dialogue, tableau (s'il y en a plusieurs) et colonne de la tâche -->
       <div class="flex items-center justify-between gap-2 -mt-2">
         <span data-testid="task-dialog-heading" class="dialog-heading">
           {{ creationMode ? t('task.dialog.newTask') : t('task.dialog.editTask') }}
+          <template v-if="boardName">
+            · <span data-testid="task-dialog-board">{{ boardName }}</span>
+          </template>
           <template v-if="stageName"> · {{ stageName }}</template>
           <template v-if="createdLabel">
             · <span data-testid="task-dialog-created">{{ createdLabel }}</span>
@@ -261,6 +264,7 @@ import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../..
 import { useTaskStore } from '../../stores/Task'
 import { useTagStore } from '../../stores/Tag'
 import { useStageStore } from '../../stores/Stage'
+import { useBoardStore } from '../../stores/Board'
 import { useSettingsStore } from '../../stores/Settings'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast, useUndoToast } from '../../utils/toast.helper'
@@ -359,6 +363,7 @@ const resolver = zodResolver(taskFormSchema)
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const showError = useErrorToast()
 const showUndo = useUndoToast()
@@ -376,7 +381,15 @@ const series = computed(() =>
 const seriesLive = computed(() => !!series.value && series.value.status !== 'ended')
 
 // Colonne de la tâche, affichée dans l'en-tête
-const stageName = computed(() => stageStore.getAllStages.find((stage) => stage.id === stageId.value)?.name ?? '')
+const stage = computed(() => stageStore.getAllStages.find((candidate) => candidate.id === stageId.value))
+const stageName = computed(() => stage.value?.name ?? '')
+
+// Tableau de la colonne, affiché devant elle dans l'en-tête quand il y a plusieurs tableaux
+const boardName = computed(() => {
+  const boards = boardStore.getAllBoards
+  if (boards.length < 2) return ''
+  return boards.find((board) => board.id === stage.value?.boardId)?.name ?? ''
+})
 
 // Jour de création de la tâche modifiée, affiché dans l'en-tête après sa colonne
 const createdLabel = computed(() => {

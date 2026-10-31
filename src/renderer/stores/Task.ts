@@ -3,7 +3,12 @@ import { CACHE_TTL } from '../constants/time.constants'
 import { Task, TaskInput, TaskUpdateInput } from '../types/task.types'
 import { Tag } from '../types/tag.types'
 import { BaseEntityState } from '../types/base-store.types'
-import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../main/shared/recurrence.constants'
+import type {
+  RecurrenceListItem,
+  RecurrenceStatus,
+  RecurrenceSummary,
+  SeriesPlacement,
+} from '../../main/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
@@ -18,6 +23,16 @@ import { withSavedItem } from '../utils/checklist.helper'
 export interface RestoreResult {
   task: Task
   removed: Pick<Task, 'id' | 'tags'> | null
+}
+
+/**
+ * Déplacement d'une tâche : la tâche à sa nouvelle place, et la place du
+ * modèle de sa série avant le déplacement quand celui-ci l'a changée (envoi
+ * vers un autre tableau), null sinon. À rendre à l'annulation.
+ */
+export interface MoveResult {
+  task: Task
+  previousSeries: SeriesPlacement | null
 }
 
 /**
@@ -179,15 +194,21 @@ export const useTaskStore = defineStore('task', {
      * @param id ID de la tâche
      * @param place Colonne et position à reprendre (annulation d'un archivage).
      *   Sans place, ou si la colonne n'existe plus, le serveur la met en bas de
-     *   la première colonne.
+     *   la première colonne de son tableau.
+     * @param fallbackBoardId Tableau où la restaurer si le sien a été supprimé
+     *   (tableau affiché). Sans lui, le serveur prend le premier tableau.
      * @returns La tâche restaurée (avec sa colonne et sa position), et l'occurrence retirée
      */
-    async restoreTask(id: number, place?: { stageId: number; position: number }): Promise<RestoreResult> {
+    async restoreTask(
+      id: number,
+      place?: { stageId: number; position: number },
+      fallbackBoardId?: number,
+    ): Promise<RestoreResult> {
       try {
         const { removedOccurrenceId, ...restored } = await api.post<Task & { removedOccurrenceId?: number | null }>(
           `/tasks/${id}/restore`,
           undefined,
-          { params: place },
+          { params: { ...place, boardId: fallbackBoardId } },
         )
         this.insertCachedTask(restored)
 
@@ -215,7 +236,7 @@ export const useTaskStore = defineStore('task', {
 
     /**
      * Ajoute au cache une tâche placée au tableau par le serveur (restauration,
-     * ajout rapide, occurrence d'une tâche récurrente). Comme côté serveur, les
+     * ajout rapide, occurrence d'une tâche récurrente, déplacement). Comme côté serveur, les
      * autres tâches actives de sa colonne, à sa position ou après, descendent
      * d'un cran. Sans cache chargé, rien à faire : le prochain chargement la ramènera.
      * @param inserted Tâche telle que renvoyée par le serveur
@@ -242,6 +263,39 @@ export const useTaskStore = defineStore('task', {
       }
 
       this.allEntities.data = data
+    },
+
+    /**
+     * Déplace une tâche vers une colonne, de son tableau ou d'un autre, avec sa
+     * série si le tableau change (POST /tasks/:id/move). Sert aussi à annuler,
+     * avec l'ancienne colonne, l'ancienne position et l'ancienne place de la
+     * série. Le cache suit le serveur, les tâches de la colonne visée à cette
+     * position ou après descendent d'un cran.
+     * @param id Id de la tâche
+     * @param stageId Colonne visée
+     * @param position Position dans cette colonne, en bas si absente
+     * @param seriesPlace Place à rendre à la série (annulation, `previousSeries`
+     *   d'un déplacement), sinon la série suit la tâche
+     * @returns La tâche déplacée, avec son tableau et sa série à jour, et la
+     *   place de la série avant le déplacement s'il l'a changée
+     */
+    async moveTaskToStage(
+      id: number,
+      stageId: number,
+      position?: number,
+      seriesPlace?: SeriesPlacement | null,
+    ): Promise<MoveResult> {
+      try {
+        const { previousSeries, ...moved } = await api.post<Task & { previousSeries?: SeriesPlacement | null }>(
+          `/tasks/${id}/move`,
+          { stageId, position, seriesPlace: seriesPlace ?? undefined },
+        )
+        this.insertCachedTask(moved)
+        return { task: moved, previousSeries: previousSeries ?? null }
+      } catch (error) {
+        getLogger().error(`Erreur lors du déplacement de la tâche ${id} vers la colonne ${stageId} :`, error)
+        throw error
+      }
     },
 
     /**
@@ -294,6 +348,25 @@ export const useTaskStore = defineStore('task', {
       this.allEntities.data = this.allEntities.data.map((task) => {
         if (task.stageId !== stageId || task.isHistorized) return task
         return { ...task, isHistorized: true, historizationDate: now }
+      })
+    },
+
+    /**
+     * Historise dans le cache les tâches actives d'un tableau supprimé, et
+     * détache de lui toutes ses tâches, archivées comprises. Le serveur a déjà
+     * archivé les tâches avec DELETE /boards/:id, puis mis leur `boardId` à
+     * null en supprimant le tableau.
+     * @param boardId ID du tableau supprimé
+     */
+    markBoardTasksArchived(boardId: number) {
+      if (!this.allEntities) return
+
+      const now = new Date()
+
+      this.allEntities.data = this.allEntities.data.map((task) => {
+        if (task.boardId !== boardId) return task
+        if (task.isHistorized) return { ...task, boardId: null }
+        return { ...task, isHistorized: true, historizationDate: now, boardId: null }
       })
     },
 
@@ -456,10 +529,12 @@ export const useTaskStore = defineStore('task', {
      * Mise à jour partielle d'un ensemble de tâches
      * @param tasks Tableau de tâches existantes (id requis, seuls les champs fournis sont modifiés).
      *   Les tags ne passent pas par ce batch : l'API les refuse. `stageId` null retire la
-     *   tâche de sa colonne, comme un archivage.
+     *   tâche de sa colonne, comme un archivage. `boardId` non plus, le serveur le déduit de la colonne.
      */
     async updateTaskBatch(
-      tasks: Array<Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId'>> & { stageId?: number | null }>,
+      tasks: Array<
+        Pick<Task, 'id'> & Partial<Omit<Task, 'tags' | 'stageId' | 'boardId'>> & { stageId?: number | null }
+      >,
     ): Promise<void> {
       if (!tasks.length) return
 

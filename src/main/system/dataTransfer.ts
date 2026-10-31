@@ -68,6 +68,7 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
   if (!response.ok) throw new Error(`Export impossible : ${await errorMessage(response)}`)
 
   const data = (await response.json()) as {
+    boards: unknown[]
     stages: unknown[]
     tags: unknown[]
     tasks: unknown[]
@@ -76,6 +77,7 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
   await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8')
 
   const counts: DataCounts = {
+    boards: data.boards.length,
     stages: data.stages.length,
     tags: data.tags.length,
     tasks: data.tasks.length,

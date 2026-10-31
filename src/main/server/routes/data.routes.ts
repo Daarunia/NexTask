@@ -1,18 +1,27 @@
 import Logger from 'electron-log'
 import { prisma } from '../prismaClient.js'
+import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'
-import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import { APP_VERSION } from '../../constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
-import { translate } from '../../i18n.js'
+import { t, translate } from '../../i18n.js'
+import { boardKey } from '../../shared/board.helper.js'
+import { BOARD_NAME_MAX_LENGTH } from '../../shared/board.constants.js'
+import { POSITION_ORDER, stageBoardIds } from '../helpers/board.helper.js'
 import { exportedRecurrenceSchema } from '../schemas/recurrenceSchema.js'
 import { normalizeImportedSeries, seriesChecklistTexts } from '../helpers/recurrence.helper.js'
 import { templateInclude, templateWhere } from '../helpers/checklist.helper.js'
 import {
+  boardPlacement,
+  type ExportedBoard,
   type ExportedChecklistItem,
   type ExportedChecklistTemplate,
+  findBoardProblem,
+  firstDuplicate,
+  importedBoards,
   importedSeriesChecklist,
   importedTaskChecklist,
+  paletteColor,
   planTemplateImport,
 } from '../helpers/dataImport.helper.js'
 
@@ -21,6 +30,23 @@ const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
 
 // Date optionnelle d'un export (null = absente)
 const nullableDate = { type: ['string', 'null'], format: 'date-time' }
+
+/**
+ * Tableau exporté. Le nom est borné comme à la saisie, un export de l'app ne
+ * dépasse jamais la limite.
+ */
+const exportedBoardSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    name: { type: 'string', pattern: String.raw`\S`, maxLength: BOARD_NAME_MAX_LENGTH },
+    // nom de couleur de la palette des tags (ex. "sky"), null sans couleur
+    color: { type: ['string', 'null'] },
+    position: { type: 'integer' },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'name', 'position'],
+}
 
 /** Colonne exportée. */
 const exportedStageSchema = {
@@ -31,6 +57,8 @@ const exportedStageSchema = {
     position: { type: 'integer' },
     // Couleur facultative : un export antérieur aux couleurs de colonne reste importable
     color: { type: ['string', 'null'] },
+    // Tableau de la colonne, absent des exports antérieurs aux tableaux
+    boardId: { type: 'integer' },
   },
   required: ['id', 'name', 'position'],
 }
@@ -89,6 +117,9 @@ const exportedTaskSchema = {
     historizationDate: nullableDate,
     // null pour une tâche archivée (détachée de sa colonne)
     stageId: { type: ['integer', 'null'] },
+    // Tableau de la tâche, absent des exports antérieurs aux tableaux. Ignoré à l'import
+    // pour une tâche active, qui prend le tableau de sa colonne
+    boardId: { type: ['integer', 'null'] },
     startDate: nullableDate,
     notifiedAt: nullableDate,
     createdAt: { type: 'string', format: 'date-time' },
@@ -114,6 +145,8 @@ const exportSchema = {
     version: { type: 'integer' },
     appVersion: { type: 'string' },
     exportedAt: { type: 'string', format: 'date-time' },
+    // Tableaux, facultatifs : un export antérieur aux tableaux reste importable
+    boards: { type: 'array', items: exportedBoardSchema },
     stages: { type: 'array', items: exportedStageSchema },
     tags: { type: 'array', items: exportedTagSchema },
     tasks: { type: 'array', items: exportedTaskSchema },
@@ -138,6 +171,8 @@ const importProblemSchema = {
 const countsSchema = {
   type: 'object',
   properties: {
+    // Tableaux du fichier, ou tableau par défaut créé pour un fichier qui n'en a pas
+    boards: { type: 'integer' },
     stages: { type: 'integer' },
     tags: { type: 'integer' },
     tasks: { type: 'integer' },
@@ -165,19 +200,25 @@ const importErrorSchema = {
 }
 
 /**
- * Couleur d'une colonne importée : gardée si elle fait partie de la palette,
- * sinon la colonne est importée sans couleur.
- * @param color Couleur lue dans le fichier
+ * Tableau par défaut d'un import qui n'apporte aucun tableau (fichier
+ * antérieur aux tableaux, ou sans colonne ni tableau), créé sous le nom par
+ * défaut de la langue de l'interface, l'app exigeant toujours au moins un
+ * tableau.
+ * @param tx Client Prisma de la transaction d'import, tableaux déjà supprimés
  */
-function stageColor(color: string | null | undefined): TagColor | null {
-  return TAG_COLORS.includes(color as TagColor) ? (color as TagColor) : null
+async function createDefaultBoard(tx: Prisma.TransactionClient): Promise<number> {
+  const name = t('boards.defaultName')
+  const created = await tx.board.create({ data: { name, nameKey: boardKey(name), position: 0 }, select: { id: true } })
+  Logger.info(`Tableau par défaut « ${name} » créé pour l'import, le fichier n'apporte aucun tableau`)
+  return created.id
 }
 
 /** Fichier d'import, une fois validé par Fastify. */
 interface DataImportBody {
   format: string
   version: number
-  stages: { id: number; name: string; position: number; color?: string | null }[]
+  boards?: ExportedBoard[]
+  stages: { id: number; name: string; position: number; color?: string | null; boardId?: number }[]
   tags: { id: number; name: string; color: string; createdAt?: string }[]
   tasks: {
     id: number
@@ -188,6 +229,7 @@ interface DataImportBody {
     isHistorized: boolean
     historizationDate?: string | null
     stageId: number | null
+    boardId?: number | null
     startDate?: string | null
     notifiedAt?: string | null
     createdAt?: string
@@ -218,26 +260,13 @@ interface DataImportBody {
     description: string
     version: string
     stageId?: number | null
+    boardId?: number | null
     createdAt?: string
     updatedAt?: string
     tagIds?: number[]
     checklistItems?: string[]
   }[]
   checklistTemplates?: ExportedChecklistTemplate[]
-}
-
-/**
- * Premier doublon d'une liste de clés, ou `undefined`.
- *
- * @param keys Clés à contrôler
- */
-function firstDuplicate<T>(keys: T[]): T | undefined {
-  const seen = new Set<T>()
-  for (const key of keys) {
-    if (seen.has(key)) return key
-    seen.add(key)
-  }
-  return undefined
 }
 
 /**
@@ -304,8 +333,9 @@ function findReferenceProblem(data: DataImportBody): ImportProblem | null {
 /**
  * Contrôle du fichier au-delà de sa structure (déjà validée par le schéma) :
  * format, version, ids uniques, noms de tags uniques sans tenir compte de la
- * casse, références des tâches et des séries vers des colonnes, des tags et
- * des séries du fichier, et une seule occurrence par date dans chaque série.
+ * casse, tableaux (cf. findBoardProblem), références des tâches et des séries
+ * vers des colonnes, des tags et des séries du fichier, et une seule
+ * occurrence par date dans chaque série.
  *
  * @param data Fichier reçu
  * @returns Le motif du refus, ou `null` si le fichier est importable
@@ -316,7 +346,7 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
     return { code: 'unsupportedVersion', params: { version: data.version, expected: EXPORT_VERSION } }
   }
 
-  const problem = findDuplicateProblem(data) ?? findReferenceProblem(data)
+  const problem = findDuplicateProblem(data) ?? findBoardProblem(data) ?? findReferenceProblem(data)
   if (problem) return problem
 
   // Une seule occurrence par date dans chaque série (contrainte d'unicité en base)
@@ -333,7 +363,7 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
 
 /**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
- * (colonnes, tâches archivées comprises et leurs checklists, tags, séries
+ * (tableaux, colonnes, tâches archivées comprises et leurs checklists, tags, séries
  * récurrentes, modèles de checklist). Les paramètres de l'app n'en font pas
  * partie.
  *
@@ -348,9 +378,10 @@ export default async function dataRoutes(fastify) {
   /**
    * GET /data/export
    *
-   * Renvoie toutes les colonnes, tous les tags, toutes les tâches (archivées
-   * comprises, tags désignés par leur id, points de checklist avec leur état
-   * coché), toutes les séries récurrentes (règle, état et modèle des
+   * Renvoie tous les tableaux (dans leur ordre), toutes les colonnes avec leur
+   * tableau, tous les tags, toutes les tâches (archivées comprises, tableau
+   * compris, tags désignés par leur id, points de checklist avec leur état
+   * coché), toutes les séries récurrentes (règle, état, tableau et modèle des
    * occurrences, textes des points compris) et tous les modèles de checklist
    * (nom, position, textes des points), avec l'identifiant et la version du
    * format. Les ids sont conservés, l'import les reprend tels quels, sauf ceux
@@ -363,16 +394,20 @@ export default async function dataRoutes(fastify) {
     {
       schema: {
         description:
-          'Exporte toutes les colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
+          'Exporte tous les tableaux, colonnes, tâches (archivées comprises, checklists comprises), tags, séries récurrentes et modèles de checklist',
         tags: ['Data'],
         response: { 200: exportSchema },
       },
     },
     async () => {
       // Lecture groupée, pour un instantané cohérent de toutes les tables
-      const [stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
+      const [boards, stages, tags, tasks, recurrences, templates] = await prisma.$transaction([
+        prisma.board.findMany({
+          select: { id: true, name: true, color: true, position: true, createdAt: true },
+          orderBy: POSITION_ORDER,
+        }),
         prisma.stage.findMany({
-          select: { id: true, name: true, position: true, color: true },
+          select: { id: true, name: true, position: true, color: true, boardId: true },
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
         }),
         prisma.tag.findMany({ select: { id: true, name: true, color: true, createdAt: true }, orderBy: { id: 'asc' } }),
@@ -392,7 +427,7 @@ export default async function dataRoutes(fastify) {
       ])
 
       Logger.info(
-        `Export : ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
+        `Export : ${boards.length} tableau(x), ${stages.length} colonne(s), ${tags.length} tag(s), ${tasks.length} tâche(s), ${recurrences.length} série(s), ${templates.length} modèle(s) de checklist`,
       )
 
       return {
@@ -400,6 +435,7 @@ export default async function dataRoutes(fastify) {
         version: EXPORT_VERSION,
         appVersion: APP_VERSION,
         exportedAt: new Date(),
+        boards,
         stages,
         tags,
         tasks: tasks.map(({ tags: taskTags, checklist, ...task }) => ({
@@ -429,8 +465,12 @@ export default async function dataRoutes(fastify) {
   /**
    * POST /data/import
    *
-   * Remplace toutes les colonnes, tâches, tags, séries et modèles de checklist
-   * par ceux d'un export (sans clé `recurrences`, la base n'a plus aucune
+   * Remplace tous les tableaux, colonnes, tâches, tags, séries et modèles de
+   * checklist par ceux d'un export. Les tâches et séries qui ont une colonne
+   * prennent le tableau de cette colonne, jamais celui lu dans le fichier
+   * (règle d'or). Sans clé `boards` (fichier antérieur aux tableaux), tout
+   * rejoint un tableau par défaut, créé aussi pour un fichier sans colonne ni
+   * tableau (cf. boardPlacement). Sans clé `recurrences`, la base n'a plus aucune
    * série ; sans `anchor`, une série suit le calendrier ; sans
    * `checklistTemplates` ni `checklistItems`, ni modèle ni checklist). Les
    * checklists sont ramenées aux limites partagées et un modèle dont le nom
@@ -446,7 +486,7 @@ export default async function dataRoutes(fastify) {
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Fichier d'export (cf. GET /data/export)
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
-   * @returns {Promise<Object>} Nombre de colonnes, tags, tâches et modèles importés et anomalies
+   * @returns {Promise<Object>} Nombre de tableaux, colonnes, tags, tâches et modèles importés et anomalies
    *   corrigées, 400 si le fichier est refusé (détail dans `message`), 500 si l'écriture échoue
    */
   fastify.post(
@@ -455,7 +495,7 @@ export default async function dataRoutes(fastify) {
       bodyLimit: IMPORT_BODY_LIMIT,
       schema: {
         description:
-          'Remplace toutes les données par celles d’un export (colonnes, tâches, tags, séries, modèles de checklist)',
+          'Remplace toutes les données par celles d’un export (tableaux, colonnes, tâches, tags, séries, modèles de checklist)',
         tags: ['Data'],
         body: exportSchema,
         response: {
@@ -483,6 +523,8 @@ export default async function dataRoutes(fastify) {
         importedSeriesChecklist(recurrence.id, recurrence.checklistItems),
       )
       const taskChecklists = data.tasks.map((task) => importedTaskChecklist(task.id, task.checklistItems))
+      const boards = importedBoards(data.boards)
+      let boardCount = 0
       const warnings: ImportProblem[] = [
         ...templatePlan.problems,
         ...seriesChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
@@ -491,9 +533,9 @@ export default async function dataRoutes(fastify) {
 
       try {
         // Ordre des suppressions : les tâches référencent les séries et les
-        // colonnes, les séries les colonnes (clés étrangères), leurs liens avec
-        // les tags partent en cascade. Toutes les checklists d'abord, modèles
-        // compris, leurs points partant en cascade
+        // colonnes, les séries les colonnes, les colonnes les tableaux (clés
+        // étrangères), leurs liens avec les tags partent en cascade. Toutes les
+        // checklists d'abord, modèles compris, leurs points partant en cascade
         await prisma.$transaction(
           async (tx) => {
             await tx.checklist.deleteMany()
@@ -501,16 +543,34 @@ export default async function dataRoutes(fastify) {
             await tx.recurrence.deleteMany()
             await tx.tag.deleteMany()
             await tx.stage.deleteMany()
+            await tx.board.deleteMany()
+
+            // Tableaux du fichier, sinon un tableau par défaut
+            let firstBoardId: number
+            if (boards && boards.length > 0) {
+              await tx.board.createMany({ data: boards })
+              firstBoardId = boards[0].id
+              boardCount = boards.length
+            } else {
+              firstBoardId = await createDefaultBoard(tx)
+              boardCount = 1
+            }
+            const placement = boardPlacement(boards, firstBoardId)
 
             // Champs repris un par un : une propriété inconnue du fichier n'atteint pas Prisma
             await tx.stage.createMany({
-              data: data.stages.map(({ id, name, position, color }) => ({
+              data: data.stages.map(({ id, name, position, color, boardId }) => ({
                 id,
                 name,
                 position,
-                color: stageColor(color),
+                color: paletteColor(color),
+                boardId: placement.stage(boardId),
               })),
             })
+            // Tableau d'une tâche ou d'une série qui a une colonne, lu en base (règle d'or)
+            const boardOfStage = await stageBoardIds(tx)
+            const boardOf = (item: { stageId?: number | null; boardId?: number | null }) =>
+              item.stageId == null ? placement.kept(item.boardId) : (boardOfStage.get(item.stageId) as number)
             await tx.tag.createMany({
               data: data.tags.map((tag) => {
                 const name = tag.name.trim()
@@ -560,6 +620,7 @@ export default async function dataRoutes(fastify) {
                   description: recurrence.description,
                   version: recurrence.version,
                   stageId: recurrence.stageId,
+                  boardId: boardOf(recurrence),
                   createdAt: recurrence.createdAt,
                   updatedAt: recurrence.updatedAt,
                   checklistItems: seriesChecklists[index].texts,
@@ -580,6 +641,7 @@ export default async function dataRoutes(fastify) {
                   isHistorized: task.isHistorized,
                   historizationDate: task.historizationDate,
                   stageId: task.stageId,
+                  boardId: boardOf(task),
                   startDate: task.startDate,
                   notifiedAt: task.notifiedAt,
                   createdAt: task.createdAt,
@@ -611,13 +673,14 @@ export default async function dataRoutes(fastify) {
       }
 
       const counts: DataCounts = {
+        boards: boardCount,
         stages: data.stages.length,
         tags: data.tags.length,
         tasks: data.tasks.length,
         checklistTemplates: templatePlan.templates.length,
       }
       Logger.info(
-        `Import : ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist`,
+        `Import : ${counts.boards} tableau(x), ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist`,
       )
       return { ...counts, warnings }
     },

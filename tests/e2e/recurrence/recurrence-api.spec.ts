@@ -290,6 +290,32 @@ test.describe('Génération', () => {
     expect(occurrence).toMatchObject({ stageId: ids['A faire'], version: '1.5.0' })
   })
 
+  test('colonne du modèle supprimée : première colonne du même tableau, avec son tableau', async ({ page }) => {
+    const stages = (await (await page.request.get(`${API}/stages`)).json()) as {
+      id: number
+      name: string
+      boardId: number
+    }[]
+    const template = stages.find((stage) => stage.name === 'En cours')!
+    const origin = await createRecurringTask(page.request, {
+      title: 'Même tableau',
+      startDate: localDate(1),
+      recurrence: DAILY,
+      stageId: template.id,
+    })
+    expect(origin.boardId).toBe(template.boardId)
+    expect((await page.request.delete(`${API}/stages/${template.id}`)).ok()).toBeTruthy()
+
+    expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 1 })
+
+    const [archived, occurrence] = await seriesTasks(page.request, origin.recurrenceId!)
+    // Tâche d'origine archivée avec sa colonne, son tableau gardé
+    expect(archived).toMatchObject({ stageId: null, isHistorized: true, boardId: template.boardId })
+    const first = stages.find((stage) => stage.name === 'A faire')!
+    expect(first.boardId).toBe(template.boardId)
+    expect(occurrence).toMatchObject({ stageId: first.id, boardId: template.boardId })
+  })
+
   test("place de l'occurrence selon le paramètre « nouvelle tâche en haut »", async ({ page }) => {
     const { 'A faire': stageId } = await stageIds(page.request)
     await page.request.post(`${API}/tasks`, {

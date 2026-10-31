@@ -124,12 +124,14 @@
   <!-- Menu contextuel des cartes, partagé de même -->
   <KanbanCardMenu
     ref="cardMenu"
+    :boardId="boardId"
     :stages="stagesLocal"
     @open="openTask"
     @duplicate="duplicateTask"
     @toggle-tag="toggleTaskTag"
     @start-date="setStartDate"
     @move="moveTask"
+    @move-board="moveTaskToBoard"
     @archive="askArchiveTask"
   />
 
@@ -156,6 +158,7 @@ import KanbanStageTaskList from './KanbanStageTaskList.vue'
 import KanbanTaskDialog from './KanbanTaskDialog.vue'
 import { useTaskStore } from '../../stores/Task'
 import { useStageStore } from '../../stores/Stage'
+import { useBoardStore } from '../../stores/Board'
 import { useTagStore } from '../../stores/Tag'
 import { useSettingsStore } from '../../stores/Settings'
 import { useBoardFilterStore } from '../../stores/BoardFilter'
@@ -175,16 +178,19 @@ import { useDangerConfirm } from '../../utils/confirm.helper'
 import { isEditableTarget, isInOverlay } from '../../utils/keyboard.helper'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../../constants/tag.constants'
 import type { TagColor } from '../../../main/shared/tag.constants'
+import type { SeriesPlacement } from '../../../main/shared/recurrence.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
-  stages: Stage[]
-  tasks: Task[]
+  boardId: number // tableau affiché, celui des colonnes créées
+  stages: Stage[] // colonnes du tableau
+  tasks: Task[] // tâches actives de ses colonnes
 }>()
 
 const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const settings = useSettingsStore()
 const boardFilter = useBoardFilterStore()
@@ -257,12 +263,14 @@ function isCollapsed(stageId: number): boolean {
 
 /**
  * Replie ou déplie une colonne et mémorise l'état. Les ids des colonnes
- * supprimées depuis sont oubliés au passage.
+ * supprimées depuis sont oubliés au passage. Ceux des autres tableaux restent,
+ * car le filtre porte sur les colonnes du store, tous tableaux confondus.
  * @param stageId Id de la colonne
  * @param collapsed Vrai pour la replier
  */
 async function setStageCollapsed(stageId: number, collapsed: boolean) {
-  const ids = settings.collapsedStageIds.filter((id) => id !== stageId && taskLists.has(id))
+  const existing = new Set(stageStore.getAllStages.map((stage) => stage.id))
+  const ids = settings.collapsedStageIds.filter((id) => id !== stageId && existing.has(id))
   if (collapsed) ids.push(stageId)
 
   try {
@@ -650,6 +658,77 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
 }
 
 /**
+ * Envoie une carte vers un autre tableau depuis son menu, en bas de la
+ * première colonne de ce tableau. La colonne est choisie dans le cache, le
+ * serveur reste juge (colonne supprimée entre-temps). La carte quitte le
+ * tableau affiché une fois le déplacement enregistré, le cache des tâches
+ * suit par le store. Le toast propose de l'annuler.
+ * @param taskId Id de la tâche
+ * @param boardId Tableau d'arrivée
+ */
+async function moveTaskToBoard(taskId: number, boardId: number) {
+  const target = boardStore.getAllBoards.find((candidate) => candidate.id === boardId)
+  const stage = stageStore.getStagesOfBoard(boardId)[0]
+  if (!target || !stage || board.find(taskId) === null) return
+
+  let previousSeries: SeriesPlacement | null
+  try {
+    previousSeries = (await taskStore.moveTaskToStage(taskId, stage.id)).previousSeries
+  } catch {
+    showError(t('boards.send.failed'))
+    return
+  }
+
+  // Place de la carte (position persistée), reprise si l'envoi est annulé
+  const location = board.remove(taskId)
+  logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
+  if (!location) return
+
+  // Titre de la tâche en précision, comme les autres toasts d'annulation. La
+  // série, si elle a suivi la carte, reprendra sa propre place, pas celle de la carte
+  const task = location.list[location.index]
+  const place = { stageId: location.stageId, position: task.position, series: previousSeries }
+  showUndo(t('boards.send.sent', { name: target.name }), {
+    detail: task.title,
+    undo: () => undoMoveToBoard(taskId, boardId, place),
+  })
+}
+
+// Kanban démonté (autre tableau, autre page), cf. undoMoveToBoard
+let unmounted = false
+onBeforeUnmount(() => (unmounted = true))
+
+/**
+ * Annule l'envoi d'une carte vers un autre tableau, par la même route avec
+ * son ancienne colonne et son ancienne position. La série revient avec elle,
+ * à sa propre place d'avant l'envoi (colonne du modèle, même supprimée), pas
+ * à celle de la carte. Annulé depuis le tableau d'arrivée (Ctrl+Z après en
+ * avoir changé), où la carte est encore affichée, le tableau d'origine est
+ * réaffiché avec elle.
+ * @param taskId Id de la tâche
+ * @param boardId Tableau où elle a été envoyée
+ * @param place Colonne et position de la carte avant l'envoi, et place de sa
+ *   série si l'envoi l'a changée (null sinon)
+ */
+async function undoMoveToBoard(
+  taskId: number,
+  boardId: number,
+  place: { stageId: number; position: number; series: SeriesPlacement | null },
+) {
+  let restored: Task
+  try {
+    restored = (await taskStore.moveTaskToStage(taskId, place.stageId, place.position, place.series)).task
+  } catch {
+    showError(t('board.undoFailed'), t('boards.send.undoFailedDetail'))
+    return
+  }
+
+  board.insert(restored)
+  logger.debug('Envoi vers un autre tableau annulé', restored)
+  if (unmounted && boardStore.current?.id === boardId) await boardStore.select(props.boardId)
+}
+
+/**
  * Change la date de début d'une carte depuis son menu, puis l'affiche telle
  * qu'enregistrée.
  * @param task Tâche de la carte
@@ -856,7 +935,7 @@ async function createStage() {
   let newStage: Stage
 
   try {
-    newStage = await stageStore.saveStage(name, stagesLocal.value.length)
+    newStage = await stageStore.saveStage(name, stagesLocal.value.length, props.boardId)
   } catch {
     // La saisie est conservée pour pouvoir réessayer
     showError(t('board.stageCreateFailed'), t('board.stageCreateFailedDetail'))
@@ -1097,16 +1176,30 @@ const stopRecurrenceListener = globalThis.recurrence.onTasksCreated((tasks) => t
 onBeforeUnmount(stopRecurrenceListener)
 
 /**
- * Ouvre en édition la tâche demandée par un clic sur sa notification. Ignorée
- * si elle a quitté le tableau entre-temps, ou si le dialogue est déjà ouvert
- * (la saisie en cours n'est pas remplacée).
+ * Ouvre en édition la tâche demandée par un clic sur sa notification ou sur un
+ * résultat de la recherche. Ignorée si elle a quitté le tableau entre-temps, ou
+ * si le dialogue est déjà ouvert (la saisie en cours n'est pas remplacée).
+ *
+ * Une tâche d'un autre tableau est laissée sans consommer la demande. C'est le
+ * cas quand `showTask` change de tableau, ce Kanban voit la demande avant
+ * d'être démonté et celui du tableau de la tâche la traite à son montage.
  */
 function openRequestedTask() {
   const taskId = taskStore.taskToOpen
   if (taskId === null) return
+  if (board.find(taskId) === null && isOnOtherBoard(taskId)) return
   taskStore.taskToOpen = null
 
   openTask(taskId)
+}
+
+/**
+ * Vrai si la tâche est active dans le cache, sur un autre tableau que celui affiché.
+ * @param taskId Id de la tâche
+ */
+function isOnOtherBoard(taskId: number): boolean {
+  const boardId = taskStore.getAllTasks.find((task) => task.id === taskId)?.boardId
+  return boardId !== null && boardId !== undefined && boardId !== props.boardId
 }
 
 // Demande reçue tableau affiché, ou avant (autre page) : traitée une fois le
