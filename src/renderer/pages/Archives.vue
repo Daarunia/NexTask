@@ -213,7 +213,7 @@
 </template>
 
 <script lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import type { Task } from '../types/task.types'
 
 // Tâches archivées chargées, et ids de celles dont la suppression définitive
@@ -291,6 +291,17 @@ const boardOptions = computed(() => [
   })),
   ...(hasDeletedBoard.value ? [{ value: 'deleted' as BoardFilter, label: t('boards.deletedBoard'), color: null }] : []),
 ])
+
+// Filtre choisi encore proposé et affiché
+const boardFilterShown = computed(
+  () => showBoards.value && boardOptions.value.some((option) => option.value === boardFilter.value),
+)
+
+// Choix disparu (dernière tâche d'un tableau supprimé restaurée, tableau supprimé) ou filtre masqué : remis
+// à « Tous les tableaux », sinon la liste resterait vide sans moyen d'en sortir
+watch(boardFilterShown, (shown) => {
+  if (!shown) boardFilter.value = 'all'
+})
 
 /**
  * Libellé d'un choix du filtre, pour la valeur affichée.

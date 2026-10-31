@@ -7,7 +7,8 @@ import { DEFAULT_BOARD, createBoard, createTaskIn, defaultBoardId } from '../../
  * Tests E2E des archives avec plusieurs tableaux. Tableau de chaque ligne,
  * filtre par tableau, restauration dans le tableau d'origine sans changer le
  * tableau affiché, « Restaurer ici » pour une tâche d'un tableau supprimé,
- * message d'un tableau sans colonne, et page inchangée avec un seul tableau.
+ * filtre remis à tous les tableaux quand son choix disparaît, message d'un
+ * tableau sans colonne, et page inchangée avec un seul tableau.
  *
  * Le tableau par défaut (« Mon tableau », colonnes des seeds) est là à chaque
  * test, les autres sont créés par POST /boards. Les ids se lisent par l'API.
@@ -142,7 +143,8 @@ test("une tâche d'un tableau supprimé se restaure ici, dans le tableau affich�
     'Restaurer Ancienne idée de voyage dans « Maison »',
   )
   await archivesPage.restore('Ancienne idée de voyage')
-  await expect(archivesPage.items).toHaveCount(0)
+  // Option « Tableau supprimé » disparue avec sa dernière tâche : le filtre revient à tous les tableaux
+  await expect.poll(() => archivesPage.titleList()).toEqual(['Repeindre la porte'])
   expect(await getTask(page.request, id)).toMatchObject({
     isHistorized: false,
     stageId: maison.stageIds[0],
@@ -152,6 +154,60 @@ test("une tâche d'un tableau supprimé se restaure ici, dans le tableau affich�
   await header.goHome()
   await boardSwitcher.expectCurrent('Maison')
   await expect.poll(() => taskBoard.columnTaskTitles('Courses')).toEqual(['Ancienne idée de voyage'])
+})
+
+test('le filtre « Tableau supprimé » revient à tous les tableaux quand sa dernière tâche est restaurée', async ({
+  page,
+  header,
+  archivesPage,
+  boardSwitcher,
+}) => {
+  const ancien = await createBoard(page.request, 'Ancien', 'orange', ['Idées'])
+  const maison = await createBoard(page.request, 'Maison', 'sky', ['Courses'])
+  await createArchived(page.request, ancien.stageIds[0], 'Ancienne idée de voyage')
+  await createArchived(page.request, maison.stageIds[0], 'Repeindre la porte')
+  expect((await page.request.delete(`${API}/boards/${ancien.id}`)).ok()).toBeTruthy()
+
+  await page.reload()
+  await boardSwitcher.select('Maison')
+  await header.goArchives()
+
+  await archivesPage.filterByBoard('Tableau supprimé')
+  await expect.poll(() => archivesPage.titleList()).toEqual(['Ancienne idée de voyage'])
+
+  // Choix disparu avec la dernière tâche du tableau supprimé, filtre remis à « Tous les tableaux »
+  await archivesPage.restore('Ancienne idée de voyage')
+  await expect(archivesPage.boardFilter).toContainText('Tous les tableaux')
+  await expect.poll(() => archivesPage.titleList()).toEqual(['Repeindre la porte'])
+  await expect(archivesPage.count).toHaveText('1')
+  await expect(archivesPage.noMatch).toHaveCount(0)
+
+  await archivesPage.boardFilter.click()
+  await expect(page.getByRole('option', { name: 'Tableau supprimé', exact: true })).toHaveCount(0)
+})
+
+test('avec un seul tableau, le filtre masqué après la restauration ne laisse pas la liste vide', async ({
+  page,
+  header,
+  archivesPage,
+}) => {
+  const ancien = await createBoard(page.request, 'Ancien', 'orange', ['Idées'])
+  await createArchived(page.request, ancien.stageIds[0], 'Ancienne idée de voyage')
+  await createArchived(page.request, await defaultStageId(page.request), 'Migrer la base')
+  expect((await page.request.delete(`${API}/boards/${ancien.id}`)).ok()).toBeTruthy()
+  await page.reload()
+
+  // Filtre affiché pour la seule tâche du tableau supprimé
+  await header.goArchives()
+  await archivesPage.filterByBoard('Tableau supprimé')
+  await expect.poll(() => archivesPage.titleList()).toEqual(['Ancienne idée de voyage'])
+
+  // Restaurée ici, plus de tableau supprimé : filtre masqué, toutes les archives affichées
+  await archivesPage.restore('Ancienne idée de voyage')
+  await expect(archivesPage.boardFilter).toHaveCount(0)
+  await expect.poll(() => archivesPage.titleList()).toEqual(['Migrer la base'])
+  await expect(archivesPage.count).toHaveText('1')
+  await expect(archivesPage.noMatch).toHaveCount(0)
 })
 
 test('la tâche d’un tableau sans colonne se restaure dans le tableau affiché', async ({
