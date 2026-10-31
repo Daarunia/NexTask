@@ -6,7 +6,9 @@ import { API } from '../../helpers/api.helper'
 import { createTaskViaApi } from '../../helpers/tag.helper'
 import { restoreDialogs, stubOpenDialog, stubSaveDialog } from '../../helpers/dialog.helper'
 import { createRecurringTask, DAILY, getTask, localDate, stageIds } from '../../helpers/recurrence.helper'
+import { DEFAULT_BOARD, rememberBoard } from '../../helpers/board.helper'
 import { EXPORT_FORMAT, EXPORT_VERSION } from '../../../src/main/shared/data.constants'
+import type { AppSettings } from '../../../src/main/shared/settings.constants'
 import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
@@ -742,6 +744,55 @@ test.describe('Export et import depuis les Paramètres', () => {
     await expect(taskBoard.taskCard('Importée')).toBeVisible()
     await expect(taskBoard.taskCard('Locale')).toHaveCount(0)
     await expect(taskBoard.taskCardTags('Importée')).toHaveText(['bug'])
+  })
+
+  test('l’import oublie le dernier tableau affiché, même si son id revient dans le fichier', async ({
+    page,
+    electronApp,
+    header,
+    boardSwitcher,
+    settingsPage,
+  }, testInfo) => {
+    const res = await page.request.post(`${API}/boards`, { data: { name: 'Perso', columns: { mode: 'default' } } })
+    expect(res.status(), await res.text()).toBe(201)
+    const perso = (await res.json()) as { id: number }
+
+    // Fichier où l'id de « Perso » désigne un autre tableau, en second
+    const data = (await exportData(page.request)) as ExportFile & { boards: { id: number; name: string }[] }
+    const file = testInfo.outputPath('import.json')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        ...data,
+        boards: data.boards.map((board) => (board.id === perso.id ? { ...board, name: 'Importé' } : board)),
+      }),
+    )
+
+    // « Perso » affiché, donc dernier tableau
+    await rememberBoard(page, perso.id)
+    await page.reload()
+    await boardSwitcher.expectCurrent('Perso')
+
+    await stubOpenDialog(electronApp, file)
+    await header.goSettings()
+    await settingsPage.askImport()
+    await settingsPage.confirmAcceptButton.click()
+    await expect(page.getByText('Données importées', { exact: true })).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (globalThis as unknown as { settings: { getAll: () => Promise<AppSettings> } }).settings
+            .getAll()
+            .then((settings) => settings.lastBoardId),
+        ),
+      )
+      .toBeNull()
+
+    // Le tableau s'ouvre sur le premier tableau importé, pas sur celui qui a repris l'id
+    await header.goHome()
+    await boardSwitcher.expectCurrent(DEFAULT_BOARD)
+    expect(await boardSwitcher.names()).toEqual([DEFAULT_BOARD, 'Importé'])
   })
 
   test('un fichier invalide est refusé et ne change rien', async ({

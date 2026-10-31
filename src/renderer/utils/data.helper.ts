@@ -4,6 +4,8 @@ import { useStageStore } from '../stores/Stage'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import { useChecklistTemplateStore } from '../stores/ChecklistTemplate'
+import { useSettingsStore } from '../stores/Settings'
+import { getLogger } from './logger'
 import { t } from '../i18n'
 
 /**
@@ -12,14 +14,23 @@ import { t } from '../i18n'
  * des modèles de checklist (rechargés à l'ouverture de leur page ou du
  * dialogue), puis relit les tags. Sans cela, les stores serviraient les
  * anciennes données jusqu'à l'expiration de leur TTL. Le tableau choisi est
- * oublié avec le cache, le Kanban se replie sur `lastBoardId` s'il existe
- * encore, sinon sur le premier tableau.
+ * oublié avec le cache, et `lastBoardId` remis à null, son id pouvant désigner
+ * un autre tableau dans les données importées : le Kanban affiche le premier
+ * tableau. Un échec de l'enregistrement de `lastBoardId` est logué sans
+ * interrompre le rechargement.
  */
 export async function reloadDataAfterImport(): Promise<void> {
   useBoardStore().$reset()
   useStageStore().$reset()
   useTaskStore().$reset()
   useChecklistTemplateStore().$reset()
+
+  try {
+    await useSettingsStore().set('lastBoardId', null)
+  } catch (error) {
+    getLogger().error("Erreur lors de l'oubli du dernier tableau après l'import :", error)
+  }
+
   await useTagStore().loadAllTags(true)
 }
 
