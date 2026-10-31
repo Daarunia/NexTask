@@ -6,9 +6,10 @@ import type { AppSettings } from '../../../src/main/shared/settings.constants'
 
 /**
  * Tests E2E du changement de tableau. Sélecteur de l'en-tête et Ctrl+1 à
- * Ctrl+9, colonnes et cartes du tableau affiché, dernier tableau retrouvé au
- * lancement, repli sur le premier tableau, cache juste après un aller-retour,
- * colonnes repliées propres à chaque tableau, sélecteur absent hors du tableau.
+ * Ctrl+9 (ignorés pendant une saisie), colonnes et cartes du tableau affiché,
+ * dernier tableau retrouvé au lancement, repli sur le premier tableau, cache
+ * juste après un aller-retour, colonnes repliées propres à chaque tableau,
+ * sélecteur absent hors du tableau.
  *
  * Deux tableaux, celui par défaut (« Mon tableau », colonnes des seeds) et
  * « Perso » créé par POST /boards sans colonne, puis garni de deux colonnes à
@@ -109,6 +110,40 @@ test.describe('Changement de tableau', () => {
 
     // Sans tableau à ce rang, rien ne change
     await page.keyboard.press('Control+3')
+    await boardSwitcher.expectCurrent(SECOND_BOARD)
+  })
+
+  test('Ctrl+1 à Ctrl+9 sont ignorés pendant la saisie du nom d’une colonne', async ({
+    page,
+    taskBoard,
+    boardSwitcher,
+  }) => {
+    await createSecondBoard(page.request)
+    await reload(page)
+
+    // Colonne en cours d'ajout : le tableau et la saisie restent
+    await taskBoard.startAddStage('Colonne en cours')
+    const newStage = page.getByTestId('stage-name-input')
+    await expect(newStage).toBeFocused()
+    await page.keyboard.press('Control+2')
+    await boardSwitcher.expectCurrent(DEFAULT_BOARD)
+    await expect(newStage).toHaveValue('Colonne en cours')
+    await taskBoard.cancelAddStage()
+
+    // Colonne renommée en place : même chose
+    const [first] = await taskBoard.stageTitles()
+    await page.getByRole('heading', { name: first, exact: true }).dblclick()
+    const renamed = page.getByTestId('stage-edit-input')
+    await renamed.fill('Nom en cours')
+    await page.keyboard.press('Control+2')
+    await boardSwitcher.expectCurrent(DEFAULT_BOARD)
+    await expect(renamed).toBeFocused()
+    await expect(renamed).toHaveValue('Nom en cours')
+    await page.keyboard.press('Escape')
+    await expect(renamed).toHaveCount(0)
+
+    // Hors saisie, le raccourci change de tableau
+    await page.keyboard.press('Control+2')
     await boardSwitcher.expectCurrent(SECOND_BOARD)
   })
 

@@ -636,15 +636,18 @@ function openCreate(preset?: BoardCreatePreset) {
 /**
  * Ctrl+1 à Ctrl+9 affichent les neuf premiers tableaux, sans ouvrir la liste.
  * La touche se lit par son code, car sur un clavier AZERTY Ctrl+1 donne « & ».
- * Ignorés avec Alt, Maj ou Méta, et dans un dialogue ou un menu ouvert (la
- * liste des tableaux comprise).
+ * Ignorés avec Alt, Maj ou Méta, dans un champ de saisie (nom d'une colonne
+ * ajoutée ou renommée, perdu en quittant le tableau), et dans un dialogue ou
+ * un menu ouvert (la liste des tableaux comprise).
  * @param event Touche pressée
  */
 function onGlobalKeydown(event: KeyboardEvent) {
   if (!event.ctrlKey || event.altKey || event.shiftKey || event.metaKey || event.defaultPrevented) return
 
   const digit = /^(?:Digit|Numpad)([1-9])$/.exec(event.code)?.[1]
-  if (!digit || isInOverlay(event.target) || isInOverlay(document.activeElement)) return
+  if (!digit || isEditableTarget(event.target) || isInOverlay(event.target) || isInOverlay(document.activeElement)) {
+    return
+  }
 
   event.preventDefault()
   const board = boards.value[Number(digit) - 1]
