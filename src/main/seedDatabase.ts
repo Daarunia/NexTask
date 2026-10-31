@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { DB_PATH, SEEDS_PATH } from './constants.js'
+import { SEEDS_PATH } from './constants.js'
+import { DB_PATH } from './database/location.js'
 import type { Locale } from './shared/settings.constants.js'
 import Logger from 'electron-log'
 

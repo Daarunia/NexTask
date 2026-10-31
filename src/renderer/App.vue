@@ -10,12 +10,14 @@ import UpdateToast from './components/UpdateToast.vue'
 import ActionToast from './components/ActionToast.vue'
 import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
+import { useBoardStore } from './stores/Board'
 import { useTagStore } from './stores/Tag'
 import { useUpdateStore } from './stores/Update'
 import { registerConfirmPopup } from './utils/confirm.helper'
 
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
+const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const updateStore = useUpdateStore()
 const route = useRoute()
@@ -56,10 +58,10 @@ onMounted(() => {
     })
   }
 
-  // Clic sur une notification qui n'annonçait qu'une tâche : retour au tableau, qui l'ouvre
+  // Clic sur une notification qui n'annonçait qu'une tâche, retour au tableau de la tâche, qui l'ouvre
   if (!bare.value) {
     stopOpenTaskListener = globalThis.notifications.onOpenTask((taskId) => {
-      taskStore.requestOpenTask(taskId)
+      boardStore.showTask(taskId)
       router.push({ name: 'Home' })
     })
   }

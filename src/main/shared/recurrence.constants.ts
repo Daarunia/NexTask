@@ -96,6 +96,19 @@ export interface RecurrenceSummary {
   // date de la prochaine occurrence (pas de sa création) ; null une fois la série terminée,
   // ou en mode `completion` tant qu'une occurrence attend son archivage
   nextRunAt: string | null
+  // Tableau des prochaines occurrences, null si ce tableau a été supprimé (absent d'un cache antérieur)
+  boardId?: number | null
+}
+
+/**
+ * Place du modèle d'une série : colonne et tableau de ses prochaines
+ * occurrences, null s'ils ont été supprimés. Renvoyée par un déplacement de
+ * tâche qui l'a changée, et rendue à la série par son annulation (POST
+ * /tasks/:id/move).
+ */
+export interface SeriesPlacement {
+  stageId: number | null
+  boardId: number | null
 }
 
 /**

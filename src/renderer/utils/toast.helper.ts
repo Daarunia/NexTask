@@ -55,6 +55,21 @@ export function useSuccessToast() {
 }
 
 /**
+ * Information neutre sur une action faite, ni succès ni erreur, sans
+ * annulation possible (ex. un tableau supprimé et ses tâches archivées).
+ * À appeler dans le setup d'un composant, comme `useErrorToast`.
+ *
+ * @returns Fonction affichant un toast d'information
+ */
+export function useInfoToast() {
+  const toast = useToast()
+
+  return (summary: string, detail?: string) => {
+    toast.add({ severity: 'secondary', summary, detail, life: SUCCESS_TOAST_LIFE })
+  }
+}
+
+/**
  * Toast proposant d'annuler une action qui vient d'être faite, pendant
  * quelques secondes. À appeler dans le setup d'un composant, comme `useErrorToast`.
  * Le toast est affiché par UndoToast.vue, qui exécute `undo` ou `commit`.

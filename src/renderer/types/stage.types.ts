@@ -9,5 +9,6 @@ export interface Stage {
   name: string
   position: number
   color?: TagColor | null // couleur de la palette des tags, null sans couleur
+  boardId: number // tableau de la colonne, qui donne aussi celui de ses tâches
   tasks: Task[]
 }

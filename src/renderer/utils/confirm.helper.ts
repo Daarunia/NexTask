@@ -8,6 +8,7 @@ export interface DangerConfirmOptions {
   message: string // question posée
   acceptLabel: string // libellé du bouton rouge (« Supprimer », « Archiver »…)
   accept: () => unknown // action confirmée
+  onClose?: () => void // bulle fermée, confirmée, annulée ou refermée par un clic ailleurs ou Échap
 }
 
 /** Méthodes internes de la ConfirmPopup PrimeVue utilisées pour la placer. */
@@ -48,7 +49,7 @@ export function isConfirmOpen(): boolean {
 export function useDangerConfirm() {
   const confirm = useConfirm()
 
-  return ({ target, message, acceptLabel, accept }: DangerConfirmOptions) => {
+  return ({ target, message, acceptLabel, accept, onClose }: DangerConfirmOptions) => {
     confirm.require({
       target,
       message,
@@ -60,7 +61,12 @@ export function useDangerConfirm() {
         'data-testid': 'btn-confirm-reject',
       },
       acceptProps: { label: acceptLabel, severity: 'danger', 'data-testid': 'btn-confirm-accept' },
-      accept,
+      accept: () => {
+        onClose?.()
+        return accept()
+      },
+      reject: onClose,
+      onHide: onClose,
     })
 
     // PrimeVue ne place la bulle que lorsque le clic qui l'ouvre remonte au

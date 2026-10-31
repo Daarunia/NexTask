@@ -5,10 +5,12 @@ import {
   CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
 } from '../../shared/checklist.constants.js'
 import type { ImportProblem } from '../../shared/data.constants.js'
+import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
+import { boardKey } from '../../shared/board.helper.js'
 
 /**
- * Helpers purs de l'import des checklists (POST /data/import), sans accès à la
- * base.
+ * Helpers purs de l'import (POST /data/import), sans accès à la base. Les
+ * checklists d'abord, puis les tableaux.
  *
  * Le schéma d'import ne borne ni la longueur des textes ni le nombre de points,
  * car un fichier un peu trop gros ne doit pas faire refuser tout l'import. Les
@@ -203,4 +205,136 @@ export function planTemplateImport(templates: readonly ExportedChecklistTemplate
   }
 
   return { templates: planned, problems }
+}
+
+/**
+ * Couleur d'une colonne ou d'un tableau importés, gardée si elle fait partie
+ * de la palette, sinon l'élément est importé sans couleur.
+ *
+ * @param color Couleur lue dans le fichier
+ */
+export function paletteColor(color: string | null | undefined): TagColor | null {
+  return TAG_COLORS.includes(color as TagColor) ? (color as TagColor) : null
+}
+
+/** Tableau, tel qu'exporté. */
+export interface ExportedBoard {
+  id: number
+  name: string
+  color?: string | null
+  position: number
+  createdAt?: string
+}
+
+/** Tableau prêt à écrire, nom nettoyé et couleur de la palette. */
+export interface ImportedBoard {
+  id: number
+  name: string
+  nameKey: string
+  color: TagColor | null
+  position: number
+  createdAt?: string
+}
+
+/** Partie du fichier qui place colonnes, tâches et séries dans leurs tableaux. */
+export interface BoardImportData {
+  // Absent d'un export antérieur aux tableaux
+  boards?: ExportedBoard[]
+  stages: { id: number; boardId?: number }[]
+}
+
+/**
+ * Premier doublon d'une liste de clés, ou `undefined`.
+ *
+ * @param keys Clés à contrôler
+ */
+export function firstDuplicate<T>(keys: T[]): T | undefined {
+  const seen = new Set<T>()
+  for (const key of keys) {
+    if (seen.has(key)) return key
+    seen.add(key)
+  }
+  return undefined
+}
+
+/**
+ * Contrôle des tableaux d'un fichier. Ids et noms (casse ignorée) uniques, et
+ * chaque colonne dans un tableau du fichier. Une colonne sans `boardId` prend
+ * le premier tableau, elle n'est donc refusée que si le fichier déclare une
+ * liste de tableaux vide. Un fichier sans `boards` (antérieur aux tableaux)
+ * n'est pas contrôlé ici, tout y rejoint un tableau par défaut.
+ *
+ * @param data Fichier reçu
+ * @returns Le motif du refus, ou `null` si les tableaux sont cohérents
+ */
+export function findBoardProblem(data: BoardImportData): ImportProblem | null {
+  if (data.boards === undefined) return null
+
+  const duplicateId = firstDuplicate(data.boards.map((board) => board.id))
+  if (duplicateId !== undefined) return { code: 'duplicateBoard', params: { id: duplicateId } }
+
+  const duplicateName = firstDuplicate(data.boards.map((board) => boardKey(board.name.trim())))
+  if (duplicateName !== undefined) return { code: 'duplicateBoardName', params: { name: duplicateName } }
+
+  const boardIds = new Set(data.boards.map((board) => board.id))
+  for (const stage of data.stages) {
+    const known = stage.boardId === undefined ? boardIds.size > 0 : boardIds.has(stage.boardId)
+    if (!known) return { code: 'stageUnknownBoard', params: { id: stage.id } }
+  }
+
+  return null
+}
+
+/**
+ * Tableaux à écrire, triés dans l'ordre d'affichage (position puis id, comme
+ * GET /boards), le premier étant celui des colonnes sans `boardId`. Ids et
+ * positions sont repris du fichier, le nom est nettoyé (trim).
+ *
+ * @param boards Tableaux lus dans le fichier, déjà contrôlés (cf. findBoardProblem)
+ * @returns Les tableaux, `null` pour un fichier antérieur aux tableaux
+ */
+export function importedBoards(boards: readonly ExportedBoard[] | undefined): ImportedBoard[] | null {
+  if (boards === undefined) return null
+  return boards
+    .map((board) => {
+      const name = board.name.trim()
+      return {
+        id: board.id,
+        name,
+        nameKey: boardKey(name),
+        color: paletteColor(board.color),
+        position: board.position,
+        createdAt: board.createdAt,
+      }
+    })
+    .sort((a, b) => a.position - b.position || a.id - b.id)
+}
+
+/** Choix du tableau des éléments importés (cf. boardPlacement). */
+export interface BoardPlacement {
+  // Tableau d'une colonne du fichier
+  stage(boardId: number | undefined): number
+  // Tableau d'une tâche archivée ou d'une série sans colonne, null s'il est inconnu
+  kept(boardId: number | null | undefined): number | null
+}
+
+/**
+ * Tableau des éléments importés, hors tâches et séries qui ont une colonne
+ * (elles prennent le tableau de leur colonne, cf. stageBoardIds). Dans un
+ * fichier antérieur aux tableaux, tout rejoint le tableau par défaut. Sinon,
+ * une colonne garde son tableau, ou prend le premier si elle n'en dit rien, et
+ * une tâche archivée ou une série sans colonne garde le sien s'il est dans le
+ * fichier, et n'en a plus sinon.
+ *
+ * @param boards Tableaux écrits (cf. importedBoards), `null` pour un fichier antérieur aux tableaux
+ * @param firstBoardId Premier tableau écrit, ou tableau par défaut créé pour l'import
+ */
+export function boardPlacement(boards: readonly ImportedBoard[] | null, firstBoardId: number): BoardPlacement {
+  if (boards === null) return { stage: () => firstBoardId, kept: () => firstBoardId }
+
+  const boardIds = new Set(boards.map((board) => board.id))
+  return {
+    stage: (boardId) => boardId ?? firstBoardId,
+    kept: (boardId) => (boardId != null && boardIds.has(boardId) ? boardId : null),
+  }
 }

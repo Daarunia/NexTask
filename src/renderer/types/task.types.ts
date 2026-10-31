@@ -15,6 +15,10 @@ export interface Task {
   isHistorized: boolean
   historizationDate?: Date
   stageId: number
+  // Tableau de la tâche, écrit par le serveur seul depuis sa colonne et gardé à
+  // l'archivage. Null pour une archive dont le tableau a été supprimé, absent
+  // d'un cache antérieur aux tableaux.
+  boardId?: number | null
   startDate?: Date | null // date de début de la tâche (null = effacée, envoyée telle quelle au serveur)
   notifiedAt?: Date // date d'envoi du rappel (évite de re-notifier en boucle)
   createdAt?: Date // géré par le serveur (@default(now()))
@@ -44,8 +48,13 @@ export interface Task {
  * Checklist : `checklistItems` absent la laisse inchangée, `[]` la vide, une
  * liste la remplace dans cet ordre (points sans `id` créés). La tâche renvoyée
  * porte `checklist` avec les ids des points créés.
+ *
+ * Sans `boardId`, que le serveur déduit seul de la colonne.
  */
-export type TaskInput = Omit<Task, 'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence' | 'checklist'> & {
+export type TaskInput = Omit<
+  Task,
+  'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence' | 'checklist' | 'boardId'
+> & {
   tags?: string[]
   checklistItems?: ChecklistItemInput[]
   recurrence?: RecurrenceInput | null

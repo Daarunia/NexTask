@@ -37,8 +37,13 @@ model Task {
   occurrenceDate    DateTime?
   // Checklist de la tâche, créée avec son premier point (cf. Checklist)
   checklist         Checklist?
+  // Tableau de la tâche, gardé à l'archivage (stageId passe alors à null).
+  // Null seulement pour une tâche archivée dont le tableau a été supprimé
+  boardId           Int?
+  board             Board?      @relation(fields: [boardId], references: [id], onDelete: SetNull)
 
   @@unique([recurrenceId, occurrenceDate])
+  @@index([boardId])
 }
 
 // entity "Étiquette"
@@ -60,6 +65,26 @@ model Stage {
   position    Int
   // Couleur de la palette des tags (cf. TAG_COLORS), null pour une colonne sans couleur
   color       String?
+  tasks       Task[]
+  recurrences Recurrence[]
+  // Tableau de la colonne, supprimée avec lui
+  boardId     Int
+  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+}
+
+// entity "Tableau", qui regroupe des colonnes et leurs tâches
+model Board {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  // Nom en minuscules, pour l'unicité sans tenir compte de la casse (cf. Tag.nameKey)
+  nameKey     String       @unique
+  // Couleur de la palette des tags (cf. TAG_COLORS), null sans couleur
+  color       String?
+  position    Int
+  createdAt   DateTime     @default(now())
+  stages      Stage[]
   tasks       Task[]
   recurrences Recurrence[]
 }
@@ -94,6 +119,9 @@ model Recurrence {
   // Textes des points des occurrences (string[]), toujours décochés à la génération
   checklistItems Json      @default("[]")
   tasks          Task[]
+  // Tableau des occurrences, repli quand la colonne du modèle a été supprimée
+  boardId        Int?
+  board          Board?    @relation(fields: [boardId], references: [id], onDelete: SetNull)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

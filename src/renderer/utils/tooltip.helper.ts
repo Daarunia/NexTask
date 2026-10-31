@@ -19,3 +19,16 @@ export const INFO_TOOLTIP_DELAY = 300
 export function infoTooltip(text: string, disabled = false): InfoTooltipOptions {
   return { value: text, class: 'info-tooltip', showDelay: INFO_TOOLTIP_DELAY, disabled }
 }
+
+/**
+ * Au survol d'un texte tronqué par des points de suspension, pose son texte
+ * complet en `title` (infobulle native), et le retire s'il tient en entier.
+ * À brancher sur `mouseenter` de l'élément qui tronque.
+ * @param event Survol de l'élément
+ */
+export function titleIfTruncated(event: MouseEvent) {
+  const el = event.currentTarget
+  if (!(el instanceof HTMLElement)) return
+  if (el.scrollWidth > el.clientWidth) el.title = el.textContent?.trim() ?? ''
+  else el.removeAttribute('title')
+}

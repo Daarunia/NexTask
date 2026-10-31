@@ -1,5 +1,5 @@
 /**
- * Export et import des données (colonnes, tâches, tags, séries récurrentes),
+ * Export et import des données (tableaux, colonnes, tâches, tags, séries récurrentes),
  * partagés entre le main, le renderer et les tests E2E. Fichier sans import,
  * cf. settings.constants.ts.
  */
@@ -15,6 +15,8 @@ export const EXPORT_VERSION = 1
  * tâches, les checklists des tâches aussi).
  */
 export interface DataCounts {
+  // Tableaux du fichier, ou tableau par défaut créé pour un fichier qui n'en a pas
+  boards: number
   stages: number
   tags: number
   tasks: number
@@ -34,6 +36,9 @@ export const IMPORT_PROBLEM_CODES = [
   'duplicateTagName',
   'duplicateTask',
   'duplicateRecurrence',
+  'duplicateBoard',
+  'duplicateBoardName',
+  'stageUnknownBoard',
   'recurrenceUnknownStage',
   'recurrenceUnknownTag',
   'taskUnknownStage',

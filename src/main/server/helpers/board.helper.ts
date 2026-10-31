@@ -1,0 +1,189 @@
+import type { Board, Prisma } from '../../prisma/generated/prisma/client.js'
+import { boardKey } from '../../shared/board.helper.js'
+import type { SeriesPlacement } from '../../shared/recurrence.constants.js'
+
+type TransactionClient = Prisma.TransactionClient
+
+/**
+ * Clés des colonnes d'un nouveau tableau en mode `default`, dans l'ordre
+ * (`boards.defaultStages` des catalogues du main, mêmes textes que la seed
+ * 01_initial_stages.sql de chaque langue).
+ */
+export const DEFAULT_STAGE_KEYS = ['todo', 'inProgress', 'waiting', 'done'] as const
+
+/**
+ * Ordre d'affichage des tableaux et des colonnes, par position puis par id
+ * (deux positions égales restent dans un ordre stable).
+ */
+export const POSITION_ORDER = [{ position: 'asc' }, { id: 'asc' }] satisfies Prisma.BoardOrderByWithRelationInput[]
+
+/**
+ * Premier tableau, dans l'ordre d'affichage. Null seulement pour une base
+ * abîmée, car les seeds en créent toujours un.
+ *
+ * @param tx Client Prisma, transaction en cours ou client global
+ */
+export async function firstBoard(tx: TransactionClient): Promise<Board | null> {
+  return tx.board.findFirst({ orderBy: POSITION_ORDER })
+}
+
+/**
+ * Cherche un tableau par son nom, sans tenir compte de la casse.
+ *
+ * @param tx Client Prisma (transaction ou client global)
+ * @param name Nom recherché (nettoyé ici)
+ * @returns Le tableau trouvé, ou `null`
+ */
+export async function findBoardByName(tx: TransactionClient, name: string): Promise<Board | null> {
+  return tx.board.findUnique({ where: { nameKey: boardKey(name.trim()) } })
+}
+
+/**
+ * Position d'un tableau ajouté en dernier, après la plus grande position (0
+ * s'il n'y en a aucun).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ */
+export async function nextBoardPosition(tx: TransactionClient): Promise<number> {
+  const { _max } = await tx.board.aggregate({ _max: { position: true } })
+  return _max.position === null ? 0 : _max.position + 1
+}
+
+/**
+ * Tableau retenu pour placer une tâche, le premier candidat qui existe encore,
+ * sinon le premier tableau. Un candidat nul ou absent est sauté.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param candidates Ids de tableau, par ordre de préférence
+ * @returns Id du tableau, null s'il n'existe aucun tableau
+ */
+export async function boardOrFirst(
+  tx: TransactionClient,
+  candidates: Array<number | null | undefined>,
+): Promise<number | null> {
+  for (const id of candidates) {
+    if (id === null || id === undefined) continue
+    const board = await tx.board.findUnique({ where: { id }, select: { id: true } })
+    if (board) return board.id
+  }
+  return (await firstBoard(tx))?.id ?? null
+}
+
+/**
+ * Première colonne d'un tableau, dans l'ordre d'affichage (même ordre que
+ * GET /stages).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param boardId Id du tableau
+ * @returns Colonne et tableau, null si le tableau n'a aucune colonne
+ */
+export async function firstStageOf(tx: TransactionClient, boardId: number): Promise<StagePlacement | null> {
+  const stage = await tx.stage.findFirst({
+    where: { boardId },
+    orderBy: POSITION_ORDER,
+    select: { id: true, boardId: true },
+  })
+  return stage && { stageId: stage.id, boardId: stage.boardId }
+}
+
+/**
+ * Première colonne du premier candidat qui existe encore et a une colonne,
+ * sinon celle du premier tableau. Un candidat nul ou absent est sauté, un
+ * tableau supprimé ou sans colonne aussi.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param candidates Ids de tableau, par ordre de préférence
+ * @returns Colonne et tableau, null si aucun de ces tableaux n'a de colonne
+ */
+export async function firstStageAmong(
+  tx: TransactionClient,
+  candidates: Array<number | null | undefined>,
+): Promise<StagePlacement | null> {
+  for (const id of candidates) {
+    if (id === null || id === undefined) continue
+    // Tableau supprimé : aucune colonne ne le désigne
+    const stage = await firstStageOf(tx, id)
+    if (stage) return stage
+  }
+
+  const first = await firstBoard(tx)
+  return first && firstStageOf(tx, first.id)
+}
+
+/** Place d'une tâche, sa colonne et le tableau de cette colonne. */
+export interface StagePlacement {
+  stageId: number
+  boardId: number
+}
+
+/**
+ * Place d'une tâche posée dans une colonne. Seul endroit, avec stageBoardIds
+ * pour l'import, qui dérive le tableau d'une tâche de sa colonne, toute
+ * écriture de `stageId` passe donc par ici (règle d'or, une tâche avec une
+ * colonne a le tableau de cette colonne).
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param stageId Id de la colonne
+ * @returns Colonne et tableau, null si la colonne n'existe pas
+ */
+export async function stagePlacement(tx: TransactionClient, stageId: number): Promise<StagePlacement | null> {
+  const stage = await tx.stage.findUnique({ where: { id: stageId }, select: { id: true, boardId: true } })
+  return stage && { stageId: stage.id, boardId: stage.boardId }
+}
+
+/**
+ * Place à rendre au modèle d'une série, reçue du client (annulation d'un
+ * déplacement de tâche). Une colonne qui existe donne aussi son tableau
+ * (règle d'or, comme pour une tâche). Une colonne ou un tableau supprimé
+ * entre-temps devient null, comme l'aurait fait sa suppression
+ * (`onDelete: SetNull`) si la série était restée en place.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param place Colonne et tableau demandés, chacun éventuellement null
+ * @returns Colonne et tableau à écrire dans la série
+ */
+export async function seriesPlacement(tx: TransactionClient, place: SeriesPlacement): Promise<SeriesPlacement> {
+  const stage = place.stageId === null ? null : await stagePlacement(tx, place.stageId)
+  if (stage) return stage
+
+  const board =
+    place.boardId === null ? null : await tx.board.findUnique({ where: { id: place.boardId }, select: { id: true } })
+  return { stageId: null, boardId: board?.id ?? null }
+}
+
+/**
+ * Tableau de chaque colonne de la base, lu d'un coup. Pendant de
+ * stagePlacement pour les écritures en masse (import), qui placent des
+ * milliers de tâches sans une requête par tâche.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @returns Id du tableau de chaque colonne, par id de colonne
+ */
+export async function stageBoardIds(tx: TransactionClient): Promise<Map<number, number>> {
+  const stages = await tx.stage.findMany({ select: { id: true, boardId: true } })
+  return new Map(stages.map((stage) => [stage.id, stage.boardId]))
+}
+
+/**
+ * Données d'écriture d'une tâche, tableau compris. Un `boardId` reçu du
+ * client est retiré, Fastify laissant passer une propriété non déclarée du
+ * corps. Avec un `stageId` numérique, `boardId` prend le tableau de cette
+ * colonne. Sans `stageId`, ou avec `null` (archivage), il ne change pas.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param data Champs reçus pour la tâche
+ * @returns Données à écrire, null si la colonne demandée n'existe pas
+ */
+export async function withStageBoard<T extends object>(
+  tx: TransactionClient,
+  data: T,
+): Promise<(Omit<T, 'boardId'> & { boardId?: number }) | null> {
+  const fields: Omit<T, 'boardId'> & { boardId?: unknown } = { ...data }
+  delete fields.boardId
+
+  const { stageId } = data as { stageId?: unknown }
+  if (typeof stageId !== 'number') return fields as Omit<T, 'boardId'>
+
+  const placement = await stagePlacement(tx, stageId)
+  return placement && { ...fields, boardId: placement.boardId }
+}

@@ -4,6 +4,7 @@ import { prisma } from '../server/prismaClient.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.helper.js'
 import { occurrenceVersion, seriesChecklistTexts } from '../server/helpers/recurrence.helper.js'
 import { templateItemRows } from '../server/helpers/checklist.helper.js'
+import { boardOrFirst, firstStageOf, stagePlacement, type StagePlacement } from '../server/helpers/board.helper.js'
 import { settingsStore } from '../stores/settings.js'
 import {
   countReached,
@@ -36,8 +37,10 @@ import { RECURRENCE_LEAD_DAYS_MAX } from '../shared/recurrence.constants.js'
  *   occurrence remise au tableau entre-temps fait de nouveau attendre la série ;
  * - occurrence déjà créée pour cette date (série reprise juste après une
  *   création anticipée) : la date est sautée, sans doublon ;
- * - aucune colonne au tableau : rien n'est créé et la série n'avance pas, elle
- *   reprendra au prochain passage.
+ * - colonne du modèle supprimée : l'occurrence naît dans la première colonne
+ *   du tableau de la série, ou du premier tableau si la série n'en a plus ;
+ * - aucune colonne dans ce tableau : rien n'est créé et la série n'avance pas,
+ *   elle reprendra au prochain passage.
  *
  * Les séries en pause ou terminées ne génèrent rien. Une série reprise ne
  * rattrape rien : elle repart de maintenant selon le calendrier, ou crée au
@@ -65,7 +68,7 @@ export interface RecurrenceGenerationResult {
   created: number // occurrences créées
   skipped: number // dates sautées (rattrapage, « Ne pas empiler », occurrence déjà là ou encore au tableau)
   ended: number // séries terminées par ce passage
-  waiting: number // séries en attente d'une colonne (aucune au tableau)
+  waiting: number // séries en attente d'une colonne (aucune dans leur tableau)
 }
 
 /** Issue de la génération d'une série. */
@@ -95,17 +98,19 @@ type SeriesWithTags = Prisma.RecurrenceGetPayload<{ include: { tags: { select: {
 type Blocker = 'existing' | 'pending' | null
 
 /**
- * Colonne de l'occurrence : celle du modèle, ou la première si elle a été
- * supprimée. Null s'il n'y a aucune colonne au tableau.
+ * Place de l'occurrence : la colonne du modèle, ou si elle a été supprimée la
+ * première colonne du tableau de la série, puis du premier tableau si la
+ * série n'a plus de tableau. Null si le tableau retenu n'a aucune colonne.
  *
  * @param tx Client Prisma de la transaction en cours
  * @param series Série
  */
-async function occurrenceStage(tx: Prisma.TransactionClient, series: SeriesWithTags) {
-  return (
-    (series.stageId === null ? null : await tx.stage.findUnique({ where: { id: series.stageId } })) ??
-    (await tx.stage.findFirst({ orderBy: [{ position: 'asc' }, { id: 'asc' }] }))
-  )
+async function occurrenceStage(tx: Prisma.TransactionClient, series: SeriesWithTags): Promise<StagePlacement | null> {
+  const own = series.stageId === null ? null : await stagePlacement(tx, series.stageId)
+  if (own) return own
+
+  const boardId = await boardOrFirst(tx, [series.boardId])
+  return boardId === null ? null : firstStageOf(tx, boardId)
 }
 
 /**
@@ -140,16 +145,17 @@ async function occurrenceBlocker(tx: Prisma.TransactionClient, series: SeriesWit
  *
  * @param tx Client Prisma de la transaction en cours
  * @param series Série
- * @param stageId Colonne de l'occurrence
+ * @param placement Colonne de l'occurrence et son tableau
  * @param date Date de l'occurrence
  * @returns Id de la tâche créée
  */
 async function createOccurrence(
   tx: Prisma.TransactionClient,
   series: SeriesWithTags,
-  stageId: number,
+  placement: StagePlacement,
   date: Date,
 ): Promise<number> {
+  const { stageId } = placement
   let position: number
   if (settingsStore.get('newTaskPosition') === 'top') {
     position = 0
@@ -164,7 +170,7 @@ async function createOccurrence(
       title: series.title,
       description: series.description,
       version: occurrenceVersion(series.version),
-      stageId,
+      ...placement,
       position,
       startDate: date,
       recurrenceId: series.id,
@@ -238,7 +244,7 @@ async function generateSeries(id: number, now: Date): Promise<SeriesOutcome | nu
     if (blocker) {
       Logger.info(`[recurrence] Série ${id} : date du ${date.toISOString()} sautée, ${BLOCKER_LABELS[blocker]}`)
     }
-    const createdId = blocker ? null : await createOccurrence(tx, series, stage.id, date)
+    const createdId = blocker ? null : await createOccurrence(tx, series, stage, date)
 
     const generatedCount = series.generatedCount + (createdId === null ? 0 : 1)
     const { nextRunAt, ended } = seriesAfter({ ...rule, generatedCount }, date, blocker)

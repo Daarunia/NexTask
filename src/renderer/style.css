@@ -87,3 +87,16 @@ body {
 .menu-option-current :is(.p-tieredmenu-item-label, .p-contextmenu-item-label)::after {
   content: ' ✓';
 }
+
+/* Annexe d'une entrée, à droite en discret (première colonne d'un tableau, menu de carte) */
+.p-contextmenu-item-link[data-annex]::after {
+  content: attr(data-annex);
+  max-width: 8rem;
+  margin-left: auto;
+  padding-left: 1rem;
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

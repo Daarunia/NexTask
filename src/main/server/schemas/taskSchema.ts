@@ -14,6 +14,10 @@ export const taskSchema = {
     historizationDate: { type: ['string', 'null'], format: 'date-time' },
     // null pour les tâches archivées (détachées de leur colonne)
     stageId: { type: ['integer', 'null'] },
+    // Tableau de la tâche, écrit par le serveur seul (celui de sa colonne, gardé à
+    // l'archivage), null pour une tâche archivée dont le tableau a été supprimé. À
+    // déclarer ici, sinon Fastify le retire de toutes les réponses (GET /stages compris)
+    boardId: { type: ['integer', 'null'] },
     startDate: { type: ['string', 'null'], format: 'date-time' },
     notifiedAt: { type: ['string', 'null'], format: 'date-time' },
     createdAt: { type: 'string', format: 'date-time' },

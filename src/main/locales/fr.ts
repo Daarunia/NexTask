@@ -31,11 +31,68 @@ export const fr = {
     // Nom de la copie d'un modèle, numérotée ensuite si elle est déjà prise
     copyName: '{name} (copie)',
   },
+  // Tableaux
+  boards: {
+    // Nom du tableau créé quand il n'en existe aucun, même texte que la seed 00_initial_board.sql
+    defaultName: 'Mon tableau',
+    // Colonnes d'un nouveau tableau en mode « default », mêmes textes que la seed 01_initial_stages.sql
+    defaultStages: {
+      todo: 'A faire',
+      inProgress: 'En cours',
+      waiting: 'En attente',
+      done: 'Terminé',
+    },
+  },
   dataTransfer: {
     exportTitle: 'Exporter les données',
     importTitle: 'Importer des données',
     fileFilter: 'Export NexTask',
     unreadableFile: "Le fichier n'est pas un fichier JSON lisible",
+  },
+  // Emplacement de la base (cf. system/databaseLocation.ts)
+  databaseLocation: {
+    openTitle: 'Ouvrir une base NexTask',
+    moveTitle: 'Choisir le dossier de la base',
+    fileFilter: 'Base NexTask',
+    invalidTitle: 'Base refusée',
+    problems: {
+      sameLocation: 'NexTask utilise déjà cette base',
+      alreadyExists:
+        'Ce dossier contient déjà une base nextask.db. Ouvre-la avec « Ouvrir une base… » ou choisis un autre dossier',
+      notWritable: "La base n'a pas pu être copiée dans ce dossier",
+      copyFailed: 'La copie de la base était incomplète, elle a été supprimée',
+      unreadable: 'Le fichier est introuvable ou illisible',
+      notSqlite: "Ce fichier n'est pas une base de données",
+      notNextask: "Cette base de données n'est pas une base NexTask",
+      newerVersion:
+        'Cette base a été mise à jour par une version plus récente de NexTask. Mets NexTask à jour pour l’ouvrir',
+    },
+    useDefault: {
+      title: 'Emplacement par défaut',
+      message: "Revenir à l'emplacement par défaut de la base ?",
+      detail:
+        "NexTask redémarrera sur la base de {path}. Tu peux la rouvrir telle qu'elle était, ou y copier la base actuelle (l'ancienne est alors gardée dans le dossier des sauvegardes).",
+      reopen: 'Rouvrir telle quelle',
+      copy: 'Copier la base actuelle',
+      cancel: 'Annuler',
+    },
+    missing: {
+      title: 'Base introuvable',
+      message: 'La base de données de NexTask est introuvable.',
+      detail: '{path}\n\nElle est peut-être sur une clé USB débranchée ou un lecteur réseau déconnecté.',
+      retry: 'Réessayer',
+      chooseOther: 'Choisir une autre base…',
+      useDefault: "Utiliser l'emplacement par défaut",
+      quit: 'Quitter',
+    },
+    locked: {
+      title: 'Base peut-être déjà ouverte',
+      message: 'Cette base est peut-être ouverte sur un autre poste.',
+      detail:
+        "Ouverte par {hostname} le {date}.\n{path}\n\nL'ouvrir ici en même temps peut faire perdre des modifications. Si NexTask n'y est plus ouvert (arrêt brutal), tu peux l'ouvrir sans risque.",
+      openAnyway: 'Ouvrir quand même',
+      quit: 'Quitter',
+    },
   },
   // Motifs de refus et anomalies d'un import (cf. data.constants.ts, ImportProblemCode)
   importProblems: {
@@ -46,6 +103,9 @@ export const fr = {
     duplicateTagName: 'Plusieurs tags portent le nom « {name} »',
     duplicateTask: 'Tâche {id} présente plusieurs fois',
     duplicateRecurrence: 'Série {id} présente plusieurs fois',
+    duplicateBoard: 'Tableau {id} présent plusieurs fois',
+    duplicateBoardName: 'Plusieurs tableaux portent le nom « {name} »',
+    stageUnknownBoard: 'La colonne {id} référence un tableau absent du fichier',
     recurrenceUnknownStage: 'La série {id} référence une colonne absente du fichier ({ref})',
     recurrenceUnknownTag: 'La série {id} référence un tag absent du fichier ({ref})',
     taskUnknownStage: 'La tâche {id} référence une colonne absente du fichier ({ref})',

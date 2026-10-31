@@ -17,6 +17,8 @@ export class ArchivesPage {
   // Recherche, et message quand aucune tâche ne correspond
   readonly search: Locator
   readonly noMatch: Locator
+  // Filtre par tableau, présent avec plusieurs tableaux ou des tâches d'un tableau supprimé
+  readonly boardFilter: Locator
 
   /**
    * Constructeur
@@ -33,6 +35,7 @@ export class ArchivesPage {
     this.backButton = this.root.getByTestId('btn-archives-back')
     this.search = this.root.getByTestId('archives-search')
     this.noMatch = this.root.getByTestId('archives-no-match')
+    this.boardFilter = this.root.getByTestId('archives-board-filter')
   }
 
   /**
@@ -65,6 +68,32 @@ export class ArchivesPage {
    */
   checklistBadge(title: string): Locator {
     return this.item(title).getByTestId('archived-task-checklist')
+  }
+
+  /**
+   * Tableau d'une ligne (pastille et nom, « Tableau supprimé »), absent avec un seul tableau.
+   * @param title Titre exact de la tâche
+   */
+  boardOf(title: string): Locator {
+    return this.item(title).getByTestId('archived-task-board')
+  }
+
+  /**
+   * Filtre la liste sur un tableau.
+   * @param name Nom exact du choix (« Tous les tableaux », un tableau, « Tableau supprimé »)
+   */
+  async filterByBoard(name: string) {
+    await this.boardFilter.click()
+    await this.page.getByRole('option', { name, exact: true }).click()
+    await expect(this.boardFilter).toContainText(name)
+  }
+
+  /**
+   * Bouton de restauration d'une ligne (« Restaurer », ou « Restaurer ici » pour un tableau supprimé).
+   * @param title Titre exact de la tâche
+   */
+  restoreButton(title: string): Locator {
+    return this.item(title).getByTestId('btn-restore-task')
   }
 
   /**

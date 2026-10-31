@@ -20,6 +20,7 @@ export interface RecurringTask {
   version: string
   position: number
   stageId: number | null
+  boardId: number | null
   isHistorized: boolean
   historizationDate: string | null
   startDate: string | null

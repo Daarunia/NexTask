@@ -3,11 +3,13 @@ import type { Page } from '@playwright/test'
 import { type AppSettings, DEFAULT_SETTINGS, type WindowState } from '../../../src/main/shared/settings.constants'
 import type { Header } from '../../components/Header'
 import type { SettingsPage } from '../../components/SettingsPage'
+import { API } from '../../helpers/api.helper'
 
 /**
  * Tests E2E de la réinitialisation des paramètres depuis la page Paramètres :
  * confirmation, retour aux valeurs par défaut affichées et enregistrées, et
- * conservation de la dernière taille de la fenêtre.
+ * conservation de la dernière taille de la fenêtre, des colonnes repliées et
+ * du dernier tableau affiché.
  *
  * Un rechargement de la page tient lieu de redémarrage : le renderer relit
  * alors les paramètres enregistrés côté main.
@@ -117,16 +119,24 @@ test('annuler la confirmation ne modifie aucun réglage', async ({ page, header,
   await expectChangedSettings(header, settingsPage)
 })
 
-test('conserve la taille de la fenêtre et les colonnes repliées', async ({ page, header, settingsPage }) => {
+test('conserve la taille de la fenêtre, les colonnes repliées et le dernier tableau', async ({
+  page,
+  header,
+  settingsPage,
+}) => {
   const windowState: WindowState = { x: 40, y: 30, width: 1000, height: 700, maximized: false }
   const collapsedStageIds = [2, 4]
+  // Id du tableau par défaut lu par l'API, il change à chaque reset
+  const boards = (await (await page.request.get(`${API}/boards`)).json()) as { id: number }[]
+  const lastBoardId = boards[0].id
   await page.evaluate(
-    async ([state, ids]) => {
+    async ([state, ids, boardId]) => {
       const bridge = (globalThis as unknown as { settings: SettingsBridge }).settings
       await bridge.set('windowState', state)
       await bridge.set('collapsedStageIds', ids)
+      await bridge.set('lastBoardId', boardId)
     },
-    [windowState, collapsedStageIds] as const,
+    [windowState, collapsedStageIds, lastBoardId] as const,
   )
 
   await header.goSettings()
@@ -134,5 +144,5 @@ test('conserve la taille de la fenêtre et les colonnes repliées', async ({ pag
   await settingsPage.confirmAcceptButton.click()
   await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
 
-  expect(await storedSettings(page)).toEqual({ ...TEST_DEFAULTS, windowState, collapsedStageIds })
+  expect(await storedSettings(page)).toEqual({ ...TEST_DEFAULTS, windowState, collapsedStageIds, lastBoardId })
 })
