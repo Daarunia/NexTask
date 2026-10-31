@@ -506,7 +506,8 @@ export const es: MessageSchema = {
       autoBackupDescription:
         'Copia diaria de la base de datos en la carpeta «backups» de la carpeta de datos. Se conservan las 7 últimas.',
       dataFolder: 'Carpeta de datos',
-      dataFolderDescription: 'Base de datos y copias de seguridad, para abrir en el explorador de archivos.',
+      dataFolderDescription:
+        'Copias de seguridad y base de datos en su ubicación predeterminada, para abrir en el explorador de archivos.',
       open: 'Abrir',
       logsFolder: 'Carpeta de registros',
       logsFolderDescription: 'Archivos de registro de NexTask, útiles para informar de un problema.',
@@ -540,6 +541,25 @@ export const es: MessageSchema = {
       importFailedDetail: 'No se ha modificado ningún dato.',
       reloadFailed: 'Recarga imposible',
       reloadFailedDetail: 'Los datos se han importado. Reinicia NexTask para verlos.',
+      databaseLocation: 'Ubicación de la base de datos',
+      databaseLocationDefault: '{path} (ubicación predeterminada)',
+      databaseLocationCustom: '{path} (ubicación elegida)',
+      changeLocation: 'Cambiar de ubicación',
+      changeLocationDescription:
+        'Mueve la base de datos a una carpeta (sincronizada, memoria USB, unidad de red) o abre una base de datos de NexTask existente; después NexTask se reinicia. Las copias de seguridad se quedan en la carpeta de datos.',
+      moveDatabase: 'Mover…',
+      openDatabase: 'Abrir una base de datos…',
+      useDefaultLocation: 'Ubicación predeterminada',
+      moveConfirm:
+        'La base de datos se copiará en la carpeta elegida y NexTask se reiniciará con ella. La base de datos actual se queda donde está. ¿Continuar?',
+      openConfirm:
+        'NexTask se reiniciará con la base de datos elegida. La base de datos actual se queda donde está. ¿Continuar?',
+      chooseFolder: 'Elegir la carpeta',
+      locationRejected: 'Ubicación rechazada',
+      locationFailed: 'No se ha podido cambiar la ubicación',
+      locationFailedDetail: 'NexTask conserva su base de datos actual.',
+      relaunching: 'Reiniciando NexTask…',
+      relaunchingDetail: 'Abriendo la base de datos {path}',
       counts: {
         boards: '{count} tablero | {count} tablero | {count} tableros',
         stages: '{count} columna | {count} columna | {count} columnas',

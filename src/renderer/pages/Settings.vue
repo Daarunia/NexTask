@@ -289,6 +289,8 @@
             />
           </SettingsRow>
 
+          <DatabaseLocationSetting />
+
           <DataTransferSetting />
 
           <SettingsRow
@@ -366,6 +368,7 @@ import SettingsRow from '../components/settings/SettingsRow.vue'
 import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
 import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
+import DatabaseLocationSetting from '../components/settings/DatabaseLocationSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'

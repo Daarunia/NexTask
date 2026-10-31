@@ -508,7 +508,7 @@ export const pt: MessageSchema = {
       autoBackupDescription:
         'Cópia diária do banco de dados na pasta “backups” da pasta de dados. As 7 últimas são mantidas.',
       dataFolder: 'Pasta de dados',
-      dataFolderDescription: 'Banco de dados e backups, para abrir no explorador de arquivos.',
+      dataFolderDescription: 'Backups e banco de dados no local padrão, para abrir no explorador de arquivos.',
       open: 'Abrir',
       logsFolder: 'Pasta de logs',
       logsFolderDescription: 'Arquivos de log do NexTask, úteis para relatar um problema.',
@@ -542,6 +542,25 @@ export const pt: MessageSchema = {
       importFailedDetail: 'Nenhum dado foi alterado.',
       reloadFailed: 'Recarregamento impossível',
       reloadFailedDetail: 'Os dados foram importados. Reinicie o NexTask para exibi-los.',
+      databaseLocation: 'Local do banco de dados',
+      databaseLocationDefault: '{path} (local padrão)',
+      databaseLocationCustom: '{path} (local escolhido)',
+      changeLocation: 'Mudar de local',
+      changeLocationDescription:
+        'Mova o banco de dados para uma pasta (sincronizada, pen drive, unidade de rede) ou abra um banco de dados do NexTask existente; depois o NexTask é reiniciado. Os backups ficam na pasta de dados.',
+      moveDatabase: 'Mover…',
+      openDatabase: 'Abrir um banco…',
+      useDefaultLocation: 'Local padrão',
+      moveConfirm:
+        'O banco de dados será copiado para a pasta escolhida e o NexTask será reiniciado com ele. O banco de dados atual fica onde está. Continuar?',
+      openConfirm:
+        'O NexTask será reiniciado com o banco de dados escolhido. O banco de dados atual fica onde está. Continuar?',
+      chooseFolder: 'Escolher a pasta',
+      locationRejected: 'Local recusado',
+      locationFailed: 'Não foi possível mudar o local',
+      locationFailedDetail: 'O NexTask mantém o banco de dados atual.',
+      relaunching: 'Reiniciando o NexTask…',
+      relaunchingDetail: 'Abrindo o banco de dados {path}',
       counts: {
         boards: '{count} quadro | {count} quadro | {count} quadros',
         stages: '{count} coluna | {count} coluna | {count} colunas',

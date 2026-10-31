@@ -1,5 +1,6 @@
 import type { AppSettings } from '../../main/shared/settings.constants'
 import type { DataTransferResult } from '../../main/shared/data.constants'
+import type { DatabaseLocation, DatabaseLocationResult } from '../../main/shared/database.constants'
 import type { LocaleState } from '../../main/shared/i18n.constants'
 import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
 import type { UpdateStatus } from '../../main/shared/update.constants'
@@ -38,7 +39,16 @@ declare global {
   // Ouverture des dossiers de l'app dans l'explorateur de fichiers
   var folders: {
     openData: () => Promise<void>
+    openDatabase: () => Promise<void> // dossier de la base, ailleurs si elle a été déplacée
     openLogs: () => Promise<void>
+  }
+
+  // Emplacement de la base, changé via une boîte de dialogue native puis un redémarrage
+  var database: {
+    getLocation: () => Promise<DatabaseLocation>
+    move: () => Promise<DatabaseLocationResult> // copie la base dans un dossier choisi
+    open: () => Promise<DatabaseLocationResult> // ouvre une base NexTask existante
+    useDefault: () => Promise<DatabaseLocationResult> // revient à l'emplacement par défaut
   }
 
   // Section « À propos » : version de l'app et liens ouverts dans le navigateur

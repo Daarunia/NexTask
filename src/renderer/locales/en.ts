@@ -504,7 +504,7 @@ export const en: MessageSchema = {
       autoBackupDescription:
         'Daily copy of the database in the “backups” folder of the data folder. The last 7 are kept.',
       dataFolder: 'Data folder',
-      dataFolderDescription: 'Database and backups, to open in the file explorer.',
+      dataFolderDescription: 'Backups and the database at its default location, to open in the file explorer.',
       open: 'Open',
       logsFolder: 'Logs folder',
       logsFolderDescription: 'NexTask log files, useful to report a problem.',
@@ -538,6 +538,24 @@ export const en: MessageSchema = {
       importFailedDetail: 'No data was changed.',
       reloadFailed: 'Reload failed',
       reloadFailedDetail: 'The data was imported. Restart NexTask to display it.',
+      databaseLocation: 'Database location',
+      databaseLocationDefault: '{path} (default location)',
+      databaseLocationCustom: '{path} (chosen location)',
+      changeLocation: 'Change location',
+      changeLocationDescription:
+        'Move the database to a folder (synced folder, USB drive, network drive) or open an existing NexTask database, then NexTask restarts. Backups stay in the data folder.',
+      moveDatabase: 'Move…',
+      openDatabase: 'Open a database…',
+      useDefaultLocation: 'Default location',
+      moveConfirm:
+        'The database will be copied to the chosen folder, then NexTask will restart on it. The current database stays where it is. Continue?',
+      openConfirm: 'NexTask will restart on the chosen database. The current database stays where it is. Continue?',
+      chooseFolder: 'Choose the folder',
+      locationRejected: 'Location rejected',
+      locationFailed: 'Could not change the location',
+      locationFailedDetail: 'NexTask keeps its current database.',
+      relaunching: 'Restarting NexTask…',
+      relaunchingDetail: 'Opening the database {path}',
       counts: {
         boards: '{count} board | {count} board | {count} boards',
         stages: '{count} column | {count} column | {count} columns',

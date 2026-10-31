@@ -516,7 +516,8 @@ export const fr = {
       autoBackupDescription:
         'Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées.',
       dataFolder: 'Dossier des données',
-      dataFolderDescription: "Base de données et sauvegardes, à ouvrir dans l'explorateur de fichiers.",
+      dataFolderDescription:
+        "Sauvegardes et base à son emplacement par défaut, à ouvrir dans l'explorateur de fichiers.",
       open: 'Ouvrir',
       logsFolder: 'Dossier des journaux',
       logsFolderDescription: 'Fichiers de log de NexTask, utiles pour signaler un problème.',
@@ -550,6 +551,24 @@ export const fr = {
       importFailedDetail: "Aucune donnée n'a été modifiée.",
       reloadFailed: 'Rechargement impossible',
       reloadFailedDetail: 'Les données ont été importées. Relance NexTask pour les afficher.',
+      databaseLocation: 'Emplacement de la base',
+      databaseLocationDefault: '{path} (emplacement par défaut)',
+      databaseLocationCustom: '{path} (emplacement choisi)',
+      changeLocation: "Changer d'emplacement",
+      changeLocationDescription:
+        'Déplace la base dans un dossier (synchronisé, clé USB, lecteur réseau) ou ouvre une base NexTask existante, puis NexTask redémarre. Les sauvegardes restent dans le dossier des données.',
+      moveDatabase: 'Déplacer…',
+      openDatabase: 'Ouvrir une base…',
+      useDefaultLocation: 'Emplacement par défaut',
+      moveConfirm:
+        'La base sera copiée dans le dossier choisi, puis NexTask redémarrera dessus. La base actuelle reste en place. Continuer ?',
+      openConfirm: 'NexTask redémarrera sur la base choisie. La base actuelle reste en place. Continuer ?',
+      chooseFolder: 'Choisir le dossier',
+      locationRejected: 'Emplacement refusé',
+      locationFailed: "Changement d'emplacement impossible",
+      locationFailedDetail: 'NexTask garde sa base actuelle.',
+      relaunching: 'Redémarrage de NexTask…',
+      relaunchingDetail: 'Ouverture de la base {path}',
       counts: {
         boards: '{count} tableau | {count} tableau | {count} tableaux',
         stages: '{count} colonne | {count} colonne | {count} colonnes',
