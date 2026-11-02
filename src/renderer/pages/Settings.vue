@@ -99,6 +99,21 @@
           </SettingsRow>
 
           <SettingsRow
+            :label="t('settings.tasks.dateMinuteStep')"
+            :description="t('settings.tasks.dateMinuteStepDescription')"
+            testId="settings-row-date-minute-step"
+          >
+            <SelectButton
+              v-model="dateMinuteStep"
+              data-testid="settings-date-minute-step"
+              :options="dateMinuteStepOptions"
+              optionLabel="label"
+              optionValue="value"
+              :allowEmpty="false"
+            />
+          </SettingsRow>
+
+          <SettingsRow
             :label="t('settings.tasks.rememberFilter')"
             :description="t('settings.tasks.rememberFilterDescription')"
             testId="settings-row-remember-filter"
@@ -379,10 +394,12 @@ import { useSettingsStore } from '../stores/Settings'
 import { useErrorToast } from '../utils/toast.helper'
 import { getLogger } from '../utils/logger'
 import {
+  DATE_MINUTE_STEPS,
   INTERFACE_SCALES,
   SUPPORTED_LOCALES,
   type AppSettings,
   type ArchivePurgeDays,
+  type DateMinuteStep,
   type InterfaceScale,
   type Language,
   type NewTaskPosition,
@@ -443,6 +460,10 @@ const newTaskPositionOptions = computed<{ label: string; value: NewTaskPosition 
   { label: t('settings.tasks.positionBottom'), value: 'bottom' },
 ])
 
+const dateMinuteStepOptions = computed<{ label: string; value: DateMinuteStep }[]>(() =>
+  DATE_MINUTE_STEPS.map((minutes) => ({ label: t('settings.tasks.minuteStepValue', { minutes }), value: minutes })),
+)
+
 const notificationStyleOptions = computed<{ label: string; value: NotificationStyle }[]>(() => [
   { label: t('settings.notifications.stylePersistent'), value: 'reminder' },
   { label: t('settings.notifications.styleTemporary'), value: 'default' },
@@ -473,6 +494,7 @@ const language = settingModel('language')
 const theme = settingModel('theme')
 const interfaceScale = settingModel('interfaceScale')
 const newTaskPosition = settingModel('newTaskPosition')
+const dateMinuteStep = settingModel('dateMinuteStep')
 const confirmArchive = settingModel('confirmArchive')
 const showDevToolsButton = settingModel('showDevToolsButton')
 

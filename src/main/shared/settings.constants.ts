@@ -48,6 +48,12 @@ export const NEW_TASK_POSITIONS = ['top', 'bottom'] as const
 /** Place d'une nouvelle tâche dans sa colonne. */
 export type NewTaskPosition = (typeof NEW_TASK_POSITIONS)[number]
 
+/** Pas proposés pour les minutes du champ de date d'une tâche. */
+export const DATE_MINUTE_STEPS = [1, 5, 10, 15, 30] as const
+
+/** Pas des minutes du champ de date d'une tâche. */
+export type DateMinuteStep = (typeof DATE_MINUTE_STEPS)[number]
+
 /** Fenêtre au démarrage : maximisée, ou à sa dernière taille et position. */
 export const WINDOW_MODES = ['maximized', 'last'] as const
 
@@ -81,6 +87,7 @@ export interface AppSettings {
   taskVersions: string[] // versions proposées dans le formulaire de tâche, au moins une
   defaultTaskVersion: string // version présélectionnée à la création, prise dans taskVersions
   newTaskPosition: NewTaskPosition // nouvelle tâche en haut ou en bas de sa colonne
+  dateMinuteStep: DateMinuteStep // écart entre deux minutes du champ de date d'une tâche
   confirmArchive: boolean // confirmation demandée avant d'archiver une tâche depuis sa carte
   archivePurgeEnabled: boolean // suppression automatique des tâches archivées depuis longtemps
   archivePurgeDays: ArchivePurgeDays // ancienneté d'archivage au-delà de laquelle la purge supprime
@@ -110,6 +117,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   taskVersions: ['1.4.4', '1.4.5', '1.5.0'],
   defaultTaskVersion: '1.5.0',
   newTaskPosition: 'bottom',
+  dateMinuteStep: 1,
   confirmArchive: false,
   archivePurgeEnabled: false,
   archivePurgeDays: 90,

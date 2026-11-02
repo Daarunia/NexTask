@@ -21,6 +21,7 @@ export class SettingsPage {
   readonly versionAddButton: Locator
   readonly versionError: Locator
   readonly newTaskPositionSelect: Locator
+  readonly dateMinuteStepSelect: Locator
   readonly rememberFilterSwitch: Locator
   readonly confirmArchiveSwitch: Locator
   readonly notificationsSwitch: Locator
@@ -93,6 +94,7 @@ export class SettingsPage {
 
     // Section Tâches : position d'une nouvelle tâche
     this.newTaskPositionSelect = this.root.getByTestId('settings-new-task-position')
+    this.dateMinuteStepSelect = this.root.getByTestId('settings-date-minute-step')
 
     // Section Notifications : style des rappels
     this.notificationStyleSelect = this.root.getByTestId('settings-notification-style')
@@ -236,6 +238,14 @@ export class SettingsPage {
    */
   newTaskPositionOption(label: 'En haut' | 'En bas'): Locator {
     return this.newTaskPositionSelect.getByRole('button', { name: label, exact: true })
+  }
+
+  /**
+   * Option du sélecteur de pas des minutes du champ de date d'une tâche.
+   * @param label Libellé exact (« 1 min », « 5 min », « 10 min », « 15 min » ou « 30 min »)
+   */
+  dateMinuteStepOption(label: '1 min' | '5 min' | '10 min' | '15 min' | '30 min'): Locator {
+    return this.dateMinuteStepSelect.getByRole('button', { name: label, exact: true })
   }
 
   /**

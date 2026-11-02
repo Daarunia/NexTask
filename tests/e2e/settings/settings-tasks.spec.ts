@@ -1,11 +1,12 @@
 import { test, expect } from '../../fixtures/test'
 import type { Page } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import type { TaskBoard } from '../../components/TaskBoard'
 
 /**
  * Tests E2E des réglages de la section Tâches de la page Paramètres (hors
- * versions, testées à part) : position d'une nouvelle tâche, mémorisation du
- * filtre de tags et confirmation avant archivage.
+ * versions, testées à part) : position d'une nouvelle tâche, pas des minutes du
+ * champ de date, mémorisation du filtre de tags et confirmation avant archivage.
  *
  * Un rechargement de la page tient lieu de redémarrage : le renderer relit
  * alors les paramètres enregistrés côté main.
@@ -311,5 +312,52 @@ test.describe('Confirmation avant archivage', () => {
     await page.reload()
 
     await expect(settingsPage.confirmArchiveSwitch).toBeChecked()
+  })
+})
+
+test.describe('Pas des minutes du champ de date', () => {
+  /**
+   * Minutes affichées par le sélecteur d'heure de la date de début, ouvert
+   * depuis l'écran de création d'une tâche, avant puis après un clic sur « + ».
+   */
+  async function minutesBeforeAfterIncrement(taskBoard: TaskBoard): Promise<[number, number]> {
+    await taskBoard.openCreateDialog(COLUMN)
+    await taskBoard.startDateInput.click()
+    const minutePicker = taskBoard.page.locator('.p-datepicker-panel .p-datepicker-minute-picker')
+    await expect(minutePicker).toBeVisible()
+
+    const minute = minutePicker.locator('> span')
+    const before = Number(await minute.textContent())
+    await minutePicker.getByRole('button').first().click()
+    await expect(minute).not.toHaveText(String(before).padStart(2, '0'))
+    return [before, Number(await minute.textContent())]
+  }
+
+  test('1 min par défaut', async ({ header, taskBoard, settingsPage }) => {
+    await header.goSettings()
+    await expect(settingsPage.dateMinuteStepOption('1 min')).toHaveAttribute('aria-pressed', 'true')
+    await header.goHome()
+
+    const [before, after] = await minutesBeforeAfterIncrement(taskBoard)
+    expect((after - before + 60) % 60).toBe(1)
+  })
+
+  test('15 min : heure courante arrondie et minutes de 15 en 15, gardé au rechargement', async ({
+    page,
+    header,
+    taskBoard,
+    settingsPage,
+  }) => {
+    await header.goSettings()
+    await settingsPage.dateMinuteStepOption('15 min').click()
+    await expect(settingsPage.dateMinuteStepOption('15 min')).toHaveAttribute('aria-pressed', 'true')
+
+    await page.reload()
+    await expect(settingsPage.dateMinuteStepOption('15 min')).toHaveAttribute('aria-pressed', 'true')
+    await header.goHome()
+
+    const [before, after] = await minutesBeforeAfterIncrement(taskBoard)
+    expect(before % 15).toBe(0)
+    expect((after - before + 60) % 60).toBe(15)
   })
 })
