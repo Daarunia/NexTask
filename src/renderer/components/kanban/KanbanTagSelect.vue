@@ -45,7 +45,7 @@
             class="tag-search-input"
             :maxlength="TAG_NAME_MAX_LENGTH"
             :placeholder="t('tags.searchPlaceholder')"
-            autofocus
+            :aria-label="t('tags.searchPlaceholder')"
             @keydown="onSearchKeydown"
           />
         </div>

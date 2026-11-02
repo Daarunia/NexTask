@@ -3,6 +3,7 @@ import { IS_TEST, SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
   ARCHIVE_PURGE_DAYS,
+  DATE_MINUTE_STEPS,
   DEFAULT_SETTINGS,
   INTERFACE_SCALES,
   LANGUAGES,
@@ -58,6 +59,11 @@ const schema = {
     type: 'string',
     enum: [...NEW_TASK_POSITIONS],
     default: DEFAULT_SETTINGS.newTaskPosition,
+  },
+  dateMinuteStep: {
+    type: 'integer',
+    enum: [...DATE_MINUTE_STEPS],
+    default: DEFAULT_SETTINGS.dateMinuteStep,
   },
   confirmArchive: {
     type: 'boolean',

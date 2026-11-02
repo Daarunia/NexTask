@@ -45,6 +45,7 @@ async function changeSettings(page: Page, settingsPage: SettingsPage) {
   await settingsPage.interfaceScaleOption('125 %').click()
   await settingsPage.addVersion('2.0.0')
   await settingsPage.newTaskPositionOption('En haut').click()
+  await settingsPage.dateMinuteStepOption('15 min').click()
   await settingsPage.confirmArchiveSwitch.click()
 
   await expect
@@ -54,6 +55,7 @@ async function changeSettings(page: Page, settingsPage: SettingsPage) {
       primaryColor: 'orange',
       interfaceScale: 125,
       newTaskPosition: 'top',
+      dateMinuteStep: 15,
       confirmArchive: true,
     })
 }
@@ -70,6 +72,7 @@ async function expectChangedSettings(header: Header, settingsPage: SettingsPage)
   await expect(settingsPage.interfaceScaleOption('125 %')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.version('2.0.0')).toHaveCount(1)
   await expect(settingsPage.newTaskPositionOption('En haut')).toHaveAttribute('aria-pressed', 'true')
+  await expect(settingsPage.dateMinuteStepOption('15 min')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.confirmArchiveSwitch).toBeChecked()
 }
 
@@ -86,6 +89,7 @@ async function expectDefaultSettings(header: Header, settingsPage: SettingsPage)
   await expect(settingsPage.versionItems).toHaveCount(DEFAULT_SETTINGS.taskVersions.length)
   await expect(settingsPage.version('2.0.0')).toHaveCount(0)
   await expect(settingsPage.newTaskPositionOption('En bas')).toHaveAttribute('aria-pressed', 'true')
+  await expect(settingsPage.dateMinuteStepOption('1 min')).toHaveAttribute('aria-pressed', 'true')
   await expect(settingsPage.confirmArchiveSwitch).not.toBeChecked()
 }
 

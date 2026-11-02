@@ -108,8 +108,8 @@
           data-testid="stage-name-input"
           class="flex-1 p-2 rounded border"
           :placeholder="t('board.stageNamePlaceholder')"
+          :aria-label="t('board.stageNamePlaceholder')"
           @keyup.enter="createStage"
-          autofocus
         />
 
         <Button icon="pi pi-check" data-testid="btn-confirm-stage" @click="createStage" />
@@ -1270,16 +1270,26 @@ onMounted(() => {
   background-color: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
   outline: 2px dashed var(--p-primary-color);
   outline-offset: -2px;
+  box-shadow: none;
 }
 
 .stages-container.dnd-ghost > * {
   visibility: hidden;
 }
 
-/* Colonne tenue : légèrement inclinée et soulevée */
+/* Colonne tenue : légèrement inclinée et soulevée, opaque malgré l'opacité 0.8
+   posée en ligne par SortableJS sur sa copie (mode fallback) */
 .stages-container.dnd-dragging {
   rotate: 1deg;
   box-shadow: 0 16px 32px rgb(0 0 0 / 0.25);
+  opacity: 1 !important;
+}
+
+/* Le liseré de couleur suit la colonne tenue */
+.stages-container.colored.dnd-dragging {
+  box-shadow:
+    inset 0 4px 0 var(--stage-color),
+    0 16px 32px rgb(0 0 0 / 0.25);
 }
 
 .filter-empty {

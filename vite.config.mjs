@@ -50,9 +50,11 @@ export default defineConfig({
     Components({
       resolvers: [PrimeVueResolver()],
     }),
-    visualizer({
-      filename: './dist/bundle-analysis.html',
-      open: true,
-    }),
+    // Rapport de bundle seulement via `npm run analyze`
+    process.env.ANALYZE &&
+      visualizer({
+        filename: './dist/bundle-analysis.html',
+        open: true,
+      }),
   ],
 })

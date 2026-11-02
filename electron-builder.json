@@ -1,6 +1,7 @@
 {
   "appId": "com.daarunia.nextask",
   "productName": "NexTask",
+  "npmRebuild": false,
   "publish": {
     "provider": "github",
     "owner": "Daarunia",

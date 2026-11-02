@@ -5,6 +5,9 @@ import { build } from 'vite'
 import compile from './private/tsc.js'
 import { ROOT } from './private/paths.js'
 
+// `--analyze` active le rapport rollup-plugin-visualizer (voir vite.config.mjs)
+if (process.argv.includes('--analyze')) process.env.ANALYZE = 'true'
+
 function buildRenderer() {
   return build({
     configFile: path.join(ROOT, 'vite.config.mjs'),

@@ -73,7 +73,7 @@ export function useDangerConfirm() {
     // document. Ouverte après coup, depuis un menu (différée pour que ce clic ne
     // la referme pas), elle restait sinon dans le coin de la fenêtre.
     if (target) {
-      nextTick(() => {
+      void nextTick(() => {
         if (confirmPopup?.container) confirmPopup.alignOverlay()
       })
     }

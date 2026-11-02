@@ -145,6 +145,7 @@
             data-testid="task-startdate-input"
             showTime
             hourFormat="24"
+            :stepMinute="settings.dateMinuteStep"
             showButtonBar
             :placeholder="t('task.dialog.startDatePlaceholder')"
           />

@@ -111,11 +111,10 @@ function rendererWebPreferences(): WebPreferences {
  * @param route Route du renderer (historique en hash), la page d'accueil par défaut
  */
 function loadRenderer(win: BrowserWindow, route = '/') {
-  if (DEV_RENDERER_URL) {
-    win.loadURL(`${DEV_RENDERER_URL}#${route}`)
-  } else {
-    win.loadFile(join(app.getAppPath(), 'renderer', 'index.html'), { hash: route })
-  }
+  const loading = DEV_RENDERER_URL
+    ? win.loadURL(`${DEV_RENDERER_URL}#${route}`)
+    : win.loadFile(join(app.getAppPath(), 'renderer', 'index.html'), { hash: route })
+  loading.catch((err) => Logger.error(`Erreur au chargement du renderer (${route}) :`, err))
 }
 
 function createWindow() {
@@ -252,7 +251,10 @@ if (gotTheLock) {
 // qu'electron et passe donc dans le renderer sandboxé.
 Logger.initialize()
 
-app.whenReady().then(async () => {
+/**
+ * Démarrage de l'application, une fois Electron prêt.
+ */
+async function onReady() {
   // Windows rattache l'icône de la barre des tâches et les notifications à cet
   // identifiant. Sans lui, l'app s'affiche sous l'identité d'Electron.
   //
@@ -365,7 +367,12 @@ app.whenReady().then(async () => {
       }
     }
   })
-})
+}
+
+app
+  .whenReady()
+  .then(onReady)
+  .catch((err) => Logger.error("Erreur au démarrage de l'application :", err))
 
 app.on('window-all-closed', () => {
   stopNotificationScheduler()
