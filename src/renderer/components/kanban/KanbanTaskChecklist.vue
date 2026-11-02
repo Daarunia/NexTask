@@ -109,7 +109,6 @@
             type="text"
             autocomplete="off"
             spellcheck="false"
-            autofocus
             :placeholder="t('checklists.search')"
             :aria-label="t('checklists.search')"
           />

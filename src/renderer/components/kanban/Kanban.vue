@@ -108,8 +108,8 @@
           data-testid="stage-name-input"
           class="flex-1 p-2 rounded border"
           :placeholder="t('board.stageNamePlaceholder')"
+          :aria-label="t('board.stageNamePlaceholder')"
           @keyup.enter="createStage"
-          autofocus
         />
 
         <Button icon="pi pi-check" data-testid="btn-confirm-stage" @click="createStage" />

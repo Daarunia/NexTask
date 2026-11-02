@@ -27,6 +27,7 @@
             <Select
               v-model="language"
               data-testid="setting-language"
+              :aria-label="t('settings.appearance.language')"
               :options="languageOptions"
               optionLabel="label"
               optionValue="value"
