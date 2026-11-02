@@ -17,7 +17,7 @@ jobs:
       # Type de montée de version (la plus haute du groupe pour une PR groupée)
       - name: Fetch Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
 
       # --auto attend les checks requis par le ruleset de main (format, build, e2e)
       # avant de fusionner, en squash pour un seul commit sur main, sans commit de merge.
