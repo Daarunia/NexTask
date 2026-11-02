@@ -28,6 +28,7 @@
     "dev": "node scripts/dev-server.js",
     "build": "node scripts/build.js && electron-builder",
     "build:dev": "node scripts/build.js",
+    "analyze": "node scripts/build.js --analyze",
     "build:win": "node scripts/build.js && electron-builder --win",
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux",
