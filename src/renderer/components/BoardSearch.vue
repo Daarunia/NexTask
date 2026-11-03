@@ -764,6 +764,10 @@ defineExpose({ focus: () => input.value?.focus() })
 }
 
 .status-chip .pi {
+  /* La ligne de base des icônes est arrondie au pixel inférieur, jusqu'à 1px
+     trop haut : le demi-pixel en fait un arrondi au plus proche */
+  position: relative;
+  top: 0.5px;
   font-size: 0.7rem;
 }
 

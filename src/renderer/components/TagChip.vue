@@ -125,6 +125,10 @@ const tintVars = computed(() => {
 }
 
 .tag-chip-remove .pi {
+  /* La ligne de base des icônes est arrondie au pixel inférieur, jusqu'à 1px
+     trop haut : le demi-pixel en fait un arrondi au plus proche */
+  position: relative;
+  top: 0.5px;
   font-size: 0.7rem;
   font-weight: 700;
 }
