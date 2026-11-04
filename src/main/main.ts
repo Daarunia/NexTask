@@ -32,22 +32,50 @@ import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.j
 import { getLocale, setupI18n, t } from './i18n.js'
 import type { AppSettings } from '../core/shared/settings.constants.js'
 import {
+  API_PORT,
   APP_ID,
   APP_VERSION,
+  BACKUPS_PATH,
   DEV_RENDERER_URL,
   IS_DEV,
   IS_TEST,
+  MIGRATIONS_PATH,
+  SEEDS_PATH,
+  STATIC_DIR,
   TEST_INDEX,
   TEST_SLOTS,
   staticAsset,
 } from './constants.js'
+import { DB_PATH, IS_CUSTOM_DB } from './database/location.js'
 import Logger from 'electron-log'
 import { setLogger } from '../core/logger.js'
+import { initCore } from '../core/config.js'
+import type { ServerOptions } from '../core/server/index.js'
 import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
 
 // Journaux de core (serveur, base, schedulers) dans electron-log, avant tout
 // appel à core : sans ce branchement, ses messages seraient ignorés
 setLogger(Logger)
+
+// Configuration de core, avant tout appel à core (base, serveur, schedulers)
+initCore({
+  appVersion: APP_VERSION,
+  isDev: IS_DEV,
+  isTest: IS_TEST,
+  dbPath: DB_PATH,
+  isCustomDb: IS_CUSTOM_DB,
+  backupsPath: BACKUPS_PATH,
+  migrationsPath: MIGRATIONS_PATH,
+  seedsPath: SEEDS_PATH,
+  staticDir: STATIC_DIR,
+})
+
+// Écoute du serveur local : port fixe en dev et en test, libre en prod. Seul le
+// serveur Vite a une origine à autoriser (le renderer packagé est en file://)
+const SERVER_OPTIONS: ServerOptions = {
+  port: API_PORT,
+  corsOrigins: DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [],
+}
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -305,7 +333,7 @@ async function onReady() {
   setupExternalLinks()
 
   try {
-    await startServer()
+    await startServer(SERVER_OPTIONS)
   } catch (err) {
     // Sans serveur, la fenêtre n'aurait aucune donnée (ou celles du logiciel
     // qui occupe le port) : on n'ouvre pas l'app
@@ -362,7 +390,7 @@ async function onReady() {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
       try {
-        await startServer()
+        await startServer(SERVER_OPTIONS)
       } catch (err) {
         Logger.error('Erreur au redémarrage du serveur Fastify :', err)
       }

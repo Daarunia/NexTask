@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import { prisma } from '../prismaClient.js'
-import { BACKUPS_PATH } from '../../../main/constants.js'
+import { config } from '../../config.js'
 import { readSeedFiles } from '../../database/seedDatabase.js'
 import { getLocale } from '../../../main/i18n.js'
 import { handleNotificationClick, runNotificationCheck } from '../../../main/scheduler/notificationScheduler.js'
@@ -127,7 +127,7 @@ export default async function testRoutes(fastify) {
       if (!seedTemplates) await prisma.checklist.deleteMany({ where: { taskId: null } })
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
-      fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
+      fs.rmSync(config().backupsPath, { recursive: true, force: true })
 
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()

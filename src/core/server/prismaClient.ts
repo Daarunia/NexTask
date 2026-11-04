@@ -1,14 +1,39 @@
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../prisma/generated/prisma/client.js'
-import { IS_DEV } from '../../main/constants.js'
-import { DB_PATH, IS_CUSTOM_DB } from '../../main/database/location.js'
+import { config } from '../config.js'
 
-// Même fichier que celui migré par setupDatabase (test.db, dev.db, app.db ou
-// celui de l'emplacement choisi par l'utilisateur)
-const adapter = new PrismaBetterSqlite3({ url: `file:${DB_PATH}` })
+let client: PrismaClient | null = null
 
-// En dev on veut voir les requêtes ; en prod on ne garde que les erreurs.
-export const prisma = new PrismaClient({ adapter, log: IS_DEV ? ['query'] : ['error'] })
+/**
+ * Client Prisma, créé au premier usage sur la base de la configuration de core
+ * (test.db, dev.db, app.db ou celle de l'emplacement choisi par
+ * l'utilisateur), le même fichier que celui migré par setupDatabase.
+ *
+ * @throws Si core n'est pas encore initialisé (cf. initCore)
+ */
+function getClient(): PrismaClient {
+  if (!client) {
+    const { dbPath, isDev } = config()
+    const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
+    // En dev on veut voir les requêtes ; en prod on ne garde que les erreurs.
+    client = new PrismaClient({ adapter, log: isDev ? ['query'] : ['error'] })
+  }
+  return client
+}
+
+/**
+ * Client Prisma partagé par core. Les modules l'importent comme une constante
+ * (`prisma.task.findMany(…)`) ; chaque accès passe au client réel, créé au
+ * premier usage, ce qui laisse `initCore()` s'exécuter après les imports.
+ * Les méthodes sont liées au client réel pour garder leur `this`.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const real = getClient()
+    const value = Reflect.get(real, property, real)
+    return typeof value === 'function' ? value.bind(real) : value
+  },
+})
 
 /**
  * Applique les pragmas SQLite orientés performance sur la connexion Prisma.
@@ -19,7 +44,7 @@ export const prisma = new PrismaClient({ adapter, log: IS_DEV ? ['query'] : ['er
  * avec un dossier cloud. La base tient alors en un seul fichier.
  */
 export async function applyDatabasePragmas(): Promise<void> {
-  await prisma.$queryRawUnsafe(`PRAGMA journal_mode = ${IS_CUSTOM_DB ? 'DELETE' : 'WAL'}`)
+  await prisma.$queryRawUnsafe(`PRAGMA journal_mode = ${config().isCustomDb ? 'DELETE' : 'WAL'}`)
   await prisma.$queryRawUnsafe('PRAGMA synchronous = NORMAL')
   await prisma.$queryRawUnsafe('PRAGMA busy_timeout = 5000')
 }

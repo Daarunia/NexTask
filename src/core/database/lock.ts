@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import Logger from '../logger.js'
-import { APP_VERSION } from '../../main/constants.js'
+import { config } from '../config.js'
 import { type DatabaseLock, isForeignLock, lockFilePath, parseLock } from './databaseFile.js'
 
 /**
@@ -60,7 +60,7 @@ export function acquireLock(dbPath: string): void {
     hostname: os.hostname(),
     pid: process.pid,
     openedAt: new Date().toISOString(),
-    appVersion: APP_VERSION,
+    appVersion: config().appVersion,
   }
 
   try {

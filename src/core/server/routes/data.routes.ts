@@ -2,7 +2,7 @@ import Logger from '../../logger.js'
 import { prisma } from '../prismaClient.js'
 import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'
-import { APP_VERSION } from '../../../main/constants.js'
+import { config } from '../../config.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { t, translate } from '../../../main/i18n.js'
 import { boardKey } from '../../shared/board.helper.js'
@@ -433,7 +433,7 @@ export default async function dataRoutes(fastify) {
       return {
         format: EXPORT_FORMAT,
         version: EXPORT_VERSION,
-        appVersion: APP_VERSION,
+        appVersion: config().appVersion,
         exportedAt: new Date(),
         boards,
         stages,

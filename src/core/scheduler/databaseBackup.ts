@@ -2,8 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import Logger from '../logger.js'
-import { BACKUPS_PATH } from '../../main/constants.js'
-import { DB_PATH } from '../../main/database/location.js'
+import { config } from '../config.js'
 import { settingsStore } from '../../main/stores/settings.js'
 
 /**
@@ -49,10 +48,11 @@ function localDay(date: Date): string {
  * Sauvegardes automatiques présentes, de la plus récente à la plus ancienne.
  */
 function listBackups(): string[] {
-  if (!fs.existsSync(BACKUPS_PATH)) return []
+  const { backupsPath } = config()
+  if (!fs.existsSync(backupsPath)) return []
 
   return fs
-    .readdirSync(BACKUPS_PATH)
+    .readdirSync(backupsPath)
     .filter((name) => BACKUP_NAME.test(name))
     .sort((a, b) => b.localeCompare(a))
 }
@@ -65,7 +65,7 @@ function listBackups(): string[] {
  * @param target Chemin de la copie
  * @param source Base copiée, celle de l'app par défaut
  */
-export async function copyDatabase(target: string, source = DB_PATH): Promise<void> {
+export async function copyDatabase(target: string, source = config().dbPath): Promise<void> {
   const temporary = `${target}.tmp`
   const db = new Database(source, { fileMustExist: true })
 
@@ -87,26 +87,28 @@ export async function copyDatabase(target: string, source = DB_PATH): Promise<vo
  * @returns Sauvegarde activée ou non, sauvegarde écrite et sauvegardes présentes
  */
 export async function runDatabaseBackup(now: Date = new Date()): Promise<DatabaseBackupResult> {
+  const { backupsPath } = config()
+
   if (!settingsStore.get('autoBackupEnabled')) {
-    return { enabled: false, created: null, backups: listBackups(), directory: BACKUPS_PATH }
+    return { enabled: false, created: null, backups: listBackups(), directory: backupsPath }
   }
 
-  fs.mkdirSync(BACKUPS_PATH, { recursive: true })
+  fs.mkdirSync(backupsPath, { recursive: true })
 
   // Une seule sauvegarde par jour : le passage au démarrage et le passage
   // quotidien ne se doublent pas
   const name = `nextask-${localDay(now)}.db`
   let created: string | null = null
-  if (!fs.existsSync(path.join(BACKUPS_PATH, name))) {
-    await copyDatabase(path.join(BACKUPS_PATH, name))
+  if (!fs.existsSync(path.join(backupsPath, name))) {
+    await copyDatabase(path.join(backupsPath, name))
     created = name
-    Logger.info(`[sauvegarde] Base sauvegardée dans ${path.join(BACKUPS_PATH, name)}`)
+    Logger.info(`[sauvegarde] Base sauvegardée dans ${path.join(backupsPath, name)}`)
   }
 
   for (const old of listBackups().slice(BACKUPS_KEPT)) {
-    fs.rmSync(path.join(BACKUPS_PATH, old), { force: true })
+    fs.rmSync(path.join(backupsPath, old), { force: true })
     Logger.info(`[sauvegarde] Ancienne sauvegarde supprimée : ${old}`)
   }
 
-  return { enabled: true, created, backups: listBackups(), directory: BACKUPS_PATH }
+  return { enabled: true, created, backups: listBackups(), directory: backupsPath }
 }

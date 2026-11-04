@@ -10,20 +10,22 @@ import testRoutes from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import type { AddressInfo } from 'node:net'
-import { API_PORT, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from '../../main/constants.js'
+import { config } from '../config.js'
 import Logger from '../logger.js'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 
 /**
  * Lit un asset de la marque, en tolérant son absence (build de développement
  * sans copie des fichiers statiques).
  *
- * @param name Nom du fichier dans `src/main/static`
+ * @param name Nom du fichier dans le dossier des assets (cf. CoreConfig.staticDir)
  * @returns Contenu du fichier, ou `null`
  */
 function readBrandAsset(name: string): Buffer | null {
-  const filePath = staticAsset(name)
-  return filePath ? readFileSync(filePath) : null
+  const { staticDir } = config()
+  const filePath = staticDir ? path.join(staticDir, name) : null
+  return filePath && existsSync(filePath) ? readFileSync(filePath) : null
 }
 
 /**
@@ -39,7 +41,7 @@ async function registerApiDocs(fastify: FastifyInstance) {
       info: {
         title: 'NexTask API',
         description: 'API pour gérer les tâches',
-        version: APP_VERSION,
+        version: config().appVersion,
       },
     },
   })
@@ -90,23 +92,33 @@ export function getApiUrl(): string {
   return apiUrl
 }
 
+/** Options d'écoute du serveur, propres à celui qui le démarre. */
+export interface ServerOptions {
+  /** Port d'écoute, 0 pour un port choisi par le système. */
+  port: number
+  /** Origines autorisées à appeler l'API, en plus des requêtes sans en-tête Origin. */
+  corsOrigins: string[]
+}
+
 /**
- * Démarre le serveur Fastify sur le port de l'environnement (cf. API_PORT).
+ * Démarre le serveur Fastify.
  *
+ * @param options Port d'écoute et origines autorisées
  * @throws Si le serveur n'a pas pu démarrer (port déjà pris en dev ou en test)
  */
-export async function startServer() {
-  const fastify = Fastify({ logger: IS_DEV ? true : { level: 'error' } })
+export async function startServer({ port, corsOrigins }: ServerOptions) {
+  const { isDev, isTest } = config()
+  const fastify = Fastify({ logger: isDev ? true : { level: 'error' } })
 
   // Pragmas SQLite (WAL, etc.) avant de servir les premières requêtes.
   await applyDatabasePragmas()
 
   // Enregistrer le plugin CORS
   //
-  // Origine restreinte au renderer de l'app (pas d'en-tête Origin en prod,
-  // le renderer étant chargé en file://; serveur Vite en dev) afin qu'une page
-  // web tierce ne puisse pas interroger l'API locale.
-  const allowedOrigins = new Set(DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [])
+  // Origine restreinte aux clients connus (pour le desktop : pas d'en-tête
+  // Origin en prod, le renderer étant chargé en file://; serveur Vite en dev)
+  // afin qu'une page web tierce ne puisse pas interroger l'API locale.
+  const allowedOrigins = new Set(corsOrigins)
   fastify.register(fastifyCors, {
     origin: (origin, callback) => {
       callback(null, !origin || allowedOrigins.has(origin))
@@ -117,7 +129,7 @@ export async function startServer() {
   // Documentation de l'API, en dev seulement : en prod le port est choisi par
   // le système, la page n'est donc pas joignable et ses dépendances ne sont pas
   // embarquées dans l'app
-  if (IS_DEV) {
+  if (isDev) {
     await registerApiDocs(fastify)
   }
 
@@ -131,16 +143,16 @@ export async function startServer() {
   await fastify.register(dataRoutes)
 
   // Route de reset réservée aux tests E2E
-  if (IS_TEST) {
+  if (isTest) {
     await fastify.register(testRoutes)
   }
 
   try {
-    await fastify.listen({ port: API_PORT })
-    const { port } = fastify.server.address() as AddressInfo
-    apiUrl = `http://localhost:${port}`
+    await fastify.listen({ port })
+    const address = fastify.server.address() as AddressInfo
+    apiUrl = `http://localhost:${address.port}`
     Logger.info(`Fastify API -> ${apiUrl}`)
-    if (IS_DEV) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
+    if (isDev) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
   } catch (err) {
     fastify.log.error(err)
     throw err

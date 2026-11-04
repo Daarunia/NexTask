@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { SEEDS_PATH } from '../../main/constants.js'
-import { DB_PATH } from '../../main/database/location.js'
+import { config } from '../config.js'
 import type { Locale } from '../shared/settings.constants.js'
 import Logger from '../logger.js'
 
@@ -26,7 +25,7 @@ const REFERENCE_LOCALE: Locale = 'fr'
  * @param locale Langue de l'interface au moment de l'application
  */
 export function readSeedFiles(locale: Locale): SeedFile[] {
-  const referenceDir = path.join(SEEDS_PATH, REFERENCE_LOCALE)
+  const referenceDir = path.join(config().seedsPath, REFERENCE_LOCALE)
   if (!fs.existsSync(referenceDir)) return []
 
   return fs
@@ -34,7 +33,7 @@ export function readSeedFiles(locale: Locale): SeedFile[] {
     .filter((f) => f.endsWith('.sql'))
     .sort((a, b) => a.localeCompare(b))
     .map((name) => {
-      const translated = path.join(SEEDS_PATH, locale, name)
+      const translated = path.join(config().seedsPath, locale, name)
       const file = fs.existsSync(translated) ? translated : path.join(referenceDir, name)
       return { name, sql: fs.readFileSync(file, 'utf8') }
     })
@@ -51,7 +50,7 @@ export function readSeedFiles(locale: Locale): SeedFile[] {
  * @param locale Langue de l'interface, qui choisit la variante des seeds traduites
  */
 export function applySeeds(locale: Locale) {
-  const db = new Database(DB_PATH)
+  const db = new Database(config().dbPath)
 
   try {
     db.exec(`

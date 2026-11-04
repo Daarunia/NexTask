@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { IS_DEV, IS_TEST, MIGRATIONS_PATH } from '../../main/constants.js'
-import { DB_PATH, IS_CUSTOM_DB } from '../../main/database/location.js'
+import { config } from '../config.js'
 import Logger from '../logger.js'
 
 /**
@@ -11,9 +10,10 @@ import Logger from '../logger.js'
  * horodatage, le tri alphabétique donne l'ordre chronologique.
  */
 export function knownMigrations(): string[] {
+  const { migrationsPath } = config()
   return fs
-    .readdirSync(MIGRATIONS_PATH)
-    .filter((folder) => fs.existsSync(path.join(MIGRATIONS_PATH, folder, 'migration.sql')))
+    .readdirSync(migrationsPath)
+    .filter((folder) => fs.existsSync(path.join(migrationsPath, folder, 'migration.sql')))
     .sort((a, b) => a.localeCompare(b))
 }
 
@@ -21,23 +21,25 @@ export function knownMigrations(): string[] {
  * Éxécution des scripts de migrations
  */
 export function setupDatabase() {
+  const { isDev, isTest, isCustomDb, dbPath, migrationsPath } = config()
+
   // En dev, on ne touche pas à dev.db, migrée par `prisma migrate dev`. Une base
   // choisie par l'utilisateur est migrée comme en prod, sinon l'app l'ouvrirait
   // dans un schéma qui ne correspond pas au code
-  if (IS_DEV && !IS_TEST && !IS_CUSTOM_DB) {
+  if (isDev && !isTest && !isCustomDb) {
     Logger.info('Mode dev : pas de migration automatique, utilisez `prisma migrate dev`')
     return
   }
 
   // Premier lancement : base créée à l'emplacement par défaut. Une base choisie
   // par l'utilisateur n'est jamais recréée vide (cf. ensureDatabaseAvailable)
-  if (!fs.existsSync(DB_PATH)) {
-    if (IS_CUSTOM_DB) throw new Error(`Base introuvable : ${DB_PATH}`)
-    fs.closeSync(fs.openSync(DB_PATH, 'w'))
-    Logger.info('Premier lancement, DB créée :', DB_PATH)
+  if (!fs.existsSync(dbPath)) {
+    if (isCustomDb) throw new Error(`Base introuvable : ${dbPath}`)
+    fs.closeSync(fs.openSync(dbPath, 'w'))
+    Logger.info('Premier lancement, DB créée :', dbPath)
   }
 
-  const db = new Database(DB_PATH)
+  const db = new Database(dbPath)
 
   try {
     // Créer la table _prisma_migrations si elle n'existe pas
@@ -74,7 +76,7 @@ export function setupDatabase() {
     for (const folder of folders) {
       if (applied.has(folder)) continue
 
-      const sqlPath = path.join(MIGRATIONS_PATH, folder, 'migration.sql')
+      const sqlPath = path.join(migrationsPath, folder, 'migration.sql')
 
       try {
         applyMigration(folder, fs.readFileSync(sqlPath, 'utf8'))

@@ -100,6 +100,9 @@ export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/core/pris
 // Emplacements possibles des assets statiques
 const STATIC_DIRS = [path.join(process.cwd(), 'src', 'main', 'static'), path.join(RESOURCES_PATH, 'static')]
 
+/** Premier dossier d'assets statiques présent, transmis à core (logo de Swagger). */
+export const STATIC_DIR: string | undefined = STATIC_DIRS.find((directory) => existsSync(directory))
+
 /**
  * Chemin absolu d'un asset statique, ou `undefined` s'il est introuvable.
  *
