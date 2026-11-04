@@ -1,7 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import type { SeriesPlacement } from '../../../src/main/shared/recurrence.constants'
+import type { SeriesPlacement } from '@core/shared/recurrence.constants'
 import {
   DAILY,
   createRecurringTask,

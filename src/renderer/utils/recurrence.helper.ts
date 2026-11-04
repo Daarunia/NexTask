@@ -3,7 +3,7 @@ import type {
   RecurrenceAnchor,
   RecurrenceInput,
   RecurrenceSummary,
-} from '../../main/shared/recurrence.constants'
+} from '@core/shared/recurrence.constants'
 import {
   isoWeekday,
   localTime,
@@ -11,7 +11,7 @@ import {
   nextRunAfter,
   parseWeekdays,
   type RecurrenceRule,
-} from '../../main/shared/recurrence.helper'
+} from '@core/shared/recurrence.helper'
 import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.schema'
 import { currentLocale, intlLocale, t } from '../i18n'
 

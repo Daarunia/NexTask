@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/test'
-import { DEFAULT_SETTINGS } from '../../../src/main/shared/settings.constants'
+import { DEFAULT_SETTINGS } from '@core/shared/settings.constants'
 
 /**
  * Tests E2E des versions de tâche réglées dans la page Paramètres : liste

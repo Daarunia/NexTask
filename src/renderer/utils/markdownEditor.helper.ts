@@ -1,5 +1,5 @@
 import { config, type StaticTextDefaultValue, type ToolbarNames } from 'md-editor-v3'
-import type { Locale } from '../../main/shared/settings.constants'
+import type { Locale } from '@core/shared/settings.constants'
 
 /**
  * Configuration de md-editor-v3, l'éditeur Markdown des descriptions de tâche.

@@ -1,4 +1,4 @@
-import type { ImportProblemCode } from '../shared/data.constants.js'
+import type { ImportProblemCode } from '../../core/shared/data.constants.js'
 
 /**
  * Textes du main en français, langue source : les autres catalogues reprennent

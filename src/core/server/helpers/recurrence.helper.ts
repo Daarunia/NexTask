@@ -10,7 +10,7 @@ import {
   toRecurrenceRule,
   type RecurrenceRule,
 } from '../../shared/recurrence.helper.js'
-import { settingsStore } from '../../stores/settings.js'
+import { settingsStore } from '../../../main/stores/settings.js'
 import { isChecklistTexts, sameChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
 import Logger from 'electron-log'
 

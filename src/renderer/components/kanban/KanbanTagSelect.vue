@@ -190,7 +190,7 @@ import TagChip from '../TagChip.vue'
 import TagColorOptions from '../TagColorOptions.vue'
 import { useTagStore } from '../../stores/Tag'
 import { Tag, TagColor, TagSelection } from '../../types/tag.types'
-import { TAG_NAME_MAX_LENGTH } from '../../../main/shared/validation.constants'
+import { TAG_NAME_MAX_LENGTH } from '@core/shared/validation.constants'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast } from '../../utils/toast.helper'
 import {

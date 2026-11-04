@@ -11,12 +11,12 @@ import {
   paletteColor,
   planTemplateImport,
   truncateText,
-} from '../../src/main/server/helpers/dataImport.helper'
+} from '@core/server/helpers/dataImport.helper'
 import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
   CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
-} from '../../src/main/shared/checklist.constants'
+} from '@core/shared/checklist.constants'
 
 /**
  * Tests unitaires des helpers de l'import des checklists et des tableaux

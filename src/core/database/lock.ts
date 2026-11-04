@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import Logger from 'electron-log'
-import { APP_VERSION } from '../constants.js'
+import { APP_VERSION } from '../../main/constants.js'
 import { type DatabaseLock, isForeignLock, lockFilePath, parseLock } from './databaseFile.js'
 
 /**

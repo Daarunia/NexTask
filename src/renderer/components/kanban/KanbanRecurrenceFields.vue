@@ -271,8 +271,8 @@ import {
   type RecurrenceEndType,
   type RecurrenceFrequency,
   type RecurrenceSummary,
-} from '../../../main/shared/recurrence.constants'
-import { isoWeekday } from '../../../main/shared/recurrence.helper'
+} from '@core/shared/recurrence.constants'
+import { isoWeekday } from '@core/shared/recurrence.helper'
 import type { RecurrenceFormValue, RecurrencePreset } from '../../schemas/task.schema'
 import {
   WEEKDAYS,

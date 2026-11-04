@@ -261,7 +261,7 @@ import { type ChecklistEditorItem, newChecklistEditorItem } from '../ChecklistIt
 import { Task, TaskInput, TaskUpdateInput } from '../../types/task.types'
 import { TagSelection } from '../../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../../schemas/task.schema'
-import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
+import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '@core/shared/recurrence.constants'
 import { useTaskStore } from '../../stores/Task'
 import { useTagStore } from '../../stores/Tag'
 import { useStageStore } from '../../stores/Stage'

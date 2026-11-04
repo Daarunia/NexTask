@@ -1,7 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import { BOARD_NAME_MAX_LENGTH } from '../../../src/main/shared/board.constants'
+import { BOARD_NAME_MAX_LENGTH } from '@core/shared/board.constants'
 
 /**
  * Tests E2E de l'API des tableaux (GET, POST, PATCH, DELETE /boards).

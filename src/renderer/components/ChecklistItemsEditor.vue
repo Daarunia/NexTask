@@ -124,7 +124,7 @@ import Checkbox from 'primevue/checkbox'
 import { useI18n } from 'vue-i18n'
 import { DND_OPTIONS } from '../constants/dnd.constants'
 import { setDragging } from '../utils/dnd.helper'
-import { CHECKLIST_ITEM_MAX_LENGTH, CHECKLIST_MAX_ITEMS } from '../../main/shared/checklist.constants'
+import { CHECKLIST_ITEM_MAX_LENGTH, CHECKLIST_MAX_ITEMS } from '@core/shared/checklist.constants'
 
 /**
  * Éditeur des points d'une checklist, partagé par la page Checklists (modèles,

@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { SEEDS_PATH } from './constants.js'
-import { DB_PATH } from './database/location.js'
-import type { Locale } from './shared/settings.constants.js'
+import { SEEDS_PATH } from '../../main/constants.js'
+import { DB_PATH } from '../../main/database/location.js'
+import type { Locale } from '../shared/settings.constants.js'
 import Logger from 'electron-log'
 
 /** Seed à appliquer : nom enregistré dans `_seeds` et instructions SQL. */

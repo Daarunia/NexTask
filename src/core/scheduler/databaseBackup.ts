@@ -2,9 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import Logger from 'electron-log'
-import { BACKUPS_PATH } from '../constants.js'
-import { DB_PATH } from '../database/location.js'
-import { settingsStore } from '../stores/settings.js'
+import { BACKUPS_PATH } from '../../main/constants.js'
+import { DB_PATH } from '../../main/database/location.js'
+import { settingsStore } from '../../main/stores/settings.js'
 
 /**
  * Sauvegarde automatique de la base.

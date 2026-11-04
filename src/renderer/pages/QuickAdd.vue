@@ -86,7 +86,7 @@ import type { Board } from '../types/board.types'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
 import { httpStatus } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
-import { LABEL_MAX_LENGTH } from '../../main/shared/validation.constants'
+import { LABEL_MAX_LENGTH } from '@core/shared/validation.constants'
 import { useI18n } from 'vue-i18n'
 
 const logger = getLogger()

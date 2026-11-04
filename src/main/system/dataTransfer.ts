@@ -2,8 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { app, type BrowserWindow, dialog } from 'electron'
 import Logger from 'electron-log'
-import { getApiUrl } from '../server/index.js'
-import type { DataCounts, DataTransferResult, ImportProblem } from '../shared/data.constants.js'
+import { getApiUrl } from '../../core/server/index.js'
+import type { DataCounts, DataTransferResult, ImportProblem } from '../../core/shared/data.constants.js'
 import { t } from '../i18n.js'
 
 /**

@@ -1,4 +1,4 @@
-import type { DataCounts } from '../../main/shared/data.constants'
+import type { DataCounts } from '@core/shared/data.constants'
 import { useBoardStore } from '../stores/Board'
 import { useStageStore } from '../stores/Stage'
 import { useTaskStore } from '../stores/Task'

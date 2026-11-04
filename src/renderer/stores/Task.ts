@@ -8,7 +8,7 @@ import type {
   RecurrenceStatus,
   RecurrenceSummary,
   SeriesPlacement,
-} from '../../main/shared/recurrence.constants'
+} from '@core/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'

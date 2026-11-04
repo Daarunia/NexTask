@@ -60,7 +60,7 @@ import { getLogger } from '../../utils/logger'
 import { useErrorToast, useInfoToast } from '../../utils/toast.helper'
 import { useDangerConfirm } from '../../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
-import type { DatabaseLocation, DatabaseLocationResult } from '../../../main/shared/database.constants'
+import type { DatabaseLocation, DatabaseLocationResult } from '@core/shared/database.constants'
 
 /**
  * Emplacement de la base depuis les Paramètres : chemin actuel, déplacement

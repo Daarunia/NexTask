@@ -1,7 +1,7 @@
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../prisma/generated/prisma/client.js'
-import { IS_DEV } from '../constants.js'
-import { DB_PATH, IS_CUSTOM_DB } from '../database/location.js'
+import { IS_DEV } from '../../main/constants.js'
+import { DB_PATH, IS_CUSTOM_DB } from '../../main/database/location.js'
 
 // Même fichier que celui migré par setupDatabase (test.db, dev.db, app.db ou
 // celui de l'emplacement choisi par l'utilisateur)

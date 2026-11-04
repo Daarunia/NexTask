@@ -3,7 +3,7 @@ import path from 'node:path'
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
 import { API, TEST_INDEX } from '../../helpers/api.helper'
-import { testFileSuffix } from '../../../src/main/shared/test.constants'
+import { testFileSuffix } from '@core/shared/test.constants'
 
 /**
  * Tests E2E des boutons d'ouverture du dossier des données et du dossier des

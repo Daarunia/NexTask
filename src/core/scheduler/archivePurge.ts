@@ -1,6 +1,6 @@
 import Logger from 'electron-log'
 import { prisma } from '../server/prismaClient.js'
-import { settingsStore } from '../stores/settings.js'
+import { settingsStore } from '../../main/stores/settings.js'
 
 /**
  * Purge automatique des tâches archivées.

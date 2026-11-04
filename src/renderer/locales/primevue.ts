@@ -1,5 +1,5 @@
 import type { PrimeVueLocaleAriaOptions, PrimeVueLocaleOptions } from '@primevue/core/config'
-import { INTL_LOCALES, type Locale } from '../../main/shared/settings.constants'
+import { INTL_LOCALES, type Locale } from '@core/shared/settings.constants'
 
 /**
  * Textes des composants PrimeVue (calendrier, listes, boutons de confirmation)

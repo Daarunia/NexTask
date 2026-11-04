@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
-import { TAG_COLORS } from '../../../src/main/shared/tag.constants'
+import { TAG_COLORS } from '@core/shared/tag.constants'
 
 /**
  * Tests E2E de l'API des tags.

@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { getTagColorStyle } from '../constants/tag.constants'
-import type { TagColor } from '../../main/shared/tag.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 
 defineProps<{
   color: TagColor | null // couleur de la palette des tags, comme une colonne

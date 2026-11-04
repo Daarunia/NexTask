@@ -1,7 +1,7 @@
 import { Tag } from './tag.types'
 import type { TaskChecklist } from './checklist.types'
-import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
-import type { ChecklistItemInput } from '../../main/shared/checklist.constants'
+import type { RecurrenceInput, RecurrenceSummary } from '@core/shared/recurrence.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 
 /**
  * Entité 'Tâches'

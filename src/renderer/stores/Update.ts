@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { UpdateStatus } from '../../main/shared/update.constants'
+import type { UpdateStatus } from '@core/shared/update.constants'
 import { getLogger } from '../utils/logger'
 
 // Désabonnement du suivi de l'état, branché une seule fois

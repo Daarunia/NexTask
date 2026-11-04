@@ -1,0 +1,17 @@
+{
+  // Lu par Playwright (et l'éditeur) pour les tests : alias de src/core,
+  // le même que pour le renderer (src/renderer/tsconfig.json) et Vitest.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "paths": {
+      "@core/*": ["../src/core/*"]
+    }
+  },
+  "include": ["./**/*.ts"]
+}

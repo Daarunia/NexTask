@@ -1,16 +1,16 @@
 import { app, BrowserWindow, dialog, ipcMain, screen, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getApiUrl, isServerStarted, startServer } from './server/index.js'
-import { setupDatabase } from './setupDatabase.js'
-import { applySeeds } from './seedDatabase.js'
+import { getApiUrl, isServerStarted, startServer } from '../core/server/index.js'
+import { setupDatabase } from '../core/database/setupDatabase.js'
+import { applySeeds } from '../core/database/seedDatabase.js'
 import {
   onNotificationClicked,
   startNotificationScheduler,
   stopNotificationScheduler,
 } from './scheduler/notificationScheduler.js'
-import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
-import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
+import { onOccurrencesCreated } from '../core/scheduler/recurrenceGeneration.js'
+import { startMaintenanceScheduler, stopMaintenanceScheduler } from '../core/scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { trackInterfaceScale } from './system/interfaceScale.js'
@@ -30,7 +30,7 @@ import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import { getLocale, setupI18n, t } from './i18n.js'
-import type { AppSettings } from './shared/settings.constants.js'
+import type { AppSettings } from '../core/shared/settings.constants.js'
 import {
   APP_ID,
   APP_VERSION,
@@ -42,7 +42,7 @@ import {
   staticAsset,
 } from './constants.js'
 import Logger from 'electron-log'
-import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
+import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

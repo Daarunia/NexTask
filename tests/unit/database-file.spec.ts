@@ -8,7 +8,7 @@ import {
   isSamePath,
   lockFilePath,
   parseLock,
-} from '../../src/main/database/databaseFile'
+} from '@core/database/databaseFile'
 
 /**
  * Tests unitaires des contrôles d'une base à ouvrir et de son verrou (Vitest,

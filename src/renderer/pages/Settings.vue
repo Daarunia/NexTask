@@ -407,8 +407,8 @@ import {
   type NotificationStyle,
   type ThemeMode,
   type WindowMode,
-} from '../../main/shared/settings.constants'
-import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
+} from '@core/shared/settings.constants'
+import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
 import { useI18n } from 'vue-i18n'
 import { currentSystemLocale, LANGUAGE_NAMES } from '../i18n'
 

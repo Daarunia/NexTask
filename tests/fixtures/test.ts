@@ -14,7 +14,7 @@ import { BoardSwitcher } from '../components/BoardSwitcher'
 import { electronArgs } from '../../scripts/server-utils.js'
 import { API, TEST_INDEX } from '../helpers/api.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
-import { TEST_INDEX_ARG, TEST_SLOTS_ARG, TEST_WORKER_PID_ARG } from '../../src/main/shared/test.constants'
+import { TEST_INDEX_ARG, TEST_SLOTS_ARG, TEST_WORKER_PID_ARG } from '@core/shared/test.constants'
 
 type Fixtures = {
   ui: boolean

@@ -29,7 +29,7 @@ import {
   onTaskUpdated,
   recurrenceInputProblem,
 } from '../helpers/recurrence.helper.js'
-import { settingsStore } from '../../stores/settings.js'
+import { settingsStore } from '../../../main/stores/settings.js'
 import type { RecurrenceInput, SeriesPlacement } from '../../shared/recurrence.constants.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from 'electron-log'

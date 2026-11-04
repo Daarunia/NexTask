@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import type { ChecklistItemInput } from '../../../src/main/shared/checklist.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E des filtres rapides de la barre de recherche (en retard,

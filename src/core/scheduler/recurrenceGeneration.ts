@@ -5,7 +5,7 @@ import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.
 import { occurrenceVersion, seriesChecklistTexts } from '../server/helpers/recurrence.helper.js'
 import { templateItemRows } from '../server/helpers/checklist.helper.js'
 import { boardOrFirst, firstStageOf, stagePlacement, type StagePlacement } from '../server/helpers/board.helper.js'
-import { settingsStore } from '../stores/settings.js'
+import { settingsStore } from '../../main/stores/settings.js'
 import {
   countReached,
   dueOccurrence,

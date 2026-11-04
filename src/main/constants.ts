@@ -1,8 +1,8 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
-import { DEV_API_PORT, testApiPort } from './shared/api.constants.js'
-import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from './shared/test.constants.js'
+import { DEV_API_PORT, testApiPort } from '../core/shared/api.constants.js'
+import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from '../core/shared/test.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`

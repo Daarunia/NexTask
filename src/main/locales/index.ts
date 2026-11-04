@@ -1,4 +1,4 @@
-import type { Locale } from '../shared/settings.constants.js'
+import type { Locale } from '../../core/shared/settings.constants.js'
 import { fr, type MainMessages } from './fr.js'
 import { en } from './en.js'
 import { es } from './es.js'

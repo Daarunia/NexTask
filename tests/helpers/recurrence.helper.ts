@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import type { APIRequestContext } from '@playwright/test'
-import type { RecurrenceInput, RecurrenceSummary } from '../../src/main/shared/recurrence.constants'
-import type { ChecklistItemInput } from '../../src/main/shared/checklist.constants'
+import type { RecurrenceInput, RecurrenceSummary } from '@core/shared/recurrence.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 import { API } from './api.helper'
 
 /**

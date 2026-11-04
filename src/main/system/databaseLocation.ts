@@ -5,16 +5,16 @@ import { app, type BrowserWindow, dialog, type MessageBoxOptions, type OpenDialo
 import Logger from 'electron-log'
 import { BACKUPS_PATH, DEFAULT_DB_PATH, IS_TEST } from '../constants.js'
 import { DB_PATH, IS_CUSTOM_DB, setDatabasePath, storageStore } from '../database/location.js'
-import { checkDatabaseContent, hasSqliteHeader, isSamePath } from '../database/databaseFile.js'
-import { acquireLock, findForeignLock, releaseLock } from '../database/lock.js'
-import { copyDatabase } from '../scheduler/databaseBackup.js'
-import { knownMigrations } from '../setupDatabase.js'
+import { checkDatabaseContent, hasSqliteHeader, isSamePath } from '../../core/database/databaseFile.js'
+import { acquireLock, findForeignLock, releaseLock } from '../../core/database/lock.js'
+import { copyDatabase } from '../../core/scheduler/databaseBackup.js'
+import { knownMigrations } from '../../core/database/setupDatabase.js'
 import {
   DATABASE_FILE_NAME,
   type DatabaseLocation,
   type DatabaseLocationResult,
   type DatabaseProblemCode,
-} from '../shared/database.constants.js'
+} from '../../core/shared/database.constants.js'
 import { getLocale, t } from '../i18n.js'
 
 /**

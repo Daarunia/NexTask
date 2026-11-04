@@ -10,7 +10,11 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    // Alias de src/core, à garder aligné sur vite.config.mjs
+    "paths": {
+      "@core/*": ["../core/*"]
+    }
   },
   "include": [
     "./**/*.ts",

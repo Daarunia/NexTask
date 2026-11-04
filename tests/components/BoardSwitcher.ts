@@ -1,6 +1,6 @@
 import { Page, Locator, expect } from '@playwright/test'
-import type { BoardColumnsMode } from '../../src/main/shared/board.constants'
-import type { TagColor } from '../../src/main/shared/tag.constants'
+import type { BoardColumnsMode } from '@core/shared/board.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 
 /** Choix du dialogue de création d'un tableau, ceux non donnés restant à leur valeur de départ. */
 export interface BoardCreateOptions {

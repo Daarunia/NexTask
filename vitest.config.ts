@@ -1,5 +1,9 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import vuePlugin from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
+
+const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Tests unitaires (Vitest) : fonctions et modules testés sans lancer l'app,
@@ -11,6 +15,10 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   // Composants .vue : lus pour les tests et la couverture
   plugins: [vuePlugin()],
+  // Même alias que le renderer et les tests E2E (cf. tests/tsconfig.json)
+  resolve: {
+    alias: { '@core': path.join(ROOT, 'src', 'core') },
+  },
   test: {
     include: ['tests/unit/**/*.spec.ts'],
     environment: 'node',

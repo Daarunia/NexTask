@@ -5,8 +5,8 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { API, TEST_INDEX } from '../../helpers/api.helper'
 import { restoreDialogs, stubOpenDialog } from '../../helpers/dialog.helper'
-import { testFileSuffix } from '../../../src/main/shared/test.constants'
-import { DATABASE_FILE_NAME } from '../../../src/main/shared/database.constants'
+import { testFileSuffix } from '@core/shared/test.constants'
+import { DATABASE_FILE_NAME } from '@core/shared/database.constants'
 import type { SettingsPage } from '../../components/SettingsPage'
 
 /**

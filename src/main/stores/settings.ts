@@ -12,7 +12,7 @@ import {
   TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
   WINDOW_MODES,
-} from '../shared/settings.constants.js'
+} from '../../core/shared/settings.constants.js'
 
 /**
  * Valeurs par défaut côté main. En test, l'interface reste en français quelle

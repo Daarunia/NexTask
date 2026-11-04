@@ -2,7 +2,7 @@ import { type BrowserWindow, type Rectangle, screen } from 'electron'
 import Logger from 'electron-log'
 import { IS_TEST } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
-import type { WindowState } from '../shared/settings.constants.js'
+import type { WindowState } from '../../core/shared/settings.constants.js'
 
 /**
  * Taille et position de la fenêtre principale : enregistrées au fil des

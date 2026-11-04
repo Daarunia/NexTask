@@ -177,8 +177,8 @@ import { setDragging } from '../../utils/dnd.helper'
 import { useDangerConfirm } from '../../utils/confirm.helper'
 import { isEditableTarget, isInOverlay } from '../../utils/keyboard.helper'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../../constants/tag.constants'
-import type { TagColor } from '../../../main/shared/tag.constants'
-import type { SeriesPlacement } from '../../../main/shared/recurrence.constants'
+import type { TagColor } from '@core/shared/tag.constants'
+import type { SeriesPlacement } from '@core/shared/recurrence.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{

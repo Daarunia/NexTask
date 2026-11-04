@@ -1,6 +1,6 @@
 import type { ChecklistItem, TaskChecklist } from '../types/checklist.types'
 import type { ChecklistTemplate } from '../types/checklistTemplate.types'
-import type { ChecklistItemInput } from '../../main/shared/checklist.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 import { t } from '../i18n'
 
 /** Avancement d'une checklist, nombre de points cochés et nombre total. */

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { resolveLocale, systemLocale } from '../../src/main/shared/locale.helper'
+import { resolveLocale, systemLocale } from '@core/shared/locale.helper'
 
 /**
  * Tests unitaires de la résolution de la langue de l'interface (choix de

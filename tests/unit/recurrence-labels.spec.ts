@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import type { RecurrenceSummary } from '../../src/main/shared/recurrence.constants'
+import type { RecurrenceSummary } from '@core/shared/recurrence.constants'
 import { i18n } from '../../src/renderer/i18n'
 import {
   describeRecurrence,

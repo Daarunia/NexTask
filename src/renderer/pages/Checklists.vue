@@ -92,7 +92,7 @@ import type { ChecklistTemplate } from '../types/checklistTemplate.types'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
 import { useDangerConfirm } from '../utils/confirm.helper'
-import { duplicateName, templateKey } from '../../main/shared/checklistTemplate.helper'
+import { duplicateName, templateKey } from '@core/shared/checklistTemplate.helper'
 
 /**
  * Page Checklists (`/checklists/:id?`), gestion des modèles de checklist en

@@ -1,9 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import Logger from 'electron-log'
 import { settingsStore } from './stores/settings.js'
-import type { Locale } from './shared/settings.constants.js'
-import { resolveLocale, systemLocale } from './shared/locale.helper.js'
-import type { LocaleState } from './shared/i18n.constants.js'
+import type { Locale } from '../core/shared/settings.constants.js'
+import { resolveLocale, systemLocale } from '../core/shared/locale.helper.js'
+import type { LocaleState } from '../core/shared/i18n.constants.js'
 import { fr, MAIN_CATALOGS, type MainMessages } from './locales/index.js'
 
 /**

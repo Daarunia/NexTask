@@ -7,7 +7,7 @@ import {
   checklistTemplateSchema,
 } from '../schemas/checklistSchema.js'
 import { idParam, errorResponse, messageResponse } from '../schemas/common.js'
-import { t } from '../../i18n.js'
+import { t } from '../../../main/i18n.js'
 import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../shared/checklist.constants.js'
 import {
   duplicateName,

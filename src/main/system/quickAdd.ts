@@ -3,7 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent, WebPreferences } from 'electron'
 import Logger from 'electron-log'
 import { IS_TEST } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
-import { QUICK_ADD_ROUTE, type QuickAddStatus } from '../shared/quickAdd.constants.js'
+import { QUICK_ADD_ROUTE, type QuickAddStatus } from '../../core/shared/quickAdd.constants.js'
 import { t } from '../i18n.js'
 
 /**

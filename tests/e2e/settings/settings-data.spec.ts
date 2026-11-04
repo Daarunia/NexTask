@@ -7,13 +7,13 @@ import { createTaskViaApi } from '../../helpers/tag.helper'
 import { restoreDialogs, stubOpenDialog, stubSaveDialog } from '../../helpers/dialog.helper'
 import { createRecurringTask, DAILY, getTask, localDate, stageIds } from '../../helpers/recurrence.helper'
 import { DEFAULT_BOARD, rememberBoard } from '../../helpers/board.helper'
-import { EXPORT_FORMAT, EXPORT_VERSION } from '../../../src/main/shared/data.constants'
-import type { AppSettings } from '../../../src/main/shared/settings.constants'
+import { EXPORT_FORMAT, EXPORT_VERSION } from '@core/shared/data.constants'
+import type { AppSettings } from '@core/shared/settings.constants'
 import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
   CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
-} from '../../../src/main/shared/checklist.constants'
+} from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E de l'export / import des données et de la sauvegarde automatique.

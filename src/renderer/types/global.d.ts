@@ -1,9 +1,9 @@
-import type { AppSettings } from '../../main/shared/settings.constants'
-import type { DataTransferResult } from '../../main/shared/data.constants'
-import type { DatabaseLocation, DatabaseLocationResult } from '../../main/shared/database.constants'
-import type { LocaleState } from '../../main/shared/i18n.constants'
-import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
-import type { UpdateStatus } from '../../main/shared/update.constants'
+import type { AppSettings } from '@core/shared/settings.constants'
+import type { DataTransferResult } from '@core/shared/data.constants'
+import type { DatabaseLocation, DatabaseLocationResult } from '@core/shared/database.constants'
+import type { LocaleState } from '@core/shared/i18n.constants'
+import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
+import type { UpdateStatus } from '@core/shared/update.constants'
 import type { Task } from './task.types'
 
 declare global {
