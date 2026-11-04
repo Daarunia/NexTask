@@ -92,10 +92,10 @@ export const DEV_RENDERER_URL = IS_DEV ? `http://localhost:${process.argv[2]}` :
 export const RESOURCES_PATH = IS_DEV ? CURRENT_PATH : process.resourcesPath
 
 // Chemin vers les seeds
-export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/seeds' : 'prisma/seeds')
+export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/core/prisma/seeds' : 'prisma/seeds')
 
 // Chemin vers les migrations
-export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/migrations' : 'prisma/migrations')
+export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/core/prisma/migrations' : 'prisma/migrations')
 
 // Emplacements possibles des assets statiques
 const STATIC_DIRS = [path.join(process.cwd(), 'src', 'main', 'static'), path.join(RESOURCES_PATH, 'static')]

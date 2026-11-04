@@ -11,7 +11,7 @@ import { type Locale, SUPPORTED_LOCALES } from '@core/shared/settings.constants'
  * migrations, sans lancer l'app.
  */
 
-const PRISMA = path.join(__dirname, '../../src/main/prisma')
+const PRISMA = path.join(__dirname, '../../src/core/prisma')
 const MIGRATIONS = path.join(PRISMA, 'migrations')
 const SEEDS = path.join(PRISMA, 'seeds')
 

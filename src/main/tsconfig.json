@@ -1,4 +1,7 @@
 {
+  // Compile le main et src/core ensemble : core importe encore des modules du
+  // main (constantes, réglages, i18n), qu'il recevra par injection plus tard.
+  // rootDir = src, d'où build/main et build/core côte à côte.
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
@@ -7,10 +10,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "../../build/main",
+    "rootDir": "..",
+    "outDir": "../../build",
     "noImplicitAny": false,
     "types": ["node", "electron"]
   },
-  "include": ["**/*.ts"],
-  "exclude": ["../../build/main", "preload/**/*.ts"]
+  "include": ["**/*.ts", "../core/**/*.ts"],
+  "exclude": ["../../build", "preload/**/*.ts"]
 }

@@ -28,7 +28,7 @@ export default defineConfig({
       provider: 'v8',
       // Tout le code de l'app, testé ou non, pour voir ce qui manque
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/**/*.d.ts', 'src/main/prisma/**', 'src/main/server/routes/test.routes.ts'],
+      exclude: ['src/**/*.d.ts', 'src/core/prisma/**', 'src/core/server/routes/test.routes.ts'],
       // lcov : format lu par SonarQube et la plupart des outils de couverture
       reporter: ['text-summary', 'html', 'lcov'],
       reportsDirectory: 'coverage',

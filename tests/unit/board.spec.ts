@@ -12,7 +12,7 @@ import { SUPPORTED_LOCALES } from '@core/shared/settings.constants'
  * tableau en mode `default` identiques à celles d'une base neuve.
  */
 
-const SEEDS = path.join(__dirname, '../../src/main/prisma/seeds')
+const SEEDS = path.join(__dirname, '../../src/core/prisma/seeds')
 
 /**
  * Noms des colonnes de la seed 01_initial_stages.sql d'une langue, dans
