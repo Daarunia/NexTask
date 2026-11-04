@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { type FastifyInstance, type FastifyPluginAsync } from 'fastify'
 import taskRoutes from './routes/task.routes.js'
 import stageRoutes from './routes/stage.routes.js'
 import boardRoutes from './routes/board.routes.js'
@@ -6,7 +6,7 @@ import tagRoutes from './routes/tag.routes.js'
 import checklistTemplateRoutes from './routes/checklistTemplate.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
-import testRoutes from './routes/test.routes.js'
+import testRoutes, { type TestResetHooks } from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import type { AddressInfo } from 'node:net'
@@ -92,21 +92,33 @@ export function getApiUrl(): string {
   return apiUrl
 }
 
-/** Options d'écoute du serveur, propres à celui qui le démarre. */
-export interface ServerOptions {
-  /** Port d'écoute, 0 pour un port choisi par le système. */
-  port: number
+/** Construction du serveur, propre à celui qui démarre core. */
+export interface BuildOptions {
   /** Origines autorisées à appeler l'API, en plus des requêtes sans en-tête Origin. */
   corsOrigins: string[]
+  /** Routes ajoutées après celles de core (routes de test de l'app desktop, par exemple). */
+  plugins?: FastifyPluginAsync[]
+  /** Remise à zéro propre à celui qui démarre core, appelée par POST /test/reset en mode test. */
+  testHooks?: TestResetHooks
+}
+
+/** Options d'écoute du serveur, propres à celui qui le démarre. */
+export interface ServerOptions extends BuildOptions {
+  /** Port d'écoute, 0 pour un port choisi par le système. */
+  port: number
 }
 
 /**
- * Démarre le serveur Fastify.
+ * Construit le serveur Fastify de core, routes enregistrées, sans le mettre à
+ * l'écoute : `inject()` suffit pour l'interroger dans un test.
  *
- * @param options Port d'écoute et origines autorisées
- * @throws Si le serveur n'a pas pu démarrer (port déjà pris en dev ou en test)
+ * @param options Origines autorisées, routes ajoutées et remise à zéro de test
  */
-export async function startServer({ port, corsOrigins }: ServerOptions) {
+export async function buildServer({
+  corsOrigins,
+  plugins = [],
+  testHooks = {},
+}: BuildOptions): Promise<FastifyInstance> {
   const { isDev, isTest } = config()
   const fastify = Fastify({ logger: isDev ? true : { level: 'error' } })
 
@@ -142,17 +154,34 @@ export async function startServer({ port, corsOrigins }: ServerOptions) {
   await fastify.register(recurrenceRoutes)
   await fastify.register(dataRoutes)
 
-  // Route de reset réservée aux tests E2E
+  // Routes de reset et de pilotage réservées aux tests E2E
   if (isTest) {
-    await fastify.register(testRoutes)
+    await fastify.register(testRoutes, testHooks)
   }
+
+  // Routes de celui qui démarre core
+  for (const plugin of plugins) {
+    await fastify.register(plugin)
+  }
+
+  return fastify
+}
+
+/**
+ * Construit puis démarre le serveur Fastify.
+ *
+ * @param options Port d'écoute, origines autorisées, routes ajoutées et remise à zéro de test
+ * @throws Si le serveur n'a pas pu démarrer (port déjà pris en dev ou en test)
+ */
+export async function startServer({ port, ...buildOptions }: ServerOptions) {
+  const fastify = await buildServer(buildOptions)
 
   try {
     await fastify.listen({ port })
     const address = fastify.server.address() as AddressInfo
     apiUrl = `http://localhost:${address.port}`
     Logger.info(`Fastify API -> ${apiUrl}`)
-    if (isDev) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
+    if (config().isDev) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
   } catch (err) {
     fastify.log.error(err)
     throw err

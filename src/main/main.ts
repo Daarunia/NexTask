@@ -53,6 +53,7 @@ import { initCore } from '../core/config.js'
 import { setSettingsProvider } from '../core/settings.js'
 import { setLocaleProvider } from '../core/i18n.js'
 import type { ServerOptions } from '../core/server/index.js'
+import desktopTestRoutes, { desktopTestResetHooks } from './system/test.routes.js'
 import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
 
 // Journaux de core (serveur, base, schedulers) dans electron-log, avant tout
@@ -80,10 +81,13 @@ setSettingsProvider(() => settingsStore.store)
 setLocaleProvider(getLocale)
 
 // Écoute du serveur local : port fixe en dev et en test, libre en prod. Seul le
-// serveur Vite a une origine à autoriser (le renderer packagé est en file://)
+// serveur Vite a une origine à autoriser (le renderer packagé est en file://).
+// En test, routes et remise à zéro propres au desktop, à côté de celles de core
 const SERVER_OPTIONS: ServerOptions = {
   port: API_PORT,
   corsOrigins: DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [],
+  plugins: IS_TEST ? [desktopTestRoutes] : [],
+  testHooks: IS_TEST ? desktopTestResetHooks : {},
 }
 
 const __filename = fileURLToPath(import.meta.url)

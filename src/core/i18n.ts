@@ -23,11 +23,11 @@ export function setLocaleProvider(provider: () => Locale): void {
 }
 
 /**
- * Langue active de core.
+ * Langue active de core (celle des textes et des seeds).
  *
  * @throws Si aucune langue n'est branchée (cf. setLocaleProvider)
  */
-function currentLocale(): Locale {
+export function coreLocale(): Locale {
   if (!localeProvider)
     throw new Error('Langue de core non branchée : setLocaleProvider() doit être appelé au démarrage')
   return localeProvider()
@@ -53,5 +53,5 @@ export function translate(target: Locale, key: CoreMessageKey, params?: MessageP
  * @param params Valeurs des paramètres `{nom}`
  */
 export function t(key: CoreMessageKey, params?: MessageParams): string {
-  return translate(currentLocale(), key, params)
+  return translate(coreLocale(), key, params)
 }

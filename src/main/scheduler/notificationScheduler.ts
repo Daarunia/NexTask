@@ -1,7 +1,7 @@
 import { Cron } from 'croner'
 import { Notification } from 'electron'
 import Logger from 'electron-log'
-import { prisma } from '../../core/server/prismaClient.js'
+import { claimDueReminders } from '../../core/scheduler/reminders.js'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import type { NotificationStyle } from '../../core/shared/settings.constants.js'
@@ -138,22 +138,15 @@ export interface NotificationCheckResult {
 }
 
 /**
- * Coeur métier : sélectionne les tâches échues non notifiées, envoie la
- * notification (si les rappels sont activés) puis les marque comme notifiées.
+ * Coeur métier : réclame les tâches échues non notifiées (marquées notifiées
+ * par core) puis envoie la notification si les rappels sont activés.
  * Extrait pour être testable.
  *
  * @param now Horodatage de référence (injectable pour les tests)
  * @returns Nombre de tâches traitées, envoi ou non de la notification, son style et son titre
  */
 export async function runNotificationCheck(now: Date = new Date()): Promise<NotificationCheckResult> {
-  const dueTasks = await prisma.task.findMany({
-    where: {
-      startDate: { lte: now }, // exclut déjà les valeurs nulles en Prisma
-      notifiedAt: null,
-      isHistorized: false,
-    },
-    select: { id: true, title: true },
-  })
+  const dueTasks = await claimDueReminders(now)
 
   if (dueTasks.length === 0) return { count: 0, shown: false, style: null, title: null }
 
@@ -168,11 +161,6 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
   } else {
     Logger.warn('[scheduler] Notifications OS non supportées, marquage sans affichage')
   }
-
-  await prisma.task.updateMany({
-    where: { id: { in: dueTasks.map((t) => t.id) } },
-    data: { notifiedAt: now },
-  })
 
   Logger.info(`[scheduler] ${dueTasks.length} tâche(s) notifiée(s)`)
   return { count: dueTasks.length, shown: style !== null, style, title }
