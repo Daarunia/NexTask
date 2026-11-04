@@ -5,7 +5,7 @@ import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.
 import { occurrenceVersion, seriesChecklistTexts } from '../server/helpers/recurrence.helper.js'
 import { templateItemRows } from '../server/helpers/checklist.helper.js'
 import { boardOrFirst, firstStageOf, stagePlacement, type StagePlacement } from '../server/helpers/board.helper.js'
-import { settingsStore } from '../../main/stores/settings.js'
+import { settings } from '../settings.js'
 import {
   countReached,
   dueOccurrence,
@@ -157,7 +157,7 @@ async function createOccurrence(
 ): Promise<number> {
   const { stageId } = placement
   let position: number
-  if (settingsStore.get('newTaskPosition') === 'top') {
+  if (settings().newTaskPosition === 'top') {
     position = 0
     await makeRoomAt(tx, stageId, position)
   } else {

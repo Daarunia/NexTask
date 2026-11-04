@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { MESSAGES } from '../../src/renderer/i18n'
 import { MAIN_CATALOGS } from '../../src/main/locales'
+import { CORE_CATALOGS } from '@core/locales'
 
 /**
  * Garde-fous de la traduction de l'interface : aucun texte en dur dans les
@@ -112,6 +113,7 @@ function paramsOf(text: string): string[] {
 const CATALOG_SETS = [
   ['renderer', MESSAGES],
   ['main', MAIN_CATALOGS],
+  ['core', CORE_CATALOGS],
 ] as const
 
 describe.each(CATALOG_SETS)('Catalogues du %s', (_name, catalogs) => {

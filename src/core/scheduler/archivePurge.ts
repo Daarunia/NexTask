@@ -1,6 +1,6 @@
 import Logger from '../logger.js'
 import { prisma } from '../server/prismaClient.js'
-import { settingsStore } from '../../main/stores/settings.js'
+import { settings } from '../settings.js'
 
 /**
  * Purge automatique des tâches archivées.
@@ -26,9 +26,9 @@ export interface ArchivePurgeResult {
  * @returns Purge activée ou non, et nombre de tâches supprimées
  */
 export async function runArchivePurge(now: Date = new Date()): Promise<ArchivePurgeResult> {
-  if (!settingsStore.get('archivePurgeEnabled')) return { enabled: false, count: 0 }
+  if (!settings().archivePurgeEnabled) return { enabled: false, count: 0 }
 
-  const days = settingsStore.get('archivePurgeDays')
+  const days = settings().archivePurgeDays
   const limit = new Date(now.getTime() - days * DAY)
 
   const { count } = await prisma.task.deleteMany({

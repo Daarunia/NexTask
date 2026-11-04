@@ -29,7 +29,7 @@ import {
   onTaskUpdated,
   recurrenceInputProblem,
 } from '../helpers/recurrence.helper.js'
-import { settingsStore } from '../../../main/stores/settings.js'
+import { settings } from '../../settings.js'
 import type { RecurrenceInput, SeriesPlacement } from '../../shared/recurrence.constants.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from '../../logger.js'
@@ -835,13 +835,13 @@ export default async function taskRoutes(fastify) {
         stageId?: number
         checklistTemplateId?: number
       }
-      const { newTaskPosition, defaultTaskVersion } = settingsStore.store
+      const { newTaskPosition, defaultTaskVersion } = settings()
 
       return prisma.$transaction(async (tx) => {
         // Colonne demandée, sinon première colonne du dernier tableau affiché, sinon du premier
         const placement =
           (stageId === undefined ? null : await stagePlacement(tx, stageId)) ??
-          (await firstStageAmong(tx, [settingsStore.get('lastBoardId')]))
+          (await firstStageAmong(tx, [settings().lastBoardId]))
         if (!placement) {
           reply.code(409)
           return { error: 'Aucune colonne pour ajouter la tâche' }

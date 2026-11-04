@@ -10,7 +10,7 @@ import {
   toRecurrenceRule,
   type RecurrenceRule,
 } from '../../shared/recurrence.helper.js'
-import { settingsStore } from '../../../main/stores/settings.js'
+import { settings } from '../../settings.js'
 import { isChecklistTexts, sameChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
 import Logger from '../../logger.js'
 
@@ -184,7 +184,7 @@ function scheduleChanged(series: Recurrence, rule: RuleData): boolean {
  * @param version Version du modèle de la série
  */
 export function occurrenceVersion(version: string): string {
-  const { taskVersions, defaultTaskVersion } = settingsStore.store
+  const { taskVersions, defaultTaskVersion } = settings()
   return taskVersions.includes(version) ? version : defaultTaskVersion
 }
 

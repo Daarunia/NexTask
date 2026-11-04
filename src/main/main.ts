@@ -50,6 +50,8 @@ import { DB_PATH, IS_CUSTOM_DB } from './database/location.js'
 import Logger from 'electron-log'
 import { setLogger } from '../core/logger.js'
 import { initCore } from '../core/config.js'
+import { setSettingsProvider } from '../core/settings.js'
+import { setLocaleProvider } from '../core/i18n.js'
 import type { ServerOptions } from '../core/server/index.js'
 import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
 
@@ -69,6 +71,13 @@ initCore({
   seedsPath: SEEDS_PATH,
   staticDir: STATIC_DIR,
 })
+
+// Réglages lus par core (versions, position des nouvelles tâches, purge,
+// sauvegardes), relus à chaque appel : un changement dans l'interface est suivi
+setSettingsProvider(() => settingsStore.store)
+
+// Textes de core (colonnes par défaut, copies de modèles) dans la langue de l'interface
+setLocaleProvider(getLocale)
 
 // Écoute du serveur local : port fixe en dev et en test, libre en prod. Seul le
 // serveur Vite a une origine à autoriser (le renderer packagé est en file://)

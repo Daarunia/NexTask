@@ -5,6 +5,7 @@ import Logger from 'electron-log'
 import { getApiUrl } from '../../core/server/index.js'
 import type { DataCounts, DataTransferResult, ImportProblem } from '../../core/shared/data.constants.js'
 import { t } from '../i18n.js'
+import { t as tCore } from '../../core/i18n.js'
 
 /**
  * Export et import des données vers et depuis un fichier, à la demande du
@@ -40,7 +41,7 @@ async function errorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { message?: string; error?: string; problem?: ImportProblem }
     // Motif de refus connu : traduit dans la langue de l'interface
-    if (body.problem) return t(`importProblems.${body.problem.code}`, body.problem.params)
+    if (body.problem) return tCore(`importProblems.${body.problem.code}`, body.problem.params)
     return body.message ?? body.error ?? `HTTP ${response.status}`
   } catch {
     return `HTTP ${response.status}`

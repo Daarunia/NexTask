@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { boardKey } from '@core/shared/board.helper'
 import { DEFAULT_STAGE_KEYS } from '@core/server/helpers/board.helper'
-import { MAIN_CATALOGS } from '../../src/main/locales'
+import { CORE_CATALOGS } from '@core/locales'
 import { SUPPORTED_LOCALES } from '@core/shared/settings.constants'
 
 /**
@@ -45,7 +45,7 @@ describe('colonnes par défaut d’un nouveau tableau', () => {
   })
 
   test.each(SUPPORTED_LOCALES)('%s : mêmes noms que la seed 01_initial_stages.sql', (locale) => {
-    const names = DEFAULT_STAGE_KEYS.map((key) => MAIN_CATALOGS[locale].boards.defaultStages[key])
+    const names = DEFAULT_STAGE_KEYS.map((key) => CORE_CATALOGS[locale].boards.defaultStages[key])
     expect(seededStageNames(locale)).toHaveLength(DEFAULT_STAGE_KEYS.length)
     expect(names).toEqual(seededStageNames(locale))
   })

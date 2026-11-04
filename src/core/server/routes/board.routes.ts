@@ -15,7 +15,7 @@ import { DEFAULT_STAGE_KEYS, POSITION_ORDER, findBoardByName, nextBoardPosition 
 import { boardKey } from '../../shared/board.helper.js'
 import type { BoardColumnsMode } from '../../shared/board.constants.js'
 import type { TagColor } from '../../shared/tag.constants.js'
-import { t } from '../../../main/i18n.js'
+import { t } from '../../i18n.js'
 
 const NAME_TAKEN = 'Un tableau porte déjà ce nom'
 const NOT_FOUND = 'Tableau non trouvé'

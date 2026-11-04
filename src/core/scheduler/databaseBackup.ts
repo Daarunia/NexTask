@@ -3,7 +3,7 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import Logger from '../logger.js'
 import { config } from '../config.js'
-import { settingsStore } from '../../main/stores/settings.js'
+import { settings } from '../settings.js'
 
 /**
  * Sauvegarde automatique de la base.
@@ -89,7 +89,7 @@ export async function copyDatabase(target: string, source = config().dbPath): Pr
 export async function runDatabaseBackup(now: Date = new Date()): Promise<DatabaseBackupResult> {
   const { backupsPath } = config()
 
-  if (!settingsStore.get('autoBackupEnabled')) {
+  if (!settings().autoBackupEnabled) {
     return { enabled: false, created: null, backups: listBackups(), directory: backupsPath }
   }
 

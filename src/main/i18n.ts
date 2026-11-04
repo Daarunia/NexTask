@@ -4,6 +4,14 @@ import { settingsStore } from './stores/settings.js'
 import type { Locale } from '../core/shared/settings.constants.js'
 import { resolveLocale, systemLocale } from '../core/shared/locale.helper.js'
 import type { LocaleState } from '../core/shared/i18n.constants.js'
+import {
+  interpolateMessage,
+  lookupMessage,
+  type MessageKey,
+  type MessageParams,
+  type PluralKey,
+  type PluralMessage,
+} from '../core/shared/message.helper.js'
 import { fr, MAIN_CATALOGS, type MainMessages } from './locales/index.js'
 
 /**
@@ -13,35 +21,8 @@ import { fr, MAIN_CATALOGS, type MainMessages } from './locales/index.js'
  * (zone de notification, notifications, boîtes de dialogue).
  */
 
-/** Texte au pluriel d'un catalogue. */
-interface PluralMessage {
-  one: string
-  other: string
-}
-
-/** Clés des textes simples, en chemin pointé (`tray.open`). */
-type MessageKey<T, P extends string = ''> = {
-  [K in keyof T & string]: T[K] extends string
-    ? `${P}${K}`
-    : T[K] extends PluralMessage
-      ? never
-      : MessageKey<T[K], `${P}${K}.`>
-}[keyof T & string]
-
-/** Clés des textes au pluriel. */
-type PluralKey<T, P extends string = ''> = {
-  [K in keyof T & string]: T[K] extends string
-    ? never
-    : T[K] extends PluralMessage
-      ? `${P}${K}`
-      : PluralKey<T[K], `${P}${K}.`>
-}[keyof T & string]
-
 export type MainMessageKey = MessageKey<MainMessages>
 export type MainPluralKey = PluralKey<MainMessages>
-
-/** Valeurs des paramètres d'un texte. */
-type Params = Record<string, string | number>
 
 let locale: Locale = 'fr'
 
@@ -68,32 +49,12 @@ export function getLocale(): Locale {
 }
 
 /**
- * Valeur d'un chemin pointé dans un catalogue.
- *
- * @param catalog Catalogue lu
- * @param key Chemin pointé (`tray.open`)
- */
-function lookup(catalog: MainMessages, key: string): unknown {
-  return key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalog)
-}
-
-/**
- * Remplace les paramètres `{nom}` d'un texte.
- *
- * @param template Texte du catalogue
- * @param params Valeurs des paramètres
- */
-function interpolate(template: string, params: Params = {}): string {
-  return template.replaceAll(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match))
-}
-
-/**
  * Texte du main dans la langue active, le français à défaut.
  *
  * @param key Clé du texte
  * @param params Valeurs des paramètres `{nom}`
  */
-export function t(key: MainMessageKey, params?: Params): string {
+export function t(key: MainMessageKey, params?: MessageParams): string {
   return translate(locale, key, params)
 }
 
@@ -105,9 +66,9 @@ export function t(key: MainMessageKey, params?: Params): string {
  * @param key Clé du texte
  * @param params Valeurs des paramètres `{nom}`
  */
-export function translate(target: Locale, key: MainMessageKey, params?: Params): string {
-  const message = lookup(MAIN_CATALOGS[target], key) ?? lookup(fr, key)
-  return interpolate(typeof message === 'string' ? message : key, params)
+export function translate(target: Locale, key: MainMessageKey, params?: MessageParams): string {
+  const message = lookupMessage(MAIN_CATALOGS[target], key) ?? lookupMessage(fr, key)
+  return interpolateMessage(typeof message === 'string' ? message : key, params)
 }
 
 /**
@@ -117,10 +78,10 @@ export function translate(target: Locale, key: MainMessageKey, params?: Params):
  * @param count Nombre qui choisit la forme
  * @param params Autres paramètres
  */
-export function tn(key: MainPluralKey, count: number, params?: Params): string {
-  const message = (lookup(MAIN_CATALOGS[locale], key) ?? lookup(fr, key)) as PluralMessage
+export function tn(key: MainPluralKey, count: number, params?: MessageParams): string {
+  const message = (lookupMessage(MAIN_CATALOGS[locale], key) ?? lookupMessage(fr, key)) as PluralMessage
   const form = new Intl.PluralRules(locale).select(count) === 'one' ? message.one : message.other
-  return interpolate(form, { count, ...params })
+  return interpolateMessage(form, { count, ...params })
 }
 
 /**
