@@ -75,7 +75,7 @@ contextBridge.exposeInMainWorld('updater', {
   },
 })
 
-// Tâches récurrentes (cf. scheduler/recurrenceGeneration) : fenêtre principale
+// Tâches récurrentes (cf. core/scheduler/recurrenceGeneration) : fenêtre principale
 // avertie des occurrences créées par le main
 contextBridge.exposeInMainWorld('recurrence', {
   onTasksCreated: (callback: (tasks: unknown[]) => void) => {

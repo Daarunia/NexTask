@@ -2,8 +2,8 @@
  * Paramètres de l'application, partagés entre le main et le renderer.
  *
  * Fichier sans aucun import (ni Node, ni Electron) : le renderer l'importe
- * directement. Il vit sous src/main pour rester dans la compilation du main
- * sans changer l'arborescence de build/main.
+ * directement. Il vit sous src/core/shared, compilé avec le main
+ * (cf. src/main/tsconfig.json).
  */
 
 /** Modes d'affichage proposés (`system` suit le réglage de l'OS). */

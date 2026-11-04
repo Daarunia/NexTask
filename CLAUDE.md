@@ -7,20 +7,23 @@ Fastify local que le renderer appelle en HTTP.
 
 ```
 src/
-  main/                Processus principal Electron (Node)
-    main.ts            Point d'entrée : base, serveur, fenêtres, tray, raccourcis
+  core/                Serveur et données, appelés à tourner hors d'Electron (compilés avec le main)
     server/            API Fastify locale
       routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data)
                        test.routes.ts : remise à zéro de la base, utilisée par les tests E2E
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
-    database/          Emplacement, fichier et verrou de la base SQLite
-    scheduler/         Tâches de fond : récurrences, notifications, sauvegardes, purge des archives
-    system/            Intégration OS : quick add, mises à jour, import/export, état des fenêtres…
+    database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage
+    scheduler/         Tâches de fond : récurrences, sauvegardes, purge des archives
     shared/            Constantes et helpers partagés avec le renderer (*.constants.ts, *.helper.ts)
+  main/                Processus principal Electron (Node)
+    main.ts            Point d'entrée : base, serveur, fenêtres, tray, raccourcis
+    database/          Emplacement de la base choisi par l'utilisateur
+    scheduler/         Notifications des rappels
+    system/            Intégration OS : quick add, mises à jour, import/export, état des fenêtres…
     preload/           Pont exposé au renderer (dont l'URL du serveur)
-    locales/           Textes du main (notifications, menus), 5 langues
+    locales/           Textes du main et du serveur (notifications, menus, colonnes par défaut), 5 langues
   renderer/            Interface Vue 3 (PrimeVue, Tailwind v4, Pinia, vue-i18n)
     pages/             Home (tableau), Archives, Checklists, Settings, QuickAdd
     components/        Composants, dont kanban/, settings/, checklists/
@@ -52,7 +55,10 @@ docs/                  Site GitHub Pages (en + fr), publié à chaque tag v*.*.*
 - Commentaires et JSDoc en français ; messages de commit en anglais, au format Conventional Commits
   (`feat(board): …`, `fix(search): …`, `test: …`).
 - Tout texte visible s'ajoute dans les 5 langues (`src/renderer/locales` ou `src/main/locales`).
-- Modifier le schéma de la base = une nouvelle migration Prisma dans `src/main/prisma/migrations`.
+- Modifier le schéma de la base = une nouvelle migration Prisma dans `src/core/prisma/migrations`.
+- Le renderer et les tests importent `src/core` par l'alias `@core/…` (déclaré dans `vite.config.mjs`,
+  `vitest.config.ts`, `src/renderer/tsconfig.json` et `tests/tsconfig.json`). Le main et `core` restent
+  en chemins relatifs : ils sont compilés par `tsc` sans bundler, qui ne réécrit pas les alias.
 - Le hook de pre-commit refuse les marqueurs de travail en suspens et les logs de console
   (cf. `scripts/pre-commit-checks.js`), formate avec Prettier puis lance le typecheck. Les logs passent
   par `electron-log` ou `src/renderer/utils/logger.ts`.
