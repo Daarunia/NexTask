@@ -51,6 +51,22 @@ const checkForKeywords = (filePath) => {
   return false
 }
 
+// src/core doit tourner sans Electron et sans le main : ni import d'un paquet
+// electron*, ni import d'un module de src/main (cf. CLAUDE.md)
+const CORE_FORBIDDEN_IMPORT =
+  /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\brequire\(\s*)['"](?:electron(?:-[\w-]+)?(?:\/[^'"]*)?|(?:\.\.?\/)+(?:\.\.\/)*main\/[^'"]*)['"]/g
+
+const checkCoreImports = (file) => {
+  const normalized = file.replaceAll('\\', '/')
+  if (!normalized.startsWith('src/core/') || !/\.(ts|js|mjs|cjs)$/.test(normalized)) return false
+  if (!fs.existsSync(file)) return false
+
+  const matches = fs.readFileSync(file, 'utf-8').match(CORE_FORBIDDEN_IMPORT)
+  if (!matches) return false
+  for (const match of matches) console.log(`Import interdit dans src/core (${file}) : ${match}`)
+  return true
+}
+
 let hasError = false
 
 // Get the list of staged files
@@ -58,6 +74,10 @@ const files = getStagedFiles()
 
 // Check each staged file
 files.forEach((file) => {
+  if (checkCoreImports(file)) {
+    hasError = true
+  }
+
   const filePath = path.resolve(file)
 
   // Exclude files like package.json and those in ./scripts
@@ -72,7 +92,7 @@ files.forEach((file) => {
 
 // If any errors are found, prevent commit
 if (hasError) {
-  console.log('Commit aborted due to TODO/FIXME/console.log found.')
+  console.log('Commit aborted due to TODO/FIXME/console.log or a forbidden import in src/core.')
   process.exit(1)
 } else {
   console.log('No TODO/FIXME/console.log found. Proceeding with commit.')

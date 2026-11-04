@@ -7,23 +7,26 @@ Fastify local que le renderer appelle en HTTP.
 
 ```
 src/
-  core/                Serveur et données, appelés à tourner hors d'Electron (compilés avec le main)
+  core/                Serveur et données, sans Electron ni import du main (compilés avec le main)
+    config.ts          initCore() : chemins, version, modes ; settings.ts, i18n.ts, logger.ts : fournisseurs
     server/            API Fastify locale
       routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data)
-                       test.routes.ts : remise à zéro de la base, utilisée par les tests E2E
+                       test.routes.ts : remise à zéro de la base et pilotage, pour les tests E2E
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
     database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage
-    scheduler/         Tâches de fond : récurrences, sauvegardes, purge des archives
+    scheduler/         Tâches de fond : récurrences, rappels échus, sauvegardes, purge des archives
     shared/            Constantes et helpers partagés avec le renderer (*.constants.ts, *.helper.ts)
+    locales/           Textes produits par le serveur (colonnes par défaut, motifs d'import), 5 langues
   main/                Processus principal Electron (Node)
-    main.ts            Point d'entrée : base, serveur, fenêtres, tray, raccourcis
+    main.ts            Point d'entrée : branche core (initCore, fournisseurs), serveur, fenêtres, tray
     database/          Emplacement de la base choisi par l'utilisateur
-    scheduler/         Notifications des rappels
+    scheduler/         Affichage des notifications de rappel
     system/            Intégration OS : quick add, mises à jour, import/export, état des fenêtres…
+                       test.routes.ts : routes de test propres au desktop
     preload/           Pont exposé au renderer (dont l'URL du serveur)
-    locales/           Textes du main et du serveur (notifications, menus, colonnes par défaut), 5 langues
+    locales/           Textes du main (notifications, menus, boîtes de dialogue), 5 langues
   renderer/            Interface Vue 3 (PrimeVue, Tailwind v4, Pinia, vue-i18n)
     pages/             Home (tableau), Archives, Checklists, Settings, QuickAdd
     components/        Composants, dont kanban/, settings/, checklists/
@@ -31,7 +34,7 @@ src/
     utils/             Helpers purs (dates, recherche, récurrence, API via axios…)
     locales/           Textes de l'interface, 5 langues
 tests/
-  unit/                Vitest (*.spec.ts) : logique pure, main comme renderer
+  unit/                Vitest (*.spec.ts) : logique pure, main comme renderer ; core-boot.spec.ts démarre core sous Node
   e2e/                 Playwright sur l'app Electron, par domaine (task, board, stage, tag…)
   components/          Page objects Playwright (TaskBoard, Header, SettingsPage…)
   fixtures/test.ts     Lance une app par worker, base remise à zéro avant chaque test
@@ -43,7 +46,7 @@ docs/                  Site GitHub Pages (en + fr), publié à chaque tag v*.*.*
 ## Commandes
 
 - `npm run dev` : app en développement (base `dev.db`)
-- `npm run typecheck` : TypeScript du main et vue-tsc du renderer
+- `npm run typecheck` : TypeScript du main, de core seul (borné à son dossier) et vue-tsc du renderer
 - `npm run test:unit` : tests Vitest
 - `npm run test:e2e` : tests Playwright (compile le main et le renderer avant)
 - `npx playwright test tests/e2e/task/task-batch.spec.ts` : un seul fichier E2E
@@ -54,14 +57,15 @@ docs/                  Site GitHub Pages (en + fr), publié à chaque tag v*.*.*
 
 - Commentaires et JSDoc en français ; messages de commit en anglais, au format Conventional Commits
   (`feat(board): …`, `fix(search): …`, `test: …`).
-- Tout texte visible s'ajoute dans les 5 langues (`src/renderer/locales` ou `src/main/locales`).
+- Tout texte visible s'ajoute dans les 5 langues (`src/renderer/locales`, `src/main/locales` ou `src/core/locales`).
 - Modifier le schéma de la base = une nouvelle migration Prisma dans `src/core/prisma/migrations`.
 - Le renderer et les tests importent `src/core` par l'alias `@core/…` (déclaré dans `vite.config.mjs`,
   `vitest.config.ts`, `src/renderer/tsconfig.json` et `tests/tsconfig.json`). Le main et `core` restent
   en chemins relatifs : ils sont compilés par `tsc` sans bundler, qui ne réécrit pas les alias.
 - Le hook de pre-commit refuse les marqueurs de travail en suspens et les logs de console
-  (cf. `scripts/pre-commit-checks.js`), formate avec Prettier puis lance le typecheck. Les logs passent
-  par `electron-log` ou `src/renderer/utils/logger.ts`.
+  (cf. `scripts/pre-commit-checks.js`), ainsi que tout import d'un paquet `electron*` ou de `src/main`
+  dans `src/core`, formate avec Prettier puis lance le typecheck. Les logs passent par `electron-log`
+  (main), la façade `src/core/logger.ts` (core) ou `src/renderer/utils/logger.ts`.
 
 ## À chaque fonctionnalité ou correctif
 

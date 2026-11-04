@@ -1,0 +1,20 @@
+{
+  // Vérification de core seul, sans émettre (le build compile core avec le
+  // main, cf. src/main/tsconfig.json). rootDir borne core à son dossier : un
+  // import vers src/main devient une erreur (TS6059), et seuls les types de
+  // Node sont chargés.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "rootDir": ".",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

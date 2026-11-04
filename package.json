@@ -33,7 +33,7 @@
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux",
     "sonar": "sonar-scanner",
-    "typecheck": "tsc -p src/main/tsconfig.json --noEmit && vue-tsc -p src/renderer/tsconfig.json --noEmit",
+    "typecheck": "tsc -p src/main/tsconfig.json --noEmit && tsc -p src/core/tsconfig.json && vue-tsc -p src/renderer/tsconfig.json --noEmit",
     "release": "node scripts/bump-version.js",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
