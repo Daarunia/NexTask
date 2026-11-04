@@ -1,5 +1,5 @@
 import { Cron } from 'croner'
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 import { runArchivePurge } from './archivePurge.js'
 import { runDatabaseBackup } from './databaseBackup.js'
 

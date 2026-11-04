@@ -3,7 +3,7 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import { IS_DEV, IS_TEST, MIGRATIONS_PATH } from '../../main/constants.js'
 import { DB_PATH, IS_CUSTOM_DB } from '../../main/database/location.js'
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 
 /**
  * Migrations connues de cette version de l'app, dans l'ordre d'application.

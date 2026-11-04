@@ -11,7 +11,7 @@ import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import type { AddressInfo } from 'node:net'
 import { API_PORT, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from '../../main/constants.js'
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 import { readFileSync } from 'node:fs'
 
 /**

@@ -1,4 +1,4 @@
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 import { prisma } from '../prismaClient.js'
 import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'

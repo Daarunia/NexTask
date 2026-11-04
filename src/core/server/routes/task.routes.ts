@@ -32,7 +32,7 @@ import {
 import { settingsStore } from '../../../main/stores/settings.js'
 import type { RecurrenceInput, SeriesPlacement } from '../../shared/recurrence.constants.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 
 // Noms des tags d'une tâche, rapprochés ou créés par le serveur (cf. tag.helper)
 const taskTagsBody = {

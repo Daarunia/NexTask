@@ -12,7 +12,7 @@ import {
 } from '../../shared/recurrence.helper.js'
 import { settingsStore } from '../../../main/stores/settings.js'
 import { isChecklistTexts, sameChecklistTexts, taskChecklistTexts } from './checklist.helper.js'
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 
 /**
  * Helpers des séries récurrentes, partagés par les routes des tâches, des

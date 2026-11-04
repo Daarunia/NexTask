@@ -4,7 +4,7 @@ import Database from 'better-sqlite3'
 import { SEEDS_PATH } from '../../main/constants.js'
 import { DB_PATH } from '../../main/database/location.js'
 import type { Locale } from '../shared/settings.constants.js'
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 
 /** Seed à appliquer : nom enregistré dans `_seeds` et instructions SQL. */
 export interface SeedFile {

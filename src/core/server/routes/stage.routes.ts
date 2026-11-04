@@ -1,4 +1,4 @@
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 import { prisma } from '../prismaClient.js'
 import { stageSchema } from '../schemas/stageSchema.js'
 import { idParam, errorResponse, messageResponse, requiredLabel } from '../schemas/common.js'

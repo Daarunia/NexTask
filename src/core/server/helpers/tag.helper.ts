@@ -1,6 +1,6 @@
 import type { Prisma, Tag } from '../../prisma/generated/prisma/client.js'
 import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 
 /**
  * Helpers de rapprochement et de création des tags, partagés par les routes

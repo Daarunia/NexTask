@@ -1,7 +1,7 @@
 import type { Checklist, Prisma } from '../../prisma/generated/prisma/client.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import { templateKey } from '../../shared/checklistTemplate.helper.js'
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 
 // Règles de nommage partagées avec le renderer, reprises ici pour les routes
 export { duplicateName, templateKey } from '../../shared/checklistTemplate.helper.js'

@@ -16,7 +16,7 @@ import { closeQuickAdd, openQuickAdd } from '../../../main/system/quickAdd.js'
 import { trayMenuLabels } from '../../../main/system/systemIntegration.js'
 import { resetUpdateForTest, simulateUpdateStatus, wasInstallRequested } from '../../../main/system/updater.js'
 import { UPDATE_STATES, type UpdateStatus } from '../../shared/update.constants.js'
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 
 /**
  * Plugin de routes Fastify réservé aux tests E2E (enregistré uniquement quand

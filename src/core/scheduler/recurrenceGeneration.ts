@@ -1,4 +1,4 @@
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 import { Prisma } from '../prisma/generated/prisma/client.js'
 import { prisma } from '../server/prismaClient.js'
 import { bottomPosition, makeRoomAt, taskInclude } from '../server/helpers/task.helper.js'

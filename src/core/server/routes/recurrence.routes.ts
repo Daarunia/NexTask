@@ -1,4 +1,4 @@
-import Logger from 'electron-log'
+import Logger from '../../logger.js'
 import { prisma } from '../prismaClient.js'
 import { idParam, errorResponse } from '../schemas/common.js'
 import { recurrenceListItemSchema, recurrenceStatusBody, recurrenceSummarySchema } from '../schemas/recurrenceSchema.js'

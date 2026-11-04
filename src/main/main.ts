@@ -42,7 +42,12 @@ import {
   staticAsset,
 } from './constants.js'
 import Logger from 'electron-log'
+import { setLogger } from '../core/logger.js'
 import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
+
+// Journaux de core (serveur, base, schedulers) dans electron-log, avant tout
+// appel à core : sans ce branchement, ses messages seraient ignorés
+setLogger(Logger)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)

@@ -1,4 +1,4 @@
-import Logger from 'electron-log'
+import Logger from '../logger.js'
 import { prisma } from '../server/prismaClient.js'
 import { settingsStore } from '../../main/stores/settings.js'
 
