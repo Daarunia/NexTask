@@ -48,6 +48,18 @@ export const NEW_TASK_POSITIONS = ['top', 'bottom'] as const
 /** Place d'une nouvelle tâche dans sa colonne. */
 export type NewTaskPosition = (typeof NEW_TASK_POSITIONS)[number]
 
+/** Vues de la page du tableau. */
+export const BOARD_VIEWS = ['kanban', 'planning'] as const
+
+/** Vue de la page du tableau. */
+export type BoardView = (typeof BOARD_VIEWS)[number]
+
+/** Échelles de la vue Planning. */
+export const PLANNING_SCALES = ['month', 'week'] as const
+
+/** Échelle de la vue Planning. */
+export type PlanningScale = (typeof PLANNING_SCALES)[number]
+
 /** Pas proposés pour les minutes du champ de date d'une tâche. */
 export const DATE_MINUTE_STEPS = [1, 5, 10, 15, 30] as const
 
@@ -96,6 +108,8 @@ export interface AppSettings {
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   collapsedStageIds: number[] // colonnes repliées sur le tableau, état d'affichage gardé d'un lancement à l'autre
   lastBoardId: number | null // dernier tableau affiché, rouvert au lancement et repli de l'ajout rapide, null au départ
+  boardView: BoardView // vue de la page du tableau, état d'affichage gardé d'un lancement à l'autre
+  planningScale: PlanningScale // échelle de la vue Planning, état d'affichage gardé de même
   notificationsEnabled: boolean // rappels OS des tâches dont la date de début est passée
   notificationStyle: NotificationStyle // toast Windows qui reste affiché ou qui disparaît seul
   closeToTray: boolean // la fermeture de la fenêtre garde l'app dans la zone de notification
@@ -126,6 +140,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tagFilterIds: [],
   collapsedStageIds: [],
   lastBoardId: null,
+  boardView: 'kanban',
+  planningScale: 'month',
   notificationsEnabled: true,
   notificationStyle: 'reminder',
   closeToTray: false,
