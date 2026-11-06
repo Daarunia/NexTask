@@ -6,9 +6,11 @@ import tagRoutes from './routes/tag.routes.js'
 import checklistTemplateRoutes from './routes/checklistTemplate.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
+import documentRoutes from './routes/document.routes.js'
 import testRoutes from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
+import { clearStaleDocumentUploads } from '../database/documentStore.js'
 import type { AddressInfo } from 'node:net'
 import { API_PORT, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from '../../main/constants.js'
 import Logger from '../logger.js'
@@ -101,6 +103,9 @@ export async function startServer() {
   // Pragmas SQLite (WAL, etc.) avant de servir les premières requêtes.
   await applyDatabasePragmas()
 
+  // Envois de documents interrompus par un arrêt brutal, sans attendre : rien n'en dépend
+  void clearStaleDocumentUploads()
+
   // Enregistrer le plugin CORS
   //
   // Origine restreinte au renderer de l'app (pas d'en-tête Origin en prod,
@@ -129,6 +134,7 @@ export async function startServer() {
   await fastify.register(checklistTemplateRoutes)
   await fastify.register(recurrenceRoutes)
   await fastify.register(dataRoutes)
+  await fastify.register(documentRoutes)
 
   // Route de reset réservée aux tests E2E
   if (IS_TEST) {

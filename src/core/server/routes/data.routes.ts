@@ -2,6 +2,7 @@ import Logger from '../../logger.js'
 import { prisma } from '../prismaClient.js'
 import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'
+import { releaseDocumentFiles } from '../../database/documentStore.js'
 import { APP_VERSION } from '../../../main/constants.js'
 import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
 import { t, translate } from '../../../main/i18n.js'
@@ -531,6 +532,9 @@ export default async function dataRoutes(fastify) {
         ...taskChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
       ]
 
+      // Empreintes des documents remplacés, lues avant que la cascade n'emporte leurs lignes
+      const previousDocuments = await prisma.document.findMany({ distinct: ['sha256'], select: { sha256: true } })
+
       try {
         // Ordre des suppressions : les tâches référencent les séries et les
         // colonnes, les séries les colonnes, les colonnes les tableaux (clés
@@ -666,6 +670,8 @@ export default async function dataRoutes(fastify) {
         reply.code(500)
         return { statusCode: 500, error: 'Internal Server Error', message: "L'import a échoué, aucune donnée modifiée" }
       }
+
+      await releaseDocumentFiles(previousDocuments.map((document) => document.sha256))
 
       for (const warning of warnings) {
         const problem = translate('fr', `importProblems.${warning.code}`, warning.params)

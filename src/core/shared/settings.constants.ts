@@ -78,6 +78,18 @@ export type ArchivePurgeDays = (typeof ARCHIVE_PURGE_DAYS)[number]
 /** Longueur maximale d'un numéro de version de tâche. */
 export const TASK_VERSION_MAX_LENGTH = 20
 
+/** Taille maximale d'un document par défaut, en Mo. */
+export const DOCUMENT_DEFAULT_MAX_SIZE_MB = 100
+
+/** Plus grande taille réglable d'un document, en Mo : garde sa taille dans un `Int` Prisma, limité à 2 Go. */
+export const DOCUMENT_SIZE_CEILING_MB = 1024
+
+/** Nombre maximal de documents par tâche par défaut. */
+export const DOCUMENT_DEFAULT_MAX_PER_TASK = 10
+
+/** Plus grand nombre réglable de documents par tâche. */
+export const DOCUMENT_PER_TASK_CEILING = 100
+
 /** Paramètres persistés par electron-store. */
 export interface AppSettings {
   language: Language // langue de l'interface, résolue par le main (cf. i18n.ts)
@@ -92,6 +104,8 @@ export interface AppSettings {
   archivePurgeEnabled: boolean // suppression automatique des tâches archivées depuis longtemps
   archivePurgeDays: ArchivePurgeDays // ancienneté d'archivage au-delà de laquelle la purge supprime
   autoBackupEnabled: boolean // copie quotidienne de la base dans le dossier des sauvegardes
+  documentMaxSizeMb: number // taille maximale d'un document joint à une tâche, en Mo
+  documentMaxPerTask: number // nombre maximal de documents joints à une tâche
   rememberTagFilter: boolean // le filtre de tags du tableau est retrouvé au lancement suivant
   tagFilterIds: number[] // ids des tags du filtre mémorisé, vide si rememberTagFilter est désactivé
   collapsedStageIds: number[] // colonnes repliées sur le tableau, état d'affichage gardé d'un lancement à l'autre
@@ -122,6 +136,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   archivePurgeEnabled: false,
   archivePurgeDays: 90,
   autoBackupEnabled: false,
+  documentMaxSizeMb: DOCUMENT_DEFAULT_MAX_SIZE_MB,
+  documentMaxPerTask: DOCUMENT_DEFAULT_MAX_PER_TASK,
   rememberTagFilter: false,
   tagFilterIds: [],
   collapsedStageIds: [],

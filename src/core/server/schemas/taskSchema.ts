@@ -1,6 +1,7 @@
 import { tagSchema } from './tagSchema.js'
 import { taskRecurrenceSchema } from './recurrenceSchema.js'
 import { taskChecklistSchema } from './checklistSchema.js'
+import { documentSchema } from './documentSchema.js'
 
 export const taskSchema = {
   type: 'object',
@@ -37,5 +38,8 @@ export const taskSchema = {
     // ici, comme les tags, sinon Fastify la retire de toutes les réponses
     // (GET /stages compris).
     checklist: taskChecklistSchema,
+    // Documents joints, dans l'ordre d'ajout, sans leur contenu. À déclarer ici,
+    // comme les tags, sinon Fastify les retire de toutes les réponses.
+    documents: { type: 'array', items: documentSchema },
   },
 }

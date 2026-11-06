@@ -9,12 +9,12 @@ Fastify local que le renderer appelle en HTTP.
 src/
   core/                Serveur et données, appelés à tourner hors d'Electron (compilés avec le main)
     server/            API Fastify locale
-      routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data)
+      routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data, document)
                        test.routes.ts : remise à zéro de la base, utilisée par les tests E2E
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
-    database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage
+    database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage, dossier des documents
     scheduler/         Tâches de fond : récurrences, sauvegardes, purge des archives
     shared/            Constantes et helpers partagés avec le renderer (*.constants.ts, *.helper.ts)
   main/                Processus principal Electron (Node)

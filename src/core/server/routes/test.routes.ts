@@ -2,6 +2,12 @@ import fs from 'node:fs'
 import { prisma } from '../prismaClient.js'
 import { BACKUPS_PATH } from '../../../main/constants.js'
 import { readSeedFiles } from '../../database/seedDatabase.js'
+import {
+  clearDocumentFiles,
+  clearStaleDocumentUploads,
+  DOCUMENT_UPLOADS_PATH,
+  DOCUMENTS_PATH,
+} from '../../database/documentStore.js'
 import { getLocale } from '../../../main/i18n.js'
 import { handleNotificationClick, runNotificationCheck } from '../../../main/scheduler/notificationScheduler.js'
 import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js'
@@ -42,6 +48,9 @@ import Logger from '../../logger.js'
  * - GET  /test/update-install     → indique si l'installation de la mise à jour a été demandée (simulée en test)
  * - GET  /test/tray-menu          → libellés du menu de l'icône de la zone de notification (non créée en test)
  * - GET  /test/task-checklists    → nombre de checklists de tâches et de leurs points en base (contrôle de la cascade)
+ * - GET  /test/task-documents     → lignes de documents, fichiers et envois en cours du dossier des documents
+ * - POST /test/document-row       → crée une ligne de document sans fichier ni limite
+ * - POST /test/clear-document-uploads → retire les envois de documents interrompus, comme au démarrage
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
  */
@@ -128,6 +137,9 @@ export default async function testRoutes(fastify) {
 
       // Sauvegardes des tests précédents retirées (dossier propre au mode test)
       fs.rmSync(BACKUPS_PATH, { recursive: true, force: true })
+
+      // Fichiers des documents des tests précédents, leurs lignes étant parties avec les tâches
+      await clearDocumentFiles()
 
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
@@ -622,6 +634,112 @@ export default async function testRoutes(fastify) {
         prisma.checklistItem.count({ where: { checklist: taskChecklist } }),
       ])
       return { checklists, items }
+    },
+  )
+
+  /**
+   * GET /test/task-documents
+   *
+   * Compte les lignes de documents et les fichiers du dossier des documents :
+   * c'est le seul moyen de vérifier qu'une suppression emporte bien le fichier.
+   *
+   * @returns {Promise<{documents: number, files: number, uploads: number, directory: string}>} Lignes,
+   *   fichiers, envois en cours et dossier des documents
+   */
+  fastify.get(
+    '/test/task-documents',
+    {
+      schema: {
+        description: 'Lignes et fichiers des documents (tests E2E uniquement)',
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              documents: { type: 'integer' },
+              files: { type: 'integer' },
+              uploads: { type: 'integer' },
+              directory: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async () => {
+      const entries = fs.existsSync(DOCUMENTS_PATH)
+        ? fs.readdirSync(DOCUMENTS_PATH, { recursive: true, withFileTypes: true })
+        : []
+      const stored = entries.filter((entry) => entry.isFile())
+      const uploads = stored.filter((entry) => entry.parentPath === DOCUMENT_UPLOADS_PATH).length
+      return {
+        documents: await prisma.document.count(),
+        files: stored.length - uploads,
+        uploads,
+        directory: DOCUMENTS_PATH,
+      }
+    },
+  )
+
+  /**
+   * POST /test/document-row
+   *
+   * Crée une ligne de document sans fichier ni limite : tailles impossibles à
+   * écrire dans un test (somme au-delà de 2 Go), ou empreinte hors format.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - Tâche, taille et empreinte du document
+   * @returns {Promise<{id: number}>} Id du document
+   */
+  fastify.post(
+    '/test/document-row',
+    {
+      schema: {
+        description: 'Crée une ligne de document sans fichier (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: {
+            taskId: { type: 'integer' },
+            size: { type: 'integer' },
+            sha256: { type: 'string' },
+          },
+          required: ['taskId', 'size', 'sha256'],
+        },
+        response: { 200: { type: 'object', properties: { id: { type: 'integer' } } } },
+      },
+    },
+    async (req) => {
+      const { taskId, size, sha256 } = req.body as { taskId: number; size: number; sha256: string }
+      return prisma.document.create({ data: { taskId, size, sha256, name: 'ligne.bin' }, select: { id: true } })
+    },
+  )
+
+  /**
+   * POST /test/clear-document-uploads
+   *
+   * Déclenche le retrait des envois interrompus, fait au démarrage de l'app.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} [req.body] - Corps optionnel
+   * @param {string} [req.body.now] - Horodatage de référence ISO (défaut : maintenant)
+   * @returns {Promise<{removed: number}>} Nombre de fichiers temporaires retirés
+   */
+  fastify.post(
+    '/test/clear-document-uploads',
+    {
+      schema: {
+        description: 'Retire les envois de documents interrompus (tests E2E uniquement)',
+        tags: ['Test'],
+        body: {
+          type: 'object',
+          properties: { now: { type: 'string', format: 'date-time' } },
+        },
+        response: { 200: { type: 'object', properties: { removed: { type: 'integer' } } } },
+      },
+    },
+    async (req) => {
+      const body = (req.body ?? {}) as { now?: string }
+      return { removed: await clearStaleDocumentUploads(body.now ? new Date(body.now) : new Date()) }
     },
   )
 }

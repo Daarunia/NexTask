@@ -9,9 +9,11 @@ components.d.ts
 *.db
 *.db-shm
 *.db-wal
+/*-documents/
 .claude
 .scannerwork
 test-results
 backups
 backups-test*
 coverage
+specs

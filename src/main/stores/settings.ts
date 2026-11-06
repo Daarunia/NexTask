@@ -5,6 +5,8 @@ import {
   ARCHIVE_PURGE_DAYS,
   DATE_MINUTE_STEPS,
   DEFAULT_SETTINGS,
+  DOCUMENT_PER_TASK_CEILING,
+  DOCUMENT_SIZE_CEILING_MB,
   INTERFACE_SCALES,
   LANGUAGES,
   NEW_TASK_POSITIONS,
@@ -81,6 +83,18 @@ const schema = {
   autoBackupEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.autoBackupEnabled,
+  },
+  documentMaxSizeMb: {
+    type: 'integer',
+    minimum: 1,
+    maximum: DOCUMENT_SIZE_CEILING_MB,
+    default: DEFAULT_SETTINGS.documentMaxSizeMb,
+  },
+  documentMaxPerTask: {
+    type: 'integer',
+    minimum: 1,
+    maximum: DOCUMENT_PER_TASK_CEILING,
+    default: DEFAULT_SETTINGS.documentMaxPerTask,
   },
   rememberTagFilter: {
     type: 'boolean',
