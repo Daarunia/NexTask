@@ -11,6 +11,8 @@ export class Header {
   readonly themeButton: Locator
   readonly rail: Locator
   readonly homeButton: Locator
+  readonly viewMenuButton: Locator
+  readonly viewMenu: Locator
   readonly checklistsButton: Locator
   readonly archivesButton: Locator
   readonly settingsButton: Locator
@@ -33,6 +35,8 @@ export class Header {
     // Rail de navigation (tableau, checklists, archives, paramètres)
     this.rail = page.getByTestId('app-rail')
     this.homeButton = this.rail.getByTestId('btn-home')
+    this.viewMenuButton = this.rail.getByTestId('btn-board-view-menu')
+    this.viewMenu = page.getByTestId('board-view-menu')
     this.checklistsButton = this.rail.getByTestId('btn-checklists')
     this.archivesButton = this.rail.getByTestId('btn-archives')
     this.settingsButton = this.rail.getByTestId('btn-settings')
@@ -74,6 +78,15 @@ export class Header {
 
   async closePaletteByOutsideClick() {
     await this.page.mouse.click(100, 100)
+  }
+
+  /**
+   * Choisit un mode d'affichage dans le sous-menu du rail, déplié au besoin.
+   * @param label Libellé du mode
+   */
+  async chooseView(label: string) {
+    if ((await this.viewMenuButton.getAttribute('aria-expanded')) !== 'true') await this.viewMenuButton.click()
+    await this.viewMenu.getByRole('button', { name: label, exact: true }).click()
   }
 
   async goHome() {
