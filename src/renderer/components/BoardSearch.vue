@@ -187,6 +187,8 @@ import { useTaskStore } from '../stores/Task'
 import { useBoardStore } from '../stores/Board'
 import { useTagStore } from '../stores/Tag'
 import { useStageStore } from '../stores/Stage'
+import { useSettingsStore } from '../stores/Settings'
+import { boardIdOf } from '../utils/planning.helper'
 import { useErrorToast } from '../utils/toast.helper'
 import { compareTagNames } from '../utils/tag.helper'
 import { infoTooltip, titleIfTruncated } from '../utils/tooltip.helper'
@@ -249,6 +251,7 @@ const taskStore = useTaskStore()
 const boardStore = useBoardStore()
 const tagStore = useTagStore()
 const stageStore = useStageStore()
+const settings = useSettingsStore()
 const showError = useErrorToast()
 
 const root = ref<HTMLElement | null>(null)
@@ -267,16 +270,11 @@ const tagMode = computed(() => text.value.trimStart().startsWith('#'))
 const needle = computed(() => normalizeSearchText(tagMode.value ? text.value.trimStart().slice(1) : text.value))
 const terms = computed(() => (tagMode.value ? [] : searchTerms(text.value)))
 
-// Portée proposée seulement s'il y a plusieurs tableaux
-const multiBoard = computed(() => boardStore.getAllBoards.length > 1)
+// Le Planning montre tous les tableaux : le tableau courant n'y est pas affiché, la recherche les couvre tous
+const inPlanning = computed(() => settings.boardView === 'planning')
 
-/**
- * Tableau d'une tâche, celui de sa colonne pour une tâche d'un cache antérieur aux tableaux.
- * @param task Tâche active
- */
-function boardIdOf(task: Task): number | null | undefined {
-  return task.boardId ?? stageStore.getAllStages.find((stage) => stage.id === task.stageId)?.boardId
-}
+// Portée proposée seulement s'il y a plusieurs tableaux, et hors du Planning
+const multiBoard = computed(() => boardStore.getAllBoards.length > 1 && !inPlanning.value)
 
 /**
  * Tâches actives de la portée choisie, toutes avec un seul tableau.
@@ -284,7 +282,7 @@ function boardIdOf(task: Task): number | null | undefined {
 const scopedTasks = computed(() => {
   const currentId = boardStore.current?.id
   if (!multiBoard.value || scope.value === 'all' || currentId === undefined) return taskStore.getAllTasks
-  return taskStore.getAllTasks.filter((task) => boardIdOf(task) === currentId)
+  return taskStore.getAllTasks.filter((task) => boardIdOf(task, stageStore.getAllStages) === currentId)
 })
 
 /**
@@ -348,13 +346,14 @@ const statusItems = computed<SearchItem[]>(() => {
 const taskItems = computed<SearchItem[]>(() => {
   if (tagMode.value || !terms.value.length) return []
 
-  const currentId = boardStore.current?.id
+  // Au Planning avec plusieurs tableaux, aucun n'est affiché seul : chaque tâche dit le sien
+  const currentId = inPlanning.value && boardStore.getAllBoards.length > 1 ? null : boardStore.current?.id
   return scopedTasks.value
     .filter((task) => taskMatchesFilter(task, terms.value, boardFilter.tagIds, boardFilter.statuses))
     .slice(0, MAX_TASK_SUGGESTIONS)
     .map((task) => {
       const inTitle = terms.value.every((term) => normalizeSearchText(task.title).includes(term))
-      const boardId = boardIdOf(task)
+      const boardId = boardIdOf(task, stageStore.getAllStages)
       return {
         kind: 'task',
         id: task.id,

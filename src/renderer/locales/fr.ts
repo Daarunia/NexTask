@@ -22,7 +22,9 @@ export const fr = {
   },
   nav: {
     label: 'Navigation',
-    board: 'Tableau',
+    kanban: 'Kanban',
+    planning: 'Planning',
+    viewMenu: 'Mode d’affichage',
     checklists: 'Checklists',
     archives: 'Archives',
     settings: 'Paramètres',
@@ -172,6 +174,34 @@ export const fr = {
       moveBottom: 'Tout en bas',
       label: 'Actions de la tâche {title}',
     },
+  },
+  // Vue Planning de la page du tableau
+  planning: {
+    viewNotSaved: 'Vue non enregistrée',
+    scale: {
+      label: 'Échelle du planning',
+      month: 'Mois',
+      week: 'Semaine',
+    },
+    nav: {
+      today: "Aujourd'hui",
+      previous: 'Période précédente',
+      next: 'Période suivante',
+    },
+    boards: {
+      label: 'Filtrer par tableau',
+      selected: '{count} tableaux',
+    },
+    panel: {
+      title: 'À planifier',
+      unscheduled: 'Sans date',
+      unscheduledEmpty: 'Aucune tâche sans date',
+      overdue: 'En retard',
+    },
+    more: '+{count}',
+    addOnDay: 'Nouvelle tâche le {date}',
+    noStage: 'Aucune colonne pour ajouter une tâche',
+    moved: 'Tâche déplacée',
   },
   // Tableaux (entité Board), à ne pas confondre avec la section board du Kanban affiché
   boards: {
@@ -605,6 +635,8 @@ export const fr = {
         saveAndNew: 'Enregistrer et créer la tâche suivante',
         undo: 'Annuler la dernière action proposée par un toast',
         close: 'Fermer un dialogue, un menu ou une bulle',
+        period: 'Période précédente ou suivante du planning',
+        boardFilter: 'Filtrer le planning sur un tableau, ou revenir à tous',
       },
     },
     about: {

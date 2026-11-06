@@ -56,6 +56,8 @@ const SHORTCUTS = [
   { id: 'saveAndNew', combos: [['Ctrl', 'shift', 'enter']] },
   { id: 'undo', combos: [['Ctrl', 'Z']] },
   { id: 'close', combos: [['esc']] },
+  { id: 'period', combos: [['PgUp'], ['PgDn']] },
+  { id: 'boardFilter', combos: [['Ctrl', '1…9']] },
 ] as const
 
 const { t } = useI18n()

@@ -20,7 +20,9 @@ export const zh: MessageSchema = {
   },
   nav: {
     label: '导航',
-    board: '看板',
+    kanban: '看板',
+    planning: '日程',
+    viewMenu: '显示模式',
     checklists: '清单',
     archives: '归档',
     settings: '设置',
@@ -166,6 +168,34 @@ export const zh: MessageSchema = {
       moveBottom: '移到底部',
       label: '任务 {title} 的操作',
     },
+  },
+  // Vue Planning de la page du tableau
+  planning: {
+    viewNotSaved: '视图未保存',
+    scale: {
+      label: '日程比例',
+      month: '月',
+      week: '周',
+    },
+    nav: {
+      today: '今天',
+      previous: '上一时段',
+      next: '下一时段',
+    },
+    boards: {
+      label: '按看板筛选',
+      selected: '{count} 个看板',
+    },
+    panel: {
+      title: '待安排',
+      unscheduled: '无日期',
+      unscheduledEmpty: '没有无日期的任务',
+      overdue: '已逾期',
+    },
+    more: '+{count}',
+    addOnDay: '在 {date} 新建任务',
+    noStage: '没有可添加任务的列',
+    moved: '任务已移动',
   },
   boards: {
     title: '看板',
@@ -580,6 +610,8 @@ export const zh: MessageSchema = {
         saveAndNew: '保存并新建下一个任务',
         undo: '撤销提示中提供的上一个操作',
         close: '关闭对话框、菜单或气泡',
+        period: '日程的上一或下一时段',
+        boardFilter: '按看板筛选日程，或恢复全部',
       },
     },
     about: {

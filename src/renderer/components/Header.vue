@@ -8,8 +8,9 @@
         <span><span style="color: var(--p-text-color)">Nex</span>Task</span>
       </h1>
 
-      <!-- Sélecteur du tableau affiché, propre au tableau comme la recherche, séparé du logo par un filet -->
-      <template v-if="isHome">
+      <!-- Sélecteur du tableau affiché, propre au Kanban (le Planning a son propre
+           filtre), séparé du logo par un filet -->
+      <template v-if="isHome && settings.boardView === 'kanban'">
         <span class="header-separator" aria-hidden="true"></span>
         <BoardSwitcher />
       </template>

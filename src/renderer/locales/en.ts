@@ -20,7 +20,9 @@ export const en: MessageSchema = {
   },
   nav: {
     label: 'Navigation',
-    board: 'Board',
+    kanban: 'Kanban',
+    planning: 'Planning',
+    viewMenu: 'Display mode',
     checklists: 'Checklists',
     archives: 'Archives',
     settings: 'Settings',
@@ -166,6 +168,34 @@ export const en: MessageSchema = {
       moveBottom: 'Move to bottom',
       label: 'Actions for the task {title}',
     },
+  },
+  // Vue Planning de la page du tableau
+  planning: {
+    viewNotSaved: 'View not saved',
+    scale: {
+      label: 'Planning scale',
+      month: 'Month',
+      week: 'Week',
+    },
+    nav: {
+      today: 'Today',
+      previous: 'Previous period',
+      next: 'Next period',
+    },
+    boards: {
+      label: 'Filter by board',
+      selected: '{count} boards',
+    },
+    panel: {
+      title: 'To schedule',
+      unscheduled: 'No date',
+      unscheduledEmpty: 'No task without a date',
+      overdue: 'Overdue',
+    },
+    more: '+{count}',
+    addOnDay: 'New task on {date}',
+    noStage: 'No column to add a task to',
+    moved: 'Task moved',
   },
   boards: {
     title: 'Boards',
@@ -591,6 +621,8 @@ export const en: MessageSchema = {
         saveAndNew: 'Save and start the next task',
         undo: 'Undo the last action offered by a toast',
         close: 'Close a dialog, a menu or a popup',
+        period: 'Previous or next planning period',
+        boardFilter: 'Filter the planning on a board, or back to all',
       },
     },
     about: {
