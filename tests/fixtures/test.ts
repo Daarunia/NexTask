@@ -12,6 +12,7 @@ import { TaskDocuments } from '../components/TaskDocuments'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
 import { BoardSwitcher } from '../components/BoardSwitcher'
+import { PlanningPage } from '../components/PlanningPage'
 import { electronArgs } from '../../scripts/server-utils.js'
 import { API, TEST_INDEX } from '../helpers/api.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
@@ -34,6 +35,7 @@ type Fixtures = {
   undoToast: UndoToast
   recurrenceFields: RecurrenceFields
   boardSwitcher: BoardSwitcher
+  planningPage: PlanningPage
 }
 
 /**
@@ -131,6 +133,10 @@ export const test = base.extend<Fixtures>({
 
   boardSwitcher: async ({ page }, use) => {
     await use(new BoardSwitcher(page))
+  },
+
+  planningPage: async ({ page }, use) => {
+    await use(new PlanningPage(page))
   },
 
   /**

@@ -97,7 +97,7 @@ export function longDateLabel(date: Date): string {
 export type QuickDay = 'today' | 'tomorrow' | 'nextMonday'
 
 // Heure donnée à une tâche qui n'en avait pas, comme dans le dialogue
-const DEFAULT_START_HOUR = 9
+export const DEFAULT_START_HOUR = 9
 
 /**
  * Nouvelle date de début d'une tâche replanifiée sur un jour proposé : ce jour,
@@ -115,6 +115,14 @@ export function quickStartDate(day: QuickDay, current: Date | null, now: Date): 
   if (current) date.setHours(current.getHours(), current.getMinutes(), 0, 0)
   else date.setHours(DEFAULT_START_HOUR, 0, 0, 0)
   return date
+}
+
+/**
+ * Heure seule, dans la langue active (« 09:00 », « 9:00 AM »).
+ * @param date Date affichée
+ */
+export function timeLabel(date: Date): string {
+  return new Intl.DateTimeFormat(intlLocale(), { timeStyle: 'short' }).format(date)
 }
 
 /**

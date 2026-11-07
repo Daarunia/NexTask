@@ -480,11 +480,17 @@ export const useTaskStore = defineStore('task', {
      * modèle de sa série. Le serveur réarme le rappel d'une date repoussée.
      * @param id Id de la tâche
      * @param startDate Nouvelle date, `null` pour la retirer
+     * @param notifiedAt Date du rappel à rendre à la tâche (annulation d'un
+     *   déplacement), le serveur restant juge pour une date à venir
      * @returns La tâche mise à jour
      */
-    async setTaskStartDate(id: number, startDate: Date | null): Promise<Task> {
+    async setTaskStartDate(id: number, startDate: Date | null, notifiedAt?: Date | null): Promise<Task> {
       try {
-        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { startDate, applyToSeries: false })
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, {
+          startDate,
+          applyToSeries: false,
+          ...(notifiedAt === undefined ? {} : { notifiedAt }),
+        })
         this.patchCachedTask(id, {
           startDate: updatedTask.startDate,
           notifiedAt: updatedTask.notifiedAt,

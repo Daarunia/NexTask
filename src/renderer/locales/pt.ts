@@ -20,7 +20,9 @@ export const pt: MessageSchema = {
   },
   nav: {
     label: 'Navegação',
-    board: 'Quadro',
+    kanban: 'Kanban',
+    planning: 'Planejamento',
+    viewMenu: 'Modo de exibição',
     checklists: 'Checklists',
     archives: 'Arquivo',
     settings: 'Configurações',
@@ -166,6 +168,34 @@ export const pt: MessageSchema = {
       moveBottom: 'Mover para o fim',
       label: 'Ações da tarefa {title}',
     },
+  },
+  // Vue Planning de la page du tableau
+  planning: {
+    viewNotSaved: 'Vista não salva',
+    scale: {
+      label: 'Escala do planejamento',
+      month: 'Mês',
+      week: 'Semana',
+    },
+    nav: {
+      today: 'Hoje',
+      previous: 'Período anterior',
+      next: 'Próximo período',
+    },
+    boards: {
+      label: 'Filtrar por quadro',
+      selected: '{count} quadros',
+    },
+    panel: {
+      title: 'A planejar',
+      unscheduled: 'Sem data',
+      unscheduledEmpty: 'Nenhuma tarefa sem data',
+      overdue: 'Atrasadas',
+    },
+    more: '+{count}',
+    addOnDay: 'Nova tarefa em {date}',
+    noStage: 'Nenhuma coluna para adicionar uma tarefa',
+    moved: 'Tarefa movida',
   },
   boards: {
     title: 'Quadros',
@@ -611,6 +641,8 @@ export const pt: MessageSchema = {
         saveAndNew: 'Salvar e criar a próxima tarefa',
         undo: 'Desfazer a última ação proposta por um aviso',
         close: 'Fechar um diálogo, um menu ou um balão',
+        period: 'Período anterior ou seguinte do planejamento',
+        boardFilter: 'Filtrar o planejamento por um quadro, ou voltar a todos',
       },
     },
     about: {

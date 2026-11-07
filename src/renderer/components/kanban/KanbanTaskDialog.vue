@@ -339,6 +339,11 @@ const props = defineProps({
     type: Array as PropType<TagSelection[]>,
     default: () => [],
   },
+  // Date de début pré-remplie à la création (jour choisi au Planning)
+  initialStartDate: {
+    type: Date as PropType<Date | null>,
+    default: null,
+  },
 })
 
 // Emits
@@ -628,7 +633,7 @@ function defaultValues(): TaskFormValues {
     title: '',
     description: '',
     version: settings.defaultTaskVersion,
-    startDate: null,
+    startDate: props.initialStartDate,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
     checklistItems: [],
     recurrence: defaultRecurrenceValue(),
