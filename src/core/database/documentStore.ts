@@ -55,13 +55,19 @@ interface ReceivedContent {
 /**
  * Chemin du fichier d'un contenu, réparti par les deux premiers caractères de
  * son empreinte. `null` pour une valeur qui n'est pas une empreinte : elle peut
- * venir d'une base ouverte depuis ailleurs, et ne doit jamais sortir du dossier.
+ * venir d'une base ouverte depuis ailleurs, ou d'une route, et ne doit jamais
+ * sortir du dossier.
  *
  * @param sha256 Empreinte du contenu
  * @param directory Dossier des documents, celui de la base ouverte par défaut
  */
 function documentFilePath(sha256: string, directory = DOCUMENTS_PATH): string | null {
-  return SHA256.test(sha256) ? path.join(directory, sha256.slice(0, 2), sha256) : null
+  if (!SHA256.test(sha256)) return null
+  // Le format suffit à rester dans le dossier. Le chemin résolu est vérifié en
+  // plus, seule garantie que l'analyse de code (CodeQL) sait reconnaître.
+  const root = path.resolve(directory)
+  const file = path.resolve(root, sha256.slice(0, 2), sha256)
+  return file.startsWith(root + path.sep) ? file : null
 }
 
 /**

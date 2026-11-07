@@ -25,6 +25,7 @@ import {
 } from '../../shared/document.helper.js'
 import { settingsStore } from '../../../main/stores/settings.js'
 import Logger from '../../logger.js'
+import { FILE_RATE_LIMIT_MAX, RATE_LIMIT_WINDOW } from '../helpers/rateLimit.helper.js'
 
 // Délai des transactions d'ajout, celui par défaut (5 s) pouvant manquer sur un lecteur réseau
 const TRANSACTION_TIMEOUT_MS = 30_000
@@ -168,6 +169,7 @@ export default async function documentRoutes(fastify) {
   fastify.post(
     '/tasks/:id/documents',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Ajoute un document à une tâche',
         tags: ['Document'],
@@ -281,6 +283,7 @@ export default async function documentRoutes(fastify) {
   fastify.get(
     '/documents/:id/content',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: "Contenu d'un document",
         tags: ['Document'],
@@ -325,6 +328,7 @@ export default async function documentRoutes(fastify) {
   fastify.delete(
     '/documents/:id',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Supprime un document',
         tags: ['Document'],
@@ -362,6 +366,7 @@ export default async function documentRoutes(fastify) {
   fastify.get(
     '/documents/files/:sha256',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Contenu désigné par son empreinte',
         tags: ['Document'],
@@ -398,6 +403,7 @@ export default async function documentRoutes(fastify) {
   fastify.put(
     '/documents/files/:sha256',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Dépose un contenu désigné par son empreinte',
         tags: ['Document'],
@@ -440,6 +446,7 @@ export default async function documentRoutes(fastify) {
   fastify.delete(
     '/documents/files/:sha256',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Retire un contenu que rien ne référence',
         tags: ['Document'],

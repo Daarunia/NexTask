@@ -10,6 +10,7 @@ import documentRoutes from './routes/document.routes.js'
 import testRoutes from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
+import { registerRateLimit } from './helpers/rateLimit.helper.js'
 import { clearStaleDocumentUploads } from '../database/documentStore.js'
 import type { AddressInfo } from 'node:net'
 import { API_PORT, APP_VERSION, DEV_RENDERER_URL, IS_DEV, IS_TEST, staticAsset } from '../../main/constants.js'
@@ -118,6 +119,9 @@ export async function startServer() {
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
+
+  // Limitation des requêtes, avant les routes qu'elle doit couvrir
+  await registerRateLimit(fastify)
 
   // Documentation de l'API, en dev seulement : en prod le port est choisi par
   // le système, la page n'est donc pas joignable et ses dépendances ne sont pas

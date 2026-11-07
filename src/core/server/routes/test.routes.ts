@@ -24,6 +24,7 @@ import { trayMenuLabels } from '../../../main/system/systemIntegration.js'
 import { resetUpdateForTest, simulateUpdateStatus, wasInstallRequested } from '../../../main/system/updater.js'
 import { UPDATE_STATES, type UpdateStatus } from '../../shared/update.constants.js'
 import Logger from '../../logger.js'
+import { FILE_RATE_LIMIT_MAX, RATE_LIMIT_WINDOW } from '../helpers/rateLimit.helper.js'
 
 /**
  * Plugin de routes Fastify réservé aux tests E2E (enregistré uniquement quand
@@ -78,6 +79,7 @@ export default async function testRoutes(fastify) {
   fastify.post(
     '/test/reset',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Remet la base de test à zéro (tests E2E uniquement)',
         tags: ['Test'],
@@ -685,6 +687,7 @@ export default async function testRoutes(fastify) {
   fastify.get(
     '/test/task-documents',
     {
+      config: { rateLimit: { max: FILE_RATE_LIMIT_MAX, timeWindow: RATE_LIMIT_WINDOW } },
       schema: {
         description: 'Lignes et fichiers des documents (tests E2E uniquement)',
         tags: ['Test'],
