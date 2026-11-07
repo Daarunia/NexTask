@@ -3,13 +3,13 @@
  *
  * Lance la suite E2E avec NODE_V8_COVERAGE : chaque process Node, dont le main
  * de chaque app Electron lancée par les tests, écrit sa couverture V8 brute en
- * se terminant. Les fichiers du main compilé (build/main, hors client Prisma
- * généré) sont ensuite fusionnés : une ligne est couverte si un test au moins
+ * se terminant. Les fichiers du main compilé (build/main et build/core, hors
+ * client Prisma généré) sont ensuite fusionnés : une ligne est couverte si un test au moins
  * l'a exécutée.
  *
  * Rapport : résumé par fichier dans la console, détail des lignes non couvertes
  * dans coverage/e2e-main.txt. Les numéros de ligne sont ceux du JavaScript
- * compilé (build/main/x.js, compilé depuis src/main/x.ts), le texte de chaque
+ * compilé (build/main/x.js, compilé depuis src/main/x.ts, idem pour core), le texte de chaque
  * ligne permet de la retrouver dans la source.
  *
  * Le renderer n'est pas mesuré : il tourne dans Chromium, hors de NODE_V8_COVERAGE.
@@ -26,7 +26,8 @@ import { ROOT } from './private/paths.js'
 
 const RAW_DIR = path.join(ROOT, 'coverage', 'e2e-v8')
 const REPORT_FILE = path.join(ROOT, 'coverage', 'e2e-main.txt')
-const MAIN_DIR = '/build/main/'
+// Main compilé et src/core, compilé avec lui (cf. src/main/tsconfig.json)
+const MAIN_DIRS = ['/build/main/', '/build/core/']
 
 // --report-only : rapport refait depuis la dernière mesure, sans relancer les tests
 const reportOnly = process.argv.includes('--report-only')
@@ -63,7 +64,7 @@ function mergeCoverage() {
       if (!script.url.startsWith('file:')) continue
       const file = fileURLToPath(script.url)
       const normalized = file.replaceAll('\\', '/')
-      if (!normalized.includes(MAIN_DIR) || normalized.includes('/generated/')) continue
+      if (!MAIN_DIRS.some((dir) => normalized.includes(dir)) || normalized.includes('/generated/')) continue
 
       if (!sources.has(file)) sources.set(file, fs.readFileSync(file, 'utf8'))
       const source = sources.get(file)
@@ -116,7 +117,7 @@ if (!executed.size) {
 
 const rows = [...executed]
   .map(([file, bits]) => ({
-    file: path.relative(path.join(ROOT, 'build', 'main'), file).replaceAll('\\', '/'),
+    file: path.relative(path.join(ROOT, 'build'), file).replaceAll('\\', '/'),
     ...lineCoverage(sources.get(file), bits),
   }))
   .sort((a, b) => b.missed.length - a.missed.length || a.file.localeCompare(b.file))

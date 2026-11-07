@@ -3,7 +3,7 @@ import Logger from 'electron-log'
 import electronUpdater, { type ProgressInfo, type UpdateInfo } from 'electron-updater'
 import { IS_TEST } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
-import type { UpdateStatus } from '../shared/update.constants.js'
+import type { UpdateStatus } from '../../core/shared/update.constants.js'
 
 /**
  * Mise à jour automatique depuis les releases GitHub (electron-updater, dépôt

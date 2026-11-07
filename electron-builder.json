@@ -42,6 +42,10 @@
       "to": "main"
     },
     {
+      "from": "build/core/",
+      "to": "core"
+    },
+    {
       "from": "build/renderer",
       "to": "renderer"
     },
@@ -61,11 +65,11 @@
       "to": "static"
     },
     {
-      "from": "src/main/prisma/migrations",
+      "from": "src/core/prisma/migrations",
       "to": "prisma/migrations"
     },
     {
-      "from": "src/main/prisma/seeds",
+      "from": "src/core/prisma/seeds",
       "to": "prisma/seeds"
     }
   ]

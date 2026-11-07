@@ -1,6 +1,6 @@
 import { toRaw } from 'vue'
 import { defineStore } from 'pinia'
-import { type AppSettings, DEFAULT_SETTINGS } from '../../main/shared/settings.constants'
+import { type AppSettings, DEFAULT_SETTINGS } from '@core/shared/settings.constants'
 import { getAppTheme } from '../constants/theme.constants'
 import { applyTheme } from '../utils/theme.helper'
 import { getLogger } from '../utils/logger'

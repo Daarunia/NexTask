@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
 import { DEFAULT_BOARD, createBoard, createTaskIn, type ApiStage } from '../../helpers/board.helper'
-import type { AppSettings } from '../../../src/main/shared/settings.constants'
+import type { AppSettings } from '@core/shared/settings.constants'
 
 /**
  * Tests E2E du changement de tableau. Sélecteur de l'en-tête et Ctrl+1 à

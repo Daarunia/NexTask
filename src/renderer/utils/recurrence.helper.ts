@@ -3,7 +3,7 @@ import type {
   RecurrenceAnchor,
   RecurrenceInput,
   RecurrenceSummary,
-} from '../../main/shared/recurrence.constants'
+} from '@core/shared/recurrence.constants'
 import {
   isoWeekday,
   localTime,
@@ -11,7 +11,7 @@ import {
   nextRunAfter,
   parseWeekdays,
   type RecurrenceRule,
-} from '../../main/shared/recurrence.helper'
+} from '@core/shared/recurrence.helper'
 import type { RecurrenceFormValue, RecurrencePreset } from '../schemas/task.schema'
 import { currentLocale, intlLocale, t } from '../i18n'
 
@@ -22,7 +22,7 @@ import { currentLocale, intlLocale, t } from '../i18n'
  * 09:00 »), prochaine date, et passage entre la valeur du formulaire, la
  * règle envoyée à l'API et le résumé reçu.
  *
- * Le calcul des dates est celui du main (shared/recurrence.helper).
+ * Le calcul des dates est celui du serveur (core/shared/recurrence.helper).
  */
 
 /** Jours de la semaine, du lundi (jour ISO 1) au dimanche. */

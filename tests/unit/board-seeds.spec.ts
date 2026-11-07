@@ -2,8 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, describe, expect, test } from 'vitest'
-import { boardKey } from '../../src/main/shared/board.helper'
-import { type Locale, SUPPORTED_LOCALES } from '../../src/main/shared/settings.constants'
+import { boardKey } from '@core/shared/board.helper'
+import { type Locale, SUPPORTED_LOCALES } from '@core/shared/settings.constants'
 
 /**
  * Tests unitaires de la seed du tableau par défaut (Vitest, cf.
@@ -11,7 +11,7 @@ import { type Locale, SUPPORTED_LOCALES } from '../../src/main/shared/settings.c
  * migrations, sans lancer l'app.
  */
 
-const PRISMA = path.join(__dirname, '../../src/main/prisma')
+const PRISMA = path.join(__dirname, '../../src/core/prisma')
 const MIGRATIONS = path.join(PRISMA, 'migrations')
 const SEEDS = path.join(PRISMA, 'seeds')
 

@@ -138,9 +138,9 @@ import type { Board, BoardColumns } from '../types/board.types'
 import { httpStatus } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { useErrorToast } from '../utils/toast.helper'
-import { BOARD_COLUMNS_MODES, BOARD_NAME_MAX_LENGTH, type BoardColumnsMode } from '../../main/shared/board.constants'
-import { boardKey } from '../../main/shared/board.helper'
-import { TAG_COLORS, type TagColor } from '../../main/shared/tag.constants'
+import { BOARD_COLUMNS_MODES, BOARD_NAME_MAX_LENGTH, type BoardColumnsMode } from '@core/shared/board.constants'
+import { boardKey } from '@core/shared/board.helper'
+import { TAG_COLORS, type TagColor } from '@core/shared/tag.constants'
 
 /**
  * Création d'un tableau depuis le sélecteur de l'en-tête. Nom, couleur

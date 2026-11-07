@@ -1,7 +1,8 @@
 import { Tag } from './tag.types'
 import type { TaskChecklist } from './checklist.types'
-import type { RecurrenceInput, RecurrenceSummary } from '../../main/shared/recurrence.constants'
-import type { ChecklistItemInput } from '../../main/shared/checklist.constants'
+import type { TaskDocument } from './document.types'
+import type { RecurrenceInput, RecurrenceSummary } from '@core/shared/recurrence.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 
 /**
  * Entité 'Tâches'
@@ -33,6 +34,9 @@ export interface Task {
   recurrence?: RecurrenceSummary | null
   // Checklist et ses points dans l'ordre (null pour une tâche sans point, absente d'un cache antérieur)
   checklist?: TaskChecklist | null
+  // Documents joints, dans l'ordre d'ajout (absents d'un cache antérieur). Ajoutés
+  // et supprimés par leurs propres routes, jamais envoyés avec la tâche.
+  documents?: TaskDocument[]
 }
 
 /**
@@ -53,7 +57,7 @@ export interface Task {
  */
 export type TaskInput = Omit<
   Task,
-  'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence' | 'checklist' | 'boardId'
+  'id' | 'tags' | 'recurrenceId' | 'occurrenceDate' | 'recurrence' | 'checklist' | 'boardId' | 'documents'
 > & {
   tags?: string[]
   checklistItems?: ChecklistItemInput[]

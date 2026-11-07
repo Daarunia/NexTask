@@ -4,7 +4,7 @@ import Settings from '../pages/Settings.vue'
 import Archives from '../pages/Archives.vue'
 import Checklists from '../pages/Checklists.vue'
 import QuickAdd from '../pages/QuickAdd.vue'
-import { QUICK_ADD_ROUTE } from '../../main/shared/quickAdd.constants'
+import { QUICK_ADD_ROUTE } from '@core/shared/quickAdd.constants'
 
 const routes: Array<RouteRecordRaw> = [
   {

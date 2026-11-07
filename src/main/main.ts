@@ -1,21 +1,28 @@
 import { app, BrowserWindow, dialog, ipcMain, screen, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getApiUrl, isServerStarted, startServer } from './server/index.js'
-import { setupDatabase } from './setupDatabase.js'
-import { applySeeds } from './seedDatabase.js'
+import { getApiUrl, isServerStarted, startServer } from '../core/server/index.js'
+import { setupDatabase } from '../core/database/setupDatabase.js'
+import { applySeeds } from '../core/database/seedDatabase.js'
 import {
   onNotificationClicked,
   startNotificationScheduler,
   stopNotificationScheduler,
 } from './scheduler/notificationScheduler.js'
-import { onOccurrencesCreated } from './scheduler/recurrenceGeneration.js'
-import { startMaintenanceScheduler, stopMaintenanceScheduler } from './scheduler/maintenanceScheduler.js'
+import { onOccurrencesCreated } from '../core/scheduler/recurrenceGeneration.js'
+import { startMaintenanceScheduler, stopMaintenanceScheduler } from '../core/scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
+import {
+  clearOpenedDocumentCopies,
+  documentIdFrom,
+  openDocument,
+  saveDocumentAs,
+  setupOpenedDocumentCleanup,
+} from './system/documents.js'
 import {
   ensureDatabaseAvailable,
   getDatabaseLocation,
@@ -30,7 +37,7 @@ import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
 import { getLocale, setupI18n, t } from './i18n.js'
-import type { AppSettings } from './shared/settings.constants.js'
+import type { AppSettings } from '../core/shared/settings.constants.js'
 import {
   APP_ID,
   APP_VERSION,
@@ -42,7 +49,12 @@ import {
   staticAsset,
 } from './constants.js'
 import Logger from 'electron-log'
-import { TEST_WORKER_PID_ARG } from './shared/test.constants.js'
+import { setLogger } from '../core/logger.js'
+import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
+
+// Journaux de core (serveur, base, schedulers) dans electron-log, avant tout
+// appel à core : sans ce branchement, ses messages seraient ignorés
+setLogger(Logger)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -299,6 +311,11 @@ async function onReady() {
   // Liens cliqués dans les pages : navigateur par défaut, jamais dans l'app
   setupExternalLinks()
 
+  // Copies des documents ouverts : celles restées du lancement précédent, sans
+  // attendre (rien n'en dépend), puis celles de ce lancement à la fermeture
+  void clearOpenedDocumentCopies()
+  setupOpenedDocumentCleanup()
+
   try {
     await startServer()
   } catch (err) {
@@ -435,6 +452,14 @@ ipcMain.handle('folders:open', (_, kind: unknown) => {
 
   return openFolder(kind)
 })
+
+// Documents joints aux tâches (cf. system/documents) : ouverture dans
+// l'application par défaut, ou enregistrement après une boîte de dialogue
+// native. Contenu lu via GET /documents/:id/content, échec renvoyé au renderer.
+ipcMain.handle('documents:open', (_, id: unknown) => openDocument(documentIdFrom(id)))
+ipcMain.handle('documents:saveAs', (event, id: unknown, name: unknown) =>
+  saveDocumentAs(BrowserWindow.fromWebContents(event.sender), documentIdFrom(id), String(name)),
+)
 
 // Emplacement de la base (cf. system/databaseLocation) : lu par les Paramètres,
 // puis changé après une boîte de dialogue native. Un nouvel emplacement

@@ -7,13 +7,15 @@ import { createTaskViaApi } from '../../helpers/tag.helper'
 import { restoreDialogs, stubOpenDialog, stubSaveDialog } from '../../helpers/dialog.helper'
 import { createRecurringTask, DAILY, getTask, localDate, stageIds } from '../../helpers/recurrence.helper'
 import { DEFAULT_BOARD, rememberBoard } from '../../helpers/board.helper'
-import { EXPORT_FORMAT, EXPORT_VERSION } from '../../../src/main/shared/data.constants'
-import type { AppSettings } from '../../../src/main/shared/settings.constants'
+import { EXPORT_ARCHIVE_DATA, EXPORT_FORMAT, EXPORT_VERSION } from '@core/shared/data.constants'
+import { readExportArchive } from '../../helpers/archive.helper'
+import { addDocument, createTask, sha256Of } from '../../helpers/document.helper'
+import type { AppSettings } from '@core/shared/settings.constants'
 import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
   CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
-} from '../../../src/main/shared/checklist.constants'
+} from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E de l'export / import des données et de la sauvegarde automatique.
@@ -130,7 +132,15 @@ test.describe('POST /data/import', () => {
     // … puis l'import les remplace toutes
     const res = await importData(page.request, original)
     expect(res.ok(), await res.text()).toBeTruthy()
-    expect(await res.json()).toEqual({ boards: 1, stages: 5, tags: 2, tasks: 2, checklistTemplates: 0, warnings: [] })
+    expect(await res.json()).toEqual({
+      boards: 1,
+      stages: 5,
+      tags: 2,
+      tasks: 2,
+      checklistTemplates: 0,
+      documents: 0,
+      warnings: [],
+    })
 
     expect(comparable(await exportData(page.request))).toEqual(comparable(original))
 
@@ -667,9 +677,9 @@ test.describe('Export et import depuis les Paramètres', () => {
     await restoreDialogs(electronApp)
   })
 
-  test("l'export écrit le fichier choisi", async ({ page, electronApp, header, settingsPage }, testInfo) => {
+  test("l'export écrit l'archive choisie", async ({ page, electronApp, header, settingsPage }, testInfo) => {
     await seedData(page.request)
-    const file = testInfo.outputPath('export.json')
+    const file = testInfo.outputPath('export.zip')
     fs.mkdirSync(path.dirname(file), { recursive: true })
     await stubSaveDialog(electronApp, file)
 
@@ -678,7 +688,9 @@ test.describe('Export et import depuis les Paramètres', () => {
 
     await expect(page.getByText('Données exportées', { exact: true })).toBeVisible()
     await expect(page.getByText(/^5 colonnes, 2 tâches, 2 tags, 0 modèle de checklist dans /)).toBeVisible()
-    const written = JSON.parse(fs.readFileSync(file, 'utf8')) as ExportFile
+    const archive = await readExportArchive(file)
+    expect(archive.entries).toEqual([EXPORT_ARCHIVE_DATA])
+    const written = archive.data as ExportFile
     expect(written.format).toBe(EXPORT_FORMAT)
     expect(comparable(written)).toEqual(comparable(await exportData(page.request)))
   })
@@ -691,7 +703,7 @@ test.describe('Export et import depuis les Paramètres', () => {
   }, testInfo) => {
     const res = await page.request.post(`${API}/boards`, { data: { name: 'Perso', columns: { mode: 'default' } } })
     expect(res.status(), await res.text()).toBe(201)
-    const file = testInfo.outputPath('export.json')
+    const file = testInfo.outputPath('export.zip')
     fs.mkdirSync(path.dirname(file), { recursive: true })
     await stubSaveDialog(electronApp, file)
 
@@ -880,6 +892,30 @@ test.describe('Sauvegarde automatique', () => {
 
     expect(result.backups).toEqual([9, 8, 7, 6, 5, 4, 3].map(backupName))
     expect(fs.existsSync(path.join(result.directory, backupName(2)))).toBe(false)
+  })
+
+  test('chaque sauvegarde garde les documents de la base, même supprimés depuis, et les perd avec elle', async ({
+    page,
+    header,
+    settingsPage,
+  }) => {
+    const task = await createTask(page.request)
+    const withDocument = await addDocument(page.request, task.id, 'devis.pdf', 'PDF')
+    await header.goSettings()
+    await settingsPage.autoBackupSwitch.click()
+    await expect(settingsPage.autoBackupSwitch).toBeChecked()
+
+    const first = await runBackup(page.request, januaryNoon(1))
+    const sha256 = sha256Of('PDF')
+    const documents = path.join(first.directory, backupName(1).replace(/.db$/, '-documents'))
+    const saved = path.join(documents, sha256.slice(0, 2), sha256)
+
+    // Document supprimé : son fichier quitte la base, pas la sauvegarde
+    expect((await page.request.delete(`${API}/documents/${withDocument.documents[0].id}`)).ok()).toBeTruthy()
+    expect(fs.readFileSync(saved, 'utf8')).toBe('PDF')
+
+    for (let day = 2; day <= 8; day++) await runBackup(page.request, januaryNoon(day))
+    expect(fs.existsSync(documents)).toBe(false)
   })
 
   test('le réglage est conservé après un rechargement', async ({ page, header, settingsPage }) => {

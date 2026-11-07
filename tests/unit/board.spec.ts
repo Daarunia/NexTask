@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { boardKey } from '../../src/main/shared/board.helper'
-import { DEFAULT_STAGE_KEYS } from '../../src/main/server/helpers/board.helper'
+import { boardKey } from '@core/shared/board.helper'
+import { DEFAULT_STAGE_KEYS } from '@core/server/helpers/board.helper'
 import { MAIN_CATALOGS } from '../../src/main/locales'
-import { SUPPORTED_LOCALES } from '../../src/main/shared/settings.constants'
+import { SUPPORTED_LOCALES } from '@core/shared/settings.constants'
 
 /**
  * Tests unitaires des règles des tableaux (Vitest, cf. vitest.config.ts),
@@ -12,7 +12,7 @@ import { SUPPORTED_LOCALES } from '../../src/main/shared/settings.constants'
  * tableau en mode `default` identiques à celles d'une base neuve.
  */
 
-const SEEDS = path.join(__dirname, '../../src/main/prisma/seeds')
+const SEEDS = path.join(__dirname, '../../src/core/prisma/seeds')
 
 /**
  * Noms des colonnes de la seed 01_initial_stages.sql d'une langue, dans

@@ -72,8 +72,8 @@ import type { ChecklistTemplate, ChecklistTemplateChanges } from '../../types/ch
 import { httpStatus } from '../../utils/api.helper'
 import { getLogger } from '../../utils/logger'
 import { useErrorToast } from '../../utils/toast.helper'
-import { templateKey } from '../../../main/shared/checklistTemplate.helper'
-import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../../main/shared/checklist.constants'
+import { templateKey } from '@core/shared/checklistTemplate.helper'
+import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '@core/shared/checklist.constants'
 
 /**
  * Volet droit de la page Checklists, édition d'un modèle. Le nom et les

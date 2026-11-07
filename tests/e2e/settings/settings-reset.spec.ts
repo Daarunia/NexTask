@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/test'
 import type { Page } from '@playwright/test'
-import { type AppSettings, DEFAULT_SETTINGS, type WindowState } from '../../../src/main/shared/settings.constants'
+import { type AppSettings, DEFAULT_SETTINGS, type WindowState } from '@core/shared/settings.constants'
 import type { Header } from '../../components/Header'
 import type { SettingsPage } from '../../components/SettingsPage'
 import { API } from '../../helpers/api.helper'

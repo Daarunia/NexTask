@@ -43,7 +43,7 @@ export default defineConfig({
   // repart d'une base remise à zéro, et un gros fichier n'occupe plus seul un worker en fin de run
   fullyParallel: true,
   // Une app Electron par worker, chacune avec sa base, ses paramètres et son port
-  // (cf. src/main/shared/test.constants.ts)
+  // (cf. src/core/shared/test.constants.ts)
   workers: machineWorkers(),
   // Un seul serveur pour le renderer de toutes les instances, démarré avant les
   // tests et arrêté après. Il sert le renderer construit par le projet « setup »

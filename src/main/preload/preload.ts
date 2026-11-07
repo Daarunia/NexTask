@@ -46,6 +46,13 @@ contextBridge.exposeInMainWorld('folders', {
   openLogs: () => ipcRenderer.invoke('folders:open', 'logs'),
 })
 
+// Documents joints aux tâches : ouverture dans l'application par défaut, ou
+// enregistrement via une boîte de dialogue native (cf. system/documents)
+contextBridge.exposeInMainWorld('documents', {
+  open: (id: number) => ipcRenderer.invoke('documents:open', id),
+  saveAs: (id: number, name: string) => ipcRenderer.invoke('documents:saveAs', id, name),
+})
+
 // Emplacement de la base : lu, puis changé via les boîtes de dialogue natives
 // (cf. system/databaseLocation), l'app redémarrant pour ouvrir la base choisie
 contextBridge.exposeInMainWorld('database', {
@@ -75,7 +82,7 @@ contextBridge.exposeInMainWorld('updater', {
   },
 })
 
-// Tâches récurrentes (cf. scheduler/recurrenceGeneration) : fenêtre principale
+// Tâches récurrentes (cf. core/scheduler/recurrenceGeneration) : fenêtre principale
 // avertie des occurrences créées par le main
 contextBridge.exposeInMainWorld('recurrence', {
   onTasksCreated: (callback: (tasks: unknown[]) => void) => {

@@ -305,6 +305,9 @@
             />
           </SettingsRow>
 
+          <!-- Documents joints aux tâches : limites des ajouts et place occupée -->
+          <DocumentsSetting />
+
           <DatabaseLocationSetting />
 
           <DataTransferSetting />
@@ -385,6 +388,7 @@ import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
 import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
 import DatabaseLocationSetting from '../components/settings/DatabaseLocationSetting.vue'
+import DocumentsSetting from '../components/settings/DocumentsSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'
@@ -407,8 +411,8 @@ import {
   type NotificationStyle,
   type ThemeMode,
   type WindowMode,
-} from '../../main/shared/settings.constants'
-import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
+} from '@core/shared/settings.constants'
+import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
 import { useI18n } from 'vue-i18n'
 import { currentSystemLocale, LANGUAGE_NAMES } from '../i18n'
 

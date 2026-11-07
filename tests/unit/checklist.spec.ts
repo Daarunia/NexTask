@@ -1,12 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import {
-  type ExistingChecklistItem,
-  planChecklistSync,
-  templateItemRows,
-} from '../../src/main/server/helpers/checklist.helper'
-import { duplicateName, templateKey } from '../../src/main/shared/checklistTemplate.helper'
-import { tagKey } from '../../src/main/server/helpers/tag.helper'
-import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../src/main/shared/checklist.constants'
+import { type ExistingChecklistItem, planChecklistSync, templateItemRows } from '@core/server/helpers/checklist.helper'
+import { duplicateName, templateKey } from '@core/shared/checklistTemplate.helper'
+import { tagKey } from '@core/server/helpers/tag.helper'
+import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '@core/shared/checklist.constants'
 
 /**
  * Tests unitaires des helpers des checklists (Vitest, cf. vitest.config.ts),

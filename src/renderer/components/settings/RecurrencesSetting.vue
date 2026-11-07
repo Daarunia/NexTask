@@ -119,8 +119,8 @@ import BoardDot from '../BoardDot.vue'
 import { useTaskStore } from '../../stores/Task'
 import { useBoardStore } from '../../stores/Board'
 import type { Board } from '../../types/board.types'
-import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
-import { hasNextDate, toRecurrenceRule } from '../../../main/shared/recurrence.helper'
+import type { RecurrenceListItem, RecurrenceStatus, RecurrenceSummary } from '@core/shared/recurrence.constants'
+import { hasNextDate, toRecurrenceRule } from '@core/shared/recurrence.helper'
 import {
   describeRecurrence,
   formatNextRun,

@@ -1,4 +1,4 @@
-import { TAG_COLORS, type TagColor } from '../../main/shared/tag.constants'
+import { TAG_COLORS, type TagColor } from '@core/shared/tag.constants'
 
 /** Teintes d'un chip de tag : fond et texte. */
 interface TagTint {

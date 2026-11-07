@@ -1,32 +1,25 @@
 <template>
   <nav class="app-rail select-none" :aria-label="t('nav.label')" data-testid="app-rail">
-    <template v-for="entry in entries" :key="entry.route">
+    <template v-for="entry in entries" :key="entry.testid">
       <!-- Les entrées du bas (Paramètres) sont poussées en bas du rail -->
       <span v-if="entry.bottom" class="rail-spacer" />
 
-      <RouterLink v-slot="{ href, navigate }" :to="{ name: entry.route }" custom>
-        <a
-          :href="href"
-          class="rail-link"
-          :class="{ 'is-active': isActive(entry) }"
-          :aria-label="entry.label"
-          :aria-current="isActive(entry) ? 'page' : undefined"
-          :data-testid="entry.testid"
-          v-tooltip.right="infoTooltip(entry.label)"
-          @click="navigate"
-        >
-          <i :class="['pi', entry.icon]" aria-hidden="true" />
-        </a>
-      </RouterLink>
+      <!-- Le tableau a plusieurs modes d'affichage, choisis dans ce sous-menu -->
+      <BoardViewMenu v-if="entry.route === 'Home'">
+        <AppRailLink :routeName="entry.route" :icon="entry.icon" :label="entry.label" :testid="entry.testid" grouped />
+      </BoardViewMenu>
+      <AppRailLink v-else :routeName="entry.route" :icon="entry.icon" :label="entry.label" :testid="entry.testid" />
     </template>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { infoTooltip } from '../utils/tooltip.helper'
+import AppRailLink from './AppRailLink.vue'
+import BoardViewMenu from './BoardViewMenu.vue'
+import { BOARD_VIEW_ICONS } from '../constants/boardView.constants'
+import { useSettingsStore } from '../stores/Settings'
 
 /** Entrée du rail, liée à une route nommée. */
 interface RailEntry {
@@ -43,24 +36,21 @@ interface RailEntry {
 }
 
 const { t } = useI18n()
-const route = useRoute()
+const settings = useSettingsStore()
 
 // Ordre d'affichage, une nouvelle page s'ajoute ici avec sa route (libellés recalculés au changement de langue)
 const entries = computed<RailEntry[]>(() => [
-  { route: 'Home', icon: 'pi-th-large', label: t('nav.board'), testid: 'btn-home' },
+  // Le tableau, dans son mode d'affichage en cours (cf. BoardViewMenu)
+  {
+    route: 'Home',
+    icon: BOARD_VIEW_ICONS[settings.boardView],
+    label: t(`nav.${settings.boardView}`),
+    testid: 'btn-home',
+  },
   { route: 'Checklists', icon: 'pi-list-check', label: t('nav.checklists'), testid: 'btn-checklists' },
   { route: 'Archives', icon: 'pi-box', label: t('nav.archives'), testid: 'btn-archives' },
   { route: 'Settings', icon: 'pi-cog', label: t('nav.settings'), testid: 'btn-settings', bottom: true },
 ])
-
-/**
- * Entrée de la page courante, marquée à l'accent.
- * Comparaison sur le nom de route, pour rester active quels que soient les paramètres de l'URL.
- * @param entry Entrée du rail
- */
-function isActive(entry: RailEntry): boolean {
-  return route.name === entry.route
-}
 </script>
 
 <style scoped>
@@ -78,37 +68,5 @@ function isActive(entry: RailEntry): boolean {
 
 .rail-spacer {
   @apply flex-1;
-}
-
-.rail-link {
-  @apply relative grid size-10 place-items-center rounded-lg;
-  color: var(--p-text-muted-color);
-}
-
-.rail-link .pi {
-  font-size: 1.25rem;
-}
-
-.rail-link:hover {
-  background-color: var(--p-content-hover-background);
-  color: var(--p-text-color);
-}
-
-.rail-link:focus-visible {
-  outline: 2px solid var(--p-primary-color);
-  outline-offset: 2px;
-}
-
-.rail-link.is-active {
-  background-color: var(--p-highlight-background);
-  color: var(--p-primary-color);
-}
-
-/* Barre d'accent collée au bord gauche du rail */
-.rail-link.is-active::before {
-  @apply absolute -left-2 top-2.5 bottom-2.5 w-[3px];
-  content: '';
-  border-radius: 0 3px 3px 0;
-  background-color: var(--p-primary-color);
 }
 </style>

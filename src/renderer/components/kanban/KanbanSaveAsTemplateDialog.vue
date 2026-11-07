@@ -85,8 +85,8 @@ import { httpStatus } from '../../utils/api.helper'
 import { toTemplateItems } from '../../utils/checklist.helper'
 import { getLogger } from '../../utils/logger'
 import { useActionToast, useErrorToast } from '../../utils/toast.helper'
-import { duplicateName, templateKey } from '../../../main/shared/checklistTemplate.helper'
-import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '../../../main/shared/checklist.constants'
+import { duplicateName, templateKey } from '@core/shared/checklistTemplate.helper'
+import { CHECKLIST_TEMPLATE_NAME_MAX_LENGTH } from '@core/shared/checklist.constants'
 
 /**
  * « Enregistrer comme modèle » (parcours P6). Demande un nom, prérempli avec

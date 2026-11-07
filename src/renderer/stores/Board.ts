@@ -3,7 +3,7 @@ import { CACHE_TTL } from '../constants/time.constants'
 import type { Board, BoardColumns } from '../types/board.types'
 import type { Stage } from '../types/stage.types'
 import { BaseEntityState } from '../types/base-store.types'
-import type { TagColor } from '../../main/shared/tag.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 import { api } from '../utils/api.helper'
 import { isCacheValid } from '../utils/cache.helper'
 import { getLogger } from '../utils/logger'
@@ -124,11 +124,17 @@ export const useBoardStore = defineStore('board', {
     /**
      * Affiche le tableau d'une tâche, puis demande son ouverture en édition
      * (recherche, clic sur une notification). Une tâche absente du cache est
-     * demandée sur le tableau affiché.
+     * demandée sur le tableau affiché. Dans le Planning, qui montre tous les
+     * tableaux, le tableau courant ne change pas : le Kanban le retrouve au retour.
      * @param taskId Id de la tâche
      */
     async showTask(taskId: number): Promise<void> {
       const taskStore = useTaskStore()
+      if (useSettingsStore().boardView === 'planning') {
+        taskStore.requestOpenTask(taskId)
+        return
+      }
+
       const task = taskStore.allEntities?.data.find((t) => t.id === taskId)
       // Tableau de la tâche, sinon celui de sa colonne
       const boardId = task?.boardId ?? useStageStore().getAllStages.find((s) => s.id === task?.stageId)?.boardId

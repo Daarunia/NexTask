@@ -15,6 +15,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   root: path.join(__dirname, 'src', 'renderer'),
   publicDir: 'public',
+  // Constantes et helpers partagés avec le serveur (cf. src/renderer/tsconfig.json)
+  resolve: {
+    alias: { '@core': path.join(__dirname, 'src', 'core') },
+  },
   envDir: path.join(__dirname, ''), // Ensure Vite loads the .env file correctly when root is not the project root (I lost one hour on this 😭)
   server: {
     port: 8080,

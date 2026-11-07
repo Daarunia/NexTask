@@ -5,9 +5,10 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { API, TEST_INDEX } from '../../helpers/api.helper'
 import { restoreDialogs, stubOpenDialog } from '../../helpers/dialog.helper'
-import { testFileSuffix } from '../../../src/main/shared/test.constants'
-import { DATABASE_FILE_NAME } from '../../../src/main/shared/database.constants'
+import { testFileSuffix } from '@core/shared/test.constants'
+import { DATABASE_FILE_NAME } from '@core/shared/database.constants'
 import type { SettingsPage } from '../../components/SettingsPage'
+import { addDocument, createTask, sha256Of } from '../../helpers/document.helper'
 
 /**
  * Tests E2E de l'emplacement de la base (page Paramètres) : chemin affiché,
@@ -145,6 +146,43 @@ test.describe('Déplacer la base', () => {
 
     await expect(rejection(page, 'Ce dossier contient déjà une base nextask.db')).toBeVisible()
     expect(fs.readFileSync(existing, 'utf8')).toBe('base déjà là')
+    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+  })
+
+  test('emporte les documents de la base dans le dossier des documents de la copie', async ({
+    page,
+    electronApp,
+    header,
+    settingsPage,
+  }) => {
+    const task = await createTask(page.request)
+    await addDocument(page.request, task.id, 'devis.pdf', 'PDF')
+    const folder = emptyFolder('avec-documents')
+    await header.goSettings()
+
+    await moveDatabaseTo(electronApp, settingsPage, folder)
+
+    await expect(page.getByText('Redémarrage de NexTask…', { exact: true })).toBeVisible()
+    const sha256 = sha256Of('PDF')
+    const copy = path.join(folder, 'nextask-documents', sha256.slice(0, 2), sha256)
+    expect(fs.readFileSync(copy, 'utf8')).toBe('PDF')
+    expect(fs.readdirSync(folder).sort((a, b) => a.localeCompare(b))).toEqual(['nextask-documents', DATABASE_FILE_NAME])
+  })
+
+  test("refuse un dossier qui contient le dossier des documents d'une ancienne base", async ({
+    page,
+    electronApp,
+    header,
+    settingsPage,
+  }) => {
+    const folder = emptyFolder('documents-orphelins')
+    fs.mkdirSync(path.join(folder, 'nextask-documents'))
+    await header.goSettings()
+
+    await moveDatabaseTo(electronApp, settingsPage, folder)
+
+    await expect(rejection(page, 'Ce dossier contient déjà un dossier nextask-documents')).toBeVisible()
+    expect(fs.existsSync(path.join(folder, DATABASE_FILE_NAME))).toBe(false)
     expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 })

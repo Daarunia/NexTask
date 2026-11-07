@@ -6,7 +6,7 @@ import { api } from '../utils/api.helper'
 import { isCacheValid } from '../utils/cache.helper'
 import { useTaskStore } from './Task'
 import { getLogger } from '../utils/logger'
-import type { TagColor } from '../../main/shared/tag.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 
 /**
  * Cache des colonnes, chargé en même temps que celui des tâches.

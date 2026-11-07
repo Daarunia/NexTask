@@ -1,5 +1,5 @@
 import type { Tag } from '../types/tag.types'
-import { TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
+import { TAG_NAME_MAX_LENGTH } from '@core/shared/validation.constants'
 import { httpStatus } from './api.helper'
 import { t } from '../i18n'
 

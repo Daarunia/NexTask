@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
-import type { UpdateStatus } from '../../../src/main/shared/update.constants'
+import type { UpdateStatus } from '@core/shared/update.constants'
 import { API } from '../../helpers/api.helper'
 
 /**

@@ -1,6 +1,6 @@
 import Store from 'electron-store'
 import { DEFAULT_DB_PATH, IS_TEST, STORAGE_FILE } from '../constants.js'
-import { isSamePath } from './databaseFile.js'
+import { isSamePath } from '../../core/database/databaseFile.js'
 
 /**
  * Emplacement de la base de données, choisi par l'utilisateur (dossier

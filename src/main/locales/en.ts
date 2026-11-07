@@ -35,11 +35,16 @@ export const en: MainMessages = {
       done: 'Done',
     },
   },
+  documents: {
+    saveTitle: 'Save document',
+  },
   dataTransfer: {
     exportTitle: 'Export data',
     importTitle: 'Import data',
     fileFilter: 'NexTask export',
     unreadableFile: 'The file is not a readable JSON file',
+    unreadableArchive: 'The file is not a readable NexTask export archive',
+    damagedDocument: 'A document in the archive is damaged or too large',
   },
   // Emplacement de la base (cf. system/databaseLocation.ts)
   databaseLocation: {
@@ -51,6 +56,8 @@ export const en: MainMessages = {
       sameLocation: 'NexTask is already using this database',
       alreadyExists:
         'This folder already contains a nextask.db database. Open it with “Open a database…” or choose another folder',
+      documentsExist:
+        'This folder already contains a nextask-documents folder left by an earlier database. Choose another folder',
       notWritable: 'The database could not be copied to this folder',
       copyFailed: 'The database copy was incomplete and has been deleted',
       unreadable: 'The file is missing or unreadable',
@@ -108,5 +115,6 @@ export const en: MainMessages = {
     templateChecklistClamped: 'Template “{name}” reduced to {maxItems} items of at most {maxLength} characters',
     templateNameTruncated: 'Template name shortened to {maxLength} characters (“{name}”)',
     duplicateTemplateName: 'Several templates are named “{name}”, only the first one is imported',
+    documentFileMissing: 'Document “{name}” of task {id} is missing from the file and was not imported',
   },
 }

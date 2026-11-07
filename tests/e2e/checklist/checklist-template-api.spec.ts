@@ -5,7 +5,7 @@ import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
   CHECKLIST_TEMPLATE_NAME_MAX_LENGTH,
-} from '../../../src/main/shared/checklist.constants'
+} from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E de l'API des modèles de checklist (`/checklist-templates`).

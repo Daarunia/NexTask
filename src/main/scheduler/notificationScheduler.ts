@@ -1,11 +1,11 @@
 import { Cron } from 'croner'
 import { Notification } from 'electron'
 import Logger from 'electron-log'
-import { prisma } from '../server/prismaClient.js'
+import { prisma } from '../../core/server/prismaClient.js'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
-import type { NotificationStyle } from '../shared/settings.constants.js'
-import { runRecurrenceGeneration } from './recurrenceGeneration.js'
+import type { NotificationStyle } from '../../core/shared/settings.constants.js'
+import { runRecurrenceGeneration } from '../../core/scheduler/recurrenceGeneration.js'
 import { t, tn } from '../i18n.js'
 
 /**

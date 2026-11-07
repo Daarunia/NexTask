@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import type { APIRequestContext } from '@playwright/test'
-import { TAG_COLORS } from '../../src/main/shared/tag.constants'
+import { TAG_COLORS } from '@core/shared/tag.constants'
 import { API } from './api.helper'
 
 /**

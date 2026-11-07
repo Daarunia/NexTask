@@ -1,4 +1,4 @@
-import { testApiPort } from '../../src/main/shared/api.constants'
+import { testApiPort } from '@core/shared/api.constants'
 
 /**
  * Index du worker Playwright en cours, transmis à l'app qu'il lance : chaque

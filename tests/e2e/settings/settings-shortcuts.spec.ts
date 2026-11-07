@@ -9,7 +9,7 @@ test('liste les raccourcis du tableau et du dialogue', async ({ page, header }) 
   await header.goSettings()
 
   const rows = page.getByTestId('settings-shortcuts').getByTestId('shortcut-row')
-  await expect(rows).toHaveCount(11)
+  await expect(rows).toHaveCount(13)
   await expect(rows.first()).toContainText('Rechercher dans le tableau')
   await expect(rows.first().locator('kbd')).toHaveText(['Ctrl', 'F'])
   await expect(rows.filter({ hasText: 'Archiver la carte' }).locator('kbd')).toHaveText(['Suppr'])

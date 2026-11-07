@@ -8,9 +8,9 @@ import {
   nextRunAfter,
   occurrenceCreationDate,
   type RecurrenceRule,
-} from '../../src/main/shared/recurrence.helper'
+} from '@core/shared/recurrence.helper'
 import { describeRecurrence, monthlyDayLabel, ordinalRank } from '../../src/renderer/utils/recurrence.helper'
-import { isChecklistTexts, sameChecklistTexts } from '../../src/main/server/helpers/checklist.helper'
+import { isChecklistTexts, sameChecklistTexts } from '@core/server/helpers/checklist.helper'
 
 /**
  * Tests unitaires du calcul des dates d'une série récurrente (`nextOccurrence`,

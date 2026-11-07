@@ -1,8 +1,8 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
-import { DEV_API_PORT, testApiPort } from './shared/api.constants.js'
-import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from './shared/test.constants.js'
+import { DEV_API_PORT, testApiPort } from '../core/shared/api.constants.js'
+import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from '../core/shared/test.constants.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
@@ -53,6 +53,13 @@ export const DEFAULT_DB_PATH = path.join(DATA_PATH, DB_FILE)
 // jamais toucher à celles du dev (le reset de test le vide)
 export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? `backups-test${TEST_SUFFIX}` : 'backups')
 
+// Copies des documents ouverts depuis l'app, dans le dossier temporaire du
+// système, à part pour chaque instance de test (cf. system/documents.ts)
+export const OPENED_DOCUMENTS_PATH = path.join(
+  app.getPath('temp'),
+  IS_TEST ? `nextask-documents-test${TEST_SUFFIX}` : 'nextask-documents',
+)
+
 // Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
 // base en test et en dev pour ne jamais toucher aux paramètres réels
 let SETTINGS_NAME = 'config'
@@ -92,10 +99,10 @@ export const DEV_RENDERER_URL = IS_DEV ? `http://localhost:${process.argv[2]}` :
 export const RESOURCES_PATH = IS_DEV ? CURRENT_PATH : process.resourcesPath
 
 // Chemin vers les seeds
-export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/seeds' : 'prisma/seeds')
+export const SEEDS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/core/prisma/seeds' : 'prisma/seeds')
 
 // Chemin vers les migrations
-export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/main/prisma/migrations' : 'prisma/migrations')
+export const MIGRATIONS_PATH = path.join(RESOURCES_PATH, IS_DEV ? 'src/core/prisma/migrations' : 'prisma/migrations')
 
 // Emplacements possibles des assets statiques
 const STATIC_DIRS = [path.join(process.cwd(), 'src', 'main', 'static'), path.join(RESOURCES_PATH, 'static')]

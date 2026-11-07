@@ -3,13 +3,14 @@ import axios, { AxiosRequestConfig } from 'axios'
 const baseUrl = globalThis.server.url
 
 /**
- * Erreur HTTP renvoyée par l'API, avec son code de statut.
- * Le message garde le format historique `HTTP <code> - <texte> - <corps>`.
+ * Erreur HTTP renvoyée par l'API, avec son code de statut et le corps de la
+ * réponse. Le message garde le format historique `HTTP <code> - <texte> - <corps>`.
  */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly data?: unknown,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -22,6 +23,16 @@ export class ApiError extends Error {
  */
 export function httpStatus(error: unknown): number | undefined {
   return error instanceof ApiError ? error.status : undefined
+}
+
+/**
+ * Motif de refus (`code`) renvoyé dans le corps d'une erreur de l'API, ou `undefined`.
+ * @param error Erreur interceptée
+ */
+export function apiErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined
+  const code = (error.data as { code?: unknown } | undefined)?.code
+  return typeof code === 'string' ? code : undefined
 }
 
 const axiosInstance = axios.create({
@@ -44,6 +55,7 @@ async function request<T>(method: string, url: string, data?: unknown, options?:
       throw new ApiError(
         err.response.status,
         `HTTP ${err.response.status} - ${err.response.statusText} - ${JSON.stringify(err.response.data)}`,
+        err.response.data,
       )
     } else {
       throw err

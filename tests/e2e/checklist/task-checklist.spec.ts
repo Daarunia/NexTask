@@ -1,7 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import type { ChecklistItemInput } from '../../../src/main/shared/checklist.constants'
+import type { ChecklistItemInput } from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E de la checklist du dialogue de tâche (parcours P1, P2, P3 et P6).

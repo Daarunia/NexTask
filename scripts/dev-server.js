@@ -100,3 +100,10 @@ chokidar.watch(mainPath, { cwd: mainPath }).on('change', (changedPath) => {
 
   restartElectron()
 })
+
+// src/core est compilé avec le main (cf. src/main/tsconfig.json)
+const corePath = path.join(ROOT, 'src', 'core')
+chokidar.watch(corePath, { cwd: corePath }).on('change', (changedPath) => {
+  console.log(pc.blue('[electron] ') + `Change in core/${changedPath}. reloading... 🚀`)
+  restartElectron()
+})

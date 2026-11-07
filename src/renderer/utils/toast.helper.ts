@@ -55,6 +55,21 @@ export function useSuccessToast() {
 }
 
 /**
+ * Avertissement : action faite, mais pas tout à fait comme prévu (ex. un export
+ * auquel il manque des documents). Affiché aussi longtemps qu'une erreur.
+ * À appeler dans le setup d'un composant, comme `useErrorToast`.
+ *
+ * @returns Fonction affichant un toast d'avertissement
+ */
+export function useWarnToast() {
+  const toast = useToast()
+
+  return (summary: string, detail?: string) => {
+    toast.add({ severity: 'warn', summary, detail, life: ERROR_TOAST_LIFE })
+  }
+}
+
+/**
  * Information neutre sur une action faite, ni succès ni erreur, sans
  * annulation possible (ex. un tableau supprimé et ses tâches archivées).
  * À appeler dans le setup d'un composant, comme `useErrorToast`.

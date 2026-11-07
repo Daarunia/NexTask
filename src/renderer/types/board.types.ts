@@ -1,5 +1,5 @@
-import type { TagColor } from '../../main/shared/tag.constants'
-import type { BoardColumnsMode } from '../../main/shared/board.constants'
+import type { TagColor } from '@core/shared/tag.constants'
+import type { BoardColumnsMode } from '@core/shared/board.constants'
 
 /**
  * Entité 'Tableau', qui regroupe des colonnes et leurs tâches. Ses colonnes

@@ -5,7 +5,7 @@ import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
   type ChecklistItemInput,
-} from '../../../src/main/shared/checklist.constants'
+} from '@core/shared/checklist.constants'
 
 /**
  * Tests E2E de la checklist des tâches dans l'API (`POST /tasks`,

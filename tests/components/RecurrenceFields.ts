@@ -1,5 +1,5 @@
 import { Page, Locator, expect } from '@playwright/test'
-import type { MonthlyMode } from '../../src/main/shared/recurrence.constants'
+import type { MonthlyMode } from '@core/shared/recurrence.constants'
 
 /**
  * Objet du champ « Répéter » de l'écran de tâche (KanbanRecurrenceFields, dans

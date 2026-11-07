@@ -21,10 +21,20 @@
       :initialValues="initialValues"
       :resolver="resolver"
       data-testid="task-dialog"
-      class="pt-4 flex flex-col gap-4"
+      class="pt-4 flex flex-col gap-4 relative"
       @submit="onSubmit"
       @keydown.capture="onSaveShortcut"
+      @dragenter="onFileDragEnter"
+      @dragover="onFileDragOver"
+      @dragleave="onFileDragLeave"
+      @drop="onFileDrop"
     >
+      <!-- Fichiers glissés sur le dialogue : déposés, ils sont joints à la tâche -->
+      <div v-if="fileDragDepth > 0" data-testid="task-documents-drop" class="drop-overlay" aria-hidden="true">
+        <i class="pi pi-paperclip" aria-hidden="true"></i>
+        {{ liveTask ? t('documents.dropHere') : t('documents.saveFirst') }}
+      </div>
+
       <!-- En-tête : nature du dialogue, tableau (s'il y en a plusieurs) et colonne de la tâche -->
       <div class="flex items-center justify-between gap-2 -mt-2">
         <span data-testid="task-dialog-heading" class="dialog-heading">
@@ -97,6 +107,9 @@
           @update:modelValue="(value: ChecklistEditorItem[]) => $field.props.onChange({ value })"
         />
       </FormField>
+
+      <!-- Documents joints, envoyés et supprimés aussitôt, hors du formulaire -->
+      <TaskDocuments ref="documentsRef" :task="liveTask" />
 
       <!-- Réglages secondaires, sur deux colonnes -->
       <div class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -257,11 +270,12 @@ import Checkbox from 'primevue/checkbox'
 import KanbanTagSelect from './KanbanTagSelect.vue'
 import KanbanRecurrenceFields from './KanbanRecurrenceFields.vue'
 import KanbanTaskChecklist from './KanbanTaskChecklist.vue'
+import TaskDocuments from '../TaskDocuments.vue'
 import { type ChecklistEditorItem, newChecklistEditorItem } from '../ChecklistItemsEditor.vue'
 import { Task, TaskInput, TaskUpdateInput } from '../../types/task.types'
 import { TagSelection } from '../../types/tag.types'
 import { taskFormSchema, TaskFormValues } from '../../schemas/task.schema'
-import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '../../../main/shared/recurrence.constants'
+import type { RecurrenceInput, RecurrenceStatus, RecurrenceSummary } from '@core/shared/recurrence.constants'
 import { useTaskStore } from '../../stores/Task'
 import { useTagStore } from '../../stores/Tag'
 import { useStageStore } from '../../stores/Stage'
@@ -325,6 +339,11 @@ const props = defineProps({
     type: Array as PropType<TagSelection[]>,
     default: () => [],
   },
+  // Date de début pré-remplie à la création (jour choisi au Planning)
+  initialStartDate: {
+    type: Date as PropType<Date | null>,
+    default: null,
+  },
 })
 
 // Emits
@@ -377,6 +396,70 @@ const series = computed(() =>
     ? null
     : (taskStore.getRecurrence(props.editTask.recurrenceId) ?? props.editTask.recurrence ?? null),
 )
+
+// Tâche modifiée dans son dernier état connu : ses documents changent sans
+// passer par le formulaire. Null à la création.
+const liveTask = computed<Task | null>(() => {
+  if (props.creationMode || !props.editTask) return null
+  const id = props.editTask.id
+  return taskStore.getAllTasks.find((task) => task.id === id) ?? props.editTask
+})
+
+// Section des documents, qui reçoit les fichiers déposés sur le dialogue
+const documentsRef = ref<InstanceType<typeof TaskDocuments> | null>(null)
+
+// Profondeur des entrées de glisser-déposer de fichiers, l'événement se
+// répétant à chaque élément survolé : le cadre de dépôt reste affiché jusqu'à
+// la dernière sortie
+const fileDragDepth = ref(0)
+
+/**
+ * Vrai si le glisser-déposer porte des fichiers (pas un texte sélectionné).
+ * @param event Événement de glisser-déposer
+ */
+function carriesFiles(event: DragEvent): boolean {
+  return event.dataTransfer?.types.includes('Files') ?? false
+}
+
+/** Fichiers qui entrent au-dessus du dialogue. */
+function onFileDragEnter(event: DragEvent) {
+  if (!carriesFiles(event)) return
+  event.preventDefault()
+  fileDragDepth.value += 1
+}
+
+/** Fichiers qui passent au-dessus du dialogue : le dépôt est accepté. */
+function onFileDragOver(event: DragEvent) {
+  if (!carriesFiles(event)) return
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = liveTask.value ? 'copy' : 'none'
+}
+
+/** Fichiers qui quittent un élément du dialogue. */
+function onFileDragLeave(event: DragEvent) {
+  if (!carriesFiles(event)) return
+  fileDragDepth.value = Math.max(0, fileDragDepth.value - 1)
+}
+
+/**
+ * Fichiers déposés sur le dialogue, joints à la tâche. Un dossier ne peut pas
+ * être joint : il est écarté, avec un message.
+ * @param event Dépôt
+ */
+function onFileDrop(event: DragEvent) {
+  if (!carriesFiles(event)) return
+  event.preventDefault()
+  fileDragDepth.value = 0
+  if (!liveTask.value || !event.dataTransfer) return
+
+  const items = [...event.dataTransfer.items].filter((item) => item.kind === 'file')
+  const files = items.flatMap((item) => {
+    const file = item.getAsFile()
+    return file && !item.webkitGetAsEntry()?.isDirectory ? [file] : []
+  })
+  if (files.length < items.length) showError(t('documents.folderSkipped'), t('documents.folderSkippedDetail'))
+  documentsRef.value?.addFiles(files)
+}
 
 // Série encore en cours (active ou en pause) : modifiable et arrêtable depuis la tâche
 const seriesLive = computed(() => !!series.value && series.value.status !== 'ended')
@@ -538,7 +621,11 @@ watch(
   },
 )
 
-watch(visible, (val) => emit('update:modelValue', val))
+watch(visible, (val) => {
+  // Cadre de dépôt jamais laissé d'une ouverture à l'autre (glisser-déposer interrompu)
+  fileDragDepth.value = 0
+  emit('update:modelValue', val)
+})
 
 // Valeurs par défaut d'une nouvelle tâche
 function defaultValues(): TaskFormValues {
@@ -546,7 +633,7 @@ function defaultValues(): TaskFormValues {
     title: '',
     description: '',
     version: settings.defaultTaskVersion,
-    startDate: null,
+    startDate: props.initialStartDate,
     tags: props.defaultTags.map((tag) => ({ ...tag })),
     checklistItems: [],
     recurrence: defaultRecurrenceValue(),
@@ -780,6 +867,24 @@ async function saveTask(values: TaskFormValues, another = false) {
 .dialog-heading {
   font-size: 0.875rem;
   color: var(--p-text-muted-color);
+}
+
+/* Cadre de dépôt de fichiers, par-dessus tout le formulaire. Sans pointeur :
+   les événements de glisser-déposer restent sur les éléments du formulaire */
+.drop-overlay {
+  position: absolute;
+  inset: 0.5rem -0.5rem -0.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px dashed var(--p-primary-color);
+  border-radius: var(--p-border-radius-md);
+  background-color: color-mix(in srgb, var(--p-content-background) 85%, transparent);
+  color: var(--p-primary-color);
+  font-weight: 600;
+  pointer-events: none;
 }
 
 /* Titre mis en avant : grand, sans cadre, souligné au focus */

@@ -8,7 +8,7 @@ import type {
   RecurrenceStatus,
   RecurrenceSummary,
   SeriesPlacement,
-} from '../../main/shared/recurrence.constants'
+} from '@core/shared/recurrence.constants'
 import { api } from '../utils/api.helper'
 import { getLogger } from '../utils/logger'
 import { compareTagNames } from '../utils/tag.helper'
@@ -385,6 +385,48 @@ export const useTaskStore = defineStore('task', {
     },
 
     /**
+     * Joint un fichier à une tâche, envoyé tel quel en flux. Seuls ses documents
+     * et sa date de modification sont repris dans le cache : une saisie en cours
+     * dans le dialogue n'est pas touchée.
+     * @param taskId Id de la tâche
+     * @param file Fichier choisi ou déposé
+     * @param onProgress Avancement de l'envoi, de 0 à 1
+     * @returns La tâche à jour, avec le document ajouté (nom rendu unique par le serveur)
+     * @throws ApiError dont le corps porte le motif du refus (cf. DocumentErrorCode)
+     */
+    async uploadDocument(taskId: number, file: File, onProgress?: (ratio: number) => void): Promise<Task> {
+      try {
+        const updatedTask = await api.post<Task>(`/tasks/${taskId}/documents`, file, {
+          params: { name: file.name },
+          headers: { 'Content-Type': 'application/octet-stream' },
+          onUploadProgress: (event) => onProgress?.(event.total ? event.loaded / event.total : 0),
+        })
+        this.patchCachedTask(taskId, { documents: updatedTask.documents, updatedAt: updatedTask.updatedAt })
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de l'ajout du document « ${file.name} » à la tâche ${taskId} :`, error)
+        throw error
+      }
+    },
+
+    /**
+     * Supprime un document d'une tâche, son fichier partant s'il ne sert plus ailleurs.
+     * @param taskId Id de la tâche
+     * @param documentId Id du document
+     * @returns La tâche à jour
+     */
+    async deleteDocument(taskId: number, documentId: number): Promise<Task> {
+      try {
+        const updatedTask = await api.delete<Task>(`/documents/${documentId}`)
+        this.patchCachedTask(taskId, { documents: updatedTask.documents, updatedAt: updatedTask.updatedAt })
+        return updatedTask
+      } catch (error) {
+        getLogger().error(`Erreur lors de la suppression du document ${documentId} :`, error)
+        throw error
+      }
+    },
+
+    /**
      * Création d'une tâche
      * @param task Tâche à créer (tags par nom, points de checklist sans id)
      * @returns La tâche créée, telle que renvoyée par le serveur (tags résolus,
@@ -419,7 +461,11 @@ export const useTaskStore = defineStore('task', {
 
       try {
         const updatedTask = await api.patch<Task>(`/tasks/${id}`, payload)
-        this.patchCachedTask(id, updatedTask)
+        // Documents gérés par leurs propres routes : ceux du cache, tenus à jour à
+        // chaque ajout ou suppression, priment sur cette réponse, qui a pu partir
+        // avant la fin d'un envoi
+        const cachedDocuments = this.allEntities?.data.find((cached) => cached.id === id)?.documents
+        this.patchCachedTask(id, { ...updatedTask, documents: cachedDocuments ?? updatedTask.documents })
         this.rememberRecurrences([updatedTask])
 
         return updatedTask
@@ -434,11 +480,17 @@ export const useTaskStore = defineStore('task', {
      * modèle de sa série. Le serveur réarme le rappel d'une date repoussée.
      * @param id Id de la tâche
      * @param startDate Nouvelle date, `null` pour la retirer
+     * @param notifiedAt Date du rappel à rendre à la tâche (annulation d'un
+     *   déplacement), le serveur restant juge pour une date à venir
      * @returns La tâche mise à jour
      */
-    async setTaskStartDate(id: number, startDate: Date | null): Promise<Task> {
+    async setTaskStartDate(id: number, startDate: Date | null, notifiedAt?: Date | null): Promise<Task> {
       try {
-        const updatedTask = await api.patch<Task>(`/tasks/${id}`, { startDate, applyToSeries: false })
+        const updatedTask = await api.patch<Task>(`/tasks/${id}`, {
+          startDate,
+          applyToSeries: false,
+          ...(notifiedAt === undefined ? {} : { notifiedAt }),
+        })
         this.patchCachedTask(id, {
           startDate: updatedTask.startDate,
           notifiedAt: updatedTask.notifiedAt,

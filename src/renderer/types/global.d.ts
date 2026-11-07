@@ -1,9 +1,10 @@
-import type { AppSettings } from '../../main/shared/settings.constants'
-import type { DataTransferResult } from '../../main/shared/data.constants'
-import type { DatabaseLocation, DatabaseLocationResult } from '../../main/shared/database.constants'
-import type { LocaleState } from '../../main/shared/i18n.constants'
-import type { QuickAddStatus } from '../../main/shared/quickAdd.constants'
-import type { UpdateStatus } from '../../main/shared/update.constants'
+import type { AppSettings } from '@core/shared/settings.constants'
+import type { DataTransferResult } from '@core/shared/data.constants'
+import type { DatabaseLocation, DatabaseLocationResult } from '@core/shared/database.constants'
+import type { DocumentFileResult } from '@core/shared/document.constants'
+import type { LocaleState } from '@core/shared/i18n.constants'
+import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
+import type { UpdateStatus } from '@core/shared/update.constants'
 import type { Task } from './task.types'
 
 declare global {
@@ -41,6 +42,12 @@ declare global {
     openData: () => Promise<void>
     openDatabase: () => Promise<void> // dossier de la base, ailleurs si elle a été déplacée
     openLogs: () => Promise<void>
+  }
+
+  // Documents joints aux tâches, ouverts dans l'application par défaut ou enregistrés
+  var documents: {
+    open: (id: number) => Promise<DocumentFileResult>
+    saveAs: (id: number, name: string) => Promise<DocumentFileResult>
   }
 
   // Emplacement de la base, changé via une boîte de dialogue native puis un redémarrage

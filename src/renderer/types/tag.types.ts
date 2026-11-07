@@ -1,7 +1,7 @@
-import type { TagColor } from '../../main/shared/tag.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 
 // Nom d'une couleur de la palette des tags, défini avec la palette partagée
-export type { TagColor } from '../../main/shared/tag.constants'
+export type { TagColor } from '@core/shared/tag.constants'
 
 /**
  * Entité 'Étiquette'

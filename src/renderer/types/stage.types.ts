@@ -1,5 +1,5 @@
 import { Task } from './task.types'
-import type { TagColor } from '../../main/shared/tag.constants'
+import type { TagColor } from '@core/shared/tag.constants'
 
 /**
  * Entité 'Stage'

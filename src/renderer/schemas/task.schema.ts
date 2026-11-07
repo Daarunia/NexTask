@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { LABEL_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from '../../main/shared/validation.constants'
+import { LABEL_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from '@core/shared/validation.constants'
 import {
   MONTHLY_MODES,
   RECURRENCE_ANCHORS,
@@ -8,9 +8,9 @@ import {
   RECURRENCE_FREQUENCIES,
   RECURRENCE_INTERVAL_MAX,
   RECURRENCE_LEAD_DAYS_MAX,
-} from '../../main/shared/recurrence.constants'
-import { startOfLocalDay } from '../../main/shared/recurrence.helper'
-import { CHECKLIST_ITEM_MAX_LENGTH, CHECKLIST_MAX_ITEMS } from '../../main/shared/checklist.constants'
+} from '@core/shared/recurrence.constants'
+import { startOfLocalDay } from '@core/shared/recurrence.helper'
+import { CHECKLIST_ITEM_MAX_LENGTH, CHECKLIST_MAX_ITEMS } from '@core/shared/checklist.constants'
 import { t } from '../i18n'
 
 // Messages d'erreur traduits à la validation (fonctions), dans la langue active à ce moment

@@ -54,7 +54,7 @@ jobs:
         run: cp .env.template .env
         shell: bash
 
-      # Le client Prisma (src/main/prisma/generated) n'est pas versionné
+      # Le client Prisma (src/core/prisma/generated) n'est pas versionné
       - name: Generate Prisma client
         run: npx prisma generate
 

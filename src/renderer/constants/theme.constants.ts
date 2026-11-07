@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from '../../main/shared/settings.constants'
+import { DEFAULT_SETTINGS } from '@core/shared/settings.constants'
 
 /** Famille de gris (surfaces PrimeVue) associée à un thème. */
 export type SurfaceFamily = 'slate' | 'zinc' | 'stone'

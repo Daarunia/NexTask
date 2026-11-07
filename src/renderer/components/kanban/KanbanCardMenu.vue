@@ -39,8 +39,12 @@ export interface CardPlace {
 }
 
 const props = defineProps<{
-  boardId: number // tableau affiché
-  stages: Stage[] // colonnes du tableau, dans l'ordre
+  // Tableau affiché et ses colonnes, dans l'ordre. Absents au Planning, qui montre
+  // tous les tableaux : ceux de la tâche sont alors lus dans le cache.
+  boardId?: number
+  stages?: Stage[]
+  // Masque « Tout en haut » et « Tout en bas », sans objet hors d'une colonne
+  hideColumnPlacement?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -93,10 +97,11 @@ function menuTags(current: Task): Tag[] {
  * Sous-menu « Autre tableau », une entrée par autre tableau dans leur ordre,
  * avec sa pastille et le nom de sa première colonne, où la tâche arrivera.
  * Un tableau sans colonne est grisé. Aucun sous-menu avec un seul tableau.
+ * @param boardId Tableau de la tâche
  * @param current Tâche de la carte
  */
-function otherBoardsItems(current: Task): MenuItem[] {
-  const others = boardStore.getAllBoards.filter((board) => board.id !== props.boardId)
+function otherBoardsItems(boardId: number | undefined, current: Task): MenuItem[] {
+  const others = boardStore.getAllBoards.filter((board) => board.id !== boardId)
   if (!others.length) return []
 
   return [
@@ -126,8 +131,27 @@ const items = computed<MenuItem[]>(() => {
   const at = place.value
   if (!current || !at) return []
 
-  const otherStages = props.stages.filter((stage) => stage.id !== at.stageId)
+  const stageOfTask = stageStore.getAllStages.find((stage) => stage.id === at.stageId)
+  const boardId = props.boardId ?? stageOfTask?.boardId
+  const stages = props.stages ?? (boardId === undefined ? [] : stageStore.getStagesOfBoard(boardId))
+  const otherStages = stages.filter((stage) => stage.id !== at.stageId)
   const startDate = current.startDate ? new Date(current.startDate) : null
+  const columnPlacement = props.hideColumnPlacement
+    ? []
+    : [
+        {
+          label: t('board.cardMenu.moveTop'),
+          icon: 'pi pi-arrow-up',
+          disabled: at.index === 0,
+          command: () => emit('move', current.id, at.stageId, 'top'),
+        },
+        {
+          label: t('board.cardMenu.moveBottom'),
+          icon: 'pi pi-arrow-down',
+          disabled: at.index === at.count - 1,
+          command: () => emit('move', current.id, at.stageId, 'bottom'),
+        },
+      ]
 
   return [
     { label: t('board.cardMenu.open'), icon: 'pi pi-pencil', command: () => emit('open', current.id) },
@@ -172,19 +196,8 @@ const items = computed<MenuItem[]>(() => {
         command: () => emit('move', current.id, stage.id, 'bottom'),
       })),
     },
-    ...otherBoardsItems(current),
-    {
-      label: t('board.cardMenu.moveTop'),
-      icon: 'pi pi-arrow-up',
-      disabled: at.index === 0,
-      command: () => emit('move', current.id, at.stageId, 'top'),
-    },
-    {
-      label: t('board.cardMenu.moveBottom'),
-      icon: 'pi pi-arrow-down',
-      disabled: at.index === at.count - 1,
-      command: () => emit('move', current.id, at.stageId, 'bottom'),
-    },
+    ...otherBoardsItems(boardId, current),
+    ...columnPlacement,
     { separator: true },
     {
       label: t('common.archive'),
@@ -204,12 +217,13 @@ const items = computed<MenuItem[]>(() => {
  * @param event Clic droit, ou touche Menu sur le titre
  * @param cardTask Tâche de la carte, telle qu'affichée
  * @param cardPlace Place de la carte dans sa colonne
+ * @param cardEl Carte, quand l'événement est écouté plus haut que son titre (Planning)
  */
-function show(event: MouseEvent, cardTask: Task, cardPlace: CardPlace) {
+function show(event: MouseEvent, cardTask: Task, cardPlace: CardPlace, cardEl?: HTMLElement) {
   task.value = cardTask
   place.value = cardPlace
-  trigger = event.currentTarget as HTMLElement
-  card = trigger.closest('[data-testid="task-card"]')
+  trigger = cardEl ?? (event.currentTarget as HTMLElement)
+  card = cardEl ?? trigger.closest('[data-testid="task-card"]')
   menu.value?.show(event)
 }
 
