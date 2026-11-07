@@ -1,13 +1,15 @@
 import Logger from '../logger.js'
 import { prisma } from '../server/prismaClient.js'
+import { releaseDocumentFiles } from '../database/documentStore.js'
 import { settingsStore } from '../../main/stores/settings.js'
 
 /**
  * Purge automatique des tâches archivées.
  *
  * Paramètre activé, les tâches archivées depuis plus du nombre de jours choisi
- * sont supprimées définitivement (leurs liens avec les tags partent en
- * cascade). Une tâche archivée sans date d'archivage n'est jamais purgée.
+ * sont supprimées définitivement (leurs liens avec les tags et leurs documents
+ * partent en cascade, puis les fichiers de ces documents qui ne servent plus).
+ * Une tâche archivée sans date d'archivage n'est jamais purgée.
  */
 
 const DAY = 24 * 60 * 60 * 1000
@@ -31,9 +33,16 @@ export async function runArchivePurge(now: Date = new Date()): Promise<ArchivePu
   const days = settingsStore.get('archivePurgeDays')
   const limit = new Date(now.getTime() - days * DAY)
 
-  const { count } = await prisma.task.deleteMany({
-    where: { isHistorized: true, historizationDate: { lt: limit } },
+  const purged = { isHistorized: true, historizationDate: { lt: limit } }
+
+  // Lues avant la suppression, la cascade emportant les lignes
+  const documents = await prisma.document.findMany({
+    where: { task: purged },
+    distinct: ['sha256'],
+    select: { sha256: true },
   })
+  const { count } = await prisma.task.deleteMany({ where: purged })
+  await releaseDocumentFiles(documents.map((document) => document.sha256))
 
   Logger.info(`[purge] ${count} tâche(s) archivée(s) depuis plus de ${days} jours supprimée(s)`)
   return { enabled: true, count }

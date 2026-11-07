@@ -306,6 +306,14 @@ export class TaskBoard {
   }
 
   /**
+   * Trombone et nombre de documents d'une carte, absent sans document.
+   * @param title Titre exact de la tâche
+   */
+  cardDocumentsBadge(title: string): Locator {
+    return this.taskCard(title).getByTestId('task-card-documents')
+  }
+
+  /**
    * Badge d'avancement de la checklist d'une carte (« 2/3 »), absent sans point.
    * @param title Titre exact de la tâche
    */

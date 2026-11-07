@@ -53,6 +53,13 @@ export const DEFAULT_DB_PATH = path.join(DATA_PATH, DB_FILE)
 // jamais toucher à celles du dev (le reset de test le vide)
 export const BACKUPS_PATH = path.join(DATA_PATH, IS_TEST ? `backups-test${TEST_SUFFIX}` : 'backups')
 
+// Copies des documents ouverts depuis l'app, dans le dossier temporaire du
+// système, à part pour chaque instance de test (cf. system/documents.ts)
+export const OPENED_DOCUMENTS_PATH = path.join(
+  app.getPath('temp'),
+  IS_TEST ? `nextask-documents-test${TEST_SUFFIX}` : 'nextask-documents',
+)
+
 // Nom du fichier de paramètres (electron-store, dans userData), isolé comme la
 // base en test et en dev pour ne jamais toucher aux paramètres réels
 let SETTINGS_NAME = 'config'

@@ -65,12 +65,16 @@ interface SeriesState {
 type TaskWithTagIds = Task & { tags: { id: number }[] }
 
 /** Occurrence avec les ids de ses tags et les points de sa checklist, dans l'ordre. */
-type OccurrenceContent = TaskWithTagIds & { checklist: { items: { text: string; isChecked: boolean }[] } | null }
+type OccurrenceContent = TaskWithTagIds & {
+  checklist: { items: { text: string; isChecked: boolean }[] } | null
+  documents: { id: number }[]
+}
 
 // Contenu d'une occurrence comparé au modèle de sa série (cf. isUntouchedOccurrence)
 const occurrenceContentInclude = {
   tags: { select: { id: true } },
   checklist: { select: { items: { select: { text: true, isChecked: true }, orderBy: { position: 'asc' } } } },
+  documents: { select: { id: true } },
 } as const
 
 // Options d'une série qui ne touchent pas à son calendrier : modifiées seules,
@@ -689,6 +693,7 @@ function isUntouchedOccurrence(task: OccurrenceContent, series: Recurrence & { t
     task.startDate?.getTime() === task.occurrenceDate?.getTime() &&
     sameTagIds(task.tags, series.tags) &&
     items.every((item) => !item.isChecked) &&
+    task.documents.length === 0 &&
     sameChecklistTexts(
       items.map((item) => item.text),
       seriesChecklistTexts(series),
@@ -702,8 +707,8 @@ function isUntouchedOccurrence(task: OccurrenceContent, series: Recurrence & { t
  * - l'occurrence née de cet archivage (seule occurrence de la série créée
  *   depuis) est retirée si elle n'a pas été modifiée (cf.
  *   isUntouchedOccurrence), et ne compte plus dans le nombre d'occurrences ;
- *   modifiée (contenu, checklist, point coché, colonne, archivage…), elle
- *   est gardée ;
+ *   modifiée (contenu, checklist, point coché, document, colonne, archivage…),
+ *   elle est gardée ;
  * - la série attend de nouveau l'occurrence restaurée (`nextRunAt` null) ;
  * - une série terminée par sa règle à cause de cet archivage (date de fin
  *   dépassée, ou dernière occurrence retirée) reprend son attente. Une série

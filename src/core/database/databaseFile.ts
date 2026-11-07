@@ -57,6 +57,17 @@ export function isSamePath(a: string, b: string): boolean {
   return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right
 }
 
+/**
+ * Dossier des documents d'une base, à côté d'elle et déduit de son nom : deux
+ * bases d'un même dossier ne le partagent pas.
+ *
+ * @param dbPath Chemin de la base
+ */
+export function documentsDirFor(dbPath: string): string {
+  const { dir, name } = path.parse(dbPath)
+  return path.join(dir, `${name}-documents`)
+}
+
 /** Contenu du verrou posé à côté d'une base ouverte hors de l'emplacement par défaut. */
 export interface DatabaseLock {
   hostname: string

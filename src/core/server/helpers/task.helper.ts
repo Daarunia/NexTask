@@ -25,13 +25,16 @@ export const recurrenceSummarySelect = {
 
 /**
  * Relations renvoyées avec chaque tâche, par toutes les routes (tâches,
- * colonnes) : ses tags triés par nom, le résumé de sa série, et sa checklist
- * avec ses points dans l'ordre (null pour une tâche sans point).
+ * colonnes) : ses tags triés par nom, le résumé de sa série, sa checklist avec
+ * ses points dans l'ordre (null pour une tâche sans point), et ses documents
+ * dans l'ordre d'ajout, sans leur empreinte. Lire une tâche ne touche jamais au
+ * dossier des documents.
  */
 export const taskInclude = {
   tags: { orderBy: { name: 'asc' } },
   recurrence: { select: recurrenceSummarySelect },
   checklist: { include: { items: { orderBy: { position: 'asc' } } } },
+  documents: { select: { id: true, name: true, size: true, createdAt: true }, orderBy: { id: 'asc' } },
 } as const
 
 /**

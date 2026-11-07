@@ -208,6 +208,16 @@ const editTask = ref<Task | null>(null)
 const creationMode = ref(true)
 const board = useBoardLists()
 const taskLists = board.lists // colonnes locales, seule source de vérité après le montage
+
+// Documents ajoutés ou supprimés depuis le dialogue, repris sur la carte. Suivis
+// au niveau du store : un envoi peut se terminer après la fermeture du dialogue.
+// Abonnement retiré avec le composant.
+taskStore.$onAction(({ name, after }) => {
+  if (name !== 'uploadDocument' && name !== 'deleteDocument') return
+  after((updated: Task) => {
+    board.update(updated.id, (current) => ({ ...current, documents: updated.documents, updatedAt: updated.updatedAt }))
+  })
+})
 const stageDialog = ref<number | null>(null)
 const selectedStage = ref<Stage | null>(null)
 const stagesLocal = ref<Stage[]>([])
@@ -908,7 +918,9 @@ async function onTaskSaved(task: Task) {
   if (!location) return
 
   const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
-  board.update(task.id, () => task)
+  // Documents de la carte gardés : un envoi fini pendant l'enregistrement les a
+  // déjà mis à jour, plus récents que ceux de la tâche enregistrée
+  board.update(task.id, (current) => ({ ...task, documents: current.documents ?? task.documents }))
   updateTagCounts(oldTagIds, newTagIds)
 }
 
