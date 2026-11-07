@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { createWriteStream } from 'node:fs'
+import { createWriteStream, rmSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
@@ -25,8 +25,11 @@ import { t } from '../i18n.js'
  * Ouvrir copie le document sous son nom dans un dossier temporaire, puis le
  * confie à l'application par défaut du système : le fichier du dossier des
  * documents, nommé par son empreinte, n'a pas d'extension et ne doit jamais être
- * modifié. Chaque ouverture a son propre sous-dossier, une copie encore ouverte
- * dans une autre application (verrouillée sous Windows) ne gêne pas la suivante.
+ * modifié. La copie est en lecture seule, l'application ouverte prévenant
+ * qu'une modification n'irait pas dans le document. Chaque ouverture a son
+ * propre sous-dossier, une copie encore ouverte dans une autre application
+ * (verrouillée sous Windows) ne gêne pas la suivante. Les copies sont retirées
+ * à la fermeture de l'app, et au lancement pour celles qui étaient verrouillées.
  * Un document exécutable n'est jamais ouvert, seulement enregistré.
  *
  * En mode test, rien ne s'ouvre : la copie est écrite puis seulement notée, et
@@ -105,6 +108,9 @@ export async function openDocument(id: number): Promise<DocumentFileResult> {
   try {
     await fs.mkdir(directory, { recursive: true })
     await writeContent(response, target)
+    // Lecture seule : l'application ouverte prévient qu'une modification n'irait
+    // pas dans le document joint, mais dans cette copie, retirée plus tard
+    await fs.chmod(target, 0o400)
   } catch (error) {
     await fs.rm(directory, { recursive: true, force: true })
     throw error
@@ -174,6 +180,21 @@ export async function clearOpenedDocumentCopies(): Promise<void> {
   } catch (error) {
     Logger.info('[documents] Copies de documents ouverts en partie conservées :', error)
   }
+}
+
+/**
+ * Retire les copies des documents ouverts à la fermeture de l'app, en
+ * synchrone : l'app n'attend pas une promesse pour quitter. Une copie
+ * verrouillée reste, retirée au lancement suivant.
+ */
+export function setupOpenedDocumentCleanup(): void {
+  app.on('will-quit', () => {
+    try {
+      rmSync(OPENED_DOCUMENTS_PATH, { recursive: true, force: true })
+    } catch (error) {
+      Logger.info('[documents] Copies de documents ouverts en partie conservées :', error)
+    }
+  })
 }
 
 /**

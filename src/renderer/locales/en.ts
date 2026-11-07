@@ -516,7 +516,7 @@ export const en: MessageSchema = {
       purgeDaysDescription: 'How long a task stays archived before it is deleted.',
       autoBackup: 'Automatic backup',
       autoBackupDescription:
-        'Daily copy of the database in the “backups” folder of the data folder. The last 7 are kept.',
+        'Daily copy of the database and its documents in the “backups” folder of the data folder. The last 7 are kept.',
       dataFolder: 'Data folder',
       dataFolderDescription: 'Backups and the database at its default location, to open in the file explorer.',
       open: 'Open',
@@ -532,14 +532,17 @@ export const en: MessageSchema = {
       openFolderFailedDetail: 'The folder could not be opened.',
       export: 'Export data',
       exportDescription:
-        'Boards, columns, tasks (archives included) and tags in a JSON file. Settings are not included.',
+        'Boards, columns, tasks (archives included), tags and attached documents in a .zip archive. Settings are not included.',
       exportButton: 'Export…',
       import: 'Import data',
       importDescription:
-        'Replaces all boards, columns, tasks and tags with those of an exported file. An invalid file changes nothing.',
+        'Replaces all boards, columns, tasks, tags and documents with those of an exported archive (or a .json file from an earlier version). An invalid file changes nothing.',
       importButton: 'Import…',
       exported: 'Data exported',
       exportedDetail: '{counts} in {path}',
+      exportIncomplete: 'Incomplete export',
+      exportIncompleteDetail:
+        '{count} document whose file is missing could not be added to the archive. | {count} document whose file is missing could not be added to the archive. | {count} documents whose files are missing could not be added to the archive.',
       exportFailed: 'Export failed',
       exportFailedDetail: 'The file was not written.',
       importConfirm:
@@ -576,6 +579,7 @@ export const en: MessageSchema = {
         tasks: '{count} task | {count} task | {count} tasks',
         tags: '{count} tag | {count} tag | {count} tags',
         checklistTemplates: '{count} checklist template | {count} checklist template | {count} checklist templates',
+        documents: '{count} document | {count} document | {count} documents',
       },
     },
     title: 'Settings',

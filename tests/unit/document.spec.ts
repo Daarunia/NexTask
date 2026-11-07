@@ -180,7 +180,17 @@ describe('documentNameFromDisposition', () => {
 
 describe('isExecutableDocument', () => {
   test('repère programmes, scripts et raccourcis, casse ignorée', () => {
-    for (const name of ['setup.exe', 'RUN.BAT', 'script.ps1', 'macro.vbs', 'lien.lnk', 'outil.jar', '.cmd']) {
+    for (const name of [
+      'setup.exe',
+      'RUN.BAT',
+      'script.ps1',
+      'macro.vbs',
+      'lien.lnk',
+      'outil.jar',
+      '.cmd',
+      'aide.chm',
+      'appli.jnlp',
+    ]) {
       expect(isExecutableDocument(name), name).toBe(true)
     }
   })

@@ -520,7 +520,7 @@ export const pt: MessageSchema = {
       purgeDaysDescription: 'Tempo de arquivamento a partir do qual uma tarefa é excluída.',
       autoBackup: 'Backup automático',
       autoBackupDescription:
-        'Cópia diária do banco de dados na pasta “backups” da pasta de dados. As 7 últimas são mantidas.',
+        'Cópia diária do banco de dados e de seus documentos na pasta “backups” da pasta de dados. As 7 últimas são mantidas.',
       dataFolder: 'Pasta de dados',
       dataFolderDescription: 'Backups e banco de dados no local padrão, para abrir no explorador de arquivos.',
       open: 'Abrir',
@@ -536,14 +536,17 @@ export const pt: MessageSchema = {
       openFolderFailedDetail: 'Não foi possível abrir a pasta.',
       export: 'Exportar os dados',
       exportDescription:
-        'Quadros, colunas, tarefas (arquivadas incluídas) e etiquetas em um arquivo JSON. As configurações não são incluídas.',
+        'Quadros, colunas, tarefas (arquivadas incluídas), etiquetas e documentos anexados em um pacote .zip. As configurações não são incluídas.',
       exportButton: 'Exportar…',
       import: 'Importar dados',
       importDescription:
-        'Substitui todos os quadros, colunas, tarefas e etiquetas pelos de um arquivo exportado. Um arquivo inválido não altera nada.',
+        'Substitui todos os quadros, colunas, tarefas, etiquetas e documentos pelos de um pacote exportado (ou de um arquivo .json de uma versão anterior). Um arquivo inválido não altera nada.',
       importButton: 'Importar…',
       exported: 'Dados exportados',
       exportedDetail: '{counts} em {path}',
+      exportIncomplete: 'Exportação incompleta',
+      exportIncompleteDetail:
+        '{count} documento cujo arquivo está faltando não pôde ser incluído no pacote. | {count} documento cujo arquivo está faltando não pôde ser incluído no pacote. | {count} documentos cujos arquivos estão faltando não puderam ser incluídos no pacote.',
       exportFailed: 'Exportação impossível',
       exportFailedDetail: 'O arquivo não foi gravado.',
       importConfirm:
@@ -581,6 +584,7 @@ export const pt: MessageSchema = {
         tasks: '{count} tarefa | {count} tarefa | {count} tarefas',
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',
         checklistTemplates: '{count} modelo de checklist | {count} modelo de checklist | {count} modelos de checklist',
+        documents: '{count} documento | {count} documento | {count} documentos',
       },
     },
     title: 'Configurações',

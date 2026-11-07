@@ -52,6 +52,8 @@ export const fr = {
     importTitle: 'Importer des données',
     fileFilter: 'Export NexTask',
     unreadableFile: "Le fichier n'est pas un fichier JSON lisible",
+    unreadableArchive: "Le fichier n'est pas une archive d'export NexTask lisible",
+    damagedDocument: "Un document de l'archive est endommagé ou trop volumineux",
   },
   // Emplacement de la base (cf. system/databaseLocation.ts)
   databaseLocation: {
@@ -63,6 +65,8 @@ export const fr = {
       sameLocation: 'NexTask utilise déjà cette base',
       alreadyExists:
         'Ce dossier contient déjà une base nextask.db. Ouvre-la avec « Ouvrir une base… » ou choisis un autre dossier',
+      documentsExist:
+        "Ce dossier contient déjà un dossier nextask-documents, resté d'une ancienne base. Choisis un autre dossier",
       notWritable: "La base n'a pas pu être copiée dans ce dossier",
       copyFailed: 'La copie de la base était incomplète, elle a été supprimée',
       unreadable: 'Le fichier est introuvable ou illisible',
@@ -123,6 +127,7 @@ export const fr = {
     templateChecklistClamped: 'Modèle « {name} » ramené à {maxItems} points de {maxLength} caractères au plus',
     templateNameTruncated: 'Nom de modèle raccourci à {maxLength} caractères (« {name} »)',
     duplicateTemplateName: 'Plusieurs modèles portent le nom « {name} », seul le premier est importé',
+    documentFileMissing: 'Document « {name} » de la tâche {id} absent du fichier, non importé',
   } satisfies Record<ImportProblemCode, string>,
 }
 

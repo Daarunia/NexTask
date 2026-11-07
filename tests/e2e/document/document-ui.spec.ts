@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
 import { restoreDialogs, stubSaveDialog } from '../../helpers/dialog.helper'
@@ -10,6 +10,7 @@ import {
   setDocumentLimits,
 } from '../../helpers/document.helper'
 import { TaskDocuments } from '../../components/TaskDocuments'
+import type { AppSettings } from '@core/shared/settings.constants'
 
 /**
  * Tests E2E de l'interface des documents joints aux tâches : section Documents
@@ -139,6 +140,8 @@ test.describe('section Documents du dialogue de tâche', () => {
     expect(copy.name).toBe('compte rendu.txt')
     expect(copy.path).toMatch(/compte rendu\.txt$/)
     expect(await readFile(copy.path, 'utf8')).toBe('Réunion du lundi')
+    // Copie en lecture seule : une modification n'irait pas dans le document joint
+    expect((await stat(copy.path)).mode & 0o200).toBe(0)
   })
 
   test('un exécutable ne s’ouvre jamais, il s’enregistre seulement', async ({
@@ -233,7 +236,8 @@ test('les Paramètres règlent les limites des documents et affichent leur place
 
   const stored = () =>
     page.evaluate(async () => {
-      const all = await globalThis.settings.getAll()
+      const bridge = globalThis as unknown as { settings: { getAll: () => Promise<AppSettings> } }
+      const all = await bridge.settings.getAll()
       return [all.documentMaxSizeMb, all.documentMaxPerTask]
     })
   await expect.poll(stored).toEqual([1024, 25])

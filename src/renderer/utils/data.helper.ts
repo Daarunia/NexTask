@@ -36,8 +36,9 @@ export async function reloadDataAfterImport(): Promise<void> {
 
 /**
  * Résumé du nombre d'éléments exportés ou importés. Les tableaux ne sont
- * comptés que s'il y en a plusieurs, un tableau seul n'apprenant rien.
- * @param counts Nombre de tableaux, colonnes, tâches, tags et modèles de checklist
+ * comptés que s'il y en a plusieurs, un tableau seul n'apprenant rien, et les
+ * documents que s'il y en a.
+ * @param counts Nombre de tableaux, colonnes, tâches, tags, modèles de checklist et documents
  */
 export function describeCounts(counts: DataCounts): string {
   return [
@@ -46,5 +47,8 @@ export function describeCounts(counts: DataCounts): string {
     t('settings.data.counts.tasks', { count: counts.tasks }, counts.tasks),
     t('settings.data.counts.tags', { count: counts.tags }, counts.tags),
     t('settings.data.counts.checklistTemplates', { count: counts.checklistTemplates }, counts.checklistTemplates),
+    ...(counts.documents > 0
+      ? [t('settings.data.counts.documents', { count: counts.documents }, counts.documents)]
+      : []),
   ].join(', ')
 }

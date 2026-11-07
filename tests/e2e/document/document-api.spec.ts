@@ -398,8 +398,13 @@ test.describe('Suppression', () => {
     const task = await createTask(page.request)
     await addDocument(page.request, task.id, 'a.txt', 'a')
     const exported = await (await page.request.get(`${API}/data/export`)).json()
+    // Données importées sans ce document : son fichier ne sert plus
+    const tasks = (exported.tasks as { documents?: unknown[] }[]).map((exportedTask) => ({
+      ...exportedTask,
+      documents: [],
+    }))
 
-    const res = await page.request.post(`${API}/data/import`, { data: exported })
+    const res = await page.request.post(`${API}/data/import`, { data: { ...exported, tasks } })
 
     expect(res.ok(), await res.text()).toBeTruthy()
     expect(await documentStoreState(page.request)).toMatchObject({ documents: 0, files: 0 })

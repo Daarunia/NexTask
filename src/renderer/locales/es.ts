@@ -519,7 +519,7 @@ export const es: MessageSchema = {
       purgeDaysDescription: 'Antigüedad de archivado a partir de la cual se elimina una tarea.',
       autoBackup: 'Copia de seguridad automática',
       autoBackupDescription:
-        'Copia diaria de la base de datos en la carpeta «backups» de la carpeta de datos. Se conservan las 7 últimas.',
+        'Copia diaria de la base de datos y sus documentos en la carpeta «backups» de la carpeta de datos. Se conservan las 7 últimas.',
       dataFolder: 'Carpeta de datos',
       dataFolderDescription:
         'Copias de seguridad y base de datos en su ubicación predeterminada, para abrir en el explorador de archivos.',
@@ -536,14 +536,17 @@ export const es: MessageSchema = {
       openFolderFailedDetail: 'No se ha podido abrir la carpeta.',
       export: 'Exportar los datos',
       exportDescription:
-        'Tableros, columnas, tareas (archivadas incluidas) y etiquetas en un archivo JSON. Los ajustes no se incluyen.',
+        'Tableros, columnas, tareas (archivadas incluidas), etiquetas y documentos adjuntos en un archivo .zip. Los ajustes no se incluyen.',
       exportButton: 'Exportar…',
       import: 'Importar datos',
       importDescription:
-        'Sustituye todos los tableros, columnas, tareas y etiquetas por las de un archivo exportado. Un archivo no válido no cambia nada.',
+        'Sustituye todos los tableros, columnas, tareas, etiquetas y documentos por los de un archivo exportado (o un archivo .json de una versión anterior). Un archivo no válido no cambia nada.',
       importButton: 'Importar…',
       exported: 'Datos exportados',
       exportedDetail: '{counts} en {path}',
+      exportIncomplete: 'Exportación incompleta',
+      exportIncompleteDetail:
+        'No se pudo añadir al archivo {count} documento cuyo fichero falta. | No se pudo añadir al archivo {count} documento cuyo fichero falta. | No se pudieron añadir al archivo {count} documentos cuyos ficheros faltan.',
       exportFailed: 'Exportación imposible',
       exportFailedDetail: 'El archivo no se ha escrito.',
       importConfirm:
@@ -582,6 +585,7 @@ export const es: MessageSchema = {
         tags: '{count} etiqueta | {count} etiqueta | {count} etiquetas',
         checklistTemplates:
           '{count} plantilla de checklist | {count} plantilla de checklist | {count} plantillas de checklist',
+        documents: '{count} documento | {count} documento | {count} documentos',
       },
     },
     title: 'Ajustes',

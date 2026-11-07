@@ -616,7 +616,11 @@ watch(
   },
 )
 
-watch(visible, (val) => emit('update:modelValue', val))
+watch(visible, (val) => {
+  // Cadre de dépôt jamais laissé d'une ouverture à l'autre (glisser-déposer interrompu)
+  fileDragDepth.value = 0
+  emit('update:modelValue', val)
+})
 
 // Valeurs par défaut d'une nouvelle tâche
 function defaultValues(): TaskFormValues {

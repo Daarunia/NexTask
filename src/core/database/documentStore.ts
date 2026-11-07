@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import fs, { type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import type { Readable } from 'node:stream'
+import Database from 'better-sqlite3'
 import Logger from '../logger.js'
 import { prisma } from '../server/prismaClient.js'
 import { DB_PATH } from '../../main/database/location.js'
@@ -57,9 +58,10 @@ interface ReceivedContent {
  * venir d'une base ouverte depuis ailleurs, et ne doit jamais sortir du dossier.
  *
  * @param sha256 Empreinte du contenu
+ * @param directory Dossier des documents, celui de la base ouverte par défaut
  */
-function documentFilePath(sha256: string): string | null {
-  return SHA256.test(sha256) ? path.join(DOCUMENTS_PATH, sha256.slice(0, 2), sha256) : null
+function documentFilePath(sha256: string, directory = DOCUMENTS_PATH): string | null {
+  return SHA256.test(sha256) ? path.join(directory, sha256.slice(0, 2), sha256) : null
 }
 
 /**
@@ -170,6 +172,107 @@ export async function writeDocumentFile(
 export async function locateDocumentFile(sha256: string): Promise<string | null> {
   const file = documentFilePath(sha256)
   return file !== null && (await exists(file)) ? file : null
+}
+
+/**
+ * Taille des contenus présents dans le dossier, par empreinte. Une empreinte
+ * absente du résultat n'a pas de fichier (ou n'est pas une empreinte).
+ *
+ * @param hashes Empreintes cherchées
+ */
+export async function documentFileSizes(hashes: Iterable<string>): Promise<Map<string, number>> {
+  const sizes = new Map<string, number>()
+  for (const sha256 of new Set(hashes)) {
+    const file = documentFilePath(sha256)
+    if (file === null) continue
+    try {
+      sizes.set(sha256, (await fs.stat(file)).size)
+    } catch {
+      // Contenu absent du dossier
+    }
+  }
+  return sizes
+}
+
+/**
+ * Empreintes des contenus référencés par une base, lue directement dans son
+ * fichier (copie de la base, sauvegarde) : ses documents dont le contenu doit
+ * l'accompagner.
+ *
+ * @param dbFile Chemin de la base
+ */
+export function referencedDocumentHashes(dbFile: string): string[] {
+  const db = new Database(dbFile, { readonly: true, fileMustExist: true })
+  try {
+    return db.prepare('SELECT DISTINCT "sha256" FROM "Document"').pluck().all() as string[]
+  } finally {
+    db.close()
+  }
+}
+
+/**
+ * Copie un contenu dans un autre dossier de documents, par un fichier
+ * temporaire renommé à la fin : jamais un fichier tronqué sous le nom d'une
+ * empreinte. Un lien en dur, quand il est demandé et possible (même volume),
+ * évite de dupliquer le contenu : sans risque, un contenu n'étant jamais modifié.
+ *
+ * @param source Fichier du contenu
+ * @param target Fichier à créer
+ * @param link Lien en dur plutôt qu'une copie, si possible
+ */
+async function copyDocumentFile(source: string, target: string, link: boolean): Promise<void> {
+  await fs.mkdir(path.dirname(target), { recursive: true })
+  const temporary = `${target}.${randomUUID()}.part`
+  try {
+    if (link) {
+      try {
+        await fs.link(source, temporary)
+      } catch {
+        // Autre volume, ou système de fichiers sans liens : copie
+        await fs.copyFile(source, temporary)
+      }
+    } else {
+      await fs.copyFile(source, temporary)
+    }
+    await fs.rename(temporary, target)
+  } finally {
+    await fs.rm(temporary, { force: true })
+  }
+}
+
+/**
+ * Copie des contenus d'un dossier de documents dans un autre (déplacement de
+ * la base, sauvegarde). Un contenu déjà présent à la destination est gardé :
+ * même empreinte, même contenu.
+ *
+ * @param source Dossier des documents d'origine
+ * @param target Dossier des documents de destination, créé au besoin
+ * @param hashes Empreintes des contenus à copier
+ * @param options `link` : liens en dur quand c'est possible (dossiers locaux de l'app)
+ * @returns Nombre de contenus copiés, et de ceux absents du dossier d'origine
+ * @throws Si un contenu présent ne peut pas être copié
+ */
+export async function copyDocumentFiles(
+  source: string,
+  target: string,
+  hashes: Iterable<string>,
+  options: { link?: boolean } = {},
+): Promise<{ copied: number; missing: number }> {
+  let copied = 0
+  let missing = 0
+  for (const sha256 of new Set(hashes)) {
+    const from = documentFilePath(sha256, source)
+    const to = documentFilePath(sha256, target)
+    if (from === null || to === null) continue
+    if (await exists(to)) continue
+    if (!(await exists(from))) {
+      missing += 1
+      continue
+    }
+    await copyDocumentFile(from, to, options.link ?? false)
+    copied += 1
+  }
+  return { copied, missing }
 }
 
 /**

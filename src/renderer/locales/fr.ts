@@ -529,7 +529,7 @@ export const fr = {
       purgeDaysDescription: "Ancienneté d'archivage au-delà de laquelle une tâche est purgée.",
       autoBackup: 'Sauvegarde automatique',
       autoBackupDescription:
-        'Copie quotidienne de la base dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées.',
+        'Copie quotidienne de la base et de ses documents dans le dossier « backups » du dossier des données. Les 7 dernières sont conservées.',
       dataFolder: 'Dossier des données',
       dataFolderDescription:
         "Sauvegardes et base à son emplacement par défaut, à ouvrir dans l'explorateur de fichiers.",
@@ -546,14 +546,17 @@ export const fr = {
       openFolderFailedDetail: "Le dossier n'a pas pu être ouvert.",
       export: 'Exporter les données',
       exportDescription:
-        "Tableaux, colonnes, tâches (archives comprises) et tags dans un fichier JSON. Les paramètres n'en font pas partie.",
+        "Tableaux, colonnes, tâches (archives comprises), tags et documents joints dans une archive .zip. Les paramètres n'en font pas partie.",
       exportButton: 'Exporter…',
       import: 'Importer des données',
       importDescription:
-        "Remplace tous les tableaux, colonnes, tâches et tags par ceux d'un fichier exporté. Un fichier invalide ne modifie rien.",
+        "Remplace tous les tableaux, colonnes, tâches, tags et documents par ceux d'une archive exportée (ou d'un fichier .json d'une version précédente). Un fichier invalide ne modifie rien.",
       importButton: 'Importer…',
       exported: 'Données exportées',
       exportedDetail: '{counts} dans {path}',
+      exportIncomplete: 'Export incomplet',
+      exportIncompleteDetail:
+        "{count} document dont le fichier manque n'a pas pu être joint à l'archive. | {count} document dont le fichier manque n'a pas pu être joint à l'archive. | {count} documents dont le fichier manque n'ont pas pu être joints à l'archive.",
       exportFailed: 'Export impossible',
       exportFailedDetail: "Le fichier n'a pas été écrit.",
       importConfirm:
@@ -590,6 +593,7 @@ export const fr = {
         tasks: '{count} tâche | {count} tâche | {count} tâches',
         tags: '{count} tag | {count} tag | {count} tags',
         checklistTemplates: '{count} modèle de checklist | {count} modèle de checklist | {count} modèles de checklist',
+        documents: '{count} document | {count} document | {count} documents',
       },
     },
     title: 'Paramètres',

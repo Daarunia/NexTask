@@ -461,7 +461,11 @@ export const useTaskStore = defineStore('task', {
 
       try {
         const updatedTask = await api.patch<Task>(`/tasks/${id}`, payload)
-        this.patchCachedTask(id, updatedTask)
+        // Documents gérés par leurs propres routes : ceux du cache, tenus à jour à
+        // chaque ajout ou suppression, priment sur cette réponse, qui a pu partir
+        // avant la fin d'un envoi
+        const cachedDocuments = this.allEntities?.data.find((cached) => cached.id === id)?.documents
+        this.patchCachedTask(id, { ...updatedTask, documents: cachedDocuments ?? updatedTask.documents })
         this.rememberRecurrences([updatedTask])
 
         return updatedTask

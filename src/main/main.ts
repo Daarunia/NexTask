@@ -16,7 +16,13 @@ import { getRestorableWindowState, trackWindowState } from './system/windowState
 import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
-import { clearOpenedDocumentCopies, documentIdFrom, openDocument, saveDocumentAs } from './system/documents.js'
+import {
+  clearOpenedDocumentCopies,
+  documentIdFrom,
+  openDocument,
+  saveDocumentAs,
+  setupOpenedDocumentCleanup,
+} from './system/documents.js'
 import {
   ensureDatabaseAvailable,
   getDatabaseLocation,
@@ -305,8 +311,10 @@ async function onReady() {
   // Liens cliqués dans les pages : navigateur par défaut, jamais dans l'app
   setupExternalLinks()
 
-  // Copies des documents ouverts au lancement précédent, sans attendre : rien n'en dépend
+  // Copies des documents ouverts : celles restées du lancement précédent, sans
+  // attendre (rien n'en dépend), puis celles de ce lancement à la fermeture
   void clearOpenedDocumentCopies()
+  setupOpenedDocumentCleanup()
 
   try {
     await startServer()

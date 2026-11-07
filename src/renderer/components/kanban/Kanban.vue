@@ -918,7 +918,9 @@ async function onTaskSaved(task: Task) {
   if (!location) return
 
   const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
-  board.update(task.id, () => task)
+  // Documents de la carte gardés : un envoi fini pendant l'enregistrement les a
+  // déjà mis à jour, plus récents que ceux de la tâche enregistrée
+  board.update(task.id, (current) => ({ ...task, documents: current.documents ?? task.documents }))
   updateTagCounts(oldTagIds, newTagIds)
 }
 

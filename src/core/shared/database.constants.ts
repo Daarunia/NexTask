@@ -19,6 +19,7 @@ export interface DatabaseLocation {
 export const DATABASE_PROBLEM_CODES = [
   'sameLocation', // base déjà utilisée par l'app
   'alreadyExists', // le dossier choisi contient déjà une base NexTask
+  'documentsExist', // le dossier choisi contient déjà le dossier des documents d'une ancienne base
   'notWritable', // la copie n'a pas pu être écrite dans le dossier choisi
   'copyFailed', // la copie écrite est illisible ou incomplète
   'unreadable', // fichier introuvable ou illisible
