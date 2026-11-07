@@ -35,6 +35,9 @@ export const zh: MainMessages = {
       done: '已完成',
     },
   },
+  documents: {
+    saveTitle: '保存文档',
+  },
   dataTransfer: {
     exportTitle: '导出数据',
     importTitle: '导入数据',

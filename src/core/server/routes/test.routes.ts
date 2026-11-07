@@ -14,6 +14,7 @@ import { runRecurrenceGeneration } from '../../scheduler/recurrenceGeneration.js
 import { runArchivePurge } from '../../scheduler/archivePurge.js'
 import { runDatabaseBackup } from '../../scheduler/databaseBackup.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from '../../../main/system/folders.js'
+import { clearOpenedDocumentCopies, clearOpenedDocuments, getOpenedDocuments } from '../../../main/system/documents.js'
 import { getDatabaseLocationForTest, resetDatabaseLocationForTest } from '../../../main/system/databaseLocation.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from '../../../main/system/about.js'
 import { clearOpenedUrls, getOpenedUrls } from '../../../main/system/externalLinks.js'
@@ -40,6 +41,7 @@ import Logger from '../../logger.js'
  * - POST /test/run-archive-purge  → déclenche un passage de la purge des tâches archivées
  * - POST /test/run-backup         → déclenche un passage de la sauvegarde automatique de la base
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/opened-documents   → documents dont l'ouverture a été demandée (copie écrite, rien ne s'ouvre en test)
  * - GET  /test/database-location  → emplacement de la base enregistré et redémarrage demandé (simulé en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-urls        → liens cliqués dans une page, envoyés au navigateur par défaut (simulé en test)
@@ -143,6 +145,8 @@ export default async function testRoutes(fastify) {
 
       // Ouvertures de dossiers et de liens des tests précédents oubliées
       clearOpenedFolders()
+      clearOpenedDocuments()
+      await clearOpenedDocumentCopies()
       clearOpenedLinks()
       clearOpenedUrls()
 
@@ -399,6 +403,38 @@ export default async function testRoutes(fastify) {
       },
     },
     async () => getOpenedFolders(),
+  )
+
+  /**
+   * GET /test/opened-documents
+   *
+   * Documents dont l'ouverture a été demandée depuis le dernier reset, dans
+   * l'ordre. En mode test, l'IPC `documents:open` écrit la copie temporaire
+   * mais ne la confie pas à l'application par défaut.
+   *
+   * @returns {Promise<Array<{name: string, path: string}>>} Nom du document et chemin de sa copie
+   */
+  fastify.get(
+    '/test/opened-documents',
+    {
+      schema: {
+        description: "Documents dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                path: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async () => getOpenedDocuments(),
   )
 
   /**

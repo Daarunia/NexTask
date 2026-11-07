@@ -1,6 +1,7 @@
 import {
   BYTES_PER_MB,
   DOCUMENT_NAME_MAX_LENGTH,
+  EXECUTABLE_EXTENSIONS,
   type DocumentLimitProblem,
   type DocumentLimits,
 } from './document.constants.js'
@@ -124,4 +125,32 @@ export function documentContentDisposition(name: string): string {
     (character) => `%${(character.codePointAt(0) as number).toString(16).toUpperCase()}`,
   )
   return `attachment; filename*=UTF-8''${encoded}`
+}
+
+/**
+ * Nom d'un document lu dans l'en-tête `Content-Disposition` écrit par
+ * documentContentDisposition, ou `null` si l'en-tête n'en porte pas.
+ *
+ * @param header Valeur de l'en-tête
+ */
+export function documentNameFromDisposition(header: string): string | null {
+  const match = /filename\*=UTF-8''([^;\s]+)/i.exec(header)
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Vrai si le système exécuterait le document au lieu de l'ouvrir (programme,
+ * script, raccourci) : l'app le propose alors seulement à l'enregistrement. Un
+ * nom réduit à son extension (`.bat`) compte aussi.
+ *
+ * @param name Nom du document
+ */
+export function isExecutableDocument(name: string): boolean {
+  const dot = name.lastIndexOf('.')
+  return dot !== -1 && EXECUTABLE_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
 }

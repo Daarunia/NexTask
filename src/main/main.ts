@@ -16,6 +16,7 @@ import { getRestorableWindowState, trackWindowState } from './system/windowState
 import { trackInterfaceScale } from './system/interfaceScale.js'
 import { exportDataToFile, importDataFromFile } from './system/dataTransfer.js'
 import { isFolderKind, openFolder } from './system/folders.js'
+import { clearOpenedDocumentCopies, documentIdFrom, openDocument, saveDocumentAs } from './system/documents.js'
 import {
   ensureDatabaseAvailable,
   getDatabaseLocation,
@@ -304,6 +305,9 @@ async function onReady() {
   // Liens cliqués dans les pages : navigateur par défaut, jamais dans l'app
   setupExternalLinks()
 
+  // Copies des documents ouverts au lancement précédent, sans attendre : rien n'en dépend
+  void clearOpenedDocumentCopies()
+
   try {
     await startServer()
   } catch (err) {
@@ -440,6 +444,14 @@ ipcMain.handle('folders:open', (_, kind: unknown) => {
 
   return openFolder(kind)
 })
+
+// Documents joints aux tâches (cf. system/documents) : ouverture dans
+// l'application par défaut, ou enregistrement après une boîte de dialogue
+// native. Contenu lu via GET /documents/:id/content, échec renvoyé au renderer.
+ipcMain.handle('documents:open', (_, id: unknown) => openDocument(documentIdFrom(id)))
+ipcMain.handle('documents:saveAs', (event, id: unknown, name: unknown) =>
+  saveDocumentAs(BrowserWindow.fromWebContents(event.sender), documentIdFrom(id), String(name)),
+)
 
 // Emplacement de la base (cf. system/databaseLocation) : lu par les Paramètres,
 // puis changé après une boîte de dialogue native. Un nouvel emplacement

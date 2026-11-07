@@ -12,6 +12,61 @@ export const DOCUMENT_NAME_MAX_LENGTH = 255
 /** Empreinte SHA-256 en hexadécimal, nom du fichier d'un document sur le disque. */
 export const SHA256_PATTERN = '^[0-9a-f]{64}$'
 
+/**
+ * Extensions d'un fichier que le système exécuterait au lieu de l'ouvrir dans
+ * une application (programme, script, raccourci, installeur). Un tel document
+ * n'est jamais ouvert par l'app, seulement enregistré.
+ */
+export const EXECUTABLE_EXTENSIONS: ReadonlySet<string> = new Set([
+  'app',
+  'appx',
+  'appxbundle',
+  'application',
+  'bat',
+  'cmd',
+  'com',
+  'command',
+  'cpl',
+  'desktop',
+  'exe',
+  'gadget',
+  'hta',
+  'inf',
+  'jar',
+  'js',
+  'jse',
+  'lnk',
+  'msc',
+  'msi',
+  'msix',
+  'msixbundle',
+  'msp',
+  'pif',
+  'ps1',
+  'psm1',
+  'reg',
+  'run',
+  'scf',
+  'scr',
+  'sh',
+  'url',
+  'vb',
+  'vbe',
+  'vbs',
+  'ws',
+  'wsc',
+  'wsf',
+  'wsh',
+])
+
+/** Issue de l'ouverture ou de l'enregistrement d'un document par le main. */
+export type DocumentFileResult =
+  | { status: 'opened' } // ouvert dans l'application par défaut du système
+  | { status: 'saved'; filePath: string } // enregistré à l'emplacement choisi
+  | { status: 'canceled' } // boîte d'enregistrement fermée sans choix
+  | { status: 'blocked' } // fichier exécutable, jamais ouvert par l'app
+  | { status: 'missing' } // document supprimé, ou fichier absent du dossier
+
 /** Limites appliquées à l'ajout d'un document (cf. paramètres `documentMaxSizeMb` et `documentMaxPerTask`). */
 export interface DocumentLimits {
   maxSizeMb: number

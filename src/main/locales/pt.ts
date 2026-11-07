@@ -35,6 +35,9 @@ export const pt: MainMessages = {
       done: 'Concluído',
     },
   },
+  documents: {
+    saveTitle: 'Salvar o documento',
+  },
   dataTransfer: {
     exportTitle: 'Exportar os dados',
     importTitle: 'Importar dados',

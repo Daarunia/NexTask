@@ -35,6 +35,9 @@ export const es: MainMessages = {
       done: 'Hecho',
     },
   },
+  documents: {
+    saveTitle: 'Guardar el documento',
+  },
   dataTransfer: {
     exportTitle: 'Exportar los datos',
     importTitle: 'Importar datos',

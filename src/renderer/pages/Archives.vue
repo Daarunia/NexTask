@@ -76,7 +76,7 @@
           >
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex min-w-0 items-center gap-2">
-                <!-- Titre dépliant le détail (description, points), s'il y en a un -->
+                <!-- Titre dépliant le détail (description, points, documents), s'il y en a un -->
                 <button
                   v-if="hasDetails(task)"
                   type="button"
@@ -96,6 +96,9 @@
 
                 <!-- Avancement de la checklist, gardée telle quelle à l'archivage, comme sur les cartes -->
                 <ChecklistBadge data-testid="archived-task-checklist" :checklist="task.checklist" />
+
+                <!-- Documents joints, comme sur les cartes -->
+                <DocumentsBadge data-testid="archived-task-documents" :documents="task.documents" />
 
                 <!-- Occurrence d'une tâche récurrente, comme sur les cartes du tableau -->
                 <i
@@ -195,6 +198,8 @@
                   </label>
                 </li>
               </ul>
+              <!-- Documents gardés à l'archivage : ouverts ou enregistrés, ni ajoutés ni supprimés -->
+              <TaskDocuments v-if="task.documents?.length" :task="task" readonly />
             </div>
           </li>
         </ul>
@@ -233,6 +238,8 @@ import Select from 'primevue/select'
 import TagChip from '../components/TagChip.vue'
 import BoardDot from '../components/BoardDot.vue'
 import ChecklistBadge from '../components/ChecklistBadge.vue'
+import TaskDocuments from '../components/TaskDocuments.vue'
+import DocumentsBadge from '../components/DocumentsBadge.vue'
 import { useTaskStore } from '../stores/Task'
 import { useTagStore } from '../stores/Tag'
 import { useBoardStore } from '../stores/Board'
@@ -371,7 +378,7 @@ const expandedIds = reactive(new Set<number>())
  * @param task Tâche archivée
  */
 function hasDetails(task: Task): boolean {
-  return hasDescription(task.description) || !!task.checklist?.items.length
+  return hasDescription(task.description) || !!task.checklist?.items.length || !!task.documents?.length
 }
 
 /**

@@ -47,6 +47,9 @@ export class SettingsPage {
   readonly openArchivesButton: Locator
   readonly archivePurgeSwitch: Locator
   readonly archivePurgeDaysSelect: Locator
+  readonly documentMaxSizeInput: Locator
+  readonly documentMaxPerTaskInput: Locator
+  readonly documentUsage: Locator
   readonly exportButton: Locator
   readonly importButton: Locator
   readonly autoBackupSwitch: Locator
@@ -135,6 +138,12 @@ export class SettingsPage {
     this.openArchivesButton = this.root.getByTestId('btn-open-archives')
     this.archivePurgeSwitch = this.root.getByRole('switch', { name: 'Purge automatique des archives' })
     this.archivePurgeDaysSelect = this.root.getByTestId('settings-archive-purge-days')
+
+    // Section Organisation et données : limites des documents et place occupée
+    // (InputNumber PrimeVue : le data-testid est posé sur son conteneur)
+    this.documentMaxSizeInput = this.root.getByTestId('settings-document-max-size').locator('input')
+    this.documentMaxPerTaskInput = this.root.getByTestId('settings-document-max-per-task').locator('input')
+    this.documentUsage = this.root.getByTestId('settings-document-usage')
 
     // Section Organisation et données : export, import et sauvegarde automatique
     this.exportButton = this.root.getByTestId('btn-data-export')

@@ -40,7 +40,8 @@
               cardDates.get(element.id) ||
               element.checklist?.items.length ||
               cardRecurrences.get(element.id) ||
-              hasDescription(element.description)
+              hasDescription(element.description) ||
+              element.documents?.length
             "
             class="card-footer flex items-end gap-2"
           >
@@ -92,6 +93,13 @@
               class="pi pi-align-left description-icon"
               :aria-label="descriptionExcerpt(element.description)"
             ></i>
+
+            <!-- Documents joints : leur nombre, et leurs noms au survol, aussi en aria-label -->
+            <DocumentsBadge
+              data-testid="task-card-documents"
+              :documents="element.documents"
+              :tooltipDisabled="isDragging"
+            />
 
             <!-- Tâche récurrente : résumé de la série et prochaine date au survol, aussi en aria-label -->
             <i
@@ -151,6 +159,7 @@ import draggable from 'vuedraggable'
 import Button from 'primevue/button'
 import TagChip from '../TagChip.vue'
 import KanbanCardChecklist from './KanbanCardChecklist.vue'
+import DocumentsBadge from '../DocumentsBadge.vue'
 import { Task } from '../../types/task.types'
 import { Tag } from '../../types/tag.types'
 import { useTagStore } from '../../stores/Tag'

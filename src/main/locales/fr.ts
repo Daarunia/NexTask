@@ -43,6 +43,10 @@ export const fr = {
       done: 'Terminé',
     },
   },
+  // Documents joints aux tâches (cf. system/documents.ts)
+  documents: {
+    saveTitle: 'Enregistrer le document',
+  },
   dataTransfer: {
     exportTitle: 'Exporter les données',
     importTitle: 'Importer des données',

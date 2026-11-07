@@ -5,6 +5,8 @@ import { BYTES_PER_MB, DOCUMENT_NAME_MAX_LENGTH } from '@core/shared/document.co
 import {
   documentContentDisposition,
   documentLimitProblem,
+  documentNameFromDisposition,
+  isExecutableDocument,
   sanitizeDocumentName,
   uniqueDocumentName,
 } from '@core/shared/document.helper'
@@ -159,5 +161,33 @@ describe('documentsDirFor', () => {
     expect(documentsDirFor(path.join('C:', 'data', 'nextask.2026.db'))).toBe(
       path.join('C:', 'data', 'nextask.2026-documents'),
     )
+  })
+})
+
+describe('documentNameFromDisposition', () => {
+  test('relit le nom écrit par documentContentDisposition, caractères spéciaux compris', () => {
+    for (const name of ["devis d'été (v2).pdf", 'rapport*final.txt', '报告 🎉.docx', 'a;b.txt']) {
+      expect(documentNameFromDisposition(documentContentDisposition(name))).toBe(name)
+    }
+  })
+
+  test('null sans nom encodé, ou pour un encodage invalide', () => {
+    expect(documentNameFromDisposition('')).toBeNull()
+    expect(documentNameFromDisposition('attachment; filename="x.pdf"')).toBeNull()
+    expect(documentNameFromDisposition("attachment; filename*=UTF-8''%E9%ZZ")).toBeNull()
+  })
+})
+
+describe('isExecutableDocument', () => {
+  test('repère programmes, scripts et raccourcis, casse ignorée', () => {
+    for (const name of ['setup.exe', 'RUN.BAT', 'script.ps1', 'macro.vbs', 'lien.lnk', 'outil.jar', '.cmd']) {
+      expect(isExecutableDocument(name), name).toBe(true)
+    }
+  })
+
+  test('laisse ouvrir documents, images et archives', () => {
+    for (const name of ['devis.pdf', 'photo.JPG', 'notes.txt', 'archive.zip', 'exe', 'readme', 'setup.exe.pdf']) {
+      expect(isExecutableDocument(name), name).toBe(false)
+    }
   })
 })

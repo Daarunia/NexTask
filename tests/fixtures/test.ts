@@ -8,6 +8,7 @@ import { SettingsPage } from '../components/SettingsPage'
 import { ArchivesPage } from '../components/ArchivesPage'
 import { ChecklistsPage } from '../components/ChecklistsPage'
 import { TaskChecklist } from '../components/TaskChecklist'
+import { TaskDocuments } from '../components/TaskDocuments'
 import { UndoToast } from '../components/UndoToast'
 import { RecurrenceFields } from '../components/RecurrenceFields'
 import { BoardSwitcher } from '../components/BoardSwitcher'
@@ -29,6 +30,7 @@ type Fixtures = {
   archivesPage: ArchivesPage
   checklistsPage: ChecklistsPage
   taskChecklist: TaskChecklist
+  taskDocuments: TaskDocuments
   undoToast: UndoToast
   recurrenceFields: RecurrenceFields
   boardSwitcher: BoardSwitcher
@@ -113,6 +115,10 @@ export const test = base.extend<Fixtures>({
 
   taskChecklist: async ({ page }, use) => {
     await use(new TaskChecklist(page))
+  },
+
+  taskDocuments: async ({ page }, use) => {
+    await use(new TaskDocuments(page))
   },
 
   undoToast: async ({ page }, use) => {
