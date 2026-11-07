@@ -16,12 +16,12 @@
     </button>
   </div>
 
-  <!-- Sous-menu déplié dans le rail, qui pousse les entrées suivantes -->
-  <div
+  <!-- Sous-menu déplié dans le rail, qui pousse les entrées suivantes. Un fieldset
+       nomme le groupe de boutons sans rôle ARIA ajouté -->
+  <fieldset
     v-if="expanded"
     id="board-view-menu"
     class="board-view-menu"
-    role="group"
     data-testid="board-view-menu"
     :aria-label="t('nav.viewMenu')"
   >
@@ -38,7 +38,7 @@
     >
       <i :class="['pi', item.icon]" aria-hidden="true"></i>
     </button>
-  </div>
+  </fieldset>
 </template>
 
 <script setup lang="ts">
@@ -124,8 +124,9 @@ function chooseView(view: BoardView) {
   font-size: 0.625rem;
 }
 
+/* Sans le cadre, la marge ni le retrait par défaut d'un fieldset */
 .board-view-menu {
-  @apply flex w-10 flex-col items-center gap-0.5 rounded-lg py-0.5;
+  @apply m-0 flex w-10 min-w-0 flex-col items-center gap-0.5 rounded-lg border-0 px-0 py-0.5;
   background-color: var(--p-content-hover-background);
 }
 

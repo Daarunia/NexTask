@@ -203,7 +203,6 @@ import {
   type TaskStatus,
 } from '../utils/search.helper'
 import type { Tag } from '../types/tag.types'
-import type { Task } from '../types/task.types'
 import type { Board } from '../types/board.types'
 
 /**
