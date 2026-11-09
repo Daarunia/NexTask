@@ -96,7 +96,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.4.1",
-    "@fastify/rate-limit": "^11.2.1",
+    "@fastify/rate-limit": "^11.2.2",
     "@prisma/adapter-better-sqlite3": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "croner": "^11.0.0",
