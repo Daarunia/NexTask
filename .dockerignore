@@ -1,0 +1,9 @@
+# Contexte de l'image du serveur : package.json, le lockfile, prisma.config.ts,
+# src/core et src/server suffisent (cf. Dockerfile)
+*
+!package.json
+!package-lock.json
+!prisma.config.ts
+!src/core/**
+!src/server/**
+src/core/prisma/generated
