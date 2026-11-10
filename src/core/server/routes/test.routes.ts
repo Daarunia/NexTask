@@ -16,21 +16,22 @@ import Logger from '../../logger.js'
 import { FILE_RATE_LIMIT_MAX, RATE_LIMIT_WINDOW } from '../helpers/rateLimit.helper.js'
 
 /**
- * Remise à zéro propre à celui qui démarre core (réglages, fenêtres, liens
- * ouverts…), appelée par POST /test/reset autour de la remise à zéro de la base.
+ * Remise à zéro propre à celui qui démarre core, appelée par POST /test/reset
+ * (réglages en base du serveur autonome). L'app desktop remet son propre état
+ * à zéro par son pont de test (cf. src/main/system/testBridge.ts), avant
+ * d'appeler cette route.
  */
 export interface TestResetHooks {
-  /** Avant les seeds : les réglages remis à zéro donnent la langue des seeds. */
+  /** Avant les seeds, une fois les données retirées. */
   beforeSeeds?: () => void | Promise<void>
-  /** Une fois la base remise à zéro. */
-  afterReset?: () => void | Promise<void>
 }
 
 /**
  * Plugin de routes Fastify réservé aux tests E2E (enregistré uniquement quand
- * core tourne en mode test). Routes propres aux données ; celles de l'app
- * desktop (notifications, dossiers, liens, mise à jour…) vivent dans
- * src/main/system/test.routes.ts.
+ * core tourne en mode test). Routes propres aux données ; l'état de l'app
+ * desktop (notifications, dossiers, liens, mise à jour…) se pilote par son pont
+ * de test (cf. src/main/system/testBridge.ts). Les seeds suivent la langue de la
+ * requête (serveur autonome) ou celle de l'interface (app desktop).
  *
  * Fournit des endpoints utilitaires pour isoler et piloter les tests :
  * - POST /test/reset              → vide les checklists, les tâches, les séries, les tags, les colonnes et les tableaux
@@ -105,9 +106,8 @@ export default async function testRoutes(fastify, hooks: TestResetHooks = {}) {
       // Tableaux en dernier, car les colonnes les référencent
       await prisma.board.deleteMany()
 
-      // Remise à zéro de celui qui démarre core avant les seeds (réglages dans
-      // l'app desktop), pour qu'elles suivent la langue par défaut et non celle
-      // d'un test précédent
+      // Remise à zéro de celui qui démarre core avant les seeds (réglages en
+      // base du serveur autonome)
       await hooks.beforeSeeds?.()
 
       // Rejoue les seeds initiaux (mêmes fichiers .sql que le boot)
@@ -134,9 +134,6 @@ export default async function testRoutes(fastify, hooks: TestResetHooks = {}) {
 
       // Fichiers des documents des tests précédents, leurs lignes étant parties avec les tâches
       await clearDocumentFiles()
-
-      // Le reste de l'état laissé par un test précédent (fenêtres, liens, mise à jour…)
-      await hooks.afterReset?.()
 
       Logger.info('Base de test réinitialisée')
       return { message: 'Base de test réinitialisée' }

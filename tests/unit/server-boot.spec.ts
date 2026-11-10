@@ -8,6 +8,7 @@ import { dataSettings, loadDataSettings } from '@core/database/serverSettings'
 import { lockFilePath } from '@core/database/databaseFile'
 import { createServerApp, DATABASE_FILE_NAME } from '../../src/server/app'
 import type { ServerEnv } from '../../src/server/env'
+import { API_VERSION } from '@core/shared/api.constants'
 
 /**
  * Serveur autonome sous Node, sans Electron : base temporaire migrée et seedée
@@ -25,6 +26,7 @@ const env: ServerEnv = {
   port: 0,
   locale: 'fr',
   corsOrigins: [ORIGIN],
+  test: false,
 }
 
 let app: FastifyInstance
@@ -67,7 +69,7 @@ describe('serveur autonome', () => {
   test('la sonde de santé répond sans jeton', async () => {
     const response = await app.inject({ method: 'GET', url: '/health?probe=docker' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ status: 'ok', version: expect.any(String) })
+    expect(response.json()).toEqual({ status: 'ok', version: expect.any(String), apiVersion: API_VERSION })
   })
 
   test('refuse une requête sans jeton ou avec un mauvais', async () => {
@@ -107,6 +109,31 @@ describe('serveur autonome', () => {
   })
 })
 
+describe('contrat des clients', () => {
+  test('les rappels échus sont réclamés une seule fois', async () => {
+    const task = (await api('POST', '/tasks/quick-add', { title: 'À rappeler' })).json() as { id: number }
+    await prisma.task.update({ where: { id: task.id }, data: { startDate: new Date(Date.now() - 60_000) } })
+
+    const first = await api('POST', '/reminders/claim')
+    expect(first.statusCode).toBe(200)
+    expect(first.json()).toEqual([{ id: task.id, title: 'À rappeler' }])
+    expect((await api('POST', '/reminders/claim')).json()).toEqual([])
+  })
+
+  test('l’ajout rapide va dans le tableau envoyé par le client, sinon dans le premier', async () => {
+    const created = await api('POST', '/boards', { name: 'Second', columns: { mode: 'default' } })
+    const second = (created.json() as { id: number }).id
+
+    const sent = (await api('POST', '/tasks/quick-add', { title: 'Vers le second', boardId: second })).json()
+    expect(sent).toMatchObject({ boardId: second })
+
+    const [first] = (await api('GET', '/boards')).json() as { id: number }[]
+    expect((await api('POST', '/tasks/quick-add', { title: 'Sans tableau' })).json()).toMatchObject({
+      boardId: first.id,
+    })
+  })
+})
+
 describe('réglages en base', () => {
   test('valeurs par défaut tant que rien n’est changé', async () => {
     const response = await api('GET', '/settings')
@@ -116,9 +143,14 @@ describe('réglages en base', () => {
   })
 
   test('un changement est enregistré, relu au démarrage et suivi par l’ajout rapide', async () => {
-    const first = (await api('POST', '/tasks/quick-add', { title: 'Avant' })).json() as { position: number }
+    // Tableau propre au test, vide de toute tâche
+    const board = await api('POST', '/boards', { name: 'Réglages', columns: { mode: 'default' } })
+    const boardId = (board.json() as { id: number }).id
+    const quickAdd = (title: string) => api('POST', '/tasks/quick-add', { title, boardId })
+
+    const first = (await quickAdd('Avant')).json() as { position: number }
     expect(first.position).toBe(0)
-    const second = (await api('POST', '/tasks/quick-add', { title: 'En bas' })).json() as { position: number }
+    const second = (await quickAdd('En bas')).json() as { position: number }
     expect(second.position).toBeGreaterThan(first.position)
 
     const response = await api('PATCH', '/settings', {
@@ -133,7 +165,7 @@ describe('réglages en base', () => {
       defaultTaskVersion: '2.1',
     })
 
-    const top = (await api('POST', '/tasks/quick-add', { title: 'En haut' })).json() as {
+    const top = (await quickAdd('En haut')).json() as {
       position: number
       version: string
     }

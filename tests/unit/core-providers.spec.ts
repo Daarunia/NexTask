@@ -14,7 +14,6 @@ const SETTINGS: ServerSettings = {
   taskVersions: ['1.0'],
   defaultTaskVersion: '1.0',
   newTaskPosition: 'bottom',
-  lastBoardId: null,
   archivePurgeEnabled: false,
   archivePurgeDays: 30,
   autoBackupEnabled: true,

@@ -803,14 +803,15 @@ export default async function taskRoutes(fastify) {
    * est ignoré, la tâche est créée sans checklist.
    *
    * La tâche va dans la colonne `stageId`. Absente ou supprimée, elle va dans
-   * la première colonne du dernier tableau affiché (paramètre `lastBoardId`),
-   * ou du premier tableau si celui-ci a disparu ou n'a aucune colonne. Son
-   * tableau est celui de la colonne retenue.
+   * la première colonne du tableau `boardId` (le tableau affiché par le client),
+   * ou du premier tableau si celui-ci est absent, a disparu ou n'a aucune
+   * colonne. Son tableau est celui de la colonne retenue.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {string} req.body.title - Titre
    * @param {number} [req.body.stageId] - Colonne (repli décrit plus haut si absente ou supprimée)
+   * @param {number} [req.body.boardId] - Tableau de repli, celui affiché par le client
    * @param {number} [req.body.checklistTemplateId] - Modèle de checklist à appliquer
    * @param {import('fastify').FastifyReply} reply - Réponse Fastify
    * @returns {Promise<Object|{error: string}>} Objet Task créé, 409 s'il n'y a aucune colonne
@@ -826,6 +827,7 @@ export default async function taskRoutes(fastify) {
           properties: {
             title: requiredLabel,
             stageId: { type: 'integer' },
+            boardId: { type: 'integer' },
             checklistTemplateId: { type: 'integer' },
           },
           required: ['title'],
@@ -837,18 +839,18 @@ export default async function taskRoutes(fastify) {
       },
     },
     async (req, reply) => {
-      const { title, stageId, checklistTemplateId } = req.body as {
+      const { title, stageId, boardId, checklistTemplateId } = req.body as {
         title: string
         stageId?: number
+        boardId?: number
         checklistTemplateId?: number
       }
       const { newTaskPosition, defaultTaskVersion } = settings()
 
       return prisma.$transaction(async (tx) => {
-        // Colonne demandée, sinon première colonne du dernier tableau affiché, sinon du premier
+        // Colonne demandée, sinon première colonne du tableau du client, sinon du premier
         const placement =
-          (stageId === undefined ? null : await stagePlacement(tx, stageId)) ??
-          (await firstStageAmong(tx, [settings().lastBoardId]))
+          (stageId === undefined ? null : await stagePlacement(tx, stageId)) ?? (await firstStageAmong(tx, [boardId]))
         if (!placement) {
           reply.code(409)
           return { error: 'Aucune colonne pour ajouter la tâche' }

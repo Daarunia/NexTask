@@ -302,13 +302,16 @@ export const useTaskStore = defineStore('task', {
      * Crée une tâche depuis la fenêtre d'ajout rapide : version et place
      * (haut ou bas de la colonne) sont choisies par le serveur selon les paramètres
      * @param title Titre de la tâche
-     * @param stageId Colonne (la première si elle n'existe plus)
-     * @param checklistTemplateId Modèle de checklist dont les points sont copiés dans la tâche
+     * @param place Colonne choisie, tableau affiché (repli : sa première colonne si la
+     *   colonne n'existe plus) et modèle de checklist dont les points sont copiés dans la tâche
      * @returns La tâche créée
      */
-    async quickAddTask(title: string, stageId?: number, checklistTemplateId?: number): Promise<Task> {
+    async quickAddTask(
+      title: string,
+      place: { stageId?: number; boardId?: number; checklistTemplateId?: number } = {},
+    ): Promise<Task> {
       try {
-        const task = await api.post<Task>(`/tasks/quick-add`, { title, stageId, checklistTemplateId })
+        const task = await api.post<Task>(`/tasks/quick-add`, { title, ...place })
         this.insertCachedTask(task)
         return task
       } catch (error) {

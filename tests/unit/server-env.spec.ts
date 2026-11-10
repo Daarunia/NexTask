@@ -16,6 +16,7 @@ describe('readServerEnv', () => {
       port: 3000,
       locale: 'en',
       corsOrigins: [],
+      test: false,
     })
   })
 
@@ -28,6 +29,7 @@ describe('readServerEnv', () => {
         PORT: '8080',
         NEXTASK_LOCALE: 'fr',
         NEXTASK_CORS_ORIGINS: 'https://a.example, https://b.example,,',
+        NEXTASK_TEST: '1',
       },
       CWD,
     )
@@ -38,6 +40,7 @@ describe('readServerEnv', () => {
       port: 8080,
       locale: 'fr',
       corsOrigins: ['https://a.example', 'https://b.example'],
+      test: true,
     })
   })
 

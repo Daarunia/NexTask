@@ -10,12 +10,12 @@ import { setLocaleProvider } from '../core/i18n.js'
 import { setupDatabase } from '../core/database/setupDatabase.js'
 import { applySeeds } from '../core/database/seedDatabase.js'
 import { acquireLock, findForeignLock } from '../core/database/lock.js'
-import { dataSettings, loadDataSettings } from '../core/database/serverSettings.js'
+import { dataSettings, loadDataSettings, resetDataSettings } from '../core/database/serverSettings.js'
 import { buildServer, type BuildOptions } from '../core/server/index.js'
 import settingsRoutes from '../core/server/routes/settings.routes.js'
 import type { Locale } from '../core/shared/settings.constants.js'
 import { createTokenCheck, PUBLIC_PATHS, requestPath } from './auth.js'
-import { localeFromAcceptLanguage, type ServerEnv } from './env.js'
+import { localeFromAcceptLanguage, ServerEnvError, type ServerEnv } from './env.js'
 
 /**
  * Branchement de core pour le serveur autonome, sans Electron : configuration
@@ -52,7 +52,7 @@ export function initServerCore(env: ServerEnv): void {
   initCore({
     appVersion: readAppVersion(),
     isDev: false,
-    isTest: false,
+    isTest: env.test,
     dbPath: path.join(env.dataDir, DATABASE_FILE_NAME),
     isCustomDb: false,
     backupsPath: path.join(env.dataDir, 'backups'),
@@ -60,12 +60,28 @@ export function initServerCore(env: ServerEnv): void {
     seedsPath: path.join(prisma, 'seeds'),
   })
 
-  // Pas de dernier tableau côté serveur : chaque client a le sien (phase 3),
-  // l'ajout rapide se replie sur le premier tableau
-  setSettingsProvider(() => ({ ...dataSettings(), lastBoardId: null }))
+  // Réglages « données » en base
+  setSettingsProvider(dataSettings)
 
   // Langue de la requête (Accept-Language), sinon celle du serveur (seeds, schedulers)
   setLocaleProvider(() => requestLocale.getStore() ?? env.locale)
+}
+
+/**
+ * Vérifie que le mode test est possible : l'image publiée n'embarque pas les
+ * routes de test, seule l'image de test (cible `test` du Dockerfile) les a.
+ *
+ * @param env Configuration du serveur
+ * @throws {ServerEnvError} Pour NEXTASK_TEST=1 sans les routes de test
+ */
+export async function checkTestMode(env: ServerEnv): Promise<void> {
+  if (!env.test) return
+  try {
+    await import('../core/server/routes/test.routes.js')
+  } catch {
+    throw new ServerEnvError("NEXTASK_TEST=1 refusé : cette image n'embarque pas les routes de test")
+  }
+  Logger.warn('[test] Mode test : routes de remise à zéro ouvertes, schedulers arrêtés')
 }
 
 /**
@@ -105,10 +121,9 @@ export function serverBuildOptions(env: ServerEnv): BuildOptions {
   return {
     corsOrigins: env.corsOrigins,
     plugins: [settingsRoutes],
+    // Remise à zéro des tests : réglages par défaut avant les seeds
+    testHooks: env.test ? { beforeSeeds: async () => void (await resetDataSettings()) } : {},
     setup: (fastify: FastifyInstance) => {
-      // Sonde de santé, sans jeton
-      fastify.get('/health', async () => ({ status: 'ok', version: config().appVersion }))
-
       // Jeton exigé partout ailleurs ; les requêtes préalables CORS (OPTIONS)
       // passent, le navigateur n'y joignant jamais d'en-tête Authorization
       fastify.addHook('onRequest', async (req, reply) => {
@@ -132,6 +147,7 @@ export function serverBuildOptions(env: ServerEnv): BuildOptions {
  * @param env Configuration du serveur
  */
 export async function createServerApp(env: ServerEnv): Promise<FastifyInstance> {
+  await checkTestMode(env)
   initServerCore(env)
   await prepareDatabase(env)
   return buildServer(serverBuildOptions(env))

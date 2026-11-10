@@ -32,11 +32,16 @@ export function isLoopbackAddress(ip: string): boolean {
  * limite par `config.rateLimit`, la machine locale restant exemptée.
  *
  * @param fastify Instance du serveur, avant l'enregistrement des routes
+ * @param options.exemptAll Aucun client limité : serveur autonome en mode test, que
+ *   les tests E2E appellent depuis l'hôte du conteneur (une remise à zéro par test)
  */
-export async function registerRateLimit(fastify: FastifyInstance): Promise<void> {
+export async function registerRateLimit(
+  fastify: FastifyInstance,
+  { exemptAll = false }: { exemptAll?: boolean } = {},
+): Promise<void> {
   await fastify.register(fastifyRateLimit, {
     max: RATE_LIMIT_MAX,
     timeWindow: RATE_LIMIT_WINDOW,
-    allowList: (req) => isLoopbackAddress(req.ip),
+    allowList: (req) => exemptAll || isLoopbackAddress(req.ip),
   })
 }

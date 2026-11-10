@@ -28,9 +28,9 @@ describe('registerRateLimit', () => {
   let fastify: FastifyInstance
 
   /** Serveur avec une route sans réglage et une route de fichiers. */
-  async function server() {
+  async function server(options?: { exemptAll?: boolean }) {
     fastify = Fastify()
-    await registerRateLimit(fastify)
+    await registerRateLimit(fastify, options)
     fastify.get('/plain', async () => ({ ok: true }))
     fastify.get(
       '/file',
@@ -71,6 +71,12 @@ describe('registerRateLimit', () => {
   it('ne limite jamais la machine locale', async () => {
     await server()
     const codes = await statuses('/file', '127.0.0.1', FILE_RATE_LIMIT_MAX + 5)
+    expect(codes.every((code) => code === 200)).toBe(true)
+  })
+
+  it('ne limite aucun client en mode test (serveur autonome dans un conteneur)', async () => {
+    await server({ exemptAll: true })
+    const codes = await statuses('/file', '172.17.0.1', FILE_RATE_LIMIT_MAX + 5)
     expect(codes.every((code) => code === 200)).toBe(true)
   })
 })

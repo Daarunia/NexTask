@@ -5,7 +5,7 @@ import { startServer } from '../core/server/index.js'
 import { prisma } from '../core/server/prismaClient.js'
 import { startMaintenanceScheduler, stopMaintenanceScheduler } from '../core/scheduler/maintenanceScheduler.js'
 import { startRecurrenceScheduler, stopRecurrenceScheduler } from '../core/scheduler/recurrenceScheduler.js'
-import { initServerCore, prepareDatabase, serverBuildOptions } from './app.js'
+import { checkTestMode, initServerCore, prepareDatabase, serverBuildOptions } from './app.js'
 import { readServerEnv, ServerEnvError } from './env.js'
 import { serverLogger } from './logger.js'
 
@@ -26,6 +26,7 @@ async function start(): Promise<void> {
   let env
   try {
     env = readServerEnv(process.env)
+    await checkTestMode(env)
   } catch (error) {
     if (!(error instanceof ServerEnvError)) throw error
     Logger.error(`Configuration invalide : ${error.message}`)
@@ -39,8 +40,12 @@ async function start(): Promise<void> {
   const fastify = await startServer({ ...serverBuildOptions(env), port: env.port, host: env.host })
   Logger.info(`NexTask ${config().appVersion} à l'écoute sur ${env.host}:${env.port}, données dans ${env.dataDir}`)
 
-  startRecurrenceScheduler()
-  startMaintenanceScheduler()
+  // Arrêtés en mode test : les tests déclenchent récurrences, purge et
+  // sauvegardes par les routes /test/run-*, à des dates choisies
+  if (!env.test) {
+    startRecurrenceScheduler()
+    startMaintenanceScheduler()
+  }
 
   let stopping = false
   const stop = async (signal: string) => {

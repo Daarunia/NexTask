@@ -55,6 +55,17 @@ export function dataSettings(): DataSettings {
 }
 
 /**
+ * Remet tous les réglages à leurs valeurs par défaut, en base et en mémoire
+ * (remise à zéro des tests E2E sur le serveur autonome).
+ *
+ * @returns Réglages par défaut
+ */
+export async function resetDataSettings(): Promise<DataSettings> {
+  await prisma.serverSetting.deleteMany()
+  return loadDataSettings()
+}
+
+/**
  * Enregistre un changement de réglages, en une transaction, puis le reporte en
  * mémoire. Les valeurs doivent avoir été validées (cf. DATA_SETTINGS_SCHEMA).
  *

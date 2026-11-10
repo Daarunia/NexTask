@@ -209,7 +209,11 @@ async function submit() {
   error.value = ''
 
   try {
-    const task = await taskStore.quickAddTask(value, stageId.value ?? undefined, templateId.value ?? undefined)
+    const task = await taskStore.quickAddTask(value, {
+      stageId: stageId.value ?? undefined,
+      boardId: boardId.value ?? undefined,
+      checklistTemplateId: templateId.value ?? undefined,
+    })
     globalThis.quickAdd.notifyCreated(task)
     close()
   } catch (err) {

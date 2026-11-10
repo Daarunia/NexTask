@@ -8,8 +8,15 @@ import { randomUUID } from 'node:crypto'
  * Tout passe par le CLI `docker`, appelé sans shell (arguments en tableau).
  */
 
-/** Image testée, construite par globalSetup.ts (ou fournie par NEXTASK_SERVER_IMAGE). */
+/** Image publiée testée, construite par globalSetup.ts (ou fournie par NEXTASK_SERVER_IMAGE). */
 export const IMAGE = process.env.NEXTASK_SERVER_IMAGE || 'nextask-server:test'
+
+/**
+ * Image de test (cible `test` du Dockerfile : routes de test, NEXTASK_TEST=1),
+ * construite par globalSetup.ts (ou fournie par NEXTASK_SERVER_TEST_IMAGE). Les
+ * tests E2E de NexTask Client tournent contre elle.
+ */
+export const TEST_MODE_IMAGE = process.env.NEXTASK_SERVER_TEST_IMAGE || 'nextask-server:test-mode'
 
 /** Étiquette posée sur tout ce que les tests créent, pour le ménage. */
 export const TEST_LABEL = 'nextask.test=server'
@@ -43,6 +50,7 @@ export interface ContainerOptions {
   env?: Record<string, string> // variables ajoutées ou remplaçant celles par défaut
   volume?: string // volume de données à reprendre (celui d'un conteneur précédent)
   dockerArgs?: string[] // arguments de `docker run` en plus
+  image?: string // image lancée, l'image publiée par défaut
 }
 
 /** Conteneur du serveur lancé par un test. */
@@ -71,7 +79,7 @@ export class ServerContainer {
       `${this.volume}:/data`,
       ...Object.entries(env).flatMap(([key, value]) => ['--env', `${key}=${value}`]),
       ...(this.options.dockerArgs ?? []),
-      IMAGE,
+      this.options.image ?? IMAGE,
     ])
     return this
   }

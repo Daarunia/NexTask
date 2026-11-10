@@ -24,7 +24,11 @@ describe('démarrage', () => {
     const server = await container().start().ready()
 
     const health = await fetch(`${server.url}/health`)
-    expect(await health.json()).toEqual({ status: 'ok', version: expect.stringMatching(/^\d+\.\d+\.\d+/) })
+    expect(await health.json()).toEqual({
+      status: 'ok',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+      apiVersion: expect.any(Number),
+    })
 
     // Base, verrou et journal WAL tant que le serveur tourne, au nom de l'utilisateur node
     const listing = server.inVolume(['ls', '-ln', '/data'])
@@ -47,6 +51,7 @@ describe('démarrage', () => {
     [{ NEXTASK_TOKEN: 'court' }, 'NEXTASK_TOKEN doit contenir au moins 32 caractères'],
     [{ NEXTASK_LOCALE: 'de' }, 'NEXTASK_LOCALE invalide : de'],
     [{ PORT: 'abc' }, 'PORT invalide : abc'],
+    [{ NEXTASK_TEST: '1' }, "NEXTASK_TEST=1 refusé : cette image n'embarque pas les routes de test"],
   ])('refuse de démarrer avec %j', async (env, message) => {
     const server = container({ env }).start()
 

@@ -23,3 +23,11 @@ export const TEST_API_PORT = 3001
 export function testApiPort(index: number): number {
   return TEST_API_PORT + index
 }
+
+/**
+ * Version du contrat de l'API, exposée par GET /health. Incrémentée à chaque
+ * changement incompatible (route retirée ou renommée, corps ou réponse changés
+ * sans compatibilité) : NexTask Client refuse un serveur d'une autre version,
+ * pour ne pas abîmer une base qu'il ne comprendrait pas.
+ */
+export const API_VERSION = 1

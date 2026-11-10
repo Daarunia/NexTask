@@ -19,6 +19,7 @@ export interface ServerEnv {
   port: number // port d'écoute
   locale: Locale // langue des seeds du premier démarrage, et des requêtes sans Accept-Language
   corsOrigins: string[] // origines web autorisées
+  test: boolean // mode test E2E (NEXTASK_TEST=1) : routes de remise à zéro, schedulers arrêtés
 }
 
 /** Variable d'environnement absente ou invalide. */
@@ -59,6 +60,7 @@ export function readServerEnv(env: NodeJS.ProcessEnv, cwd: string = process.cwd(
     port,
     locale,
     corsOrigins,
+    test: env.NEXTASK_TEST?.trim() === '1',
   }
 }
 

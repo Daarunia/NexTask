@@ -1,4 +1,3 @@
-import type { AppSettings } from './shared/settings.constants.js'
 import type { DataSettings } from './shared/settings.schema.js'
 
 /**
@@ -6,12 +5,11 @@ import type { DataSettings } from './shared/settings.schema.js'
  * paramètres d'electron-store dans l'app desktop, la base pour le serveur
  * autonome (cf. database/serverSettings.ts).
  *
- * Les réglages « données » (cf. DATA_SETTINGS_KEYS), plus `lastBoardId`, repli
- * de l'ajout rapide : un état d'interface, toujours `null` côté serveur où
- * chaque client aura son propre tableau. Ceux de l'appareil (thème, fenêtres,
- * notifications…) restent hors de core.
+ * Les réglages « données » seuls (cf. DATA_SETTINGS_KEYS) : ceux de l'appareil
+ * (thème, fenêtres, notifications, dernier tableau affiché…) restent hors de
+ * core. Le tableau de repli de l'ajout rapide est envoyé par le client.
  */
-export type ServerSettings = DataSettings & Pick<AppSettings, 'lastBoardId'>
+export type ServerSettings = DataSettings
 
 let provider: (() => ServerSettings) | null = null
 

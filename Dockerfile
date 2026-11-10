@@ -4,6 +4,10 @@
 #   docker run -d -p 3000:3000 -v nextask-data:/data -e NEXTASK_TOKEN=<32 caractères au moins> nextask-server
 #
 # Variables : NEXTASK_TOKEN (requis), NEXTASK_LOCALE, NEXTASK_CORS_ORIGINS, PORT, HOST (cf. src/server/env.ts).
+#
+# Cible par défaut : l'image publiée, sans les routes de test. La cible `test`
+# (docker build --target test) les ajoute et démarre en mode test (NEXTASK_TEST=1),
+# pour les tests E2E de NexTask Client.
 
 # ---- Outils de compilation de better-sqlite3 ----
 # Faute de binaire précompilé pour cette version de Node, le module se compile :
@@ -36,11 +40,14 @@ RUN npm ci
 COPY prisma.config.ts ./
 COPY src/core ./src/core
 COPY src/server ./src/server
+# Routes de test mises à part : seule la cible `test` les reprend
 RUN npx prisma generate \
- && npx tsc -p src/server/tsconfig.json
+ && npx tsc -p src/server/tsconfig.json \
+ && mkdir test-only \
+ && mv build/core/server/routes/test.routes.js test-only/
 
-# ---- Image d'exécution ----
-FROM node:24-bookworm-slim
+# ---- Image d'exécution, base commune aux cibles publiée et de test ----
+FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production \
@@ -64,3 +71,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
 
 # node en PID 1 : main.ts gère SIGTERM (docker stop) pour fermer la base proprement
 CMD ["node", "build/server/main.js"]
+
+# ---- Image de test : routes de remise à zéro et de pilotage, schedulers arrêtés ----
+FROM runtime AS test
+COPY --from=build /app/test-only/test.routes.js ./build/core/server/routes/
+ENV NEXTASK_TEST=1
+
+# ---- Image publiée (cible par défaut) : sans les routes de test, NEXTASK_TEST=1 refusé ----
+FROM runtime

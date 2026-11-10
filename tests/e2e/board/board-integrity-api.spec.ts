@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
 import { DAILY, getSeries, localDate, plusMinutes, runRecurrences, seriesTasks } from '../../helpers/recurrence.helper'
@@ -82,15 +82,6 @@ async function listedTask(request: APIRequestContext, id: number): Promise<ApiTa
   const task = ((await res.json()) as ApiTask[]).find((t) => t.id === id)
   expect(task, `tâche ${id} absente de GET /tasks`).toBeDefined()
   return task as ApiTask
-}
-
-/**
- * Enregistre le dernier tableau affiché, comme le fera le renderer.
- * @param page Fenêtre de l'app, qui porte le pont des paramètres
- * @param boardId Id du tableau, ou null
- */
-async function setLastBoard(page: Page, boardId: number | null): Promise<void> {
-  await page.evaluate((id) => (globalThis as any).settings.set('lastBoardId', id), boardId)
 }
 
 test.describe('Colonnes', () => {
@@ -294,30 +285,31 @@ test.describe('Ajout rapide', () => {
    * @param request Contexte de requête Playwright
    * @param data Titre et colonne éventuelle
    */
-  async function quickAdd(request: APIRequestContext, data: { title: string; stageId?: number }): Promise<ApiTask> {
+  async function quickAdd(
+    request: APIRequestContext,
+    data: { title: string; stageId?: number; boardId?: number },
+  ): Promise<ApiTask> {
     const res = await request.post(`${API}/tasks/quick-add`, { data })
     expect(res.ok(), await res.text()).toBeTruthy()
     return (await res.json()) as ApiTask
   }
 
-  test('colonne demandée, sinon première colonne du dernier tableau affiché ou du premier', async ({ page }) => {
+  test('colonne demandée, sinon première colonne du tableau du client ou du premier', async ({ page }) => {
     const { stages, boardId } = await layout(page.request)
 
     const chosen = await quickAdd(page.request, { title: 'Choisie', stageId: stages[2].id })
     expect(await listedTask(page.request, chosen.id)).toMatchObject({ stageId: stages[2].id, boardId })
 
-    // Aucun dernier tableau connu (paramètre par défaut)
-    const unset = await quickAdd(page.request, { title: 'Sans paramètre' })
+    // Aucun tableau envoyé
+    const unset = await quickAdd(page.request, { title: 'Sans tableau' })
     expect(await listedTask(page.request, unset.id)).toMatchObject({ stageId: stages[0].id, boardId })
 
-    // Dernier tableau affiché
-    await setLastBoard(page, boardId)
-    const last = await quickAdd(page.request, { title: 'Dernier tableau', stageId: UNKNOWN_ID })
+    // Tableau affiché par le client, la colonne demandée ayant disparu
+    const last = await quickAdd(page.request, { title: 'Tableau du client', stageId: UNKNOWN_ID, boardId })
     expect(await listedTask(page.request, last.id)).toMatchObject({ stageId: stages[0].id, boardId })
 
-    // Dernier tableau disparu : repli sur le premier
-    await setLastBoard(page, UNKNOWN_ID)
-    const gone = await quickAdd(page.request, { title: 'Tableau disparu' })
+    // Tableau disparu : repli sur le premier
+    const gone = await quickAdd(page.request, { title: 'Tableau disparu', boardId: UNKNOWN_ID })
     expect(await listedTask(page.request, gone.id)).toMatchObject({ stageId: stages[0].id, boardId })
   })
 })
@@ -445,33 +437,32 @@ test.describe('Second tableau', () => {
     })
   })
 
-  test('ajout rapide : première colonne du dernier tableau affiché, premier tableau s’il est vide', async ({
-    page,
-  }) => {
+  test('ajout rapide : première colonne du tableau du client, premier tableau s’il est vide', async ({ page }) => {
     const first = await layout(page.request)
     const second = await createBoard(page.request, 'Second')
     const empty = await createBoard(page.request, 'Vide', 'empty')
-    const quickAdd = async (data: { title: string; stageId?: number }) => {
+    const quickAdd = async (data: { title: string; stageId?: number; boardId?: number }) => {
       const res = await page.request.post(`${API}/tasks/quick-add`, { data })
       expect(res.ok(), await res.text()).toBeTruthy()
       return listedTask(page.request, ((await res.json()) as ApiTask).id)
     }
 
-    await setLastBoard(page, second.boardId)
-    expect(await quickAdd({ title: 'Vers le second' })).toMatchObject({
+    expect(await quickAdd({ title: 'Vers le second', boardId: second.boardId })).toMatchObject({
       stageId: second.stages[0].id,
       boardId: second.boardId,
     })
 
-    // Colonne explicite d'un autre tableau que le dernier affiché
-    expect(await quickAdd({ title: 'Choisie', stageId: first.stages[1].id })).toMatchObject({
+    // Colonne explicite d'un autre tableau que celui du client
+    expect(await quickAdd({ title: 'Choisie', stageId: first.stages[1].id, boardId: second.boardId })).toMatchObject({
       stageId: first.stages[1].id,
       boardId: first.boardId,
     })
 
-    // Dernier tableau sans colonne : premier tableau (choix du lot 2, plutôt qu'un 409)
-    await setLastBoard(page, empty.boardId)
-    expect(await quickAdd({ title: 'Repli' })).toMatchObject({ stageId: first.stages[0].id, boardId: first.boardId })
+    // Tableau du client sans colonne : premier tableau (choix du lot 2, plutôt qu'un 409)
+    expect(await quickAdd({ title: 'Repli', boardId: empty.boardId })).toMatchObject({
+      stageId: first.stages[0].id,
+      boardId: first.boardId,
+    })
   })
 
   test('la série garde le tableau de sa tâche, même après la suppression de la colonne du modèle', async ({ page }) => {

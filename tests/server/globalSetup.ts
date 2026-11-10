@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { docker, IMAGE, TEST_LABEL } from './helpers/docker'
+import { docker, IMAGE, TEST_LABEL, TEST_MODE_IMAGE } from './helpers/docker'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -14,9 +14,10 @@ function cleanUp(): void {
 }
 
 /**
- * Prépare les tests du serveur : Docker joignable, image construite depuis le
- * dépôt (sauf image fournie par NEXTASK_SERVER_IMAGE), restes d'un passage
- * précédent retirés. Rend le ménage de fin.
+ * Prépare les tests du serveur : Docker joignable, images publiée et de test
+ * construites depuis le dépôt (sauf images fournies par NEXTASK_SERVER_IMAGE
+ * et NEXTASK_SERVER_TEST_IMAGE), restes d'un passage précédent retirés. Rend
+ * le ménage de fin.
  */
 export default function setup(): () => void {
   try {
@@ -25,10 +26,13 @@ export default function setup(): () => void {
     throw new Error('Docker est introuvable ou arrêté : les tests du serveur lancent son image')
   }
 
+  // Construction des images, avec le cache de Docker : seules les étapes
+  // touchées par un changement se refont, et les deux cibles partagent les leurs
   if (!process.env.NEXTASK_SERVER_IMAGE) {
-    // Construction de l'image testée, avec le cache de Docker : seules les
-    // étapes touchées par un changement se refont
     docker(['build', '--quiet', '--tag', IMAGE, ROOT])
+  }
+  if (!process.env.NEXTASK_SERVER_TEST_IMAGE) {
+    docker(['build', '--quiet', '--target', 'test', '--tag', TEST_MODE_IMAGE, ROOT])
   }
 
   cleanUp()

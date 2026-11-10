@@ -7,7 +7,8 @@ import checklistTemplateRoutes from './routes/checklistTemplate.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
 import documentRoutes from './routes/document.routes.js'
-import testRoutes, { type TestResetHooks } from './routes/test.routes.js'
+import reminderRoutes from './routes/reminder.routes.js'
+import type { TestResetHooks } from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
 import { registerRateLimit } from './helpers/rateLimit.helper.js'
@@ -15,6 +16,7 @@ import { clearStaleDocumentUploads } from '../database/documentStore.js'
 import type { AddressInfo } from 'node:net'
 import { config } from '../config.js'
 import Logger from '../logger.js'
+import { API_VERSION } from '../shared/api.constants.js'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -99,7 +101,7 @@ export function getApiUrl(): string {
 export interface BuildOptions {
   /** Origines autorisées à appeler l'API, en plus des requêtes sans en-tête Origin. */
   corsOrigins: string[]
-  /** Routes ajoutées après celles de core (routes de test de l'app desktop, par exemple). */
+  /** Routes ajoutées après celles de core (réglages en base du serveur autonome, par exemple). */
   plugins?: FastifyPluginAsync[]
   /** Remise à zéro propre à celui qui démarre core, appelée par POST /test/reset en mode test. */
   testHooks?: TestResetHooks
@@ -154,10 +156,33 @@ export async function buildServer({
   })
 
   // Limitation des requêtes, avant les routes qu'elle doit couvrir
-  await registerRateLimit(fastify)
+  await registerRateLimit(fastify, { exemptAll: isTest })
 
   // Hooks de celui qui démarre core, avant les routes qu'ils doivent couvrir
   await setup?.(fastify)
+
+  // Sonde de santé : version de l'app et du contrat de l'API, que le client
+  // compare à la sienne avant de travailler sur le serveur
+  fastify.get(
+    '/health',
+    {
+      schema: {
+        description: "État du serveur, version de l'app et du contrat de l'API",
+        tags: ['Health'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              version: { type: 'string' },
+              apiVersion: { type: 'integer' },
+            },
+          },
+        },
+      },
+    },
+    async () => ({ status: 'ok', version: config().appVersion, apiVersion: API_VERSION }),
+  )
 
   // Documentation de l'API, en dev seulement : en prod le port est choisi par
   // le système, la page n'est donc pas joignable et ses dépendances ne sont pas
@@ -175,9 +200,12 @@ export async function buildServer({
   await fastify.register(recurrenceRoutes)
   await fastify.register(dataRoutes)
   await fastify.register(documentRoutes)
+  await fastify.register(reminderRoutes)
 
-  // Routes de reset et de pilotage réservées aux tests E2E
+  // Routes de reset et de pilotage réservées aux tests E2E. Chargées à la
+  // demande : l'image publiée du serveur autonome n'embarque pas leur fichier
   if (isTest) {
+    const { default: testRoutes } = await import('./routes/test.routes.js')
     await fastify.register(testRoutes, testHooks)
   }
 
