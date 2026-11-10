@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as WebReadableStream } from 'node:stream/web'
 import { app, type BrowserWindow, dialog, shell } from 'electron'
 import Logger from 'electron-log'
-import { getApiUrl } from '../../core/server/index.js'
+import { apiFetch } from '../backend/backend.js'
 import type { DocumentFileResult } from '../../core/shared/document.constants.js'
 import {
   documentNameFromDisposition,
@@ -33,7 +33,7 @@ import { t } from '../i18n.js'
  * Un document exécutable n'est jamais ouvert, seulement enregistré.
  *
  * En mode test, rien ne s'ouvre : la copie est écrite puis seulement notée, et
- * les tests la relisent via GET /test/opened-documents.
+ * les tests la relisent par le pont de test (openedDocuments).
  */
 
 /** Document dont l'ouverture a été demandée (mode test). */
@@ -66,7 +66,7 @@ export function documentIdFrom(value: unknown): number {
  * @throws Si le serveur répond une autre erreur
  */
 async function fetchContent(id: number): Promise<Response | null> {
-  const response = await fetch(`${getApiUrl()}/documents/${id}/content`)
+  const response = await apiFetch(`/documents/${id}/content`)
   if (response.status === 404) return null
   if (!response.ok || !response.body) throw new Error(`Contenu du document ${id} illisible (HTTP ${response.status})`)
   return response

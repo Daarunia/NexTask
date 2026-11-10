@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import { resetApp } from '../../helpers/desktop.helper'
 import { TAG_COLORS } from '@core/shared/tag.constants'
 
 /**
@@ -732,9 +733,8 @@ test.describe('DELETE /tags/:id', () => {
 
 test.describe('Tags par défaut', () => {
   // Le reset standard retire les tags seedés : on les réclame explicitement
-  test.beforeEach(async ({ page }) => {
-    const res = await page.request.post(`${API}/test/reset?seedTags=true`)
-    expect(res.ok()).toBeTruthy()
+  test.beforeEach(async ({ electronApp, page }) => {
+    await resetApp(electronApp, page.request, { seedTags: true })
   })
 
   test('la base démarre avec les 5 tags seedés et leur couleur', async ({ page }) => {

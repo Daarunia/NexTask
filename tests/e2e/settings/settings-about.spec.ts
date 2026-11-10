@@ -1,8 +1,10 @@
 import fs from 'node:fs'
 import { test, expect } from '../../fixtures/test'
+import type { ElectronApplication } from 'playwright'
 import type { APIRequestContext } from '@playwright/test'
 import type { UpdateStatus } from '@core/shared/update.constants'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E de la section « À propos » de la page Paramètres : version
@@ -10,9 +12,9 @@ import { API } from '../../helpers/api.helper'
  * les logiciels tiers.
  *
  * En mode test, le main n'ouvre pas le navigateur : il note le lien demandé,
- * relu via GET /test/opened-links (vidé par le reset). La mise à jour n'est
- * jamais recherchée : son état est imposé via POST /test/update-status, et
- * l'installation demandée relue via GET /test/update-install.
+ * relu par le pont de test (vidé par le reset). La mise à jour n'est jamais
+ * recherchée : son état est imposé par le pont de test, qui dit aussi si
+ * l'installation a été demandée.
  *
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture `cleanState`).
  */
@@ -21,23 +23,18 @@ import { API } from '../../helpers/api.helper'
 const REPOSITORY = 'https://github.com/Daarunia/NexTask'
 
 /** Liens dont l'ouverture a été demandée depuis le dernier reset. */
-async function openedLinks(request: APIRequestContext): Promise<{ kind: string; url: string }[]> {
-  const res = await request.get(`${API}/test/opened-links`)
-  expect(res.ok()).toBeTruthy()
-  return (await res.json()) as { kind: string; url: string }[]
+function openedLinks(electronApp: ElectronApplication): Promise<{ kind: string; url: string }[]> {
+  return desktop(electronApp, 'openedLinks')
 }
 
 /** Impose un état de la mise à jour, envoyé à la fenêtre comme en temps normal. */
-async function setUpdateStatus(request: APIRequestContext, status: UpdateStatus): Promise<void> {
-  const res = await request.post(`${API}/test/update-status`, { data: status })
-  expect(res.ok()).toBeTruthy()
+async function setUpdateStatus(electronApp: ElectronApplication, status: UpdateStatus): Promise<void> {
+  await desktop(electronApp, 'updateStatus', status)
 }
 
 /** Vrai si l'installation de la mise à jour a été demandée depuis le dernier reset. */
-async function installRequested(request: APIRequestContext): Promise<boolean> {
-  const res = await request.get(`${API}/test/update-install`)
-  expect(res.ok()).toBeTruthy()
-  return ((await res.json()) as { requested: boolean }).requested
+function installRequested(electronApp: ElectronApplication): Promise<boolean> {
+  return desktop(electronApp, 'updateInstall')
 }
 
 test('affiche la version de package.json', async ({ header, settingsPage }) => {
@@ -48,23 +45,23 @@ test('affiche la version de package.json', async ({ header, settingsPage }) => {
   await expect(settingsPage.appVersion).toHaveText(version)
 })
 
-test('aucun lien ouvert au départ', async ({ page }) => {
-  expect(await openedLinks(page.request)).toEqual([])
+test('aucun lien ouvert au départ', async ({ electronApp, page }) => {
+  expect(await openedLinks(electronApp)).toEqual([])
 })
 
-test('ouvre les notes de version sur GitHub', async ({ page, header, settingsPage }) => {
+test('ouvre les notes de version sur GitHub', async ({ electronApp, page, header, settingsPage }) => {
   await header.goSettings()
   await settingsPage.openReleaseNotesButton.click()
 
-  await expect.poll(() => openedLinks(page.request)).toEqual([{ kind: 'releases', url: `${REPOSITORY}/releases` }])
+  await expect.poll(() => openedLinks(electronApp)).toEqual([{ kind: 'releases', url: `${REPOSITORY}/releases` }])
 })
 
-test('ouvre la liste des logiciels tiers sur GitHub', async ({ page, header, settingsPage }) => {
+test('ouvre la liste des logiciels tiers sur GitHub', async ({ electronApp, page, header, settingsPage }) => {
   await header.goSettings()
   await settingsPage.openNoticesButton.click()
 
   await expect
-    .poll(() => openedLinks(page.request))
+    .poll(() => openedLinks(electronApp))
     .toEqual([{ kind: 'notices', url: `${REPOSITORY}/blob/main/THIRD_PARTY_NOTICES.md` }])
 })
 
@@ -81,10 +78,10 @@ test.describe('mise à jour automatique', () => {
     await expect(settingsPage.autoUpdateSwitch).not.toBeChecked()
   })
 
-  test('désactivée : la recherche reste possible à la demande', async ({ page, header, settingsPage }) => {
+  test('désactivée : la recherche reste possible à la demande', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
     await settingsPage.autoUpdateSwitch.click()
-    await setUpdateStatus(page.request, { state: 'idle' })
+    await setUpdateStatus(electronApp, { state: 'idle' })
 
     await expect(settingsPage.updateRow).toContainText('Recherche automatique désactivée, lancez-la à la demande.')
     await expect(settingsPage.checkUpdateButton).toBeEnabled()
@@ -97,42 +94,42 @@ test.describe('mise à jour automatique', () => {
     await expect(settingsPage.checkUpdateButton).toBeDisabled()
   })
 
-  test('affiche l’avancement du téléchargement', async ({ page, header, settingsPage }) => {
+  test('affiche l’avancement du téléchargement', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
-    await setUpdateStatus(page.request, { state: 'downloading', version: '9.9.9', percent: 42 })
+    await setUpdateStatus(electronApp, { state: 'downloading', version: '9.9.9', percent: 42 })
 
     await expect(settingsPage.updateRow).toContainText('Téléchargement de la version 9.9.9 (42 %)…')
     await expect(settingsPage.checkUpdateButton).toBeDisabled()
   })
 
-  test('recherche possible une fois à jour', async ({ page, header, settingsPage }) => {
+  test('recherche possible une fois à jour', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
-    await setUpdateStatus(page.request, { state: 'up-to-date' })
+    await setUpdateStatus(electronApp, { state: 'up-to-date' })
 
     await expect(settingsPage.updateRow).toContainText('NexTask est à jour.')
     await expect(settingsPage.checkUpdateButton).toBeEnabled()
   })
 
-  test('propose le redémarrage dans un toast une fois la version téléchargée', async ({ page }) => {
-    await setUpdateStatus(page.request, { state: 'downloaded', version: '9.9.9' })
+  test('propose le redémarrage dans un toast une fois la version téléchargée', async ({ electronApp, page }) => {
+    await setUpdateStatus(electronApp, { state: 'downloaded', version: '9.9.9' })
 
     const toast = page.getByTestId('update-toast')
     await expect(toast).toContainText('La version 9.9.9 sera installée au redémarrage de NexTask.')
 
     await toast.getByTestId('btn-install-update').click()
 
-    await expect.poll(() => installRequested(page.request)).toBe(true)
+    await expect.poll(() => installRequested(electronApp)).toBe(true)
   })
 
-  test('propose le redémarrage dans les Paramètres', async ({ page, header, settingsPage }) => {
+  test('propose le redémarrage dans les Paramètres', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
-    await setUpdateStatus(page.request, { state: 'downloaded', version: '9.9.9' })
+    await setUpdateStatus(electronApp, { state: 'downloaded', version: '9.9.9' })
 
     await expect(settingsPage.updateRow).toContainText('La version 9.9.9 sera installée au redémarrage.')
-    expect(await installRequested(page.request)).toBe(false)
+    expect(await installRequested(electronApp)).toBe(false)
 
     await settingsPage.installUpdateButton.click()
 
-    await expect.poll(() => installRequested(page.request)).toBe(true)
+    await expect.poll(() => installRequested(electronApp)).toBe(true)
   })
 })

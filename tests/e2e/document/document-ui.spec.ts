@@ -1,6 +1,7 @@
 import { readFile, stat } from 'node:fs/promises'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 import { restoreDialogs, stubSaveDialog } from '../../helpers/dialog.helper'
 import {
   addDocument,
@@ -126,7 +127,7 @@ test.describe('section Documents du dialogue de tâche', () => {
     await expect(taskBoard.cardDocumentsBadge(TITLE)).toHaveCount(0)
   })
 
-  test('ouvre une copie du document, sous son nom', async ({ page, taskBoard, taskDocuments }) => {
+  test('ouvre une copie du document, sous son nom', async ({ electronApp, page, taskBoard, taskDocuments }) => {
     const task = await createTask(page.request, TITLE)
     await addDocument(page.request, task.id, 'compte rendu.txt', 'Réunion du lundi')
     await page.reload()
@@ -134,7 +135,7 @@ test.describe('section Documents du dialogue de tâche', () => {
 
     await taskDocuments.open('compte rendu.txt')
 
-    const opened = async () => (await (await page.request.get(`${API}/test/opened-documents`)).json()) as unknown[]
+    const opened = async () => (await desktop(electronApp, 'openedDocuments')) as unknown[]
     await expect.poll(opened).toHaveLength(1)
     const [copy] = (await opened()) as { name: string; path: string }[]
     expect(copy.name).toBe('compte rendu.txt')
@@ -168,10 +169,11 @@ test.describe('section Documents du dialogue de tâche', () => {
     } finally {
       await restoreDialogs(electronApp)
     }
-    expect(await (await page.request.get(`${API}/test/opened-documents`)).json()).toEqual([])
+    expect(await desktop(electronApp, 'openedDocuments')).toEqual([])
   })
 
   test('à la création, invite à enregistrer la tâche avant d’y joindre des documents', async ({
+    electronApp,
     taskBoard,
     taskDocuments,
   }) => {

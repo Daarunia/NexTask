@@ -2,6 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 import { DEFAULT_BOARD, createBoard, defaultBoardId } from '../../helpers/board.helper'
 
 /**
@@ -10,7 +11,7 @@ import { DEFAULT_BOARD, createBoard, defaultBoardId } from '../../helpers/board.
  * de la page Paramètres.
  *
  * Le raccourci global n'est jamais enregistré en mode test (il le serait pour
- * toute la machine) : la fenêtre est ouverte via POST /test/open-quick-add.
+ * toute la machine) : la fenêtre est ouverte par le pont de test du main.
  *
  * Isolation : base et paramètres remis à zéro avant chaque test (fixture
  * `cleanState`), qui ferme aussi une fenêtre d'ajout rapide restée ouverte.
@@ -87,7 +88,7 @@ async function quickAdd(
  * @returns Page de la fenêtre d'ajout rapide, prête à la saisie
  */
 async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promise<Page> {
-  const [win] = await Promise.all([electronApp.waitForEvent('window'), page.request.post(`${API}/test/open-quick-add`)])
+  const [win] = await Promise.all([electronApp.waitForEvent('window'), desktop(electronApp, 'openQuickAdd')])
   await expect(win.getByTestId('quick-add-title')).toBeVisible()
   return win
 }

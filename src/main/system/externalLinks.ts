@@ -11,7 +11,7 @@ import { IS_TEST } from '../constants.js'
  * protocoles sont ignorés.
  *
  * En mode test, rien ne s'ouvre : l'adresse est seulement notée, et les tests
- * la relisent via GET /test/opened-urls.
+ * la relisent par le pont de test (openedUrls).
  */
 
 /** Protocoles transmis au système. */

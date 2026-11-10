@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 import { createBoard, createTaskIn, DEFAULT_BOARD } from '../../helpers/board.helper'
 import {
   createRecurringTask,
@@ -211,10 +212,10 @@ test.describe('replanifier', () => {
     expect(after.position).toBe(before.position)
   })
 
-  test('annule un déplacement sans seconde notification', async ({ page, planningPage, undoToast }) => {
+  test('annule un déplacement sans seconde notification', async ({ electronApp, page, planningPage, undoToast }) => {
     const past = localDate(-1, 9)
     const task = await createTask(page.request, 'Notifiée', past)
-    await page.request.post(`${API}/test/run-notifications`, { data: {} })
+    await desktop(electronApp, 'runNotifications')
     await expect.poll(async () => (await getTask(page.request, task.id)).notifiedAt).toBeTruthy()
     const notifiedAt = (await getTask(page.request, task.id)).notifiedAt
 
@@ -229,8 +230,8 @@ test.describe('replanifier', () => {
     await expect.poll(async () => (await getTask(page.request, task.id)).startDate).toBe(past.toISOString())
     expect((await getTask(page.request, task.id)).notifiedAt).toBe(notifiedAt)
 
-    const res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect((await res.json()).count).toBe(0)
+    const res = await desktop(electronApp, 'runNotifications')
+    expect(res.count).toBe(0)
   })
 
   test('un enregistrement refusé ramène la carte à sa place', async ({ page, planningPage }) => {
@@ -566,12 +567,12 @@ test.describe('ouverture depuis l’extérieur', () => {
     await expect(planningPage.title).not.toHaveText(title)
   })
 
-  test('un clic sur une notification ouvre la tâche', async ({ page, planningPage }) => {
+  test('un clic sur une notification ouvre la tâche', async ({ electronApp, page, planningPage }) => {
     const task = await createTask(page.request, 'Notifiée', localDate(0, 10))
     await page.reload()
     await planningPage.open()
 
-    await page.request.post(`${API}/test/click-notification`, { data: { taskIds: [task.id] } })
+    await desktop(electronApp, 'clickNotification', [task.id])
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.locator('#inputValue')).toHaveValue('Notifiée')
   })

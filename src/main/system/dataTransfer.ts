@@ -9,7 +9,7 @@ import { app, type BrowserWindow, dialog } from 'electron'
 import Logger from 'electron-log'
 import yauzl from 'yauzl'
 import yazl from 'yazl'
-import { getApiUrl } from '../../core/server/index.js'
+import { apiFetch } from '../backend/backend.js'
 import {
   type DataCounts,
   type DataTransferResult,
@@ -127,7 +127,7 @@ function documentCount(data: ExportedData, among?: ReadonlySet<string>): number 
 async function availableHashes(hashes: string[]): Promise<string[]> {
   const available: string[] = []
   for (const sha256 of hashes) {
-    const response = await fetch(`${getApiUrl()}/documents/files/${sha256}`, { method: 'HEAD' })
+    const response = await apiFetch(`/documents/files/${sha256}`, { method: 'HEAD' })
     if (response.ok) available.push(sha256)
     else Logger.warn(`Export : contenu ${sha256} absent du dossier des documents, non exporté`)
   }
@@ -140,7 +140,7 @@ async function availableHashes(hashes: string[]): Promise<string[]> {
  * @param sha256 Empreinte du contenu
  */
 async function documentStream(sha256: string): Promise<Readable> {
-  const response = await fetch(`${getApiUrl()}/documents/files/${sha256}`)
+  const response = await apiFetch(`/documents/files/${sha256}`)
   if (!response.ok || !response.body) throw new Error(`Contenu ${sha256} illisible (HTTP ${response.status})`)
   return Readable.fromWeb(response.body as WebReadableStream)
 }
@@ -196,7 +196,7 @@ export async function exportDataToFile(window: BrowserWindow | null): Promise<Da
     : await dialog.showSaveDialog(options)
   if (canceled || !filePath) return { status: 'canceled' }
 
-  const response = await fetch(`${getApiUrl()}/data/export`)
+  const response = await apiFetch(`/data/export`)
   if (!response.ok) throw new Error(`Export impossible : ${await errorMessage(response)}`)
 
   const data = (await response.json()) as ExportedData
@@ -239,7 +239,7 @@ async function readEntryText(zip: yauzl.ZipFile, entry: yauzl.Entry): Promise<st
 async function removeDeposited(hashes: string[]): Promise<void> {
   for (const sha256 of hashes) {
     try {
-      await fetch(`${getApiUrl()}/documents/files/${sha256}`, { method: 'DELETE' })
+      await apiFetch(`/documents/files/${sha256}`, { method: 'DELETE' })
     } catch (error) {
       Logger.warn(`Contenu ${sha256} déposé pour l'import non retiré :`, error)
     }
@@ -268,7 +268,7 @@ async function depositDocuments(
     if (!entry) continue
 
     const stream = await zip.openReadStreamPromise(entry)
-    const response = await fetch(`${getApiUrl()}/documents/files/${sha256}`, {
+    const response = await apiFetch(`/documents/files/${sha256}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: Readable.toWeb(stream) as ReadableStream,
@@ -292,7 +292,7 @@ async function depositDocuments(
  * @throws Si le serveur répond une autre erreur
  */
 async function checkImport(content: string): Promise<string | null> {
-  const response = await fetch(`${getApiUrl()}/data/import/check`, {
+  const response = await apiFetch(`/data/import/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: content,
@@ -314,7 +314,7 @@ async function checkImport(content: string): Promise<string | null> {
  * @returns `invalid` avec le motif du refus, sinon `done`
  */
 async function importData(filePath: string, content: string): Promise<DataTransferResult> {
-  const response = await fetch(`${getApiUrl()}/data/import`, {
+  const response = await apiFetch(`/data/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: content,

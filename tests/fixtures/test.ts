@@ -14,7 +14,8 @@ import { RecurrenceFields } from '../components/RecurrenceFields'
 import { BoardSwitcher } from '../components/BoardSwitcher'
 import { PlanningPage } from '../components/PlanningPage'
 import { electronArgs } from '../../scripts/server-utils.js'
-import { API, TEST_INDEX } from '../helpers/api.helper'
+import { TEST_INDEX } from '../helpers/api.helper'
+import { resetApp } from '../helpers/desktop.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
 import { TEST_INDEX_ARG, TEST_SLOTS_ARG, TEST_WORKER_PID_ARG } from '@core/shared/test.constants'
 
@@ -140,16 +141,17 @@ export const test = base.extend<Fixtures>({
   },
 
   /**
-   * Isolation : remet la base et les paramètres de test à zéro avant chaque test
-   * via l'endpoint test-only POST /test/reset, puis recharge la page (sauf `ui: false`). Petite boucle de retry
-   * pour couvrir le tout premier test (le serveur Fastify peut finir de démarrer).
+   * Isolation : remet le main (paramètres, ouvertures notées…) et la base de test
+   * à zéro avant chaque test (pont de test puis POST /test/reset, cf. resetApp),
+   * puis recharge la page (sauf `ui: false`). Petite boucle de retry pour couvrir
+   * le tout premier test (le serveur Fastify peut finir de démarrer).
    *
    * Fixture automatique plutôt qu'un test.beforeEach dans ce module : ce module
    * n'est évalué qu'une fois par worker, un hook déclaré ici ne s'appliquerait
    * qu'au premier fichier de tests chargé.
    */
   cleanState: [
-    async ({ page, ui }, use) => {
+    async ({ electronApp, page, ui }, use) => {
       // Garantit que l'app (et donc son serveur) est démarrée
       await page.waitForLoadState('domcontentloaded')
 
@@ -158,12 +160,9 @@ export const test = base.extend<Fixtures>({
       let done = false
       for (let attempt = 0; attempt < 20 && !done; attempt++) {
         try {
-          const res = await page.request.post(`${API}/test/reset`)
-          if (res.ok()) {
-            done = true
-            break
-          }
-          lastError = new Error(`Reset a répondu ${res.status()}`)
+          await resetApp(electronApp, page.request)
+          done = true
+          break
         } catch (err) {
           lastError = err
         }

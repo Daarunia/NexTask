@@ -5,12 +5,21 @@ import type { DocumentFileResult } from '@core/shared/document.constants'
 import type { LocaleState } from '@core/shared/i18n.constants'
 import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
 import type { UpdateStatus } from '@core/shared/update.constants'
+import type { Edition, EditionCapabilities, ServerConnectResult, ServerStatus } from '@core/shared/edition.constants'
 import type { Task } from './task.types'
 
 declare global {
-  // Serveur Fastify local, port choisi au démarrage en prod
+  // Connexion à l'API : serveur Fastify local (port choisi au démarrage en prod)
+  // ou serveur de NexTask Client, lue par le preload au chargement de la fenêtre
   var server: {
-    url: string
+    url: string // vide tant que NexTask Client n'a pas de serveur
+    edition: Edition
+    capabilities: EditionCapabilities
+    status: ServerStatus // état au chargement de la fenêtre
+    headers: () => Record<string, string> // jeton de NexTask Client
+    check: () => Promise<ServerStatus> // nouvel essai, fenêtres rechargées si le serveur revient
+    connect: (url: string, token: string) => Promise<ServerConnectResult> // fenêtres rechargées si connecté
+    disconnect: () => Promise<void> // jeton oublié, fenêtres rechargées
   }
 
   // Pont exposé par le preload

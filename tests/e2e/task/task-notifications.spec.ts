@@ -1,12 +1,14 @@
 import { test, expect } from '../../fixtures/test'
+import type { ElectronApplication } from 'playwright'
 import type { APIRequestContext } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E du planificateur de notifications (§10 de la spec).
  *
  * Le cron automatique est désactivé en mode `--test` ; chaque test déclenche un
- * passage de façon déterministe via l'endpoint test-only POST /test/run-notifications.
+ * passage de façon déterministe par le pont de test du main (runNotifications).
  *
  * Isolation : la base est remise à zéro avant chaque test (fixture automatique `cleanState`),
  * donc on part d'un tableau propre avec seulement les colonnes seedées.
@@ -50,17 +52,14 @@ async function getTask(request: APIRequestContext, id: number): Promise<{ notifi
 }
 
 /** Déclenche un passage du planificateur et renvoie le nombre de tâches notifiées. */
-async function runNotifications(request: APIRequestContext): Promise<number> {
-  const res = await request.post(`${API}/test/run-notifications`, { data: {} })
-  expect(res.ok()).toBeTruthy()
-  const { count } = (await res.json()) as { count: number }
-  return count
+async function runNotifications(electronApp: ElectronApplication): Promise<number> {
+  return (await desktop(electronApp, 'runNotifications')).count
 }
 
 const pastDate = () => new Date(Date.now() - DAY).toISOString()
 const futureDate = () => new Date(Date.now() + DAY).toISOString()
 
-test('notifie les tâches dont la startDate est dépassée et marque notifiedAt', async ({ page }) => {
+test('notifie les tâches dont la startDate est dépassée et marque notifiedAt', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
 
@@ -71,13 +70,13 @@ test('notifie les tâches dont la startDate est dépassée et marque notifiedAt'
   expect(overdue.notifiedAt).toBeFalsy()
 
   // Seule la tâche échue est notifiée.
-  expect(await runNotifications(request)).toBe(1)
+  expect(await runNotifications(electronApp)).toBe(1)
 
   expect((await getTask(request, overdue.id)).notifiedAt).toBeTruthy()
   expect((await getTask(request, upcoming.id)).notifiedAt).toBeFalsy()
 })
 
-test('ignore les tâches sans startDate et les tâches archivées', async ({ page }) => {
+test('ignore les tâches sans startDate et les tâches archivées', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
 
@@ -89,29 +88,29 @@ test('ignore les tâches sans startDate et les tâches archivées', async ({ pag
   const putRes = await request.put(`${API}/tasks/${archived.id}`)
   expect(putRes.ok()).toBeTruthy()
 
-  expect(await runNotifications(request)).toBe(0)
+  expect(await runNotifications(electronApp)).toBe(0)
   expect((await getTask(request, noDate.id)).notifiedAt).toBeFalsy()
 })
 
-test('ne re-notifie pas une tâche déjà notifiée (idempotence)', async ({ page }) => {
+test('ne re-notifie pas une tâche déjà notifiée (idempotence)', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
 
   await createTask(request, stageId, { title: 'Échue', startDate: pastDate() })
 
-  expect(await runNotifications(request)).toBe(1)
+  expect(await runNotifications(electronApp)).toBe(1)
   // Un second passage ne remonte plus rien.
-  expect(await runNotifications(request)).toBe(0)
+  expect(await runNotifications(electronApp)).toBe(0)
 })
 
-test('repousser startDate dans le futur réarme notifiedAt', async ({ page }) => {
+test('repousser startDate dans le futur réarme notifiedAt', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
 
   const task = await createTask(request, stageId, { title: 'À replanifier', startDate: pastDate() })
 
   // Première notification → notifiedAt renseigné.
-  expect(await runNotifications(request)).toBe(1)
+  expect(await runNotifications(electronApp)).toBe(1)
   expect((await getTask(request, task.id)).notifiedAt).toBeTruthy()
 
   // startDate repoussée dans le futur → notifiedAt remis à null.
@@ -122,13 +121,13 @@ test('repousser startDate dans le futur réarme notifiedAt', async ({ page }) =>
   expect((await getTask(request, task.id)).notifiedAt).toBeFalsy()
 })
 
-test('modifier startDate vers le passé ne réarme pas notifiedAt', async ({ page }) => {
+test('modifier startDate vers le passé ne réarme pas notifiedAt', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
 
   const task = await createTask(request, stageId, { title: 'Déjà notifiée', startDate: pastDate() })
 
-  expect(await runNotifications(request)).toBe(1)
+  expect(await runNotifications(electronApp)).toBe(1)
 
   // Nouvelle startDate encore dans le passé → notifiedAt inchangé.
   const patchRes = await request.patch(`${API}/tasks/${task.id}`, {
@@ -139,12 +138,11 @@ test('modifier startDate vers le passé ne réarme pas notifiedAt', async ({ pag
 })
 
 /** Simule le clic sur une notification qui annonçait ces tâches. */
-async function clickNotification(request: APIRequestContext, taskIds: number[]) {
-  const res = await request.post(`${API}/test/click-notification`, { data: { taskIds } })
-  expect(res.ok()).toBeTruthy()
+async function clickNotification(electronApp: ElectronApplication, taskIds: number[]) {
+  await desktop(electronApp, 'clickNotification', taskIds)
 }
 
-test("le clic sur la notification d'une seule tâche l'ouvre en édition", async ({ page, taskBoard }) => {
+test("le clic sur la notification d'une seule tâche l'ouvre en édition", async ({ electronApp, page, taskBoard }) => {
   const stageId = await firstStageId(page.request)
   const task = await createTask(page.request, stageId, { title: 'Ouverte par notif', startDate: pastDate() })
 
@@ -152,13 +150,18 @@ test("le clic sur la notification d'une seule tâche l'ouvre en édition", async
   await page.reload()
   await expect(taskBoard.taskCard('Ouverte par notif')).toBeVisible()
 
-  await clickNotification(page.request, [task.id])
+  await clickNotification(electronApp, [task.id])
 
   await expect(taskBoard.dialog).toBeVisible()
   await expect(taskBoard.titleInput).toHaveValue('Ouverte par notif')
 })
 
-test('le clic ramène au tableau depuis une autre page avant d’ouvrir la tâche', async ({ page, header, taskBoard }) => {
+test('le clic ramène au tableau depuis une autre page avant d’ouvrir la tâche', async ({
+  electronApp,
+  page,
+  header,
+  taskBoard,
+}) => {
   const stageId = await firstStageId(page.request)
   const task = await createTask(page.request, stageId, { title: 'Depuis paramètres', startDate: pastDate() })
 
@@ -166,13 +169,14 @@ test('le clic ramène au tableau depuis une autre page avant d’ouvrir la tâch
   await header.settingsButton.click()
   await expect(page.getByTestId('stage-column')).toHaveCount(0)
 
-  await clickNotification(page.request, [task.id])
+  await clickNotification(electronApp, [task.id])
 
   await expect(taskBoard.dialog).toBeVisible()
   await expect(taskBoard.titleInput).toHaveValue('Depuis paramètres')
 })
 
 test("le clic sur la notification d'une tâche d'un autre tableau y bascule puis l'ouvre", async ({
+  electronApp,
   page,
   taskBoard,
   boardSwitcher,
@@ -191,14 +195,14 @@ test("le clic sur la notification d'une tâche d'un autre tableau y bascule puis
   await expect(taskBoard.taskCard('Sur le second')).toHaveCount(0)
   await boardSwitcher.expectCurrent('Mon tableau')
 
-  await clickNotification(page.request, [task.id])
+  await clickNotification(electronApp, [task.id])
 
   await expect(taskBoard.dialog).toBeVisible()
   await expect(taskBoard.titleInput).toHaveValue('Sur le second')
   await boardSwitcher.expectCurrent('Second')
 })
 
-test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", async ({ page, taskBoard }) => {
+test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", async ({ electronApp, page, taskBoard }) => {
   const stageId = await firstStageId(page.request)
   const first = await createTask(page.request, stageId, { title: 'Groupée 1', startDate: pastDate() })
   const second = await createTask(page.request, stageId, { title: 'Groupée 2', startDate: pastDate() })
@@ -206,7 +210,7 @@ test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", asyn
   await page.reload()
   await expect(taskBoard.taskCard('Groupée 1')).toBeVisible()
 
-  await clickNotification(page.request, [first.id, second.id])
+  await clickNotification(electronApp, [first.id, second.id])
 
   // Le tableau reste affiché, sans dialogue
   await expect(taskBoard.taskCard('Groupée 2')).toBeVisible()
@@ -214,6 +218,7 @@ test("le clic sur une notification de plusieurs tâches n'en ouvre aucune", asyn
 })
 
 test('rappels désactivés : les tâches échues sont marquées sans notification, sans rafale à la réactivation', async ({
+  electronApp,
   page,
 }) => {
   const { request } = page
@@ -222,22 +227,21 @@ test('rappels désactivés : les tâches échues sont marquées sans notificatio
 
   await page.evaluate(() => (globalThis as any).settings.set('notificationsEnabled', false))
 
-  const res = await request.post(`${API}/test/run-notifications`, { data: {} })
-  expect(res.ok()).toBeTruthy()
-  expect(await res.json()).toEqual({ count: 1, shown: false, style: null, title: null })
+  const res = await desktop(electronApp, 'runNotifications')
+  expect(res).toEqual({ count: 1, shown: false, style: null, title: null })
   expect((await getTask(request, task.id)).notifiedAt).toBeTruthy()
 
   // Réactivés : la tâche déjà marquée ne ressort pas
   await page.evaluate(() => (globalThis as any).settings.set('notificationsEnabled', true))
-  expect(await runNotifications(request)).toBe(0)
+  expect(await runNotifications(electronApp)).toBe(0)
 })
 
-test('repousser startDate dans le futur par le batch réarme notifiedAt', async ({ page }) => {
+test('repousser startDate dans le futur par le batch réarme notifiedAt', async ({ electronApp, page }) => {
   const { request } = page
   const stageId = await firstStageId(request)
   const task = await createTask(request, stageId, { title: 'Replanifiée en batch', startDate: pastDate() })
 
-  expect(await runNotifications(request)).toBe(1)
+  expect(await runNotifications(electronApp)).toBe(1)
 
   const res = await request.patch(`${API}/tasks/batch`, { data: [{ id: task.id, startDate: futureDate() }] })
   expect(res.ok()).toBeTruthy()

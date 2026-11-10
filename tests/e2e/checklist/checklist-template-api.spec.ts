@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import { resetApp } from '../../helpers/desktop.helper'
 import {
   CHECKLIST_ITEM_MAX_LENGTH,
   CHECKLIST_MAX_ITEMS,
@@ -366,9 +367,8 @@ test('DELETE /checklist-templates/:id supprime le modèle et ses points', async 
 
 test.describe('Modèles par défaut', () => {
   // Le reset standard retire les modèles seedés, on les réclame explicitement
-  test.beforeEach(async ({ page }) => {
-    const res = await page.request.post(`${API}/test/reset?seedTemplates=true`)
-    expect(res.ok()).toBeTruthy()
+  test.beforeEach(async ({ electronApp, page }) => {
+    await resetApp(electronApp, page.request, { seedTemplates: true })
   })
 
   test('la base démarre avec les 2 modèles seedés et leurs points décochés', async ({ page }) => {

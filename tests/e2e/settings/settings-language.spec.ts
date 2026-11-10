@@ -4,6 +4,7 @@ import { test, expect } from '../../fixtures/test'
 import type { Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 import { restoreDialogs, stubOpenDialog } from '../../helpers/dialog.helper'
 
 /**
@@ -55,7 +56,7 @@ async function switchToEnglish(
  * @param page Fenêtre principale
  */
 async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promise<Page> {
-  const [win] = await Promise.all([electronApp.waitForEvent('window'), page.request.post(`${API}/test/open-quick-add`)])
+  const [win] = await Promise.all([electronApp.waitForEvent('window'), desktop(electronApp, 'openQuickAdd')])
   await expect(win.getByTestId('quick-add-title')).toBeVisible()
   return win
 }
@@ -137,17 +138,13 @@ test("la fenêtre d'ajout rapide suit la langue choisie", async ({ page, electro
   await expect(win.locator('html')).toHaveAttribute('lang', 'en')
 })
 
-test('les textes du main suivent la langue choisie', async ({ page, header, settingsPage }) => {
-  expect(await (await page.request.get(`${API}/test/tray-menu`)).json()).toEqual([
-    'Ouvrir NexTask',
-    'Ajout rapide…',
-    'Quitter',
-  ])
+test('les textes du main suivent la langue choisie', async ({ electronApp, page, header, settingsPage }) => {
+  expect(await desktop(electronApp, 'trayMenu')).toEqual(['Ouvrir NexTask', 'Ajout rapide…', 'Quitter'])
 
   await switchToEnglish(page, settingsPage, header)
 
   // Menu de l'icône de la zone de notification
-  expect(await (await page.request.get(`${API}/test/tray-menu`)).json()).toEqual(['Open NexTask', 'Quick add…', 'Quit'])
+  expect(await desktop(electronApp, 'trayMenu')).toEqual(['Open NexTask', 'Quick add…', 'Quit'])
 
   // Rappel d'une tâche dont la date de début est passée
   const stages = (await (await page.request.get(`${API}/stages`)).json()) as { id: number }[]
@@ -162,8 +159,8 @@ test('les textes du main suivent la langue choisie', async ({ page, header, sett
     },
   })
   expect(created.ok()).toBeTruthy()
-  const res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-  expect(await res.json()).toMatchObject({ count: 1, shown: true, title: 'Task to start (1)' })
+  const res = await desktop(electronApp, 'runNotifications')
+  expect(res).toMatchObject({ count: 1, shown: true, title: 'Task to start (1)' })
 })
 
 test.describe('Import refusé', () => {

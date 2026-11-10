@@ -2,8 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { shell } from 'electron'
 import Logger from 'electron-log'
-import { DATA_PATH, IS_TEST } from '../constants.js'
-import { DB_PATH } from '../database/location.js'
+import { IS_TEST } from '../constants.js'
 
 /**
  * Ouverture des dossiers de l'app dans l'explorateur de fichiers du système,
@@ -11,8 +10,11 @@ import { DB_PATH } from '../database/location.js'
  * sauvegardes), dossier de la base (ailleurs si l'utilisateur l'a déplacée,
  * cf. database/location.ts) et dossier des journaux d'electron-log.
  *
+ * Les dossiers des données et de la base sont fournis par le backend local
+ * (cf. setFolderPaths) : NexTask Client n'a que celui des journaux.
+ *
  * En mode test, rien ne s'ouvre : le dossier demandé est seulement noté, et
- * les tests le relisent via GET /test/opened-folders.
+ * les tests le relisent par le pont de test (openedFolders).
  */
 
 /** Dossiers que le renderer peut faire ouvrir. */
@@ -30,6 +32,18 @@ export interface OpenedFolder {
 // Ouvertures demandées en mode test, dans l'ordre
 const openedInTest: OpenedFolder[] = []
 
+// Dossiers des données et de la base, fournis par le backend local
+let dataPaths: { data: string; database: string } | null = null
+
+/**
+ * Enregistre les dossiers des données et de la base (backend local).
+ *
+ * @param paths Dossier des données de l'app et dossier de la base
+ */
+export function setFolderPaths(paths: { data: string; database: string }): void {
+  dataPaths = paths
+}
+
 /**
  * Vrai si la valeur reçue du renderer désigne un dossier connu.
  *
@@ -43,12 +57,13 @@ export function isFolderKind(kind: unknown): kind is FolderKind {
  * Chemin d'un dossier de l'app.
  *
  * @param kind Dossier voulu
+ * @throws Pour le dossier des données ou de la base, sans base locale (NexTask Client)
  */
 function folderPath(kind: FolderKind): string {
-  if (kind === 'data') return DATA_PATH
-  if (kind === 'database') return path.dirname(DB_PATH)
   // Dossier du fichier de log courant (cf. transport fichier d'electron-log)
-  return path.dirname(Logger.transports.file.getFile().path)
+  if (kind === 'logs') return path.dirname(Logger.transports.file.getFile().path)
+  if (!dataPaths) throw new Error(`Pas de dossier « ${kind} » dans cette édition`)
+  return dataPaths[kind]
 }
 
 /**

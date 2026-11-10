@@ -1,6 +1,8 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
+import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 import {
   DAILY,
   createRecurringTask,
@@ -194,15 +196,13 @@ test.describe('Génération', () => {
     expect(await runRecurrences(page.request, plusMinutes(localDate(2), 1))).toMatchObject({ created: 0 })
   })
 
-  test("l'occurrence créée est rappelée par le planificateur de notifications", async ({ page }) => {
+  test("l'occurrence créée est rappelée par le planificateur de notifications", async ({ electronApp, page }) => {
     await createRecurringTask(page.request, { title: 'Rappel', startDate: localDate(1), recurrence: DAILY })
     await runRecurrences(page.request, plusMinutes(localDate(2), 1))
 
-    const res = await page.request.post(`${API}/test/run-notifications`, {
-      data: { now: plusMinutes(localDate(2), 1).toISOString() },
-    })
+    const res = await desktop(electronApp, 'runNotifications', plusMinutes(localDate(2), 1).toISOString())
     // La tâche d'origine (demain 09:00) et l'occurrence (après-demain 09:00) sont échues
-    expect(((await res.json()) as { count: number }).count).toBe(2)
+    expect(res.count).toBe(2)
   })
 
   test('rattrapage : seule la date échue la plus récente est créée, les autres sont sautées', async ({ page }) => {
@@ -352,7 +352,7 @@ test.describe('Génération', () => {
     expect(await runRecurrences(page.request, plusMinutes(localDate(3), 1))).toMatchObject({ created: 0 })
   })
 
-  test("unicité : deux passages simultanés ne créent qu'une occurrence", async ({ page }) => {
+  test("unicité : deux passages simultanés ne créent qu'une occurrence", async ({ electronApp, page }) => {
     const origin = await createRecurringTask(page.request, {
       title: 'Unique',
       startDate: localDate(1),
@@ -369,17 +369,15 @@ test.describe('Génération', () => {
 
 /**
  * Nombre de tâches rappelées par un passage du planificateur de notifications.
- * @param request Contexte de requête Playwright
+ * @param electronApp App lancée par la fixture
  * @param now Horodatage de référence
  */
-async function runNotifications(request: APIRequestContext, now: Date): Promise<number> {
-  const res = await request.post(`${API}/test/run-notifications`, { data: { now: now.toISOString() } })
-  expect(res.ok()).toBeTruthy()
-  return ((await res.json()) as { count: number }).count
+async function runNotifications(electronApp: ElectronApplication, now: Date): Promise<number> {
+  return (await desktop(electronApp, 'runNotifications', now.toISOString())).count
 }
 
 test.describe('Création anticipée', () => {
-  test("tâche créée N jours avant, sa date de début restant celle de l'occurrence", async ({ page }) => {
+  test("tâche créée N jours avant, sa date de début restant celle de l'occurrence", async ({ electronApp, page }) => {
     const origin = await createRecurringTask(page.request, {
       title: 'En avance',
       startDate: localDate(1),
@@ -400,7 +398,7 @@ test.describe('Création anticipée', () => {
     expect(occurrence.recurrence).toMatchObject({ generatedCount: 2, nextRunAt: localDate(3).toISOString() })
 
     // Le rappel part à la date de l'occurrence, pas à sa création
-    expect(await runNotifications(page.request, plusMinutes(localDate(0), 1))).toBe(0)
+    expect(await runNotifications(electronApp, plusMinutes(localDate(0), 1))).toBe(0)
 
     // Le lendemain à 09:00, l'occurrence du jour 3 est créée à son tour
     expect(await runRecurrences(page.request, plusMinutes(localDate(1), 1))).toMatchObject({ created: 1 })
@@ -410,7 +408,7 @@ test.describe('Création anticipée', () => {
       localDate(3).toISOString(),
     ])
     // Au jour 2, la tâche d'origine et l'occurrence du jour 2 sont rappelées, pas celle du jour 3
-    expect(await runNotifications(page.request, plusMinutes(localDate(2), 1))).toBe(2)
+    expect(await runNotifications(electronApp, plusMinutes(localDate(2), 1))).toBe(2)
   })
 
   test('rattrapage : seule la plus récente des dates dont la création est passée', async ({ page }) => {

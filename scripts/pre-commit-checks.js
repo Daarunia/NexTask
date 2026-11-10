@@ -5,6 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
+import { forbiddenMainImports } from './private/import-guard.js'
 
 // Function to get staged files using git diff
 const getStagedFiles = () => {
@@ -69,6 +70,19 @@ const checkCoreImports = (file) => {
   return true
 }
 
+// Main : core seulement par ses catalogues partagés, hors backend local (cf. import-guard.js)
+const checkMainImports = (file) => {
+  const normalized = file.replaceAll('\\', '/')
+  if (!normalized.startsWith('src/main/') || !/\.(ts|js|mjs|cjs)$/.test(normalized)) return false
+  if (!fs.existsSync(file)) return false
+
+  const forbidden = forbiddenMainImports(normalized, fs.readFileSync(file, 'utf-8'))
+  for (const specifier of forbidden) {
+    console.log(`Import réservé au backend local (${file}) : ${specifier}`)
+  }
+  return forbidden.length > 0
+}
+
 let hasError = false
 
 // Get the list of staged files
@@ -76,7 +90,7 @@ const files = getStagedFiles()
 
 // Check each staged file
 files.forEach((file) => {
-  if (checkCoreImports(file)) {
+  if (checkCoreImports(file) || checkMainImports(file)) {
     hasError = true
   }
 
@@ -94,7 +108,7 @@ files.forEach((file) => {
 
 // If any errors are found, prevent commit
 if (hasError) {
-  console.log('Commit aborted due to TODO/FIXME/console.log or a forbidden import in src/core or src/server.')
+  console.log('Commit aborted due to TODO/FIXME/console.log or a forbidden import in src/core, src/server or src/main.')
   process.exit(1)
 } else {
   console.log('No TODO/FIXME/console.log found. Proceeding with commit.')

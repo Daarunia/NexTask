@@ -73,7 +73,7 @@ function trayMenuTemplate(showWindow: () => void, openQuickAdd: () => void): Men
 
 /**
  * Libellés du menu de l'icône, pour les tests (l'icône n'est pas créée en
- * mode test, cf. /test/tray-menu).
+ * mode test, cf. trayMenu du pont de test).
  */
 export function trayMenuLabels(): string[] {
   const noop = () => {}

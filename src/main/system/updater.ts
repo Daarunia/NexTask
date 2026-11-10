@@ -15,7 +15,7 @@ import type { UpdateStatus } from '../../core/shared/update.constants.js'
  * arrière-plan : une recherche demandée depuis les Paramètres reste possible.
  *
  * Seulement pour l'app packagée : en dev et en test, l'état reste
- * « unsupported ». Les tests E2E le simulent via POST /test/update-status.
+ * « unsupported ». Les tests E2E le simulent par le pont de test (updateStatus).
  */
 
 const { autoUpdater } = electronUpdater
@@ -28,7 +28,7 @@ const CHECK_INTERVAL = 6 * 60 * 60 * 1000
 
 let status: UpdateStatus = { state: IS_TEST || !app.isPackaged ? 'unsupported' : 'idle' }
 
-// Installation demandée en mode test (relue via GET /test/update-install)
+// Installation demandée en mode test (relue par le pont de test, updateInstall)
 let installRequestedInTest = false
 
 /**

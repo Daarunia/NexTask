@@ -4,11 +4,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendMessage: (message: string) => ipcRenderer.send('message', message),
 })
 
-// URL du serveur Fastify local, passée par le main en argument de la fenêtre
-// (`additionalArguments`, port choisi au démarrage en prod)
-const API_URL_ARG = '--api-url='
+// Connexion à l'API, lue une fois au chargement de la fenêtre (rechargée par le
+// main quand elle change) : adresse (API locale ou serveur de NexTask Client),
+// en-tête du jeton, édition et ses fonctions, état de la connexion. Appel
+// synchrone : le renderer en a besoin avant ses premières requêtes
+const serverInfo = ipcRenderer.sendSync('server:info')
 contextBridge.exposeInMainWorld('server', {
-  url: process.argv.find((arg: string) => arg.startsWith(API_URL_ARG))?.slice(API_URL_ARG.length),
+  url: serverInfo.url,
+  edition: serverInfo.edition,
+  capabilities: serverInfo.capabilities,
+  status: serverInfo.status,
+  // En-têtes de chaque requête vers l'API (jeton de NexTask Client)
+  headers: () => (serverInfo.authorization ? { Authorization: serverInfo.authorization } : {}),
+  // Nouvel essai, connexion et déconnexion (NexTask Client)
+  check: () => ipcRenderer.invoke('server:check'),
+  connect: (url: string, token: string) => ipcRenderer.invoke('server:connect', url, token),
+  disconnect: () => ipcRenderer.invoke('server:disconnect'),
 })
 
 contextBridge.exposeInMainWorld('settings', {

@@ -1,16 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, session, type WebPreferences } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, session, type WebPreferences } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getApiUrl, isServerStarted, startServer } from '../core/server/index.js'
-import { setupDatabase } from '../core/database/setupDatabase.js'
-import { applySeeds } from '../core/database/seedDatabase.js'
 import {
   onNotificationClicked,
   startNotificationScheduler,
   stopNotificationScheduler,
 } from './scheduler/notificationScheduler.js'
-import { onOccurrencesCreated } from '../core/scheduler/recurrenceGeneration.js'
-import { startMaintenanceScheduler, stopMaintenanceScheduler } from '../core/scheduler/maintenanceScheduler.js'
 import { setupSystemIntegration, shouldHideOnClose, wasLaunchedHidden } from './system/systemIntegration.js'
 import { getRestorableWindowState, trackWindowState } from './system/windowState.js'
 import { trackInterfaceScale } from './system/interfaceScale.js'
@@ -23,79 +18,47 @@ import {
   saveDocumentAs,
   setupOpenedDocumentCleanup,
 } from './system/documents.js'
-import {
-  ensureDatabaseAvailable,
-  getDatabaseLocation,
-  moveDatabase,
-  openDatabase,
-  showDatabaseFailure,
-  useDefaultDatabase,
-} from './system/databaseLocation.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
 import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
-import { getLocale, setupI18n, t } from './i18n.js'
+import { getLocale, setupI18n } from './i18n.js'
 import type { AppSettings } from '../core/shared/settings.constants.js'
 import {
-  API_PORT,
   APP_ID,
   APP_VERSION,
-  BACKUPS_PATH,
   DEV_RENDERER_URL,
   IS_DEV,
   IS_TEST,
-  MIGRATIONS_PATH,
-  SEEDS_PATH,
-  STATIC_DIR,
   TEST_INDEX,
   TEST_SLOTS,
   staticAsset,
 } from './constants.js'
-import { DB_PATH, IS_CUSTOM_DB } from './database/location.js'
 import Logger from 'electron-log'
-import { setLogger } from '../core/logger.js'
-import { initCore } from '../core/config.js'
-import { setSettingsProvider } from '../core/settings.js'
 import { setLocaleProvider } from '../core/i18n.js'
-import type { ServerOptions } from '../core/server/index.js'
-import desktopTestRoutes, { desktopTestResetHooks } from './system/test.routes.js'
+import { installTestBridge } from './system/testBridge.js'
 import { TEST_WORKER_PID_ARG } from '../core/shared/test.constants.js'
+import { EDITION } from './edition.js'
+import { backend, setBackend, type Backend } from './backend/backend.js'
 
-// Journaux de core (serveur, base, schedulers) dans electron-log, avant tout
-// appel à core : sans ce branchement, ses messages seraient ignorés
-setLogger(Logger)
-
-// Configuration de core, avant tout appel à core (base, serveur, schedulers)
-initCore({
-  appVersion: APP_VERSION,
-  isDev: IS_DEV,
-  isTest: IS_TEST,
-  dbPath: DB_PATH,
-  isCustomDb: IS_CUSTOM_DB,
-  backupsPath: BACKUPS_PATH,
-  migrationsPath: MIGRATIONS_PATH,
-  seedsPath: SEEDS_PATH,
-  staticDir: STATIC_DIR,
-})
-
-// Réglages lus par core (versions, position des nouvelles tâches, purge,
-// sauvegardes), relus à chaque appel : un changement dans l'interface est suivi
-setSettingsProvider(() => settingsStore.store)
-
-// Textes de core (colonnes par défaut, copies de modèles) dans la langue de l'interface
+// Textes de core (colonnes par défaut, copies de modèles, motifs d'import) dans
+// la langue de l'interface : catalogues sans base, embarqués par les deux éditions
 setLocaleProvider(getLocale)
 
-// Écoute du serveur local : port fixe en dev et en test, libre en prod. Seul le
-// serveur Vite a une origine à autoriser (le renderer packagé est en file://).
-// En test, routes et remise à zéro propres au desktop, à côté de celles de core
-const SERVER_OPTIONS: ServerOptions = {
-  port: API_PORT,
-  corsOrigins: DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [],
-  plugins: IS_TEST ? [desktopTestRoutes] : [],
-  testHooks: IS_TEST ? desktopTestResetHooks : {},
-}
+// Accès aux données de l'édition, chargé à la demande : seule l'édition locale
+// charge l'API et la base (backend/local.ts), absentes du build de NexTask Client
+const { default: editionBackend } = (await (EDITION === 'client'
+  ? import('./backend/remote.js')
+  : import('./backend/local.js'))) as { default: Backend }
+setBackend(editionBackend)
+Logger.info(`[édition] ${EDITION}`)
+
+// Pont de test du main, appelé par les tests via electronApp.evaluate()
+if (IS_TEST) installTestBridge(editionBackend.testHooks)
+
+// Vrai une fois le backend prêt (base et API locales, ou connexion vérifiée)
+let backendReady = false
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -150,9 +113,6 @@ function rendererWebPreferences(): WebPreferences {
     preload: join(__dirname, 'preload.js'),
     nodeIntegration: false,
     contextIsolation: true,
-    // URL du serveur Fastify, exposée au renderer par le preload (sandboxé,
-    // il ne peut rien importer : même argument écrit des deux côtés)
-    additionalArguments: [`--api-url=${getApiUrl()}`],
   }
 }
 
@@ -233,8 +193,8 @@ function createWindow() {
  * zone de notification), en la recréant si elle a été fermée.
  */
 function showMainWindow() {
-  // Serveur pas encore démarré : la fenêtre sera créée juste après (elle en a besoin)
-  if (!app.isReady() || !isServerStarted()) return
+  // Backend pas encore prêt : la fenêtre sera créée juste après (elle en a besoin)
+  if (!app.isReady() || !backendReady) return
   if (!mainWindow) {
     createWindow()
     return
@@ -318,27 +278,23 @@ async function onReady() {
   // et les fenêtres
   setupI18n()
 
-  // Base hors de l'emplacement par défaut : présente et libre, sinon
-  // l'utilisateur en décide (l'app peut alors quitter ou redémarrer)
-  if (!(await ensureDatabaseAvailable())) return
-
-  try {
-    // Migrations
-    setupDatabase()
-
-    // Seeds
-    applySeeds(getLocale())
-  } catch (err) {
-    // La migration ou la seed fautive a été annulée : on n'ouvre pas l'app sur
-    // une base qui ne correspond pas au code (une base déplacée propose de
-    // revenir à l'emplacement par défaut)
-    Logger.error('Erreur du lancement des migrations ou des seeds :', err)
-    if (!IS_TEST) {
-      await showDatabaseFailure(`${t('startup.databaseFailed')}\n\n${err}`)
-    }
+  // Base et API locales, ou connexion au serveur. Les occurrences des tâches
+  // récurrentes générées en local sont transmises à la fenêtre principale, qui
+  // les ajoute au tableau sans recharger (aussi en test, via /test/run-recurrences).
+  // Envoyées en JSON (décodé par le preload) pour arriver dans la même forme
+  // que les réponses de l'API : dates en chaînes ISO, pas en objets Date.
+  const started = await backend().start({
+    occurrencesCreated: (tasks) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
+      }
+    },
+  })
+  if (!started) {
     app.quit()
     return
   }
+  backendReady = true
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
@@ -357,19 +313,6 @@ async function onReady() {
   void clearOpenedDocumentCopies()
   setupOpenedDocumentCleanup()
 
-  try {
-    await startServer(SERVER_OPTIONS)
-  } catch (err) {
-    // Sans serveur, la fenêtre n'aurait aucune donnée (ou celles du logiciel
-    // qui occupe le port) : on n'ouvre pas l'app
-    Logger.error('Erreur au démarrage du serveur Fastify :', err)
-    if (!IS_TEST) {
-      dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.serverFailed')}\n\n${err}`)
-    }
-    app.quit()
-    return
-  }
-
   // Icône de la zone de notification et lancement au démarrage, avant la
   // fenêtre qui en dépend pour un lancement réduit
   setupSystemIntegration(showMainWindow, openQuickAdd)
@@ -381,16 +324,6 @@ async function onReady() {
     getMainWindow: () => mainWindow,
   })
 
-  // Occurrences des tâches récurrentes : transmises à la fenêtre principale,
-  // qui les ajoute au tableau sans recharger (aussi en test, via /test/run-recurrences).
-  // Envoyées en JSON (décodé par le preload) pour arriver dans la même forme
-  // que les réponses de l'API : dates en chaînes ISO, pas en objets Date.
-  onOccurrencesCreated((tasks) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tasks:created', JSON.stringify(tasks))
-    }
-  })
-
   // Clic sur une notification de rappel
   onNotificationClicked(openNotifiedTasks)
 
@@ -398,30 +331,28 @@ async function onReady() {
 
   // Planificateur de notifications (tâches dont la startDate est dépassée),
   // précédé à chaque tick de la génération des tâches récurrentes.
-  // Désactivé en mode test : les tests le déclenchent manuellement via
-  // /test/run-notifications et /test/run-recurrences pour un comportement déterministe.
+  // Désactivé en mode test : les tests le déclenchent manuellement (pont de test
+  // runNotifications, /test/run-recurrences) pour un comportement déterministe.
   if (!IS_TEST) startNotificationScheduler()
 
-  // Maintenance quotidienne (sauvegarde, purge des archives), au démarrage puis chaque
-  // jour. Désactivée en mode test, comme les notifications (/test/run-*).
-  if (!IS_TEST) startMaintenanceScheduler()
+  // Tâches de fond du backend (sauvegarde et purge quotidiennes en local), au
+  // démarrage puis chaque jour. Désactivées en mode test, comme les
+  // notifications (/test/run-*).
+  if (!IS_TEST) backend().startBackground()
 
   if (IS_TEST) quitWithTestWorker()
 
   // Mise à jour depuis les releases GitHub, seulement pour l'app packagée
   setupUpdater()
 
-  app.on('activate', async () => {
+  // macOS : fenêtre recréée au clic sur l'icône du dock, tâches de fond reprises
+  // (arrêtées à la fermeture de la dernière fenêtre, le backend restant prêt)
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
-      try {
-        await startServer(SERVER_OPTIONS)
-      } catch (err) {
-        Logger.error('Erreur au redémarrage du serveur Fastify :', err)
-      }
       if (!IS_TEST) {
         startNotificationScheduler()
-        startMaintenanceScheduler()
+        backend().startBackground()
       }
     }
   })
@@ -434,7 +365,7 @@ app
 
 app.on('window-all-closed', () => {
   stopNotificationScheduler()
-  stopMaintenanceScheduler()
+  backend().stopBackground()
   if (process.platform !== 'darwin') app.quit()
 })
 
@@ -502,13 +433,19 @@ ipcMain.handle('documents:saveAs', (event, id: unknown, name: unknown) =>
   saveDocumentAs(BrowserWindow.fromWebContents(event.sender), documentIdFrom(id), String(name)),
 )
 
-// Emplacement de la base (cf. system/databaseLocation) : lu par les Paramètres,
-// puis changé après une boîte de dialogue native. Un nouvel emplacement
-// enregistré fait redémarrer l'app.
-ipcMain.handle('database:location', () => getDatabaseLocation())
-ipcMain.handle('database:move', (event) => moveDatabase(BrowserWindow.fromWebContents(event.sender)))
-ipcMain.handle('database:open', (event) => openDatabase(BrowserWindow.fromWebContents(event.sender)))
-ipcMain.handle('database:useDefault', (event) => useDefaultDatabase(BrowserWindow.fromWebContents(event.sender)))
+// Connexion à l'API, lue par le preload à l'ouverture de chaque fenêtre (appel
+// synchrone : le renderer en a besoin avant ses premières requêtes)
+ipcMain.on('server:info', (event) => {
+  event.returnValue = backend().info()
+})
+
+// IPC propres à l'édition : emplacement de la base (local), connexion au
+// serveur (client). Une connexion changée recharge toutes les fenêtres
+backend().registerIpc(() => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.reload()
+  }
+})
 
 // Version de l'app, affichée dans la section « À propos » des Paramètres
 ipcMain.handle('about:version', () => APP_VERSION)

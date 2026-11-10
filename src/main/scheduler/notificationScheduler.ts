@@ -1,11 +1,10 @@
 import { Cron } from 'croner'
 import { Notification } from 'electron'
 import Logger from 'electron-log'
-import { claimDueReminders } from '../../core/scheduler/reminders.js'
 import { IS_TEST, staticAsset } from '../constants.js'
 import { settingsStore } from '../stores/settings.js'
 import type { NotificationStyle } from '../../core/shared/settings.constants.js'
-import { runRecurrenceGeneration } from '../../core/scheduler/recurrenceGeneration.js'
+import { backend } from '../backend/backend.js'
 import { t, tn } from '../i18n.js'
 
 /**
@@ -22,9 +21,11 @@ import { t, tn } from '../i18n.js'
  * Un clic sur la notification ramène la fenêtre principale, et ouvre la tâche
  * si elle est seule annoncée (cf. onNotificationClicked).
  *
- * Chaque tick commence par générer les occurrences des séries récurrentes
- * (cf. recurrenceGeneration), rappelées dans la foulée. La génération a aussi
- * un passage au démarrage du planificateur.
+ * Les rappels sont réclamés auprès du backend : la base locale, ou le serveur
+ * de NexTask Client (POST /reminders/claim). En local, chaque tick commence
+ * par générer les occurrences des séries récurrentes, rappelées dans la
+ * foulée ; la génération a aussi un passage au démarrage du planificateur. Sur
+ * un serveur, c'est lui qui les génère.
  */
 
 let job: Cron | null = null
@@ -55,7 +56,7 @@ export function onNotificationClicked(listener: (taskIds: number[]) => void): vo
 /**
  * Clic sur une notification : transmis au destinataire branché par main.ts.
  * Exporté pour les tests, qui ne peuvent pas cliquer une notification OS
- * (cf. /test/click-notification).
+ * (cf. clickNotification du pont de test).
  *
  * @param taskIds Ids des tâches annoncées par la notification
  */
@@ -112,7 +113,7 @@ function notify(tasks: { id: number; title: string }[], title: string, style: No
   }
 
   // En mode test on ne fait pas surgir de vraie notification OS (le passage est
-  // déclenché manuellement via /test/run-notifications).
+  // déclenché manuellement par le pont de test, runNotifications).
   if (IS_TEST) return
 
   // Un clic ouvre l'app (et la tâche si elle est seule), cf. main.ts
@@ -139,14 +140,14 @@ export interface NotificationCheckResult {
 
 /**
  * Coeur métier : réclame les tâches échues non notifiées (marquées notifiées
- * par core) puis envoie la notification si les rappels sont activés.
+ * par le backend) puis envoie la notification si les rappels sont activés.
  * Extrait pour être testable.
  *
  * @param now Horodatage de référence (injectable pour les tests)
  * @returns Nombre de tâches traitées, envoi ou non de la notification, son style et son titre
  */
 export async function runNotificationCheck(now: Date = new Date()): Promise<NotificationCheckResult> {
-  const dueTasks = await claimDueReminders(now)
+  const dueTasks = await backend().claimReminders(now)
 
   if (dueTasks.length === 0) return { count: 0, shown: false, style: null, title: null }
 
@@ -167,32 +168,20 @@ export async function runNotificationCheck(now: Date = new Date()): Promise<Noti
 }
 
 /**
- * Génère les occurrences des séries récurrentes échues. Un échec est
- * journalisé sans empêcher la suite du tick.
- */
-async function generateRecurrences(): Promise<void> {
-  try {
-    await runRecurrenceGeneration()
-  } catch (err) {
-    Logger.error('[scheduler] Échec de la génération des tâches récurrentes :', err)
-  }
-}
-
-/**
  * Démarre le planificateur (un tick toutes les minutes), avec un premier
- * passage immédiat de la génération des tâches récurrentes. Idempotent : un
- * éventuel job précédent est arrêté avant d'en créer un nouveau.
+ * passage immédiat de la génération des tâches récurrentes (backend local).
+ * Idempotent : un éventuel job précédent est arrêté avant d'en créer un nouveau.
  */
 export function startNotificationScheduler(): void {
   stopNotificationScheduler()
 
   // Occurrences échues pendant que l'app était fermée
-  void generateRecurrences()
+  void backend().beforeReminders()
 
   // `protect: true` empêche deux ticks de se chevaucher si l'un est lent.
   // Génération d'abord : ses occurrences échues sont rappelées dans le même tick.
   job = new Cron('* * * * *', { protect: true }, async () => {
-    await generateRecurrences()
+    await backend().beforeReminders()
     await runNotificationCheck().catch((err) => Logger.error('[scheduler] Échec du tick de notification :', err))
   })
 

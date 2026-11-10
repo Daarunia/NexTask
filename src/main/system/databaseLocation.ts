@@ -29,7 +29,7 @@ import { getLocale, t } from '../i18n.js'
  * propre dossier des documents (cf. documentsDirFor).
  *
  * En mode test, l'app ne redémarre pas : la demande est seulement notée, et
- * les tests la relisent via GET /test/database-location.
+ * les tests la relisent par le pont de test (databaseLocation).
  */
 
 // Délai avant le redémarrage, le temps que le renderer reçoive la réponse et l'affiche

@@ -1,6 +1,8 @@
 import { test, expect } from '../../fixtures/test'
+import type { ElectronApplication } from 'playwright'
 import type { APIRequestContext } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E de la description Markdown de l'écran de tâche (md-editor-v3) :
@@ -9,7 +11,7 @@ import { API } from '../../helpers/api.helper'
  * enregistrement au clavier et indicateur de description sur la carte.
  *
  * En mode test, le main n'ouvre pas le navigateur : il note le lien cliqué,
- * relu via GET /test/opened-urls (vidé par le reset).
+ * relu par le pont de test (vidé par le reset).
  *
  * Isolation : base remise à zéro avant chaque test (fixture `cleanState`).
  */
@@ -18,10 +20,8 @@ import { API } from '../../helpers/api.helper'
 const COLUMN = 'A faire'
 
 /** Liens cliqués dont l'ouverture a été demandée depuis le dernier reset. */
-async function openedUrls(request: APIRequestContext): Promise<string[]> {
-  const res = await request.get(`${API}/test/opened-urls`)
-  expect(res.ok()).toBeTruthy()
-  return (await res.json()) as string[]
+function openedUrls(electronApp: ElectronApplication): Promise<string[]> {
+  return desktop(electronApp, 'openedUrls')
 }
 
 test("s'ouvre en écriture à la création, aperçu vide", async ({ taskBoard }) => {
@@ -179,7 +179,7 @@ test('signale sur la carte une tâche avec une description', async ({ page, task
   await expect(page.locator('.p-tooltip.info-tooltip')).toContainText('Point clé')
 })
 
-test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ page, taskBoard }) => {
+test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ electronApp, page, taskBoard }) => {
   const url = 'https://example.com/doc'
 
   await taskBoard.openCreateDialog(COLUMN)
@@ -188,7 +188,7 @@ test("ouvre un lien hors de l'app, sans quitter le tableau", async ({ page, task
 
   await taskBoard.descriptionPreview.getByRole('link', { name: 'la doc' }).click()
 
-  await expect.poll(() => openedUrls(page.request)).toEqual([url])
+  await expect.poll(() => openedUrls(electronApp)).toEqual([url])
   // La page de l'app est restée en place, dialogue compris
   await expect(taskBoard.dialog).toBeVisible()
 })

@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext } from '@playwright/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E des réglages Notifications et Démarrage de la page Paramètres.
@@ -9,7 +10,7 @@ import { API } from '../../helpers/api.helper'
  * sont jamais créées en mode test, et la taille de la fenêtre n'y est ni
  * enregistrée ni restaurée : seuls l'état des réglages et leur persistance
  * sont vérifiés ici. Les rappels, eux, sont observés via le
- * passage manuel du planificateur (POST /test/run-notifications).
+ * passage manuel du planificateur (pont de test, runNotifications).
  */
 
 const DAY = 24 * 60 * 60 * 1000
@@ -37,14 +38,19 @@ test.describe('Notifications', () => {
     await expect(settingsPage.notificationsSwitch).toBeChecked()
   })
 
-  test('rappels désactivés : la tâche échue est marquée sans notification', async ({ page, header, settingsPage }) => {
+  test('rappels désactivés : la tâche échue est marquée sans notification', async ({
+    electronApp,
+    page,
+    header,
+    settingsPage,
+  }) => {
     await header.goSettings()
     await settingsPage.notificationsSwitch.click()
     await expect(settingsPage.notificationsSwitch).not.toBeChecked()
 
     const id = await createOverdueTask(page.request)
-    const res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: false, style: null, title: null })
+    const res = await desktop(electronApp, 'runNotifications')
+    expect(res).toEqual({ count: 1, shown: false, style: null, title: null })
 
     // Marquée quand même : elle ne ressortira pas à la réactivation
     const task = (await (await page.request.get(`${API}/tasks/${id}`)).json()) as { notifiedAt: string | null }
@@ -71,20 +77,20 @@ test.describe('Style des rappels', () => {
     await expect(settingsPage.notificationStyleOption('Temporaire')).toBeDisabled()
   })
 
-  test('la notification envoyée suit le style choisi', async ({ page, header, settingsPage }) => {
+  test('la notification envoyée suit le style choisi', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
 
     // Style par défaut : toast « reminder » qui reste à l'écran (Windows)
     await createOverdueTask(page.request)
-    let res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'reminder', title: 'Tâches à démarrer (1)' })
+    let res = await desktop(electronApp, 'runNotifications')
+    expect(res).toEqual({ count: 1, shown: true, style: 'reminder', title: 'Tâches à démarrer (1)' })
 
     await settingsPage.notificationStyleOption('Temporaire').click()
     await expect(settingsPage.notificationStyleOption('Temporaire')).toHaveAttribute('aria-pressed', 'true')
 
     await createOverdueTask(page.request)
-    res = await page.request.post(`${API}/test/run-notifications`, { data: {} })
-    expect(await res.json()).toEqual({ count: 1, shown: true, style: 'default', title: 'Tâches à démarrer (1)' })
+    res = await desktop(electronApp, 'runNotifications')
+    expect(res).toEqual({ count: 1, shown: true, style: 'default', title: 'Tâches à démarrer (1)' })
   })
 
   test('le style est conservé après un rechargement', async ({ page, header, settingsPage }) => {

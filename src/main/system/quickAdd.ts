@@ -13,7 +13,7 @@ import { t } from '../i18n.js'
  * puis transmise à la fenêtre principale pour qu'elle l'affiche sans recharger.
  *
  * En mode test, le raccourci n'est jamais enregistré (il le serait pour toute
- * la machine) : les tests ouvrent la fenêtre via POST /test/open-quick-add.
+ * la machine) : les tests ouvrent la fenêtre par le pont de test (openQuickAdd).
  */
 
 // Raccourci global, au format des accélérateurs Electron

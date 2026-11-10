@@ -80,6 +80,16 @@ if (IS_TEST) {
 }
 export const STORAGE_FILE = STORAGE_NAME
 
+// Nom du fichier qui garde le serveur de NexTask Client et son jeton chiffré
+// (electron-store, dans userData), isolé comme les paramètres en test et en dev
+let CONNECTION_NAME = 'connection'
+if (IS_TEST) {
+  CONNECTION_NAME = `connection.test${TEST_SUFFIX}`
+} else if (IS_DEV) {
+  CONNECTION_NAME = 'connection.dev'
+}
+export const CONNECTION_FILE = CONNECTION_NAME
+
 // Port du serveur Fastify : fixe en test et en dev, libre (0, choisi par le
 // système) en prod, cf. api.constants.ts
 let SERVER_PORT = 0

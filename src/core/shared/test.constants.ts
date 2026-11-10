@@ -26,3 +26,17 @@ export const TEST_WORKER_PID_ARG = '--test-worker-pid='
 export function testFileSuffix(index: number): string {
   return index > 0 ? `-${index}` : ''
 }
+
+/**
+ * Nom global du pont de test du main (cf. src/main/system/testBridge.ts), posé
+ * en mode test seulement et appelé par les tests via `electronApp.evaluate()`.
+ */
+export const TEST_BRIDGE_GLOBAL = '__nextaskTest'
+
+/**
+ * Arguments de NexTask Client en test : serveur et jeton enregistrés au
+ * lancement, sans passer par l'écran de connexion (`--server-url=URL`,
+ * `--server-token=JETON`). Ignorés hors du mode test.
+ */
+export const TEST_SERVER_URL_ARG = '--server-url='
+export const TEST_SERVER_TOKEN_ARG = '--server-token='

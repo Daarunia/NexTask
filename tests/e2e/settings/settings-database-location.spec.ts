@@ -4,6 +4,7 @@ import { test, expect } from '../../fixtures/test'
 import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { API, TEST_INDEX } from '../../helpers/api.helper'
+import { desktop, resetApp } from '../../helpers/desktop.helper'
 import { restoreDialogs, stubOpenDialog } from '../../helpers/dialog.helper'
 import { testFileSuffix } from '@core/shared/test.constants'
 import { DATABASE_FILE_NAME } from '@core/shared/database.constants'
@@ -16,7 +17,7 @@ import { addDocument, createTask, sha256Of } from '../../helpers/document.helper
  *
  * En mode test, l'app ne redémarre pas après un changement d'emplacement :
  * elle garde sa base de test, et le nouvel emplacement enregistré est relu
- * via GET /test/database-location (oublié par le reset, comme au lancement).
+ * par le pont de test (oublié par le reset, comme au lancement).
  *
  * Isolation : base, paramètres et emplacement remis à zéro avant chaque test (fixture `cleanState`).
  */
@@ -25,12 +26,10 @@ import { addDocument, createTask, sha256Of } from '../../helpers/document.helper
 const TEST_DB = path.resolve(`test${testFileSuffix(TEST_INDEX)}.db`)
 
 /** Emplacement enregistré et redémarrage demandé depuis le dernier reset. */
-async function storedLocation(
-  request: APIRequestContext,
+function storedLocation(
+  electronApp: ElectronApplication,
 ): Promise<{ storedPath: string | null; relaunchRequested: boolean }> {
-  const res = await request.get(`${API}/test/database-location`)
-  expect(res.ok()).toBeTruthy()
-  return (await res.json()) as { storedPath: string | null; relaunchRequested: boolean }
+  return desktop(electronApp, 'databaseLocation')
 }
 
 /** Vrai si le fichier commence par l'en-tête d'une base SQLite. */
@@ -83,12 +82,12 @@ test("affiche l'emplacement par défaut de la base", async ({ header, settingsPa
   await expect(settingsPage.useDefaultLocationButton).toHaveCount(0)
 })
 
-test('ouvre le dossier de la base', async ({ page, header, settingsPage }) => {
+test('ouvre le dossier de la base', async ({ electronApp, page, header, settingsPage }) => {
   await header.goSettings()
   await settingsPage.openDatabaseFolderButton.click()
 
   await expect
-    .poll(async () => (await (await page.request.get(`${API}/test/opened-folders`)).json()) as { kind: string }[])
+    .poll(async () => (await desktop(electronApp, 'openedFolders')) as { kind: string }[])
     .toEqual([{ kind: 'database', path: path.dirname(TEST_DB) }])
 })
 
@@ -107,13 +106,13 @@ test.describe('Déplacer la base', () => {
     await settingsPage.askMoveDatabase()
     await settingsPage.confirmRejectButton.click()
     await expect(settingsPage.confirmPopup).toBeHidden()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
 
     await moveDatabaseTo(electronApp, settingsPage, folder)
 
     await expect(page.getByText('Redémarrage de NexTask…', { exact: true })).toBeVisible()
     await expect(page.getByText(`Ouverture de la base ${target}`, { exact: true })).toBeVisible()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: target, relaunchRequested: true })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: target, relaunchRequested: true })
     expect(isSqliteFile(target)).toBe(true)
     // Base copiée en un seul fichier, sans journal WAL ni copie temporaire
     expect(fs.readdirSync(folder)).toEqual([DATABASE_FILE_NAME])
@@ -128,7 +127,7 @@ test.describe('Déplacer la base', () => {
     await settingsPage.confirmAcceptButton.click()
 
     await expect(settingsPage.moveDatabaseButton).toBeEnabled()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 
   test("refuse un dossier qui contient déjà une base, sans l'écraser", async ({
@@ -146,7 +145,7 @@ test.describe('Déplacer la base', () => {
 
     await expect(rejection(page, 'Ce dossier contient déjà une base nextask.db')).toBeVisible()
     expect(fs.readFileSync(existing, 'utf8')).toBe('base déjà là')
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 
   test('emporte les documents de la base dans le dossier des documents de la copie', async ({
@@ -183,7 +182,7 @@ test.describe('Déplacer la base', () => {
 
     await expect(rejection(page, 'Ce dossier contient déjà un dossier nextask-documents')).toBeVisible()
     expect(fs.existsSync(path.join(folder, DATABASE_FILE_NAME))).toBe(false)
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 })
 
@@ -195,15 +194,15 @@ test.describe('Ouvrir une base', () => {
     const file = path.join(folder, DATABASE_FILE_NAME)
     await header.goSettings()
     await moveDatabaseTo(electronApp, settingsPage, folder)
-    await expect.poll(async () => (await storedLocation(page.request)).storedPath).toBe(file)
-    expect((await page.request.post(`${API}/test/reset`)).ok()).toBeTruthy()
+    await expect.poll(async () => (await storedLocation(electronApp)).storedPath).toBe(file)
+    await resetApp(electronApp, page.request)
     await page.reload()
     await header.goSettings()
 
     await openDatabaseFile(electronApp, settingsPage, file)
 
     await expect(page.getByText(`Ouverture de la base ${file}`, { exact: true })).toBeVisible()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: file, relaunchRequested: true })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: file, relaunchRequested: true })
   })
 
   test("refuse un fichier qui n'est pas une base de données", async ({ page, electronApp, header, settingsPage }) => {
@@ -214,7 +213,7 @@ test.describe('Ouvrir une base', () => {
     await openDatabaseFile(electronApp, settingsPage, file)
 
     await expect(rejection(page, "Ce fichier n'est pas une base de données")).toBeVisible()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 
   test('refuse la base déjà utilisée par NexTask', async ({ page, electronApp, header, settingsPage }) => {
@@ -223,6 +222,6 @@ test.describe('Ouvrir une base', () => {
     await openDatabaseFile(electronApp, settingsPage, TEST_DB)
 
     await expect(rejection(page, 'NexTask utilise déjà cette base')).toBeVisible()
-    expect(await storedLocation(page.request)).toEqual({ storedPath: null, relaunchRequested: false })
+    expect(await storedLocation(electronApp)).toEqual({ storedPath: null, relaunchRequested: false })
   })
 })

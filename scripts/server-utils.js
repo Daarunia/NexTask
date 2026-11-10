@@ -2,15 +2,17 @@ import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import compile from './private/tsc.js'
 import { ROOT } from './private/paths.js'
+import { requestedEdition, writeEdition } from './private/edition.js'
 
 /**
- * Compilation du main
+ * Compilation du main, dans l'édition demandée par NEXTASK_EDITION (locale par défaut)
  */
 export async function compileMain() {
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build.js')], {
     stdio: 'inherit',
   })
   await compile(path.join(ROOT, 'src', 'main'))
+  writeEdition(requestedEdition([]))
 }
 
 /**

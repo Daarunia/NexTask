@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/test'
 import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
+import { resetApp } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E de la page Paramètres : navigation depuis le rail, synchronisation
@@ -94,13 +95,12 @@ test.describe('Page Paramètres', () => {
     await expect(settingsPage.colorSwatch('Orange')).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('le reset de test remet les réglages par défaut', async ({ page, header, settingsPage }) => {
+  test('le reset de test remet les réglages par défaut', async ({ electronApp, page, header, settingsPage }) => {
     await header.goSettings()
     await settingsPage.chooseMode('Clair')
     await settingsPage.chooseColor('Orange')
 
-    const res = await page.request.post(`${API}/test/reset`)
-    expect(res.ok()).toBeTruthy()
+    await resetApp(electronApp, page.request)
 
     // Même parcours que la fixture cleanState : démarrage à neuf sur le tableau
     await page.evaluate(() => {
@@ -193,8 +193,7 @@ test.describe("Taille de l'interface", () => {
     await settingsPage.interfaceScaleOption('125 %').click()
     await expect.poll(() => zoomFactor(electronApp)).toBe(1.25)
 
-    const res = await page.request.post(`${API}/test/reset`)
-    expect(res.ok()).toBeTruthy()
+    await resetApp(electronApp, page.request)
 
     await expect.poll(() => zoomFactor(electronApp)).toBe(1)
   })

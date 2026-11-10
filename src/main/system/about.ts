@@ -8,7 +8,7 @@ import { IS_TEST } from '../constants.js'
  * des logiciels tiers.
  *
  * En mode test, rien ne s'ouvre : le lien demandé est seulement noté, et les
- * tests le relisent via GET /test/opened-links.
+ * tests le relisent par le pont de test (openedLinks).
  */
 
 /** Dépôt GitHub de l'app. */

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { desktop } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E du rail de navigation. Chaque entrée mène à sa page, l'entrée
@@ -16,7 +17,7 @@ import { API } from '../../helpers/api.helper'
  * @returns Page de la fenêtre d'ajout rapide, prête à la saisie
  */
 async function openQuickAdd(electronApp: ElectronApplication, page: Page): Promise<Page> {
-  const [win] = await Promise.all([electronApp.waitForEvent('window'), page.request.post(`${API}/test/open-quick-add`)])
+  const [win] = await Promise.all([electronApp.waitForEvent('window'), desktop(electronApp, 'openQuickAdd')])
   await expect(win.getByTestId('quick-add-title')).toBeVisible()
   return win
 }

@@ -4,6 +4,10 @@ import fs from 'node:fs'
 import { build } from 'vite'
 import compile from './private/tsc.js'
 import { ROOT } from './private/paths.js'
+import { requestedEdition, writeEdition } from './private/edition.js'
+
+// Édition compilée : NexTask (local) ou NexTask Client (`--edition=client`)
+const edition = requestedEdition()
 
 // `--analyze` active le rapport rollup-plugin-visualizer (voir vite.config.mjs)
 if (process.argv.includes('--analyze')) process.env.ANALYZE = 'true'
@@ -22,7 +26,7 @@ fs.rmSync(path.join(ROOT, 'build'), {
   force: true,
 })
 
-console.log(pc.blue('Transpiling Prisma, renderer & main...'))
+console.log(pc.blue(`Transpiling Prisma, renderer & main (edition: ${edition})...`))
 
 /**
  * Build
@@ -31,6 +35,7 @@ try {
   // Compiler le main
   const mainPath = path.join(ROOT, 'src', 'main')
   await compile(mainPath)
+  writeEdition(edition)
 
   // Compiler le preload
   const preloadPath = path.join(ROOT, 'src', 'main', 'preload')
