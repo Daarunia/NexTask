@@ -95,6 +95,29 @@ Packaged apps are written to the `dist/` folder.
 npm test
 ```
 
+## Standalone server (preview)
+
+The NexTask API can also run on its own under Node, without Electron, for example on a home server. The
+desktop app does not connect to it yet: this is the groundwork for a future remote mode.
+
+```bash
+docker build -t nextask-server .
+docker run -d -p 3000:3000 -v nextask-data:/data -e NEXTASK_TOKEN=<at least 32 characters> nextask-server
+```
+
+Or without Docker: `npm run build:server`, then `NEXTASK_TOKEN=… npm run start:server` (data in `./data`).
+
+| Variable               | Default                         | Purpose                                                                  |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------------------ |
+| `NEXTASK_TOKEN`        | required                        | Clients send it as `Authorization: Bearer <token>`                       |
+| `NEXTASK_DATA_DIR`     | `./data` (`/data` in the image) | Database, task documents and backups                                     |
+| `PORT` / `HOST`        | `3000` / `0.0.0.0`              | Listening address                                                        |
+| `NEXTASK_LOCALE`       | `en`                            | Language of the initial board, and of requests without `Accept-Language` |
+| `NEXTASK_CORS_ORIGINS` | none                            | Allowed web origins, comma-separated                                     |
+
+`GET /health` answers without a token. Data settings (task versions, archive purge, backups, document limits)
+are stored in the database and changed through `PATCH /settings`.
+
 ## License
 
 Released under the [Apache 2.0 License](LICENSE). Third-party licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
