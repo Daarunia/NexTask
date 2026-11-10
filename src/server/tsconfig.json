@@ -1,0 +1,19 @@
+{
+  // Compile le serveur autonome avec src/core, comme le main : rootDir = src,
+  // d'où build/server et build/core côte à côte. Seuls les types de Node sont
+  // chargés : le serveur ne connaît pas Electron.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": "..",
+    "outDir": "../../build",
+    "noImplicitAny": false,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../core/**/*.ts"]
+}
