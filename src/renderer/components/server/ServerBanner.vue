@@ -51,7 +51,9 @@ async function retry() {
   border-bottom: 1px solid var(--p-orange-300);
 }
 
-:global(.app-dark) .server-banner {
+/* Sélecteur entier dans :global() : « :global(.app-dark) .server-banner » serait
+   compilé en « .app-dark » seul, et colorerait toute l'app en mode sombre */
+:global(.app-dark .server-banner) {
   background: color-mix(in srgb, var(--p-orange-500) 20%, transparent);
   color: var(--p-orange-100);
   border-bottom-color: var(--p-orange-700);

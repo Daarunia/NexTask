@@ -28,7 +28,7 @@
           v-model="url"
           data-testid="server-connect-url"
           :placeholder="t('server.urlPlaceholder')"
-          autocomplete="url"
+          autocomplete="off"
           spellcheck="false"
           :disabled="busy"
         />

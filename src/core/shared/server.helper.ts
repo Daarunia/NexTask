@@ -20,7 +20,10 @@ export function normalizeServerUrl(input: string): string | null {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
   if (url.username || url.password) return null
-  return `${url.origin}${url.pathname}`.replace(/\/+$/, '')
+  // Barres finales retirées une à une (sans expression régulière à retour arrière)
+  let normalized = `${url.origin}${url.pathname}`
+  while (normalized.endsWith('/')) normalized = normalized.slice(0, -1)
+  return normalized
 }
 
 /**
