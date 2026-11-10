@@ -1,4 +1,4 @@
-# CI : formatage, build de l'installateur et tests E2E à chaque push sur main et sur chaque PR
+# CI : formatage, build de l'installateur, tests E2E et tests du serveur Docker à chaque push sur main et sur chaque PR
 name: Tests
 
 on:
@@ -65,6 +65,32 @@ jobs:
 
       - name: Build Windows installer
         run: npm run build:win -- --publish never
+
+  # Serveur autonome : image Docker construite depuis le dépôt, puis interrogée
+  # en boîte noire (tests/server). Runner Linux, où Docker est disponible
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm 12
+        run: npm install -g npm@12.2.0
+
+      # Vitest suffit ici : pas besoin du binaire d'Electron
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Run server tests
+        run: npm run test:server
 
   e2e:
     # Runner Windows : Electron dispose d'un vrai affichage, pas besoin de xvfb

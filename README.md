@@ -105,6 +105,8 @@ docker build -t nextask-server .
 docker run -d -p 3000:3000 -v nextask-data:/data -e NEXTASK_TOKEN=<at least 32 characters> nextask-server
 ```
 
+Its black-box tests build the image and run containers: `npm run test:server` (Docker required).
+
 Or without Docker: `npm run build:server`, then `NEXTASK_TOKEN=… npm run start:server` (data in `./data`).
 
 | Variable               | Default                         | Purpose                                                                  |

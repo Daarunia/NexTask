@@ -45,6 +45,8 @@ tests/
   unit/                Vitest (*.spec.ts) : logique pure, main comme renderer ; core-boot.spec.ts démarre core sous Node,
                        server-boot.spec.ts le serveur autonome
   e2e/                 Playwright sur l'app Electron, par domaine (task, board, stage, tag…)
+  server/              Vitest sur l'image Docker du serveur, en boîte noire par HTTP (démarrage, jeton,
+                       volume, arrêt sur SIGTERM) ; globalSetup.ts construit l'image
   components/          Page objects Playwright (TaskBoard, Header, SettingsPage…)
   fixtures/test.ts     Lance une app par worker, base remise à zéro avant chaque test
   helpers/             Helpers E2E (appels API directs, dialogues, overlays…)
@@ -61,6 +63,7 @@ docs/                  Site GitHub Pages (en + fr), publié à chaque tag v*.*.*
 - `npm run test:e2e` : tests Playwright (compile le main et le renderer avant)
 - `npx playwright test tests/e2e/task/task-batch.spec.ts` : un seul fichier E2E
 - `npm run build:server` puis `NEXTASK_TOKEN=… npm run start:server` : serveur autonome (base dans `./data`)
+- `npm run test:server` : tests de l'image Docker du serveur (Docker requis, image reconstruite avec son cache)
 - `npm run sonar` : analyse SonarQube locale
 - `npm run release <major|minor|patch>` : incrémente la version et propose le tag
 
@@ -87,6 +90,8 @@ docs/                  Site GitHub Pages (en + fr), publié à chaque tag v*.*.*
 1. **Tester ce qui est testable.**
    - Logique pure (helpers, calculs de dates, récurrences, recherche, import) : test unitaire dans
      `tests/unit`.
+   - Comportement du serveur autonome que les tests unitaires ne voient pas (image, volume, signaux,
+     variables d'environnement) : test dans `tests/server`, puis `npm run test:server`.
    - Comportement visible dans l'app : test E2E dans le dossier du domaine sous `tests/e2e`, en passant
      par les page objects de `tests/components` (en ajouter si besoin) plutôt que par des sélecteurs
      bruts dans le test.

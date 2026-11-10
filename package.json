@@ -39,6 +39,7 @@
     "release": "node scripts/bump-version.js",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
+    "test:server": "vitest run --config vitest.server.config.ts",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
     "test:ui": "playwright test --ui",
