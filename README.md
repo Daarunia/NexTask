@@ -95,19 +95,32 @@ Packaged apps are written to the `dist/` folder.
 npm test
 ```
 
-## Standalone server (preview)
+## NexTask Client and server
 
-The NexTask API can also run on its own under Node, without Electron, for example on a home server. The
-desktop app does not connect to it yet: this is the groundwork for a future remote mode.
+NexTask can also keep its tasks on a server of your own, for example on a home server, and share them between
+several computers. Two pieces:
+
+- the **NexTask server**, the NexTask API under plain Node, shipped as a Docker image;
+- **NexTask Client**, a separate desktop app (`NexTask-Client-Setup-x.y.z.exe` on the Releases page) that works on
+  that server instead of a local database. It does not embed the API, SQLite or Prisma, and installs next to
+  NexTask without sharing its settings.
+
+Start the server, then open NexTask Client and enter its address and token:
 
 ```bash
 docker build -t nextask-server .
 docker run -d -p 3000:3000 -v nextask-data:/data -e NEXTASK_TOKEN=<at least 32 characters> nextask-server
 ```
 
-Its black-box tests build the image and run containers: `npm run test:server` (Docker required).
+The token travels with every request: put the server behind an HTTPS reverse proxy when it is reachable from
+outside your network (NexTask Client warns about a plain `http://` address that is not local). One token per
+server, shared by all its clients. Moving from NexTask to a server: export your data from NexTask, then import it
+in NexTask Client.
 
-Or without Docker: `npm run build:server`, then `NEXTASK_TOKEN=… npm run start:server` (data in `./data`).
+Each client sees the changes of the others when it reloads or switches page. A reminder shows on the first client
+that picks it up.
+
+Without Docker: `npm run build:server`, then `NEXTASK_TOKEN=… npm run start:server` (data in `./data`).
 
 | Variable               | Default                         | Purpose                                                                  |
 | ---------------------- | ------------------------------- | ------------------------------------------------------------------------ |
@@ -116,9 +129,24 @@ Or without Docker: `npm run build:server`, then `NEXTASK_TOKEN=… npm run start
 | `PORT` / `HOST`        | `3000` / `0.0.0.0`              | Listening address                                                        |
 | `NEXTASK_LOCALE`       | `en`                            | Language of the initial board, and of requests without `Accept-Language` |
 | `NEXTASK_CORS_ORIGINS` | none                            | Allowed web origins, comma-separated                                     |
+| `TZ`                   | UTC in the image                | Time zone of recurrences and reminders, e.g. `Europe/Paris`              |
 
-`GET /health` answers without a token. Data settings (task versions, archive purge, backups, document limits)
-are stored in the database and changed through `PATCH /settings`.
+`GET /health` answers without a token, with the server version and its API version (a client refuses a server of
+another API version). Data settings (task versions, archive purge, backups, document limits) are stored on the
+server and changed from the settings of any client, or through `PATCH /settings`.
+
+### Building and testing NexTask Client
+
+```bash
+npm run build:client:win      # NexTask Client installer, in dist/client (or :mac, :linux)
+npm run check:client-bundle   # fails if its app.asar contains the API or the database
+npm run test:server           # the server image, tested as a black box (Docker required)
+npm run test:e2e:remote       # the E2E specs, NexTask Client against one server container per worker (Docker required)
+```
+
+`NEXTASK_EDITION=client npm run dev` runs NexTask Client in development. Its renderer is then served by Vite: start
+the server with `NEXTASK_CORS_ORIGINS=http://localhost:8080` so it accepts its requests (the packaged app loads its
+renderer from a file and needs no allowed origin).
 
 ## License
 

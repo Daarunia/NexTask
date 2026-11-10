@@ -441,6 +441,10 @@
             The interface is available in English, French, Spanish, Portuguese and Chinese. macOS and Linux builds can
             be produced from the <a href="https://github.com/Daarunia/NexTask#build">source code</a>.
           </p>
+          <p class="note">
+            Self-hosting? <strong>NexTask Client</strong> works on your own NexTask server (Docker image) instead of a
+            local database: see the <a href="https://github.com/Daarunia/NexTask#nextask-client-and-server">README</a>.
+          </p>
         </div>
       </section>
     </main>
@@ -457,14 +461,15 @@
     </footer>
 
     <script>
-      // Version et lien direct vers l'installeur de la dernière release (la page de release reste le repli)
+      // Version et lien direct vers l'installeur de NexTask de la dernière release, pas celui de NexTask
+      // Client (la page de release reste le repli)
       fetch('https://api.github.com/repos/Daarunia/NexTask/releases/latest')
         .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
         .then((release) => {
           document.querySelectorAll('[data-version]').forEach((el) => {
             el.textContent = `Version ${release.tag_name.replace(/^v/, '')}`
           })
-          const installer = (release.assets || []).find((asset) => /\.exe$/i.test(asset.name))
+          const installer = (release.assets || []).find((asset) => /^NexTask-Setup-.*\.exe$/i.test(asset.name))
           if (installer) {
             document.querySelectorAll('[data-download]').forEach((el) => {
               el.href = installer.browser_download_url

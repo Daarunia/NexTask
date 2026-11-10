@@ -4,6 +4,7 @@
 #   docker run -d -p 3000:3000 -v nextask-data:/data -e NEXTASK_TOKEN=<32 caractères au moins> nextask-server
 #
 # Variables : NEXTASK_TOKEN (requis), NEXTASK_LOCALE, NEXTASK_CORS_ORIGINS, PORT, HOST (cf. src/server/env.ts).
+# TZ : fuseau des récurrences et des rappels (UTC par défaut), celui des utilisateurs (ex. Europe/Paris).
 #
 # Cible par défaut : l'image publiée, sans les routes de test. La cible `test`
 # (docker build --target test) les ajoute et démarre en mode test (NEXTASK_TEST=1),
