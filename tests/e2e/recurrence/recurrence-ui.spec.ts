@@ -342,7 +342,7 @@ test.describe('Création anticipée', () => {
 })
 
 test.describe('Occurrences au tableau', () => {
-  test('la carte de la nouvelle occurrence apparaît sans recharger', async ({ page, taskBoard }) => {
+  test('la carte de la nouvelle occurrence apparaît sans recharger', { tag: '@local' }, async ({ page, taskBoard }) => {
     await createRecurringTask(page.request, { title: 'Quotidienne', startDate: localDate(1), recurrence: DAILY })
     await page.reload()
     await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Quotidienne'])

@@ -2,7 +2,7 @@ import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import type { ElectronApplication } from 'playwright'
 import { API } from '../../helpers/api.helper'
-import { desktop } from '../../helpers/desktop.helper'
+import { desktop, setSetting } from '../../helpers/desktop.helper'
 import {
   DAILY,
   createRecurringTask,
@@ -327,7 +327,7 @@ test.describe('Génération', () => {
       recurrence: DAILY,
       position: 1,
     })
-    await page.evaluate(() => (globalThis as any).settings.set('newTaskPosition', 'top'))
+    await setSetting(page, 'newTaskPosition', 'top')
 
     await runRecurrences(page.request, plusMinutes(localDate(2), 1))
 

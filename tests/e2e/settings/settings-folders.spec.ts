@@ -26,14 +26,18 @@ test('aucun dossier ouvert au départ', async ({ electronApp, page }) => {
   expect(await openedFolders(electronApp)).toEqual([])
 })
 
-test('ouvre le dossier des données, qui contient la base', async ({ electronApp, page, header, settingsPage }) => {
-  await header.goSettings()
-  await settingsPage.openDataFolderButton.click()
+test(
+  'ouvre le dossier des données, qui contient la base',
+  { tag: '@local' },
+  async ({ electronApp, page, header, settingsPage }) => {
+    await header.goSettings()
+    await settingsPage.openDataFolderButton.click()
 
-  await expect.poll(async () => (await openedFolders(electronApp)).map((f) => f.kind)).toEqual(['data'])
-  const [folder] = await openedFolders(electronApp)
-  expect(fs.existsSync(path.join(folder.path, `test${testFileSuffix(TEST_INDEX)}.db`))).toBe(true)
-})
+    await expect.poll(async () => (await openedFolders(electronApp)).map((f) => f.kind)).toEqual(['data'])
+    const [folder] = await openedFolders(electronApp)
+    expect(fs.existsSync(path.join(folder.path, `test${testFileSuffix(TEST_INDEX)}.db`))).toBe(true)
+  },
+)
 
 test('ouvre le dossier des journaux, créé au besoin', async ({ electronApp, page, header, settingsPage }) => {
   await header.goSettings()

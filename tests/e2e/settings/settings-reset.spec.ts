@@ -4,6 +4,7 @@ import { type AppSettings, DEFAULT_SETTINGS, type WindowState } from '@core/shar
 import type { Header } from '../../components/Header'
 import type { SettingsPage } from '../../components/SettingsPage'
 import { API } from '../../helpers/api.helper'
+import { storedSettings } from '../../helpers/desktop.helper'
 
 /**
  * Tests E2E de la réinitialisation des paramètres depuis la page Paramètres :
@@ -27,11 +28,6 @@ const TEST_DEFAULTS: AppSettings = { ...DEFAULT_SETTINGS, language: 'fr' }
 type SettingsBridge = {
   getAll: () => Promise<AppSettings>
   set: (key: keyof AppSettings, value: unknown) => Promise<void>
-}
-
-/** Paramètres enregistrés côté main, lus via le pont du preload. */
-async function storedSettings(page: Page): Promise<AppSettings> {
-  return page.evaluate(() => (globalThis as unknown as { settings: SettingsBridge }).settings.getAll())
 }
 
 /**
@@ -93,21 +89,46 @@ async function expectDefaultSettings(header: Header, settingsPage: SettingsPage)
   await expect(settingsPage.confirmArchiveSwitch).not.toBeChecked()
 }
 
-test('remet les réglages modifiés à leurs valeurs par défaut', async ({ page, header, settingsPage }) => {
-  await header.goSettings()
-  await changeSettings(page, settingsPage)
+test(
+  'remet les réglages modifiés à leurs valeurs par défaut',
+  { tag: '@local' },
+  async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+    await changeSettings(page, settingsPage)
 
-  await settingsPage.askReset()
-  await settingsPage.confirmAcceptButton.click()
+    await settingsPage.askReset()
+    await settingsPage.confirmAcceptButton.click()
 
-  await expectDefaultSettings(header, settingsPage)
-  await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
-  expect(await storedSettings(page)).toEqual(TEST_DEFAULTS)
+    await expectDefaultSettings(header, settingsPage)
+    await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
+    expect(await storedSettings(page)).toEqual(TEST_DEFAULTS)
 
-  // Valeurs par défaut toujours là au redémarrage
-  await page.reload()
-  await expectDefaultSettings(header, settingsPage)
-})
+    // Valeurs par défaut toujours là au redémarrage
+    await page.reload()
+    await expectDefaultSettings(header, settingsPage)
+  },
+)
+
+test(
+  'NexTask Client : remet les réglages de l’appareil, garde ceux des données du serveur',
+  { tag: '@remote' },
+  async ({ page, header, settingsPage }) => {
+    await header.goSettings()
+    await changeSettings(page, settingsPage)
+
+    await settingsPage.askReset()
+    await settingsPage.confirmAcceptButton.click()
+    await expect(page.getByText('Paramètres réinitialisés')).toBeVisible()
+
+    // Appareil : valeurs par défaut ; données : celles du serveur, partagées avec les autres clients
+    await header.expectDarkModeEnabled()
+    await expect(settingsPage.interfaceScaleOption('100 %')).toHaveAttribute('aria-pressed', 'true')
+    await expect(settingsPage.confirmArchiveSwitch).not.toBeChecked()
+    await expect(settingsPage.version('2.0.0')).toHaveCount(1)
+    await expect(settingsPage.newTaskPositionOption('En haut')).toHaveAttribute('aria-pressed', 'true')
+    expect(await storedSettings(page)).toMatchObject({ theme: 'dark', interfaceScale: 100, newTaskPosition: 'top' })
+  },
+)
 
 test('annuler la confirmation ne modifie aucun réglage', async ({ page, header, settingsPage }) => {
   await header.goSettings()

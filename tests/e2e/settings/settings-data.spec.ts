@@ -859,7 +859,7 @@ test.describe('Sauvegarde automatique', () => {
     expect(result).toMatchObject({ enabled: false, created: null, backups: [] })
   })
 
-  test('activée : une copie de la base par jour', async ({ page, header, settingsPage }) => {
+  test('activée : une copie de la base par jour', { tag: '@local' }, async ({ page, header, settingsPage }) => {
     await header.goSettings()
     await settingsPage.autoBackupSwitch.click()
     await expect(settingsPage.autoBackupSwitch).toBeChecked()
@@ -894,29 +894,29 @@ test.describe('Sauvegarde automatique', () => {
     expect(fs.existsSync(path.join(result.directory, backupName(2)))).toBe(false)
   })
 
-  test('chaque sauvegarde garde les documents de la base, même supprimés depuis, et les perd avec elle', async ({
-    page,
-    header,
-    settingsPage,
-  }) => {
-    const task = await createTask(page.request)
-    const withDocument = await addDocument(page.request, task.id, 'devis.pdf', 'PDF')
-    await header.goSettings()
-    await settingsPage.autoBackupSwitch.click()
-    await expect(settingsPage.autoBackupSwitch).toBeChecked()
+  test(
+    'chaque sauvegarde garde les documents de la base, même supprimés depuis, et les perd avec elle',
+    { tag: '@local' },
+    async ({ page, header, settingsPage }) => {
+      const task = await createTask(page.request)
+      const withDocument = await addDocument(page.request, task.id, 'devis.pdf', 'PDF')
+      await header.goSettings()
+      await settingsPage.autoBackupSwitch.click()
+      await expect(settingsPage.autoBackupSwitch).toBeChecked()
 
-    const first = await runBackup(page.request, januaryNoon(1))
-    const sha256 = sha256Of('PDF')
-    const documents = path.join(first.directory, backupName(1).replace(/.db$/, '-documents'))
-    const saved = path.join(documents, sha256.slice(0, 2), sha256)
+      const first = await runBackup(page.request, januaryNoon(1))
+      const sha256 = sha256Of('PDF')
+      const documents = path.join(first.directory, backupName(1).replace(/.db$/, '-documents'))
+      const saved = path.join(documents, sha256.slice(0, 2), sha256)
 
-    // Document supprimé : son fichier quitte la base, pas la sauvegarde
-    expect((await page.request.delete(`${API}/documents/${withDocument.documents[0].id}`)).ok()).toBeTruthy()
-    expect(fs.readFileSync(saved, 'utf8')).toBe('PDF')
+      // Document supprimé : son fichier quitte la base, pas la sauvegarde
+      expect((await page.request.delete(`${API}/documents/${withDocument.documents[0].id}`)).ok()).toBeTruthy()
+      expect(fs.readFileSync(saved, 'utf8')).toBe('PDF')
 
-    for (let day = 2; day <= 8; day++) await runBackup(page.request, januaryNoon(day))
-    expect(fs.existsSync(documents)).toBe(false)
-  })
+      for (let day = 2; day <= 8; day++) await runBackup(page.request, januaryNoon(day))
+      expect(fs.existsSync(documents)).toBe(false)
+    },
+  )
 
   test('le réglage est conservé après un rechargement', async ({ page, header, settingsPage }) => {
     await header.goSettings()

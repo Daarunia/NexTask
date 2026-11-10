@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ElectronApplication } from 'playwright'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import { desktop } from '../../helpers/desktop.helper'
+import { desktop, setSetting } from '../../helpers/desktop.helper'
 import { DEFAULT_BOARD, createBoard, defaultBoardId } from '../../helpers/board.helper'
 
 /**
@@ -115,7 +115,7 @@ test.describe('POST /tasks/quick-add', () => {
     const ids = await stageIds(page.request)
     await createTask(page.request, ids[FIRST_COLUMN], 'A', 0)
     await createTask(page.request, ids[FIRST_COLUMN], 'B', 1)
-    await page.evaluate(() => (globalThis as any).settings.set('newTaskPosition', 'top'))
+    await setSetting(page, 'newTaskPosition', 'top')
 
     await quickAdd(page.request, { title: 'En tête' })
 
@@ -194,7 +194,7 @@ test.describe("Fenêtre d'ajout rapide", () => {
   }) => {
     const ids = await stageIds(page.request)
     await createTask(page.request, ids[OTHER_COLUMN], 'Déjà là', 0)
-    await page.evaluate(() => (globalThis as any).settings.set('newTaskPosition', 'top'))
+    await setSetting(page, 'newTaskPosition', 'top')
     await page.reload()
     await expect.poll(() => taskBoard.columnTaskTitles(OTHER_COLUMN)).toEqual(['Déjà là'])
 

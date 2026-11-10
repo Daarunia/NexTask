@@ -687,43 +687,43 @@ test.describe('Interface', () => {
     )
   })
 
-  test("annuler l'archivage depuis le toast retire la carte née de l'archivage", async ({
-    page,
-    taskBoard,
-    undoToast,
-  }) => {
-    // Créée 30 jours avant sa date : l'occurrence suivante naît au premier passage après l'archivage
-    const origin = await createRecurringTask(page.request, {
-      title: 'Plantes',
-      startDate: localDate(0),
-      recurrence: { ...AFTER_ARCHIVE, interval: 1, leadDays: 30 },
-    })
-    await page.reload()
-    await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Plantes'])
+  test(
+    "annuler l'archivage depuis le toast retire la carte née de l'archivage",
+    { tag: '@local' },
+    async ({ page, taskBoard, undoToast }) => {
+      // Créée 30 jours avant sa date : l'occurrence suivante naît au premier passage après l'archivage
+      const origin = await createRecurringTask(page.request, {
+        title: 'Plantes',
+        startDate: localDate(0),
+        recurrence: { ...AFTER_ARCHIVE, interval: 1, leadDays: 30 },
+      })
+      await page.reload()
+      await expect.poll(() => taskBoard.columnTaskTitles(COLUMN)).toEqual(['Plantes'])
 
-    await taskBoard.archiveTask('Plantes')
-    await expect(taskBoard.taskCard('Plantes')).toHaveCount(0)
-    expect(await runRecurrences(page.request, new Date())).toMatchObject({ created: 1 })
-    await expect(taskBoard.taskCard('Plantes')).toHaveCount(1)
+      await taskBoard.archiveTask('Plantes')
+      await expect(taskBoard.taskCard('Plantes')).toHaveCount(0)
+      expect(await runRecurrences(page.request, new Date())).toMatchObject({ created: 1 })
+      await expect(taskBoard.taskCard('Plantes')).toHaveCount(1)
 
-    await undoToast.undo('Plantes')
+      await undoToast.undo('Plantes')
 
-    // La tâche d'origine revient, l'occurrence née de l'archivage disparaît
-    await expect(taskBoard.taskCard('Plantes')).toHaveCount(1)
-    await expect
-      .poll(async () =>
-        (await seriesTasks(page.request, origin.recurrenceId!)).map((task) => [task.id, task.isHistorized]),
+      // La tâche d'origine revient, l'occurrence née de l'archivage disparaît
+      await expect(taskBoard.taskCard('Plantes')).toHaveCount(1)
+      await expect
+        .poll(async () =>
+          (await seriesTasks(page.request, origin.recurrenceId!)).map((task) => [task.id, task.isHistorized]),
+        )
+        .toEqual([[origin.id, false]])
+      expect(await getSeries(page.request, origin.recurrenceId!)).toMatchObject({ status: 'active', nextRunAt: null })
+
+      // La carte restante est bien la tâche d'origine (sa date de début, pas celle du lendemain)
+      await expect(taskBoard.columnCount(COLUMN)).toHaveText('1')
+      await taskBoard.openEditDialog('Plantes')
+      const start = localDate(0)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      await expect(taskBoard.startDateInput).toHaveValue(
+        `${pad(start.getDate())}/${pad(start.getMonth() + 1)}/${start.getFullYear()} 09:00`,
       )
-      .toEqual([[origin.id, false]])
-    expect(await getSeries(page.request, origin.recurrenceId!)).toMatchObject({ status: 'active', nextRunAt: null })
-
-    // La carte restante est bien la tâche d'origine (sa date de début, pas celle du lendemain)
-    await expect(taskBoard.columnCount(COLUMN)).toHaveText('1')
-    await taskBoard.openEditDialog('Plantes')
-    const start = localDate(0)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    await expect(taskBoard.startDateInput).toHaveValue(
-      `${pad(start.getDate())}/${pad(start.getMonth() + 1)}/${start.getFullYear()} 09:00`,
-    )
-  })
+    },
+  )
 })

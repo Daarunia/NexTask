@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import { desktop } from '../../helpers/desktop.helper'
+import { desktop, storedSettings } from '../../helpers/desktop.helper'
 import { restoreDialogs, stubSaveDialog } from '../../helpers/dialog.helper'
 import {
   addDocument,
@@ -11,7 +11,6 @@ import {
   setDocumentLimits,
 } from '../../helpers/document.helper'
 import { TaskDocuments } from '../../components/TaskDocuments'
-import type { AppSettings } from '@core/shared/settings.constants'
 
 /**
  * Tests E2E de l'interface des documents joints aux tâches : section Documents
@@ -236,11 +235,9 @@ test('les Paramètres règlent les limites des documents et affichent leur place
   await settingsPage.documentMaxSizeInput.fill('5000')
   await settingsPage.documentMaxSizeInput.blur()
 
-  const stored = () =>
-    page.evaluate(async () => {
-      const bridge = globalThis as unknown as { settings: { getAll: () => Promise<AppSettings> } }
-      const all = await bridge.settings.getAll()
-      return [all.documentMaxSizeMb, all.documentMaxPerTask]
-    })
+  const stored = async () => {
+    const all = await storedSettings(page)
+    return [all.documentMaxSizeMb, all.documentMaxPerTask]
+  }
   await expect.poll(stored).toEqual([1024, 25])
 })

@@ -1,7 +1,7 @@
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
-import { desktop } from '../../helpers/desktop.helper'
+import { desktop, setSetting } from '../../helpers/desktop.helper'
 import { createBoard, createTaskIn, DEFAULT_BOARD } from '../../helpers/board.helper'
 import {
   createRecurringTask,
@@ -506,7 +506,7 @@ test.describe('créer', () => {
 
   test('« en haut de colonne » décale les autres cartes', async ({ page, planningPage }) => {
     const first = await createTask(page.request, 'Déjà là')
-    await page.evaluate(() => (globalThis as any).settings.set('newTaskPosition', 'top'))
+    await setSetting(page, 'newTaskPosition', 'top')
     await page.reload()
     await planningPage.open()
 

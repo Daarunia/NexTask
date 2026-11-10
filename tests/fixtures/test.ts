@@ -14,10 +14,17 @@ import { RecurrenceFields } from '../components/RecurrenceFields'
 import { BoardSwitcher } from '../components/BoardSwitcher'
 import { PlanningPage } from '../components/PlanningPage'
 import { electronArgs } from '../../scripts/server-utils.js'
-import { TEST_INDEX } from '../helpers/api.helper'
+import { API, API_HEADERS, IS_REMOTE, REMOTE_TOKEN, TEST_INDEX } from '../helpers/api.helper'
 import { resetApp } from '../helpers/desktop.helper'
+import { startRemoteServer, stopRemoteServer } from '../helpers/remote.helper'
 import { TEST_RENDERER_PORT } from '../helpers/renderer.helper'
-import { TEST_INDEX_ARG, TEST_SLOTS_ARG, TEST_WORKER_PID_ARG } from '@core/shared/test.constants'
+import {
+  TEST_INDEX_ARG,
+  TEST_SERVER_TOKEN_ARG,
+  TEST_SERVER_URL_ARG,
+  TEST_SLOTS_ARG,
+  TEST_WORKER_PID_ARG,
+} from '@core/shared/test.constants'
 
 type Fixtures = {
   ui: boolean
@@ -52,6 +59,11 @@ export const test = base.extend<Fixtures>({
 
   electronApp: [
     async ({}, use, workerInfo) => {
+      // Mode remote : serveur du worker démarré avant l'app (NexTask Client), qui
+      // s'y connecte par arguments, sans écran de connexion
+      if (IS_REMOTE) await startRemoteServer()
+      const serverArgs = IS_REMOTE ? [`${TEST_SERVER_URL_ARG}${API}`, `${TEST_SERVER_TOKEN_ARG}${REMOTE_TOKEN}`] : []
+
       const app = await electron.launch({
         // Instance propre au worker : base, paramètres et port à part (cf. test.constants.ts).
         // Renderer construit, servi par le serveur commun à tous les workers (cf. playwright.config.ts).
@@ -62,16 +74,20 @@ export const test = base.extend<Fixtures>({
           `${TEST_INDEX_ARG}${TEST_INDEX}`,
           `${TEST_SLOTS_ARG}${workerInfo.config.workers}`,
           `${TEST_WORKER_PID_ARG}${process.pid}`,
+          ...serverArgs,
         ]),
         // Mode dev explicite (renderer chargé depuis un serveur, base dans le projet) :
         // rien ne le pose dans l'environnement hérité du worker
         env: { ...process.env, NODE_ENV: 'development' } as Record<string, string>,
+        // Jeton du serveur sur les requêtes des tests (page.request), en mode remote
+        extraHTTPHeaders: API_HEADERS,
       })
 
       try {
         await use(app)
       } finally {
         await app.close()
+        if (IS_REMOTE) stopRemoteServer()
       }
     },
     { scope: 'worker', auto: true, timeout: 100000 } as any,

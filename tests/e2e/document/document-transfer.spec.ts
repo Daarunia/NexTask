@@ -181,30 +181,29 @@ test.describe('archive d’export depuis les Paramètres', () => {
     expect(await documentStoreState(page.request)).toMatchObject({ documents: 3, files: 2, uploads: 0 })
   })
 
-  test('l’export prévient quand des fichiers de documents manquent au dossier', async ({
-    page,
-    electronApp,
-    header,
-    settingsPage,
-  }, testInfo) => {
-    const task = await createTask(page.request, 'Incomplète')
-    await addDocument(page.request, task.id, 'present.txt', 'là')
-    await addDocument(page.request, task.id, 'perdu.txt', 'parti')
-    // Fichier retiré du dossier hors de l'app (synchronisation, suppression à la main)
-    const { directory } = await documentStoreState(page.request)
-    const lost = sha256Of('parti')
-    fs.rmSync(path.join(directory, lost.slice(0, 2), lost))
+  test(
+    'l’export prévient quand des fichiers de documents manquent au dossier',
+    { tag: '@local' },
+    async ({ page, electronApp, header, settingsPage }, testInfo) => {
+      const task = await createTask(page.request, 'Incomplète')
+      await addDocument(page.request, task.id, 'present.txt', 'là')
+      await addDocument(page.request, task.id, 'perdu.txt', 'parti')
+      // Fichier retiré du dossier hors de l'app (synchronisation, suppression à la main)
+      const { directory } = await documentStoreState(page.request)
+      const lost = sha256Of('parti')
+      fs.rmSync(path.join(directory, lost.slice(0, 2), lost))
 
-    const file = testInfo.outputPath('incomplet.zip')
-    await stubSaveDialog(electronApp, file)
-    await header.goSettings()
-    await settingsPage.exportButton.click()
+      const file = testInfo.outputPath('incomplet.zip')
+      await stubSaveDialog(electronApp, file)
+      await header.goSettings()
+      await settingsPage.exportButton.click()
 
-    const warning = page.locator('.p-toast-message-warn')
-    await expect(warning).toContainText('Export incomplet')
-    await expect(warning).toContainText("1 document dont le fichier manque n'a pas pu être joint à l'archive.")
-    expect([...(await readExportArchive(file)).documents.keys()]).toEqual([sha256Of('là')])
-  })
+      const warning = page.locator('.p-toast-message-warn')
+      await expect(warning).toContainText('Export incomplet')
+      await expect(warning).toContainText("1 document dont le fichier manque n'a pas pu être joint à l'archive.")
+      expect([...(await readExportArchive(file)).documents.keys()]).toEqual([sha256Of('là')])
+    },
+  )
 
   test('une archive au document endommagé est refusée, sans rien changer ni rien laisser', async ({
     page,

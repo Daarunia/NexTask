@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { APIRequestContext, APIResponse, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { API } from './api.helper'
+import { setSetting } from './desktop.helper'
 
 /**
  * Appels API partagés par les tests E2E des documents joints aux tâches : ajout
@@ -128,7 +129,7 @@ export async function setDocumentLimits(
   page: Page,
   limits: { documentMaxSizeMb?: number; documentMaxPerTask?: number },
 ): Promise<void> {
-  await page.evaluate(async (values) => {
-    for (const [key, value] of Object.entries(values)) await (globalThis as any).settings.set(key, value)
-  }, limits)
+  for (const [key, value] of Object.entries(limits) as [keyof typeof limits, number][]) {
+    await setSetting(page, key, value)
+  }
 }

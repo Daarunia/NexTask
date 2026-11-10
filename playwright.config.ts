@@ -1,8 +1,16 @@
 import os from 'node:os'
 import { defineConfig } from '@playwright/test'
 import { TEST_RENDERER_PORT } from './tests/helpers/renderer.helper'
+import { API_HEADERS } from './tests/helpers/api.helper'
 
 const isCI = !!process.env.CI
+
+// Mode des tests (cf. tests/helpers/api.helper.ts) : NexTask sur son API intégrée,
+// ou NexTask Client sur un conteneur du serveur (npm run test:e2e:remote)
+const isRemote = process.env.NEXTASK_E2E_MODE === 'remote'
+
+// Workers au plus en remote (cf. workers)
+const REMOTE_MAX_WORKERS = 4
 
 // Ressources d'un worker : le processus Playwright et une app Electron (main,
 // renderer, GPU), ~0,9 Go au pic mesuré, arrondi à 1 Go, et deux processus actifs
@@ -44,7 +52,9 @@ export default defineConfig({
   fullyParallel: true,
   // Une app Electron par worker, chacune avec sa base, ses paramètres et son port
   // (cf. src/core/shared/test.constants.ts)
-  workers: machineWorkers(),
+  // En remote, chaque worker a aussi son conteneur (et Docker sa machine virtuelle) :
+  // au-delà de 4, les conteneurs se disputent la machine et les tests tombent en série
+  workers: isRemote ? Math.min(REMOTE_MAX_WORKERS, machineWorkers()) : machineWorkers(),
   // Un seul serveur pour le renderer de toutes les instances, démarré avant les
   // tests et arrêté après. Il sert le renderer construit par le projet « setup »
   // (cf. scripts/test-renderer.js), jamais le serveur Vite du dev.
@@ -57,7 +67,20 @@ export default defineConfig({
     // Compilation du main avant les tests E2E
     { name: 'setup', testDir: './tests', testMatch: 'global-setup.ts' },
     // Tests E2E : l'app Electron est lancée par les fixtures (cf. tests/fixtures).
-    // Les tests unitaires passent par Vitest (cf. vitest.config.ts).
-    { name: 'e2e', testDir: './tests/e2e', dependencies: ['setup'] },
+    // Les tests unitaires passent par Vitest (cf. vitest.config.ts). Un test propre
+    // à l'API intégrée est marqué @local, un test propre au serveur @remote : chaque
+    // mode saute ceux de l'autre
+    isRemote
+      ? {
+          name: 'remote',
+          testDir: './tests/e2e',
+          dependencies: ['setup'],
+          grepInvert: /@local/,
+          // Emplacement de la base : propre à l'app locale, de bout en bout
+          testIgnore: ['**/settings/settings-database-location.spec.ts'],
+          // Jeton du serveur sur les requêtes de la fixture `request` (page.request le reçoit de la fixture de l'app)
+          use: { extraHTTPHeaders: API_HEADERS },
+        }
+      : { name: 'e2e', testDir: './tests/e2e', dependencies: ['setup'], grepInvert: /@remote/ },
   ],
 })

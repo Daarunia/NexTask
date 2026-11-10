@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test, expect } from '../../fixtures/test'
 import { API } from '../../helpers/api.helper'
+import { setSetting } from '../../helpers/desktop.helper'
 import {
   addDocument,
   createTask,
@@ -147,7 +148,7 @@ test.describe('Ajout', () => {
     expect(await documentStoreState(page.request)).toMatchObject({ documents: 0, files: 0, uploads: 0 })
   })
 
-  test('un envoi coupé par le client ne laisse rien', async ({ page }) => {
+  test('un envoi coupé par le client ne laisse rien', { tag: '@local' }, async ({ page }) => {
     const task = await createTask(page.request)
     const controller = new AbortController()
     const body = new ReadableStream({
@@ -211,32 +212,36 @@ test.describe('Limites', () => {
     expect(await documentStoreState(page.request)).toMatchObject({ documents: 1, files: 1, uploads: 0 })
   })
 
-  test('un envoi par morceaux qui dépasse la limite est refusé sans rien laisser', async ({ page }) => {
-    await setDocumentLimits(page, { documentMaxSizeMb: 1 })
-    const task = await createTask(page.request)
-    const chunk = Buffer.alloc(256 * 1024, 9)
-    let sent = 0
+  test(
+    'un envoi par morceaux qui dépasse la limite est refusé sans rien laisser',
+    { tag: '@local' },
+    async ({ page }) => {
+      await setDocumentLimits(page, { documentMaxSizeMb: 1 })
+      const task = await createTask(page.request)
+      const chunk = Buffer.alloc(256 * 1024, 9)
+      let sent = 0
 
-    // Sans Content-Length : seul le comptage des octets reçus peut le refuser
-    const res = await fetch(`${API}/tasks/${task.id}/documents?name=morceaux.bin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: new ReadableStream({
-        pull(stream) {
-          if (sent === 5) {
-            stream.close()
-            return
-          }
-          sent += 1
-          stream.enqueue(chunk)
-        },
-      }),
-      duplex: 'half',
-    } as RequestInit)
+      // Sans Content-Length : seul le comptage des octets reçus peut le refuser
+      const res = await fetch(`${API}/tasks/${task.id}/documents?name=morceaux.bin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: new ReadableStream({
+          pull(stream) {
+            if (sent === 5) {
+              stream.close()
+              return
+            }
+            sent += 1
+            stream.enqueue(chunk)
+          },
+        }),
+        duplex: 'half',
+      } as RequestInit)
 
-    expect(res.status).toBe(413)
-    expect(await documentStoreState(page.request)).toMatchObject({ documents: 0, files: 0, uploads: 0 })
-  })
+      expect(res.status).toBe(413)
+      expect(await documentStoreState(page.request)).toMatchObject({ documents: 0, files: 0, uploads: 0 })
+    },
+  )
 
   test('les réglages restent dans leurs bornes', async ({ page }) => {
     await expect(setDocumentLimits(page, { documentMaxSizeMb: 1025 })).rejects.toThrow()
@@ -266,7 +271,7 @@ test.describe('Lecture', () => {
     expect((await res.json()).code).toBe('documentNotFound')
   })
 
-  test('un fichier absent du disque le dit, et le document reste supprimable', async ({ page }) => {
+  test('un fichier absent du disque le dit, et le document reste supprimable', { tag: '@local' }, async ({ page }) => {
     const task = await createTask(page.request)
     const saved = await addDocument(page.request, task.id, 'a.txt', 'perdu')
     const { directory } = await documentStoreState(page.request)
@@ -363,7 +368,7 @@ test.describe('Suppression', () => {
   })
 
   test('la purge des archives emporte les documents des tâches purgées seulement', async ({ page }) => {
-    await page.evaluate(() => (globalThis as any).settings.set('archivePurgeEnabled', true))
+    await setSetting(page, 'archivePurgeEnabled', true)
     const old = await createTask(page.request, 'Ancienne')
     const recent = await createTask(page.request, 'Récente')
     await addDocument(page.request, old.id, 'ancien.txt', 'ancien')
@@ -384,7 +389,7 @@ test.describe('Suppression', () => {
     })
     expect(res.ok()).toBeTruthy()
 
-    await page.evaluate(() => (globalThis as any).settings.set('archivePurgeEnabled', true))
+    await setSetting(page, 'archivePurgeEnabled', true)
     await page.request.post(`${API}/test/run-archive-purge`, { data: {} })
     await page.request.post(`${API}/test/run-backup`, { data: {} })
     await page.request.post(`${API}/test/clear-document-uploads`, {
@@ -421,20 +426,24 @@ test.describe('Suppression', () => {
     expect(await documentStoreState(page.request)).toMatchObject({ documents: 1, files: 1 })
   })
 
-  test('un envoi interrompu ancien est retiré au démarrage, pas un envoi récent', async ({ page }) => {
-    const { directory } = await documentStoreState(page.request)
-    const uploads = path.join(directory, 'tmp')
-    fs.mkdirSync(uploads, { recursive: true })
-    fs.writeFileSync(path.join(uploads, 'interrompu'), 'partiel')
+  test(
+    'un envoi interrompu ancien est retiré au démarrage, pas un envoi récent',
+    { tag: '@local' },
+    async ({ page }) => {
+      const { directory } = await documentStoreState(page.request)
+      const uploads = path.join(directory, 'tmp')
+      fs.mkdirSync(uploads, { recursive: true })
+      fs.writeFileSync(path.join(uploads, 'interrompu'), 'partiel')
 
-    const now = (await page.request.post(`${API}/test/clear-document-uploads`, { data: {} })).json()
-    expect((await now).removed).toBe(0)
+      const now = (await page.request.post(`${API}/test/clear-document-uploads`, { data: {} })).json()
+      expect((await now).removed).toBe(0)
 
-    const later = new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString()
-    const res = await page.request.post(`${API}/test/clear-document-uploads`, { data: { now: later } })
-    expect((await res.json()).removed).toBe(1)
-    expect(await documentStoreState(page.request)).toMatchObject({ uploads: 0 })
-  })
+      const later = new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString()
+      const res = await page.request.post(`${API}/test/clear-document-uploads`, { data: { now: later } })
+      expect((await res.json()).removed).toBe(1)
+      expect(await documentStoreState(page.request)).toMatchObject({ uploads: 0 })
+    },
+  )
 })
 
 test.describe('Cycle de vie de la tâche', () => {
