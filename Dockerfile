@@ -5,23 +5,39 @@
 #
 # Variables : NEXTASK_TOKEN (requis), NEXTASK_LOCALE, NEXTASK_CORS_ORIGINS, PORT, HOST (cf. src/server/env.ts).
 
-# ---- Compilation : client Prisma, serveur et core ----
-FROM node:24-bookworm-slim AS build
+# ---- Outils de compilation de better-sqlite3 ----
+# Faute de binaire précompilé pour cette version de Node, le module se compile :
+# ces outils ne servent qu'aux étapes d'installation, pas à l'image finale
+FROM node:24-bookworm-slim AS toolchain
 WORKDIR /app
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 
+# ---- Dépendances d'exécution seules ----
+# Sans les dépendances optionnelles : @prisma/client déclare le CLI Prisma et
+# TypeScript en peer optionnels, inutiles au client généré, que --omit=dev seul
+# garderait (plus de 300 Mo). Aucune dépendance de prod n'est optionnelle
+# (cf. package-lock.json). Le script prepare (husky, dépendance de dev) est
+# retiré avant l'installation
+FROM toolchain AS deps
+COPY package.json package-lock.json ./
+RUN npm pkg delete scripts.prepare \
+ && npm ci --omit=dev --omit=optional \
+ && npm cache clean --force
+
+# ---- Compilation : client Prisma, serveur et core ----
+FROM toolchain AS build
 # Ni binaire d'Electron (dépendance de dev, inutile au serveur) ni hooks Git
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1 \
     HUSKY=0
-
 COPY package.json package-lock.json ./
 RUN npm ci
-
 COPY prisma.config.ts ./
 COPY src/core ./src/core
 COPY src/server ./src/server
 RUN npx prisma generate \
- && npx tsc -p src/server/tsconfig.json \
- && npm prune --omit=dev
+ && npx tsc -p src/server/tsconfig.json
 
 # ---- Image d'exécution ----
 FROM node:24-bookworm-slim
@@ -32,8 +48,8 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000
 
-COPY --from=build /app/package.json ./
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/src/core/prisma/migrations ./src/core/prisma/migrations
 COPY --from=build /app/src/core/prisma/seeds ./src/core/prisma/seeds
