@@ -103,12 +103,20 @@ export interface BuildOptions {
   plugins?: FastifyPluginAsync[]
   /** Remise à zéro propre à celui qui démarre core, appelée par POST /test/reset en mode test. */
   testHooks?: TestResetHooks
+  /**
+   * Appelé avant l'enregistrement des routes, sur l'instance racine : ses hooks
+   * couvrent toutes les routes (authentification, langue par requête du serveur
+   * autonome, par exemple).
+   */
+  setup?: (fastify: FastifyInstance) => void | Promise<void>
 }
 
 /** Options d'écoute du serveur, propres à celui qui le démarre. */
 export interface ServerOptions extends BuildOptions {
   /** Port d'écoute, 0 pour un port choisi par le système. */
   port: number
+  /** Interface d'écoute, localhost par défaut (toutes les interfaces : `0.0.0.0`). */
+  host?: string
 }
 
 /**
@@ -121,6 +129,7 @@ export async function buildServer({
   corsOrigins,
   plugins = [],
   testHooks = {},
+  setup,
 }: BuildOptions): Promise<FastifyInstance> {
   const { isDev, isTest } = config()
   const fastify = Fastify({ logger: isDev ? true : { level: 'error' } })
@@ -146,6 +155,9 @@ export async function buildServer({
 
   // Limitation des requêtes, avant les routes qu'elle doit couvrir
   await registerRateLimit(fastify)
+
+  // Hooks de celui qui démarre core, avant les routes qu'ils doivent couvrir
+  await setup?.(fastify)
 
   // Documentation de l'API, en dev seulement : en prod le port est choisi par
   // le système, la page n'est donc pas joignable et ses dépendances ne sont pas
@@ -180,14 +192,15 @@ export async function buildServer({
 /**
  * Construit puis démarre le serveur Fastify.
  *
- * @param options Port d'écoute, origines autorisées, routes ajoutées et remise à zéro de test
+ * @param options Port et interface d'écoute, origines autorisées, routes ajoutées et remise à zéro de test
+ * @returns Le serveur à l'écoute, à fermer par `close()`
  * @throws Si le serveur n'a pas pu démarrer (port déjà pris en dev ou en test)
  */
-export async function startServer({ port, ...buildOptions }: ServerOptions) {
+export async function startServer({ port, host, ...buildOptions }: ServerOptions): Promise<FastifyInstance> {
   const fastify = await buildServer(buildOptions)
 
   try {
-    await fastify.listen({ port })
+    await fastify.listen({ port, host })
     const address = fastify.server.address() as AddressInfo
     apiUrl = `http://localhost:${address.port}`
     Logger.info(`Fastify API -> ${apiUrl}`)
@@ -196,4 +209,6 @@ export async function startServer({ port, ...buildOptions }: ServerOptions) {
     fastify.log.error(err)
     throw err
   }
+
+  return fastify
 }
