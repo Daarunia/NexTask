@@ -2,21 +2,17 @@ import Store from 'electron-store'
 import { IS_TEST, SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
-  ARCHIVE_PURGE_DAYS,
   BOARD_VIEWS,
   DATE_MINUTE_STEPS,
   DEFAULT_SETTINGS,
-  DOCUMENT_PER_TASK_CEILING,
-  DOCUMENT_SIZE_CEILING_MB,
   INTERFACE_SCALES,
   LANGUAGES,
-  NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
   PLANNING_SCALES,
-  TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
   WINDOW_MODES,
 } from '../../core/shared/settings.constants.js'
+import { DATA_SETTINGS_SCHEMA } from '../../core/shared/settings.schema.js'
 
 /**
  * Valeurs par défaut côté main. En test, l'interface reste en français quelle
@@ -48,22 +44,9 @@ const schema = {
     enum: [...INTERFACE_SCALES],
     default: DEFAULT_SETTINGS.interfaceScale,
   },
-  taskVersions: {
-    type: 'array',
-    items: { type: 'string', pattern: String.raw`\S`, maxLength: TASK_VERSION_MAX_LENGTH },
-    minItems: 1,
-    uniqueItems: true,
-    default: DEFAULT_SETTINGS.taskVersions,
-  },
-  defaultTaskVersion: {
-    type: 'string',
-    default: DEFAULT_SETTINGS.defaultTaskVersion,
-  },
-  newTaskPosition: {
-    type: 'string',
-    enum: [...NEW_TASK_POSITIONS],
-    default: DEFAULT_SETTINGS.newTaskPosition,
-  },
+  taskVersions: { ...DATA_SETTINGS_SCHEMA.taskVersions, default: DEFAULT_SETTINGS.taskVersions },
+  defaultTaskVersion: { ...DATA_SETTINGS_SCHEMA.defaultTaskVersion, default: DEFAULT_SETTINGS.defaultTaskVersion },
+  newTaskPosition: { ...DATA_SETTINGS_SCHEMA.newTaskPosition, default: DEFAULT_SETTINGS.newTaskPosition },
   dateMinuteStep: {
     type: 'integer',
     enum: [...DATE_MINUTE_STEPS],
@@ -73,31 +56,11 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.confirmArchive,
   },
-  archivePurgeEnabled: {
-    type: 'boolean',
-    default: DEFAULT_SETTINGS.archivePurgeEnabled,
-  },
-  archivePurgeDays: {
-    type: 'integer',
-    enum: [...ARCHIVE_PURGE_DAYS],
-    default: DEFAULT_SETTINGS.archivePurgeDays,
-  },
-  autoBackupEnabled: {
-    type: 'boolean',
-    default: DEFAULT_SETTINGS.autoBackupEnabled,
-  },
-  documentMaxSizeMb: {
-    type: 'integer',
-    minimum: 1,
-    maximum: DOCUMENT_SIZE_CEILING_MB,
-    default: DEFAULT_SETTINGS.documentMaxSizeMb,
-  },
-  documentMaxPerTask: {
-    type: 'integer',
-    minimum: 1,
-    maximum: DOCUMENT_PER_TASK_CEILING,
-    default: DEFAULT_SETTINGS.documentMaxPerTask,
-  },
+  archivePurgeEnabled: { ...DATA_SETTINGS_SCHEMA.archivePurgeEnabled, default: DEFAULT_SETTINGS.archivePurgeEnabled },
+  archivePurgeDays: { ...DATA_SETTINGS_SCHEMA.archivePurgeDays, default: DEFAULT_SETTINGS.archivePurgeDays },
+  autoBackupEnabled: { ...DATA_SETTINGS_SCHEMA.autoBackupEnabled, default: DEFAULT_SETTINGS.autoBackupEnabled },
+  documentMaxSizeMb: { ...DATA_SETTINGS_SCHEMA.documentMaxSizeMb, default: DEFAULT_SETTINGS.documentMaxSizeMb },
+  documentMaxPerTask: { ...DATA_SETTINGS_SCHEMA.documentMaxPerTask, default: DEFAULT_SETTINGS.documentMaxPerTask },
   rememberTagFilter: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.rememberTagFilter,

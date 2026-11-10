@@ -1,25 +1,17 @@
 import type { AppSettings } from './shared/settings.constants.js'
+import type { DataSettings } from './shared/settings.schema.js'
 
 /**
  * Réglages lus par core, fournis par celui qui le démarre : le fichier de
- * paramètres d'electron-store dans l'app desktop, la base plus tard pour un
- * serveur partagé par plusieurs clients.
+ * paramètres d'electron-store dans l'app desktop, la base pour le serveur
+ * autonome (cf. database/serverSettings.ts).
  *
- * Seuls les réglages qui touchent aux données y figurent. Ceux de l'appareil
- * (thème, fenêtres, notifications…) restent hors de core.
+ * Les réglages « données » (cf. DATA_SETTINGS_KEYS), plus `lastBoardId`, repli
+ * de l'ajout rapide : un état d'interface, toujours `null` côté serveur où
+ * chaque client aura son propre tableau. Ceux de l'appareil (thème, fenêtres,
+ * notifications…) restent hors de core.
  */
-export type ServerSettings = Pick<
-  AppSettings,
-  | 'taskVersions'
-  | 'defaultTaskVersion'
-  | 'newTaskPosition'
-  | 'lastBoardId'
-  | 'archivePurgeEnabled'
-  | 'archivePurgeDays'
-  | 'autoBackupEnabled'
-  | 'documentMaxSizeMb'
-  | 'documentMaxPerTask'
->
+export type ServerSettings = DataSettings & Pick<AppSettings, 'lastBoardId'>
 
 let provider: (() => ServerSettings) | null = null
 

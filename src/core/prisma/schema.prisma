@@ -189,3 +189,11 @@ model Seed {
 
   @@map("_seeds")
 }
+
+// Réglage « données » du serveur autonome (cf. core/database/serverSettings.ts),
+// valeur en JSON. Vide dans l'app desktop, qui garde ses réglages dans electron-store
+model ServerSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
