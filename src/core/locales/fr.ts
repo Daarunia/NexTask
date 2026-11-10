@@ -51,6 +51,7 @@ export const fr = {
     templateChecklistClamped: 'Modèle « {name} » ramené à {maxItems} points de {maxLength} caractères au plus',
     templateNameTruncated: 'Nom de modèle raccourci à {maxLength} caractères (« {name} »)',
     duplicateTemplateName: 'Plusieurs modèles portent le nom « {name} », seul le premier est importé',
+    documentFileMissing: 'Document « {name} » de la tâche {id} absent du fichier, non importé',
   } satisfies Record<ImportProblemCode, string>,
 }
 

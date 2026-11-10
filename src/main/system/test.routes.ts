@@ -3,6 +3,7 @@ import { UPDATE_STATES, type UpdateStatus } from '../../core/shared/update.const
 import { handleNotificationClick, runNotificationCheck } from '../scheduler/notificationScheduler.js'
 import { settingsStore } from '../stores/settings.js'
 import { clearOpenedFolders, FOLDER_KINDS, getOpenedFolders } from './folders.js'
+import { clearOpenedDocumentCopies, clearOpenedDocuments, getOpenedDocuments } from './documents.js'
 import { getDatabaseLocationForTest, resetDatabaseLocationForTest } from './databaseLocation.js'
 import { ABOUT_LINK_KINDS, clearOpenedLinks, getOpenedLinks } from './about.js'
 import { clearOpenedUrls, getOpenedUrls } from './externalLinks.js'
@@ -19,9 +20,11 @@ export const desktopTestResetHooks: TestResetHooks = {
   // relus par le renderer au rechargement qui suit le reset. Avant les seeds,
   // pour qu'elles suivent la langue par défaut et non celle d'un test précédent
   beforeSeeds: () => settingsStore.clear(),
-  afterReset: () => {
+  afterReset: async () => {
     // Ouvertures de dossiers et de liens des tests précédents oubliées
     clearOpenedFolders()
+    clearOpenedDocuments()
+    await clearOpenedDocumentCopies()
     clearOpenedLinks()
     clearOpenedUrls()
 
@@ -45,6 +48,7 @@ export const desktopTestResetHooks: TestResetHooks = {
  * - POST /test/run-notifications  → déclenche un passage du planificateur de notifications
  * - POST /test/click-notification → simule le clic sur une notification de rappel (tâches annoncées en corps)
  * - GET  /test/opened-folders     → dossiers dont l'ouverture a été demandée (simulée en test)
+ * - GET  /test/opened-documents   → documents dont l'ouverture a été demandée (copie écrite, rien ne s'ouvre en test)
  * - GET  /test/database-location  → emplacement de la base enregistré et redémarrage demandé (simulé en test)
  * - GET  /test/opened-links       → liens « À propos » dont l'ouverture a été demandée (simulée en test)
  * - GET  /test/opened-urls        → liens cliqués dans une page, envoyés au navigateur par défaut (simulé en test)
@@ -167,6 +171,38 @@ export default async function desktopTestRoutes(fastify) {
       },
     },
     async () => getOpenedFolders(),
+  )
+
+  /**
+   * GET /test/opened-documents
+   *
+   * Documents dont l'ouverture a été demandée depuis le dernier reset, dans
+   * l'ordre. En mode test, l'IPC `documents:open` écrit la copie temporaire
+   * mais ne la confie pas à l'application par défaut.
+   *
+   * @returns {Promise<Array<{name: string, path: string}>>} Nom du document et chemin de sa copie
+   */
+  fastify.get(
+    '/test/opened-documents',
+    {
+      schema: {
+        description: "Documents dont l'ouverture a été demandée (tests E2E uniquement)",
+        tags: ['Test'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                path: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async () => getOpenedDocuments(),
   )
 
   /**

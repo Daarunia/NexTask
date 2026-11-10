@@ -71,6 +71,22 @@ export class ArchivesPage {
   }
 
   /**
+   * Trombone et nombre de documents d'une ligne, absent sans document.
+   * @param title Titre exact de la tâche
+   */
+  documentsBadge(title: string): Locator {
+    return this.item(title).getByTestId('archived-task-documents')
+  }
+
+  /**
+   * Déplie le détail d'une ligne (description, points, documents).
+   * @param title Titre exact de la tâche
+   */
+  async expandDetails(title: string) {
+    await this.item(title).getByTestId('archived-task-toggle').click()
+  }
+
+  /**
    * Tableau d'une ligne (pastille et nom, « Tableau supprimé »), absent avec un seul tableau.
    * @param title Titre exact de la tâche
    */

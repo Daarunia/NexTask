@@ -30,6 +30,7 @@ import {
   recurrenceInputProblem,
 } from '../helpers/recurrence.helper.js'
 import { settings } from '../../settings.js'
+import { releaseDocumentFiles } from '../../database/documentStore.js'
 import type { RecurrenceInput, SeriesPlacement } from '../../shared/recurrence.constants.js'
 import type { ChecklistItemInput } from '../../shared/checklist.constants.js'
 import Logger from '../../logger.js'
@@ -581,6 +582,8 @@ export default async function taskRoutes(fastify) {
    *
    * Supprime une tâche par son ID. Supprimer l'occurrence au tableau d'une
    * série « après archivage » la libère comme un archivage (cf. onOccurrenceDeleted).
+   * Ses documents partent avec elle, et leurs fichiers s'ils ne servent à aucune
+   * autre tâche (cf. releaseDocumentFiles).
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -604,10 +607,14 @@ export default async function taskRoutes(fastify) {
     async (req, reply) => {
       const id = Number(req.params.id)
       try {
-        await prisma.$transaction(async (tx) => {
+        const hashes = await prisma.$transaction(async (tx) => {
+          // Lues avant la suppression, la cascade emportant les lignes
+          const documents = await tx.document.findMany({ where: { taskId: id }, select: { sha256: true } })
           const deleted = await tx.task.delete({ where: { id } })
           await onOccurrenceDeleted(tx, deleted, new Date())
+          return documents.map((document) => document.sha256)
         })
+        await releaseDocumentFiles(hashes)
         Logger.info(`Tâche ${id} supprimée`)
         return { message: 'Tâche supprimée' }
       } catch (error) {
@@ -876,10 +883,10 @@ export default async function taskRoutes(fastify) {
    * Duplique une tâche du tableau juste sous l'originale, dans la même
    * colonne (les tâches suivantes descendent d'un cran). La copie reprend la
    * version, la description, la date de début (et son rappel déjà envoyé, pour
-   * ne pas notifier deux fois), les tags et les textes des points de la
-   * checklist, tous décochés, ainsi que son tableau. Elle ne fait partie
-   * d'aucune série. Le titre est choisi par le renderer, dans la langue de
-   * l'interface.
+   * ne pas notifier deux fois), les tags, les textes des points de la checklist,
+   * tous décochés, ses documents, sur les mêmes fichiers, et son tableau. Elle ne
+   * fait partie d'aucune série. Le titre est choisi par le renderer, dans la
+   * langue de l'interface.
    *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.params - Paramètres de la requête
@@ -942,6 +949,13 @@ export default async function taskRoutes(fastify) {
         })
         const items = (source.checklist?.items ?? []).map((item) => ({ text: item.text, isChecked: false }))
         await syncTaskChecklist(tx, copy.id, items, new Date())
+
+        const documents = await tx.document.findMany({
+          where: { taskId: id },
+          select: { name: true, size: true, sha256: true },
+          orderBy: { id: 'asc' },
+        })
+        await tx.document.createMany({ data: documents.map((document) => ({ ...document, taskId: copy.id })) })
 
         Logger.info(`Tâche ${id} dupliquée en ${copy.id} (colonne ${source.stageId}, position ${position})`)
         return tx.task.findUniqueOrThrow({ where: { id: copy.id }, include: taskInclude })

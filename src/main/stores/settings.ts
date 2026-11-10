@@ -3,12 +3,16 @@ import { IS_TEST, SETTINGS_FILE } from '../constants.js'
 import {
   type AppSettings,
   ARCHIVE_PURGE_DAYS,
+  BOARD_VIEWS,
   DATE_MINUTE_STEPS,
   DEFAULT_SETTINGS,
+  DOCUMENT_PER_TASK_CEILING,
+  DOCUMENT_SIZE_CEILING_MB,
   INTERFACE_SCALES,
   LANGUAGES,
   NEW_TASK_POSITIONS,
   NOTIFICATION_STYLES,
+  PLANNING_SCALES,
   TASK_VERSION_MAX_LENGTH,
   THEME_MODES,
   WINDOW_MODES,
@@ -82,6 +86,18 @@ const schema = {
     type: 'boolean',
     default: DEFAULT_SETTINGS.autoBackupEnabled,
   },
+  documentMaxSizeMb: {
+    type: 'integer',
+    minimum: 1,
+    maximum: DOCUMENT_SIZE_CEILING_MB,
+    default: DEFAULT_SETTINGS.documentMaxSizeMb,
+  },
+  documentMaxPerTask: {
+    type: 'integer',
+    minimum: 1,
+    maximum: DOCUMENT_PER_TASK_CEILING,
+    default: DEFAULT_SETTINGS.documentMaxPerTask,
+  },
   rememberTagFilter: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.rememberTagFilter,
@@ -101,6 +117,16 @@ const schema = {
   lastBoardId: {
     type: ['integer', 'null'],
     default: DEFAULT_SETTINGS.lastBoardId,
+  },
+  boardView: {
+    type: 'string',
+    enum: [...BOARD_VIEWS],
+    default: DEFAULT_SETTINGS.boardView,
+  },
+  planningScale: {
+    type: 'string',
+    enum: [...PLANNING_SCALES],
+    default: DEFAULT_SETTINGS.planningScale,
   },
   notificationsEnabled: {
     type: 'boolean',
@@ -173,8 +199,8 @@ export function isSettingsKey(key: unknown): key is SettingsKeys {
 /**
  * Remet les paramètres à leurs valeurs par défaut, en une seule écriture. La
  * dernière taille et position de la fenêtre, tenue par le main et non réglable,
- * est conservée, comme les colonnes repliées et le dernier tableau affiché
- * (états d'affichage du tableau). Les écouteurs `onDidChange` (zone de
+ * est conservée, comme les colonnes repliées, le dernier tableau affiché, la vue
+ * et l'échelle du Planning (états d'affichage du tableau). Les écouteurs `onDidChange` (zone de
  * notification, lancement au démarrage) suivent les clés modifiées.
  *
  * @returns Paramètres après la remise à zéro
@@ -186,6 +212,8 @@ export function resetSettings(): AppSettings {
     windowState: settingsStore.get('windowState'),
     collapsedStageIds: settingsStore.get('collapsedStageIds'),
     lastBoardId: settingsStore.get('lastBoardId'),
+    boardView: settingsStore.get('boardView'),
+    planningScale: settingsStore.get('planningScale'),
   })
   return settingsStore.store
 }

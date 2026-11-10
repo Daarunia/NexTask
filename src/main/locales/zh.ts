@@ -23,11 +23,16 @@ export const zh: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — 快速添加',
   },
+  documents: {
+    saveTitle: '保存文档',
+  },
   dataTransfer: {
     exportTitle: '导出数据',
     importTitle: '导入数据',
     fileFilter: 'NexTask 导出文件',
     unreadableFile: '该文件不是可读取的 JSON 文件',
+    unreadableArchive: '该文件不是可读取的 NexTask 导出压缩包',
+    damagedDocument: '压缩包中的某个文档已损坏或过大',
   },
   // Emplacement de la base (cf. system/databaseLocation.ts)
   databaseLocation: {
@@ -38,6 +43,7 @@ export const zh: MainMessages = {
     problems: {
       sameLocation: 'NexTask 已在使用此数据库',
       alreadyExists: '此文件夹中已有 nextask.db 数据库。请通过“打开数据库…”打开它，或选择其他文件夹',
+      documentsExist: '此文件夹中已有旧数据库留下的 nextask-documents 文件夹。请选择其他文件夹',
       notWritable: '无法将数据库复制到此文件夹',
       copyFailed: '数据库副本不完整，已被删除',
       unreadable: '文件不存在或无法读取',

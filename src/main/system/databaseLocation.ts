@@ -5,7 +5,8 @@ import { app, type BrowserWindow, dialog, type MessageBoxOptions, type OpenDialo
 import Logger from 'electron-log'
 import { BACKUPS_PATH, DEFAULT_DB_PATH, IS_TEST } from '../constants.js'
 import { DB_PATH, IS_CUSTOM_DB, setDatabasePath, storageStore } from '../database/location.js'
-import { checkDatabaseContent, hasSqliteHeader, isSamePath } from '../../core/database/databaseFile.js'
+import { checkDatabaseContent, documentsDirFor, hasSqliteHeader, isSamePath } from '../../core/database/databaseFile.js'
+import { copyDocumentFiles, referencedDocumentHashes } from '../../core/database/documentStore.js'
 import { acquireLock, findForeignLock, releaseLock } from '../../core/database/lock.js'
 import { copyDatabase } from '../../core/scheduler/databaseBackup.js'
 import { knownMigrations } from '../../core/database/setupDatabase.js'
@@ -24,7 +25,8 @@ import { getLocale, t } from '../i18n.js'
  * Un nouvel emplacement est enregistré (cf. database/location.ts) puis l'app
  * redémarre pour l'ouvrir : le client Prisma, les migrations et les seeds
  * suivent alors le même chemin que d'habitude. L'ancienne base n'est jamais
- * supprimée.
+ * supprimée. Une base copiée emporte les contenus de ses documents dans son
+ * propre dossier des documents (cf. documentsDirFor).
  *
  * En mode test, l'app ne redémarre pas : la demande est seulement notée, et
  * les tests la relisent via GET /test/database-location.
@@ -68,6 +70,30 @@ function invalid(code: DatabaseProblemCode): DatabaseLocationResult {
 function removeDatabaseFiles(file: string): void {
   for (const suffix of ['', '-wal', '-shm', '-journal', '.tmp']) {
     fs.rmSync(`${file}${suffix}`, { force: true })
+  }
+}
+
+/**
+ * Copie dans le dossier des documents d'une copie de base les contenus que
+ * cette copie référence, depuis le dossier des documents de la base d'origine.
+ * Une copie en échec retire le dossier commencé : il n'existait pas avant.
+ *
+ * @param sourceDb Base d'origine, dont le dossier des documents est lu
+ * @param targetDb Copie de la base, déjà écrite
+ * @param link Liens en dur quand c'est possible (dossiers de l'app, sur le même volume)
+ * @returns Vrai si tous les contenus présents sont copiés
+ */
+async function copyDatabaseDocuments(sourceDb: string, targetDb: string, link = false): Promise<boolean> {
+  const target = documentsDirFor(targetDb)
+  try {
+    const hashes = referencedDocumentHashes(targetDb)
+    const { copied, missing } = await copyDocumentFiles(documentsDirFor(sourceDb), target, hashes, { link })
+    Logger.info(`[base] ${copied} document(s) copié(s) vers ${target}, ${missing} absent(s) de l'origine`)
+    return true
+  } catch (error) {
+    Logger.error(`[base] Copie des documents impossible vers ${target} :`, error)
+    fs.rmSync(target, { recursive: true, force: true })
+    return false
   }
 }
 
@@ -215,8 +241,9 @@ export async function openDatabase(window: BrowserWindow | null): Promise<Databa
 /**
  * Déplace la base dans un dossier choisi par l'utilisateur : copie de la base
  * actuelle en `nextask.db`, enregistrement du nouvel emplacement, puis
- * redémarrage. L'ancienne base reste où elle était. Un dossier qui contient
- * déjà une base NexTask est refusé, jamais écrasé.
+ * redémarrage. L'ancienne base reste où elle était, et ses documents sont copiés
+ * à côté de la nouvelle. Un dossier qui contient déjà une base NexTask, ou le
+ * dossier des documents d'une ancienne base, est refusé, jamais écrasé.
  *
  * @param window Fenêtre parente de la boîte de dialogue
  */
@@ -230,9 +257,15 @@ export async function moveDatabase(window: BrowserWindow | null): Promise<Databa
   const target = path.join(directory, DATABASE_FILE_NAME)
   if (isSamePath(target, DB_PATH)) return invalid('sameLocation')
   if (fs.existsSync(target)) return invalid('alreadyExists')
+  // Dossier des documents resté d'une ancienne base : jamais mélangé à ceux de la base copiée
+  if (fs.existsSync(documentsDirFor(target))) return invalid('documentsExist')
 
   const problem = await copyCurrentDatabase(target)
   if (problem) return invalid(problem)
+  if (!(await copyDatabaseDocuments(DB_PATH, target))) {
+    removeDatabaseFiles(target)
+    return invalid('notWritable')
+  }
 
   setDatabasePath(target)
   Logger.info(`[base] Base copiée de ${DB_PATH} vers ${target}, ouverte au redémarrage`)
@@ -248,6 +281,53 @@ export async function moveDatabase(window: BrowserWindow | null): Promise<Databa
 function replacedDefaultName(): string {
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-')
   return `${path.basename(DEFAULT_DB_PATH, '.db')}-remplacee-${stamp}.db`
+}
+
+/**
+ * Range la base par défaut et ses documents dans le dossier des sauvegardes,
+ * puis les retire de l'emplacement par défaut. Rien à faire sans base par défaut.
+ *
+ * @returns Motif de l'échec, ou `null` si l'emplacement par défaut est libre
+ */
+async function setDefaultDatabaseAside(): Promise<DatabaseProblemCode | null> {
+  if (!fs.existsSync(DEFAULT_DB_PATH)) return null
+
+  fs.mkdirSync(BACKUPS_PATH, { recursive: true })
+  const kept = path.join(BACKUPS_PATH, replacedDefaultName())
+  try {
+    await copyDatabase(kept, DEFAULT_DB_PATH)
+  } catch (error) {
+    Logger.error(`[base] Sauvegarde de la base par défaut impossible vers ${kept} :`, error)
+    return 'notWritable'
+  }
+  // Ses documents la suivent, puis quittent l'emplacement par défaut avec elle
+  if (!(await copyDatabaseDocuments(DEFAULT_DB_PATH, kept, true))) {
+    removeDatabaseFiles(kept)
+    return 'notWritable'
+  }
+  Logger.info(`[base] Base par défaut sauvegardée dans ${kept} avant d'être remplacée`)
+  removeDatabaseFiles(DEFAULT_DB_PATH)
+  fs.rmSync(documentsDirFor(DEFAULT_DB_PATH), { recursive: true, force: true })
+  return null
+}
+
+/**
+ * Remplace la base par défaut par une copie de la base actuelle et de ses
+ * documents, l'ancienne étant d'abord rangée dans les sauvegardes.
+ *
+ * @returns Motif de l'échec, ou `null` si la copie est prête
+ */
+async function replaceDefaultDatabase(): Promise<DatabaseProblemCode | null> {
+  const asideProblem = await setDefaultDatabaseAside()
+  if (asideProblem) return asideProblem
+
+  const problem = await copyCurrentDatabase(DEFAULT_DB_PATH)
+  if (problem) return problem
+  if (!(await copyDatabaseDocuments(DB_PATH, DEFAULT_DB_PATH))) {
+    removeDatabaseFiles(DEFAULT_DB_PATH)
+    return 'notWritable'
+  }
+  return null
 }
 
 /**
@@ -278,20 +358,7 @@ export async function useDefaultDatabase(window: BrowserWindow | null): Promise<
   if (response === 2) return { status: 'canceled' }
 
   if (response === 1) {
-    if (fs.existsSync(DEFAULT_DB_PATH)) {
-      fs.mkdirSync(BACKUPS_PATH, { recursive: true })
-      const kept = path.join(BACKUPS_PATH, replacedDefaultName())
-      try {
-        await copyDatabase(kept, DEFAULT_DB_PATH)
-      } catch (error) {
-        Logger.error(`[base] Sauvegarde de la base par défaut impossible vers ${kept} :`, error)
-        return invalid('notWritable')
-      }
-      Logger.info(`[base] Base par défaut sauvegardée dans ${kept} avant d'être remplacée`)
-      removeDatabaseFiles(DEFAULT_DB_PATH)
-    }
-
-    const problem = await copyCurrentDatabase(DEFAULT_DB_PATH)
+    const problem = await replaceDefaultDatabase()
     if (problem) return invalid(problem)
   }
 

@@ -39,5 +39,6 @@ export const zh: CoreMessages = {
     templateChecklistClamped: '模板“{name}”已缩减为最多 {maxItems} 项，每项最多 {maxLength} 个字符',
     templateNameTruncated: '模板名称已缩短为 {maxLength} 个字符（“{name}”）',
     duplicateTemplateName: '多个模板名为“{name}”，仅导入第一个',
+    documentFileMissing: '任务 {id} 的文档“{name}”不在文件中，未导入',
   },
 }

@@ -10,12 +10,12 @@ src/
   core/                Serveur et données, sans Electron ni import du main (compilés avec le main)
     config.ts          initCore() : chemins, version, modes ; settings.ts, i18n.ts, logger.ts : fournisseurs
     server/            API Fastify locale
-      routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data)
+      routes/          Une route par domaine (task, stage, board, tag, recurrence, checklistTemplate, data, document)
                        test.routes.ts : remise à zéro de la base et pilotage, pour les tests E2E
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
-    database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage
+    database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage, dossier des documents
     scheduler/         Tâches de fond : récurrences, rappels échus, sauvegardes, purge des archives
     shared/            Constantes et helpers partagés avec le renderer (*.constants.ts, *.helper.ts)
     locales/           Textes produits par le serveur (colonnes par défaut, motifs d'import), 5 langues

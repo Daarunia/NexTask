@@ -40,5 +40,6 @@ export const pt: CoreMessages = {
     templateChecklistClamped: 'Modelo “{name}” reduzido a {maxItems} itens de no máximo {maxLength} caracteres',
     templateNameTruncated: 'Nome de modelo encurtado para {maxLength} caracteres (“{name}”)',
     duplicateTemplateName: 'Vários modelos se chamam “{name}”, apenas o primeiro é importado',
+    documentFileMissing: 'O documento “{name}” da tarefa {id} não está no arquivo e não foi importado',
   },
 }

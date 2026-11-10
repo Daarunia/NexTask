@@ -41,9 +41,29 @@ model Task {
   // Null seulement pour une tâche archivée dont le tableau a été supprimé
   boardId           Int?
   board             Board?      @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  // Fichiers joints à la tâche (cf. Document)
+  documents         Document[]
 
   @@unique([recurrenceId, occurrenceDate])
   @@index([boardId])
+}
+
+// entity "Document" : fichier joint à une tâche, contenu dans le dossier des documents.
+// Plusieurs lignes peuvent désigner le même contenu (tâche dupliquée, fichier ajouté deux fois)
+model Document {
+  id        Int      @id @default(autoincrement())
+  // Nom affiché et proposé à l'enregistrement, déjà nettoyé (cf. sanitizeDocumentName)
+  name      String
+  // Taille du contenu en octets (1 Go au plus, un Int Prisma s'arrête à 2 Go)
+  size      Int
+  // Empreinte SHA-256 du contenu, en hexadécimal : nom du fichier sur le disque
+  sha256    String
+  taskId    Int
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([sha256])
 }
 
 // entity "Étiquette"

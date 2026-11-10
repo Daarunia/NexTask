@@ -8,6 +8,7 @@ import {
   importedBoards,
   importedSeriesChecklist,
   importedTaskChecklist,
+  importedTaskDocuments,
   paletteColor,
   planTemplateImport,
   truncateText,
@@ -19,7 +20,7 @@ import {
 } from '@core/shared/checklist.constants'
 
 /**
- * Tests unitaires des helpers de l'import des checklists et des tableaux
+ * Tests unitaires des helpers de l'import des checklists, des tableaux et des documents
  * (Vitest, cf. vitest.config.ts), sans lancer l'app.
  */
 
@@ -292,5 +293,55 @@ describe('boardPlacement', () => {
     expect(placement.kept(99)).toBeNull()
     expect(placement.kept(null)).toBeNull()
     expect(placement.kept(undefined)).toBeNull()
+  })
+})
+
+describe('importedTaskDocuments', () => {
+  const A = 'a'.repeat(64)
+  const B = 'b'.repeat(64)
+
+  test('garde les documents dont le contenu est présent, avec la taille du fichier', () => {
+    const sizes = new Map([[A, 120]])
+    const { rows, problems } = importedTaskDocuments(
+      7,
+      [{ name: 'devis.pdf', size: 999, sha256: A, createdAt: '2026-11-01T10:00:00.000Z' }],
+      sizes,
+    )
+    expect(rows).toEqual([{ name: 'devis.pdf', size: 120, sha256: A, createdAt: '2026-11-01T10:00:00.000Z' }])
+    expect(problems).toEqual([])
+  })
+
+  test('écarte et signale un document dont le contenu manque', () => {
+    const { rows, problems } = importedTaskDocuments(
+      7,
+      [
+        { name: 'absent.pdf', size: 10, sha256: B },
+        { name: 'présent.txt', size: 5, sha256: A },
+      ],
+      new Map([[A, 5]]),
+    )
+    expect(rows.map((row) => row.name)).toEqual(['présent.txt'])
+    expect(problems).toEqual([{ code: 'documentFileMissing', params: { id: 7, name: 'absent.pdf' } }])
+  })
+
+  test('nettoie les noms comme à l’ajout, et les rend uniques dans la tâche', () => {
+    const sizes = new Map([
+      [A, 1],
+      [B, 2],
+    ])
+    const { rows } = importedTaskDocuments(
+      1,
+      [
+        { name: '../secret.txt', size: 1, sha256: A },
+        { name: '../secret.txt', size: 2, sha256: B },
+        { name: '   ', size: 1, sha256: A },
+      ],
+      sizes,
+    )
+    expect(rows.map((row) => row.name)).toEqual(['.._secret.txt', '.._secret (2).txt', 'document'])
+  })
+
+  test('sans documents (export antérieur), rien à créer', () => {
+    expect(importedTaskDocuments(1, undefined, new Map())).toEqual({ rows: [], problems: [] })
   })
 })

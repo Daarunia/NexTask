@@ -40,5 +40,6 @@ export const en: CoreMessages = {
     templateChecklistClamped: 'Template “{name}” reduced to {maxItems} items of at most {maxLength} characters',
     templateNameTruncated: 'Template name shortened to {maxLength} characters (“{name}”)',
     duplicateTemplateName: 'Several templates are named “{name}”, only the first one is imported',
+    documentFileMissing: 'Document “{name}” of task {id} is missing from the file and was not imported',
   },
 }

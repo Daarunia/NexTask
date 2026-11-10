@@ -159,16 +159,15 @@ import KanbanTaskDialog from './KanbanTaskDialog.vue'
 import { useTaskStore } from '../../stores/Task'
 import { useStageStore } from '../../stores/Stage'
 import { useBoardStore } from '../../stores/Board'
-import { useTagStore } from '../../stores/Tag'
 import { useSettingsStore } from '../../stores/Settings'
 import { useBoardFilterStore } from '../../stores/BoardFilter'
 import { Task } from '../../types/task.types'
 import { Stage } from '../../types/stage.types'
-import { Tag, TagSelection } from '../../types/tag.types'
+import type { TagSelection } from '../../types/tag.types'
 import { getLogger } from '../../utils/logger'
-import { useBoardLists } from '../../utils/boardLists.helper'
+import { useBoardLists, type TaskLocation } from '../../utils/boardLists.helper'
 import { useActionToast, useErrorToast, useUndoToast } from '../../utils/toast.helper'
-import { compareTagNames } from '../../utils/tag.helper'
+import { useTaskActions, type TaskCardLocation } from '../../utils/taskActions.helper'
 import { checklistProgress, withItemChecked, withSavedItem } from '../../utils/checklist.helper'
 import { sortByStartDate } from '../../utils/date.helper'
 import type { TaskChecklist } from '../../types/checklist.types'
@@ -178,7 +177,6 @@ import { useDangerConfirm } from '../../utils/confirm.helper'
 import { isEditableTarget, isInOverlay } from '../../utils/keyboard.helper'
 import { TAG_COLOR_STYLES, getTagColorStyle } from '../../constants/tag.constants'
 import type { TagColor } from '@core/shared/tag.constants'
-import type { SeriesPlacement } from '@core/shared/recurrence.constants'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -191,7 +189,6 @@ const logger = getLogger()
 const taskStore = useTaskStore()
 const stageStore = useStageStore()
 const boardStore = useBoardStore()
-const tagStore = useTagStore()
 const settings = useSettingsStore()
 const boardFilter = useBoardFilterStore()
 const { t } = useI18n()
@@ -208,6 +205,16 @@ const editTask = ref<Task | null>(null)
 const creationMode = ref(true)
 const board = useBoardLists()
 const taskLists = board.lists // colonnes locales, seule source de vérité après le montage
+
+// Documents ajoutés ou supprimés depuis le dialogue, repris sur la carte. Suivis
+// au niveau du store : un envoi peut se terminer après la fermeture du dialogue.
+// Abonnement retiré avec le composant.
+taskStore.$onAction(({ name, after }) => {
+  if (name !== 'uploadDocument' && name !== 'deleteDocument') return
+  after((updated: Task) => {
+    board.update(updated.id, (current) => ({ ...current, documents: updated.documents, updatedAt: updated.updatedAt }))
+  })
+})
 const stageDialog = ref<number | null>(null)
 const selectedStage = ref<Stage | null>(null)
 const stagesLocal = ref<Stage[]>([])
@@ -219,6 +226,39 @@ const editingStageId = ref<number | null>(null) // stage en cours d'édition
 const editedStageName = ref('') // nom temporaire pour l'édition
 const defaultTagsDialog = ref<TagSelection[]>([]) // tags pré-remplis à la création
 const cardMenu = ref<InstanceType<typeof KanbanCardMenu> | null>(null)
+
+/**
+ * Place d'une carte dans les colonnes locales, pour les actions communes.
+ * @param location Place renvoyée par les colonnes locales
+ */
+function cardLocation(location: TaskLocation | null): TaskCardLocation | null {
+  return location && { task: location.list[location.index], stageId: location.stageId }
+}
+
+// Actions communes avec le Planning, appliquées aux colonnes locales
+const {
+  filterTagSelection,
+  updateTagCounts,
+  changeTaskTags,
+  toggleTaskTag,
+  setStartDate,
+  moveTaskToBoard,
+  archiveTask,
+  askArchiveTask,
+  undoArchive,
+  duplicateTask,
+} = useTaskActions({
+  find: (taskId) => cardLocation(board.find(taskId)),
+  insert: board.insert,
+  remove: (taskId) => cardLocation(board.remove(taskId)),
+  update: board.update,
+  open: openTask,
+  // Annulé depuis le tableau d'arrivée (Ctrl+Z après en avoir changé), où la carte
+  // est encore affichée, le tableau d'origine est réaffiché avec elle
+  onMoveToBoardUndone: async (boardId) => {
+    if (unmounted && boardStore.current?.id === boardId) await boardStore.select(props.boardId)
+  },
+})
 
 // Filtre actif (texte ou tags) : le DnD des tâches est alors désactivé
 const filterActive = computed(() => boardFilter.isActive)
@@ -388,18 +428,6 @@ function openCreateTaskDialog(stageId: number) {
 }
 
 /**
- * Tags du filtre en valeur de formulaire, triés par nom, pour qu'une tâche
- * créée sous filtre reste visible après enregistrement
- */
-function filterTagSelection(): TagSelection[] {
-  return boardFilter.tagIds
-    .map((id) => tagStore.getTagById(id))
-    .filter((tag): tag is Tag => tag !== undefined)
-    .sort(compareTagNames)
-    .map((tag) => ({ id: tag.id, name: tag.name }))
-}
-
-/**
  * Ouverture de la boite de dialogue en mode édition
  * @param stageId Id de la colonne parent
  */
@@ -495,53 +523,6 @@ async function onStagesDrop() {
 async function removeTagFromTask(task: Task, tagId: number) {
   if (!(await changeTaskTags(task, (ids) => ids.filter((id) => id !== tagId)))) {
     showError(t('board.tagRemoveFailed'), t('board.tagRemoveFailedDetail'))
-  }
-}
-
-/**
- * Pose ou retire un tag depuis le menu d'une carte.
- * @param task Tâche de la carte
- * @param tagId Tag basculé
- */
-async function toggleTaskTag(task: Task, tagId: number) {
-  const toggled = (ids: number[]) => (ids.includes(tagId) ? ids.filter((id) => id !== tagId) : [...ids, tagId])
-  if (!(await changeTaskTags(task, toggled))) showError(t('board.tagsNotSaved'))
-}
-
-/**
- * Change les tags d'une carte sans ouvrir le dialogue, puis affiche ceux
- * enregistrés. Les tags sont envoyés par leur nom actuel, une fois les
- * renommages en cours terminés ; un tag supprimé entre-temps est ignoré.
- * @param task Tâche de la carte
- * @param change Nouveaux ids, à partir de ceux portés par la carte
- * @returns Faux si l'enregistrement a échoué
- */
-async function changeTaskTags(task: Task, change: (tagIds: number[]) => number[]): Promise<boolean> {
-  // Un renommage en vol changerait les noms à envoyer
-  await tagStore.waitForPendingEdits()
-
-  const location = board.find(task.id)
-  if (!location) return true
-
-  const oldTags = (location.list[location.index].tags ?? []).filter((tag) => !tagStore.wasDeleted(tag.id))
-  const oldIds = oldTags.map((tag) => tag.id)
-  const names = change(oldIds).flatMap((id) => {
-    const name = tagStore.getTagById(id)?.name ?? oldTags.find((tag) => tag.id === id)?.name
-    return name ? [name] : []
-  })
-
-  try {
-    const updatedTask = await taskStore.updateTaskTags(task.id, names)
-
-    // Seuls les tags de la copie locale changent : la carte a pu bouger pendant l'appel
-    board.update(task.id, (current) => ({ ...current, tags: updatedTask.tags }))
-    updateTagCounts(
-      oldIds,
-      (updatedTask.tags ?? []).map((tag) => tag.id),
-    )
-    return true
-  } catch {
-    return false
   }
 }
 
@@ -657,91 +638,9 @@ async function moveTask(taskId: number, stageId: number, place: 'top' | 'bottom'
   }
 }
 
-/**
- * Envoie une carte vers un autre tableau depuis son menu, en bas de la
- * première colonne de ce tableau. La colonne est choisie dans le cache, le
- * serveur reste juge (colonne supprimée entre-temps). La carte quitte le
- * tableau affiché une fois le déplacement enregistré, le cache des tâches
- * suit par le store. Le toast propose de l'annuler.
- * @param taskId Id de la tâche
- * @param boardId Tableau d'arrivée
- */
-async function moveTaskToBoard(taskId: number, boardId: number) {
-  const target = boardStore.getAllBoards.find((candidate) => candidate.id === boardId)
-  const stage = stageStore.getStagesOfBoard(boardId)[0]
-  if (!target || !stage || board.find(taskId) === null) return
-
-  let previousSeries: SeriesPlacement | null
-  try {
-    previousSeries = (await taskStore.moveTaskToStage(taskId, stage.id)).previousSeries
-  } catch {
-    showError(t('boards.send.failed'))
-    return
-  }
-
-  // Place de la carte (position persistée), reprise si l'envoi est annulé
-  const location = board.remove(taskId)
-  logger.debug('Tâche envoyée vers un autre tableau', { taskId, boardId, stageId: stage.id })
-  if (!location) return
-
-  // Titre de la tâche en précision, comme les autres toasts d'annulation. La
-  // série, si elle a suivi la carte, reprendra sa propre place, pas celle de la carte
-  const task = location.list[location.index]
-  const place = { stageId: location.stageId, position: task.position, series: previousSeries }
-  showUndo(t('boards.send.sent', { name: target.name }), {
-    detail: task.title,
-    undo: () => undoMoveToBoard(taskId, boardId, place),
-  })
-}
-
-// Kanban démonté (autre tableau, autre page), cf. undoMoveToBoard
+// Kanban démonté (autre tableau, autre page), cf. onMoveToBoardUndone
 let unmounted = false
 onBeforeUnmount(() => (unmounted = true))
-
-/**
- * Annule l'envoi d'une carte vers un autre tableau, par la même route avec
- * son ancienne colonne et son ancienne position. La série revient avec elle,
- * à sa propre place d'avant l'envoi (colonne du modèle, même supprimée), pas
- * à celle de la carte. Annulé depuis le tableau d'arrivée (Ctrl+Z après en
- * avoir changé), où la carte est encore affichée, le tableau d'origine est
- * réaffiché avec elle.
- * @param taskId Id de la tâche
- * @param boardId Tableau où elle a été envoyée
- * @param place Colonne et position de la carte avant l'envoi, et place de sa
- *   série si l'envoi l'a changée (null sinon)
- */
-async function undoMoveToBoard(
-  taskId: number,
-  boardId: number,
-  place: { stageId: number; position: number; series: SeriesPlacement | null },
-) {
-  let restored: Task
-  try {
-    restored = (await taskStore.moveTaskToStage(taskId, place.stageId, place.position, place.series)).task
-  } catch {
-    showError(t('board.undoFailed'), t('boards.send.undoFailedDetail'))
-    return
-  }
-
-  board.insert(restored)
-  logger.debug('Envoi vers un autre tableau annulé', restored)
-  if (unmounted && boardStore.current?.id === boardId) await boardStore.select(props.boardId)
-}
-
-/**
- * Change la date de début d'une carte depuis son menu, puis l'affiche telle
- * qu'enregistrée.
- * @param task Tâche de la carte
- * @param startDate Nouvelle date, `null` pour la retirer
- */
-async function setStartDate(task: Task, startDate: Date | null) {
-  try {
-    const updated = await taskStore.setTaskStartDate(task.id, startDate)
-    board.update(task.id, (current) => ({ ...current, startDate: updated.startDate, notifiedAt: updated.notifiedAt }))
-  } catch {
-    showError(t('board.dateFailed'))
-  }
-}
 
 /**
  * Index d'arrivée d'une carte déplacée dans une colonne.
@@ -779,48 +678,6 @@ function moveCardByKey(task: Task, direction: 'up' | 'down' | 'left' | 'right') 
 }
 
 /**
- * Archivage d'une carte depuis son menu : direct, ou après confirmation dans
- * une bulle ancrée sur la carte si le paramètre est activé (comme la corbeille).
- * @param task Tâche de la carte
- * @param card Carte affichée, ancre de la bulle
- */
-function askArchiveTask(task: Task, card: HTMLElement | null) {
-  if (!settings.confirmArchive) {
-    archiveTask(task)
-    return
-  }
-
-  confirmDanger({
-    target: card ?? undefined,
-    message: t('board.archiveConfirm'),
-    acceptLabel: t('common.archive'),
-    accept: () => archiveTask(task),
-  })
-}
-
-/**
- * Duplique une tâche juste sous sa carte, puis propose d'ouvrir la copie pour
- * la retoucher (titre suffixé, à renommer le plus souvent).
- * @param task Tâche dupliquée
- */
-async function duplicateTask(task: Task) {
-  let copy: Task
-  try {
-    copy = await taskStore.duplicateTask(task.id, t('board.copyTitle', { title: task.title }))
-  } catch {
-    showError(t('board.duplicateFailed'))
-    return
-  }
-
-  board.insert(copy)
-  showAction(t('board.taskDuplicated'), copy.title, {
-    label: t('board.openCopy'),
-    run: () => openTask(copy.id),
-    available: () => board.find(copy.id) !== null,
-  })
-}
-
-/**
  * Ouvre une carte du tableau en édition, retrouvée par id. Ignorée si elle a
  * quitté le tableau, ou si le dialogue est déjà ouvert (la saisie en cours
  * n'est pas remplacée).
@@ -830,53 +687,6 @@ function openTask(taskId: number) {
   const location = board.find(taskId)
   if (!location || showDialog.value) return
   openEditTaskDialog(location.stageId, location.list[location.index])
-}
-
-/**
- * Archivage d'une carte, annulable depuis le toast
- * @param task Tâche de la carte
- */
-async function archiveTask(task: Task) {
-  try {
-    await taskStore.archiveTask(task.id)
-  } catch {
-    showError(t('board.archiveFailed'), t('board.archiveFailedDetail'))
-    return
-  }
-
-  // Carte retirée de sa colonne locale, retrouvée par id
-  const location = board.remove(task.id)
-
-  logger.debug('Tâche archivée', task)
-
-  // Place de la carte (position persistée), reprise si l'archivage est annulé
-  const place = location ? { stageId: location.stageId, position: location.list[location.index].position } : undefined
-  showUndo(t('board.taskArchived'), { detail: task.title, undo: () => undoArchive(task.id, place) })
-}
-
-/**
- * Annule un archivage : la tâche reprend sa place au tableau (ou va en bas
- * de la première colonne si la sienne a été supprimée entre-temps). Une
- * occurrence née de cet archivage (série « après archivage ») et retirée par
- * le serveur quitte le tableau, ses tags perdent une tâche.
- * @param taskId Id de la tâche archivée
- * @param place Colonne et position de la carte avant l'archivage
- */
-async function undoArchive(taskId: number, place?: { stageId: number; position: number }) {
-  try {
-    const { task: restored, removed } = await taskStore.restoreTask(taskId, place)
-    board.insert(restored)
-    if (removed) {
-      board.remove(removed.id)
-      updateTagCounts(
-        (removed.tags ?? []).map((tag) => tag.id),
-        [],
-      )
-    }
-    logger.debug('Archivage annulé', restored)
-  } catch {
-    showError(t('board.undoFailed'), t('board.undoArchiveFailedDetail'))
-  }
 }
 
 /**
@@ -908,20 +718,10 @@ async function onTaskSaved(task: Task) {
   if (!location) return
 
   const oldTagIds = (location.list[location.index].tags ?? []).map((tag) => tag.id)
-  board.update(task.id, () => task)
+  // Documents de la carte gardés : un envoi fini pendant l'enregistrement les a
+  // déjà mis à jour, plus récents que ceux de la tâche enregistrée
+  board.update(task.id, (current) => ({ ...task, documents: current.documents ?? task.documents }))
   updateTagCounts(oldTagIds, newTagIds)
-}
-
-/**
- * Nombre de tâches des tags, mis à jour localement après l'enregistrement d'une
- * tâche (les tags eux-mêmes sont déjà dans le cache : créés via POST /tags)
- * @param oldTagIds Tags de la tâche avant l'enregistrement
- * @param newTagIds Tags de la tâche enregistrée
- */
-function updateTagCounts(oldTagIds: number[], newTagIds: number[]) {
-  const added = newTagIds.filter((id) => !oldTagIds.includes(id))
-  const removed = oldTagIds.filter((id) => !newTagIds.includes(id))
-  tagStore.adjustTaskCounts(added, removed)
 }
 
 /**

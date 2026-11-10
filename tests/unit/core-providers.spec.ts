@@ -18,6 +18,8 @@ const SETTINGS: ServerSettings = {
   archivePurgeEnabled: false,
   archivePurgeDays: 30,
   autoBackupEnabled: true,
+  documentMaxSizeMb: 20,
+  documentMaxPerTask: 10,
 }
 
 describe('réglages de core', () => {

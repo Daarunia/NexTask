@@ -7,10 +7,11 @@ import {
 import type { ImportProblem } from '../../shared/data.constants.js'
 import { TAG_COLORS, type TagColor } from '../../shared/tag.constants.js'
 import { boardKey } from '../../shared/board.helper.js'
+import { sanitizeDocumentName, uniqueDocumentName } from '../../shared/document.helper.js'
 
 /**
  * Helpers purs de l'import (POST /data/import), sans accès à la base. Les
- * checklists d'abord, puis les tableaux.
+ * checklists d'abord, puis les tableaux, puis les documents.
  *
  * Le schéma d'import ne borne ni la longueur des textes ni le nombre de points,
  * car un fichier un peu trop gros ne doit pas faire refuser tout l'import. Les
@@ -46,6 +47,9 @@ interface ClampedItems<T> {
   items: T[]
   clamped: boolean // vrai si un texte a été raccourci ou des points retirés
 }
+
+// Nom d'un document importé dont il ne reste rien une fois nettoyé
+const IMPORTED_DOCUMENT_NAME = 'document'
 
 /** Paramètres communs aux messages des listes raccourcies. */
 const LIMIT_PARAMS = { maxItems: CHECKLIST_MAX_ITEMS, maxLength: CHECKLIST_ITEM_MAX_LENGTH }
@@ -337,4 +341,55 @@ export function boardPlacement(boards: readonly ImportedBoard[] | null, firstBoa
     stage: (boardId) => boardId ?? firstBoardId,
     kept: (boardId) => (boardId != null && boardIds.has(boardId) ? boardId : null),
   }
+}
+
+/** Document d'une tâche, tel qu'exporté : son contenu est désigné par son empreinte. */
+export interface ExportedDocument {
+  name: string
+  size: number
+  sha256: string
+  createdAt?: string
+}
+
+/** Document prêt à écrire, nom nettoyé et taille lue sur le disque. */
+export interface ImportedDocument {
+  name: string
+  size: number
+  sha256: string
+  createdAt?: string
+}
+
+/**
+ * Documents d'une tâche importée, prêts à écrire. Un document dont le contenu
+ * n'est pas dans le dossier des documents (export .json seul, archive
+ * incomplète) n'est pas recréé, et signalé. Le nom est nettoyé comme à l'ajout,
+ * et rendu unique dans la tâche ; la taille est celle du fichier, pas celle
+ * annoncée. Les limites réglées ne s'appliquent pas : un import ne perd jamais
+ * un document.
+ *
+ * @param taskId Id de la tâche dans le fichier
+ * @param documents Documents lus dans le fichier, absents d'un export antérieur aux documents
+ * @param fileSizes Taille des contenus présents dans le dossier, par empreinte
+ * @returns Les documents et les anomalies à signaler
+ */
+export function importedTaskDocuments(
+  taskId: number,
+  documents: readonly ExportedDocument[] | undefined,
+  fileSizes: ReadonlyMap<string, number>,
+): { rows: ImportedDocument[]; problems: ImportProblem[] } {
+  const rows: ImportedDocument[] = []
+  const problems: ImportProblem[] = []
+
+  for (const exported of documents ?? []) {
+    const size = fileSizes.get(exported.sha256)
+    if (size === undefined) {
+      problems.push({ code: 'documentFileMissing', params: { id: taskId, name: exported.name } })
+      continue
+    }
+
+    const taken = rows.map((row) => row.name)
+    const name = uniqueDocumentName(sanitizeDocumentName(exported.name) ?? IMPORTED_DOCUMENT_NAME, taken)
+    rows.push({ name, size, sha256: exported.sha256, createdAt: exported.createdAt })
+  }
+  return { rows, problems }
 }

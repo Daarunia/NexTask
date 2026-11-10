@@ -37,7 +37,7 @@ import Button from 'primevue/button'
 import SettingsRow from './SettingsRow.vue'
 import { describeCounts, reloadDataAfterImport } from '../../utils/data.helper'
 import { getLogger } from '../../utils/logger'
-import { useErrorToast, useSuccessToast } from '../../utils/toast.helper'
+import { useErrorToast, useSuccessToast, useWarnToast } from '../../utils/toast.helper'
 import { useDangerConfirm } from '../../utils/confirm.helper'
 import { useI18n } from 'vue-i18n'
 
@@ -51,6 +51,7 @@ const logger = getLogger()
 const confirmDanger = useDangerConfirm()
 const showError = useErrorToast()
 const showSuccess = useSuccessToast()
+const showWarn = useWarnToast()
 const { t } = useI18n()
 
 const exporting = ref(false)
@@ -70,6 +71,14 @@ async function exportData() {
         t('settings.data.exported'),
         t('settings.data.exportedDetail', { counts: describeCounts(result.counts), path: result.filePath }),
       )
+      // Documents sans contenu dans le dossier : décrits dans l'archive, mais sans leur fichier
+      const missing = result.missingDocuments ?? 0
+      if (missing > 0) {
+        showWarn(
+          t('settings.data.exportIncomplete'),
+          t('settings.data.exportIncompleteDetail', { count: missing }, missing),
+        )
+      }
     }
   } catch (error) {
     logger.error("Erreur lors de l'export des données :", error)

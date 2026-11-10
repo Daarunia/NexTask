@@ -4,6 +4,8 @@ import Database from 'better-sqlite3'
 import Logger from '../logger.js'
 import { config } from '../config.js'
 import { settings } from '../settings.js'
+import { documentsDirFor } from '../database/databaseFile.js'
+import { copyDocumentFiles, referencedDocumentHashes } from '../database/documentStore.js'
 
 /**
  * Sauvegarde automatique de la base.
@@ -17,6 +19,12 @@ import { settings } from '../settings.js'
  * La copie passe par l'API de sauvegarde de SQLite plutôt que par une copie
  * du fichier : la base est en WAL, et une copie brute pourrait manquer les
  * dernières écritures.
+ *
+ * Chaque sauvegarde a son dossier des documents (`nextask-AAAA-MM-JJ-documents`,
+ * cf. documentsDirFor) avec les contenus qu'elle référence : rouverte comme
+ * base, elle retrouve ses documents, même supprimés depuis. Ce sont des liens
+ * en dur quand le volume le permet (un contenu n'est jamais modifié), donc sans
+ * place en plus ; sinon des copies. Le dossier part avec sa sauvegarde.
  */
 
 /** Nombre de sauvegardes conservées. */
@@ -79,6 +87,29 @@ export async function copyDatabase(target: string, source = config().dbPath): Pr
 }
 
 /**
+ * Joint à une sauvegarde les contenus des documents qu'elle référence. Un échec
+ * est seulement journalisé : la base sauvegardée garde toute sa valeur.
+ *
+ * @param backup Chemin de la sauvegarde
+ */
+async function backupDocuments(backup: string): Promise<void> {
+  try {
+    const hashes = referencedDocumentHashes(backup)
+    const { copied, missing } = await copyDocumentFiles(
+      documentsDirFor(config().dbPath),
+      documentsDirFor(backup),
+      hashes,
+      {
+        link: true,
+      },
+    )
+    Logger.info(`[sauvegarde] ${copied} document(s) joint(s) à la sauvegarde, ${missing} absent(s) du dossier`)
+  } catch (error) {
+    Logger.warn(`[sauvegarde] Documents de la sauvegarde ${backup} incomplets :`, error)
+  }
+}
+
+/**
  * Coeur métier : écrit la sauvegarde du jour si la sauvegarde automatique est
  * activée et qu'elle n'existe pas encore, puis ne garde que les plus récentes.
  * Extrait pour être testable (cf. /test/run-backup).
@@ -101,12 +132,14 @@ export async function runDatabaseBackup(now: Date = new Date()): Promise<Databas
   let created: string | null = null
   if (!fs.existsSync(path.join(backupsPath, name))) {
     await copyDatabase(path.join(backupsPath, name))
+    await backupDocuments(path.join(backupsPath, name))
     created = name
     Logger.info(`[sauvegarde] Base sauvegardée dans ${path.join(backupsPath, name)}`)
   }
 
   for (const old of listBackups().slice(BACKUPS_KEPT)) {
     fs.rmSync(path.join(backupsPath, old), { force: true })
+    fs.rmSync(documentsDirFor(path.join(backupsPath, old)), { recursive: true, force: true })
     Logger.info(`[sauvegarde] Ancienne sauvegarde supprimée : ${old}`)
   }
 

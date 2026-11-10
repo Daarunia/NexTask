@@ -49,6 +49,62 @@ test.describe('Rail de navigation', () => {
     await header.expectActiveEntry(header.homeButton)
   })
 
+  test('le Kanban est le mode par défaut, le sous-menu se déplie dans le rail', async ({
+    page,
+    header,
+    planningPage,
+  }) => {
+    await expect(page.getByTestId('stage-column').first()).toBeVisible()
+    await expect(header.homeButton).toHaveAttribute('aria-label', 'Kanban')
+
+    // Replié au départ, déplié dans le rail, au-dessus des entrées suivantes
+    await expect(header.viewMenu).toHaveCount(0)
+    await header.viewMenuButton.click()
+    await expect(header.viewMenuButton).toHaveAttribute('aria-expanded', 'true')
+    const items = header.viewMenu.getByRole('button')
+    await expect(items).toHaveCount(2)
+    await expect(items.nth(0)).toHaveAttribute('aria-label', 'Kanban')
+    await expect(items.nth(0)).toHaveAttribute('aria-current', 'true')
+    await expect(items.nth(1)).toHaveAttribute('aria-label', 'Planning')
+    await expect(header.rail.locator('#board-view-menu')).toBeVisible()
+
+    await items.nth(1).click()
+
+    await expect(planningPage.calendar).toBeVisible()
+    await header.expectActiveEntry(header.homeButton)
+    await expect(header.homeButton).toHaveAttribute('aria-label', 'Planning')
+    await expect(items.nth(1)).toHaveAttribute('aria-current', 'true')
+
+    // Se replie par son chevron
+    await header.viewMenuButton.click()
+    await expect(header.viewMenu).toHaveCount(0)
+  })
+
+  test('le sous-menu ouvre un mode depuis une autre page, et l’entrée revient au dernier', async ({
+    page,
+    header,
+    archivesPage,
+    planningPage,
+  }) => {
+    await header.goArchives()
+    await archivesPage.expectVisible()
+
+    await header.chooseView('Planning')
+    await expect(planningPage.calendar).toBeVisible()
+    await header.expectActiveEntry(header.homeButton)
+
+    await header.goArchives()
+    await archivesPage.expectVisible()
+    await expect(header.homeButton).not.toHaveAttribute('aria-current', 'page')
+
+    await header.goHome()
+    await expect(planningPage.calendar).toBeVisible()
+
+    await header.chooseView('Kanban')
+    await expect(page.getByTestId('stage-column').first()).toBeVisible()
+    await expect(header.homeButton).toHaveAttribute('aria-label', 'Kanban')
+  })
+
   test('suit la route quand on navigue hors du rail', async ({ header, settingsPage, archivesPage }) => {
     await header.goSettings()
 
@@ -65,7 +121,8 @@ test.describe('Rail de navigation', () => {
 
   test('affiche des libellés et des infobulles traduits', async ({ page, header }) => {
     await expect(header.rail).toHaveAttribute('aria-label', 'Navigation')
-    await expect(header.homeButton).toHaveAttribute('aria-label', 'Tableau')
+    await expect(header.homeButton).toHaveAttribute('aria-label', 'Kanban')
+    await expect(header.viewMenuButton).toHaveAttribute('aria-label', 'Mode d’affichage')
     await expect(header.checklistsButton).toHaveAttribute('aria-label', 'Checklists')
     await expect(header.archivesButton).toHaveAttribute('aria-label', 'Archives')
     await expect(header.settingsButton).toHaveAttribute('aria-label', 'Paramètres')

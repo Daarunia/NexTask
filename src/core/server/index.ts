@@ -6,9 +6,12 @@ import tagRoutes from './routes/tag.routes.js'
 import checklistTemplateRoutes from './routes/checklistTemplate.routes.js'
 import recurrenceRoutes from './routes/recurrence.routes.js'
 import dataRoutes from './routes/data.routes.js'
+import documentRoutes from './routes/document.routes.js'
 import testRoutes, { type TestResetHooks } from './routes/test.routes.js'
 import fastifyCors from '@fastify/cors'
 import { applyDatabasePragmas } from './prismaClient.js'
+import { registerRateLimit } from './helpers/rateLimit.helper.js'
+import { clearStaleDocumentUploads } from '../database/documentStore.js'
 import type { AddressInfo } from 'node:net'
 import { config } from '../config.js'
 import Logger from '../logger.js'
@@ -125,6 +128,9 @@ export async function buildServer({
   // Pragmas SQLite (WAL, etc.) avant de servir les premières requêtes.
   await applyDatabasePragmas()
 
+  // Envois de documents interrompus par un arrêt brutal, sans attendre : rien n'en dépend
+  void clearStaleDocumentUploads()
+
   // Enregistrer le plugin CORS
   //
   // Origine restreinte aux clients connus (pour le desktop : pas d'en-tête
@@ -137,6 +143,9 @@ export async function buildServer({
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
+
+  // Limitation des requêtes, avant les routes qu'elle doit couvrir
+  await registerRateLimit(fastify)
 
   // Documentation de l'API, en dev seulement : en prod le port est choisi par
   // le système, la page n'est donc pas joignable et ses dépendances ne sont pas
@@ -153,6 +162,7 @@ export async function buildServer({
   await fastify.register(checklistTemplateRoutes)
   await fastify.register(recurrenceRoutes)
   await fastify.register(dataRoutes)
+  await fastify.register(documentRoutes)
 
   // Routes de reset et de pilotage réservées aux tests E2E
   if (isTest) {

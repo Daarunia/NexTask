@@ -23,11 +23,16 @@ export const es: MainMessages = {
   quickAdd: {
     windowTitle: 'NexTask — Añadido rápido',
   },
+  documents: {
+    saveTitle: 'Guardar el documento',
+  },
   dataTransfer: {
     exportTitle: 'Exportar los datos',
     importTitle: 'Importar datos',
     fileFilter: 'Exportación de NexTask',
     unreadableFile: 'El archivo no es un archivo JSON legible',
+    unreadableArchive: 'El archivo no es un archivo de exportación de NexTask legible',
+    damagedDocument: 'Un documento del archivo está dañado o es demasiado grande',
   },
   // Emplacement de la base (cf. system/databaseLocation.ts)
   databaseLocation: {
@@ -39,6 +44,8 @@ export const es: MainMessages = {
       sameLocation: 'NexTask ya usa esta base de datos',
       alreadyExists:
         'Esta carpeta ya contiene una base de datos nextask.db. Ábrela con «Abrir una base de datos…» o elige otra carpeta',
+      documentsExist:
+        'Esta carpeta ya contiene una carpeta nextask-documents de una base de datos anterior. Elige otra carpeta',
       notWritable: 'No se ha podido copiar la base de datos en esta carpeta',
       copyFailed: 'La copia de la base de datos estaba incompleta y se ha eliminado',
       unreadable: 'El archivo no existe o no se puede leer',

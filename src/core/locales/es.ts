@@ -42,5 +42,6 @@ export const es: CoreMessages = {
       'Plantilla «{name}» reducida a {maxItems} elementos de {maxLength} caracteres como máximo',
     templateNameTruncated: 'Nombre de plantilla acortado a {maxLength} caracteres («{name}»)',
     duplicateTemplateName: 'Varias plantillas se llaman «{name}», solo se importa la primera',
+    documentFileMissing: 'El documento «{name}» de la tarea {id} falta en el archivo y no se importó',
   },
 }

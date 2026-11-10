@@ -17,6 +17,8 @@ export type ServerSettings = Pick<
   | 'archivePurgeEnabled'
   | 'archivePurgeDays'
   | 'autoBackupEnabled'
+  | 'documentMaxSizeMb'
+  | 'documentMaxPerTask'
 >
 
 let provider: (() => ServerSettings) | null = null

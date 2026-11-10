@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { defineAsyncComponent, ref, watch, onMounted } from 'vue'
 import Kanban from '../components/kanban/Kanban.vue'
 import { useTaskStore } from '../stores/Task'
 import type { Task } from '../types/task.types'
@@ -14,6 +14,9 @@ import { useSettingsStore } from '../stores/Settings'
 import { useBoardFilterStore } from '../stores/BoardFilter'
 import { Stage } from '../types/stage.types'
 import { useI18n } from 'vue-i18n'
+
+// Chargé à sa première ouverture, avec le calendrier qu'il embarque
+const Planning = defineAsyncComponent(() => import('../components/planning/Planning.vue'))
 
 // Logger
 const logger = getLogger()
@@ -104,6 +107,15 @@ watch(
   },
 )
 
+// Retour au Kanban, qui lit un nouvel instantané à son montage : les dates et les
+// cartes modifiées dans le Planning n'y apparaîtraient pas sinon
+watch(
+  () => settings.boardView,
+  (view) => {
+    if (status.value === 'ready' && view === 'kanban') showCurrentBoard()
+  },
+)
+
 onMounted(loadBoard)
 </script>
 
@@ -111,8 +123,9 @@ onMounted(loadBoard)
   <div class="flex h-full flex-col">
     <template v-if="status === 'ready'">
       <div class="min-h-0 flex-1">
+        <Planning v-if="settings.boardView === 'planning'" />
         <Kanban
-          v-if="shownBoardId !== null"
+          v-else-if="shownBoardId !== null"
           :key="shownBoardId"
           :boardId="shownBoardId"
           :stages="stages"

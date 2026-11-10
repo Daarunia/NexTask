@@ -31,6 +31,8 @@ let current: ServerSettings = {
   archivePurgeEnabled: false,
   archivePurgeDays: 30,
   autoBackupEnabled: false,
+  documentMaxSizeMb: 20,
+  documentMaxPerTask: 10,
 }
 
 let app: FastifyInstance

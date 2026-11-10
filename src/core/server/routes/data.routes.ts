@@ -3,7 +3,15 @@ import { prisma } from '../prismaClient.js'
 import type { Prisma } from '../../prisma/generated/prisma/client.js'
 import { tagKey } from '../helpers/tag.helper.js'
 import { config } from '../../config.js'
-import { type DataCounts, EXPORT_FORMAT, EXPORT_VERSION, type ImportProblem } from '../../shared/data.constants.js'
+import { documentFileSizes, releaseDocumentFiles } from '../../database/documentStore.js'
+import {
+  type DataCounts,
+  EXPORT_FORMAT,
+  EXPORT_VERSION,
+  IMPORT_MAX_BYTES,
+  type ImportProblem,
+} from '../../shared/data.constants.js'
+import { SHA256_PATTERN } from '../../shared/document.constants.js'
 import { t, translate } from '../../i18n.js'
 import { boardKey } from '../../shared/board.helper.js'
 import { BOARD_NAME_MAX_LENGTH } from '../../shared/board.constants.js'
@@ -16,17 +24,16 @@ import {
   type ExportedBoard,
   type ExportedChecklistItem,
   type ExportedChecklistTemplate,
+  type ExportedDocument,
   findBoardProblem,
   firstDuplicate,
   importedBoards,
   importedSeriesChecklist,
   importedTaskChecklist,
+  importedTaskDocuments,
   paletteColor,
   planTemplateImport,
 } from '../helpers/dataImport.helper.js'
-
-// Taille maximale d'un fichier importé (Fastify limite les corps à 1 Mo par défaut)
-const IMPORT_BODY_LIMIT = 100 * 1024 * 1024
 
 // Date optionnelle d'un export (null = absente)
 const nullableDate = { type: ['string', 'null'], format: 'date-time' }
@@ -104,6 +111,22 @@ const exportedChecklistTemplateSchema = {
   required: ['name'],
 }
 
+/**
+ * Document d'une tâche exporté, son contenu désigné par son empreinte (dans
+ * l'archive d'export, cf. EXPORT_ARCHIVE_DOCUMENTS). Le nom n'est pas borné :
+ * il est nettoyé à l'import, comme à l'ajout.
+ */
+const exportedDocumentSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    size: { type: 'integer', minimum: 0 },
+    sha256: { type: 'string', pattern: SHA256_PATTERN },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: ['name', 'size', 'sha256'],
+}
+
 /** Tâche exportée, archivée ou non, ses tags désignés par leur id. */
 const exportedTaskSchema = {
   type: 'object',
@@ -130,6 +153,8 @@ const exportedTaskSchema = {
     occurrenceDate: nullableDate,
     // Points de la checklist dans l'ordre, absents des exports antérieurs aux checklists
     checklistItems: { type: 'array', items: exportedChecklistItemSchema },
+    // Documents dans l'ordre d'ajout, absents des exports antérieurs aux documents
+    documents: { type: 'array', items: exportedDocumentSchema },
   },
   required: ['id', 'title', 'description', 'version', 'position', 'isHistorized', 'stageId', 'tagIds'],
 }
@@ -178,6 +203,8 @@ const countsSchema = {
     tasks: { type: 'integer' },
     // Modèles réellement créés, sans ceux du fichier dont le nom était déjà pris
     checklistTemplates: { type: 'integer' },
+    // Documents recréés, sans ceux dont le contenu manquait
+    documents: { type: 'integer' },
     // Textes raccourcis, points en trop, modèles en double, importés quand même une fois corrigés
     warnings: { type: 'array', items: importProblemSchema },
   },
@@ -238,6 +265,7 @@ interface DataImportBody {
     recurrenceId?: number | null
     occurrenceDate?: string | null
     checklistItems?: ExportedChecklistItem[]
+    documents?: ExportedDocument[]
   }[]
   recurrences?: {
     id: number
@@ -362,6 +390,18 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
 }
 
 /**
+ * Réponse d'un fichier refusé, journalisé : message en français pour les
+ * journaux, motif traduit par le main pour l'affichage.
+ *
+ * @param problem Motif du refus
+ */
+function importRefusal(problem: ImportProblem) {
+  const message = translate('fr', `importProblems.${problem.code}`, problem.params)
+  Logger.warn(`Import refusé : ${message}`)
+  return { statusCode: 400, error: 'Bad Request', message, problem }
+}
+
+/**
  * Plugin de routes Fastify pour l'export et l'import de toutes les données
  * (tableaux, colonnes, tâches archivées comprises et leurs checklists, tags, séries
  * récurrentes, modèles de checklist). Les paramètres de l'app n'en font pas
@@ -370,6 +410,7 @@ function findImportProblem(data: DataImportBody): ImportProblem | null {
  * Appelées par le main (boîtes de dialogue d'enregistrement et d'ouverture,
  * cf. system/dataTransfer) et directement par les tests E2E :
  * - GET  /data/export  → Renvoie toutes les données au format d'export
+ * - POST /data/import/check → Contrôle un export, sans rien modifier
  * - POST /data/import  → Remplace toutes les données par celles d'un export
  *
  * @param {import('fastify').FastifyInstance} fastify Instance de Fastify
@@ -385,7 +426,10 @@ export default async function dataRoutes(fastify) {
    * occurrences, textes des points compris) et tous les modèles de checklist
    * (nom, position, textes des points), avec l'identifiant et la version du
    * format. Les ids sont conservés, l'import les reprend tels quels, sauf ceux
-   * des checklists et de leurs points, recréés à l'import.
+   * des checklists et de leurs points, recréés à l'import. Les documents des
+   * tâches n'y sont décrits que par leur nom, leur taille et leur empreinte :
+   * leurs contenus sont ajoutés par le main dans l'archive d'export, lus via
+   * GET /documents/files/:sha256.
    *
    * @returns {Promise<Object>} Données au format d'export
    */
@@ -415,6 +459,7 @@ export default async function dataRoutes(fastify) {
           include: {
             tags: { select: { id: true } },
             checklist: { include: { items: { orderBy: { position: 'asc' } } } },
+            documents: { select: { name: true, size: true, sha256: true, createdAt: true }, orderBy: { id: 'asc' } },
           },
           orderBy: { id: 'asc' },
         }),
@@ -463,6 +508,43 @@ export default async function dataRoutes(fastify) {
   )
 
   /**
+   * POST /data/import/check
+   *
+   * Contrôle un fichier comme POST /data/import (structure, format, version,
+   * cohérence des références), sans rien écrire. L'import d'une archive le
+   * demande avant de déposer les contenus de ses documents : une archive
+   * refusée ne copie rien pour rien.
+   *
+   * @param {Object} req - Requête Fastify
+   * @param {Object} req.body - Fichier d'export (cf. GET /data/export)
+   * @param {import('fastify').FastifyReply} reply - Réponse Fastify
+   * @returns {Promise<{message: string}>} Confirmation, 400 si l'import serait refusé (détail dans `message`)
+   */
+  fastify.post(
+    '/data/import/check',
+    {
+      bodyLimit: IMPORT_MAX_BYTES,
+      schema: {
+        description: 'Contrôle un export avant son import, sans rien modifier',
+        tags: ['Data'],
+        body: exportSchema,
+        response: {
+          200: { type: 'object', properties: { message: { type: 'string' } } },
+          400: importErrorSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const problem = findImportProblem(req.body as DataImportBody)
+      if (problem) {
+        reply.code(400)
+        return importRefusal(problem)
+      }
+      return { message: 'Fichier importable' }
+    },
+  )
+
+  /**
    * POST /data/import
    *
    * Remplace tous les tableaux, colonnes, tâches, tags, séries et modèles de
@@ -475,7 +557,10 @@ export default async function dataRoutes(fastify) {
    * `checklistTemplates` ni `checklistItems`, ni modèle ni checklist). Les
    * checklists sont ramenées aux limites partagées et un modèle dont le nom
    * est déjà pris par un modèle précédent du fichier n'est pas recréé, ces
-   * corrections étant renvoyées dans `warnings` (cf. dataImport.helper). La
+   * corrections étant renvoyées dans `warnings` (cf. dataImport.helper). Un
+   * document n'est recréé que si son contenu est dans le dossier des documents
+   * (déposé avant par PUT /documents/files/:sha256, ou déjà présent), sinon il
+   * est signalé dans `warnings`. La
    * prochaine date et l'état des séries sont
    * remis en cohérence avec leurs occurrences (cf. normalizeImportedSeries). Le
    * fichier est entièrement contrôlé avant toute écriture (structure, format,
@@ -492,7 +577,8 @@ export default async function dataRoutes(fastify) {
   fastify.post(
     '/data/import',
     {
-      bodyLimit: IMPORT_BODY_LIMIT,
+      // Fastify limite les corps à 1 Mo par défaut
+      bodyLimit: IMPORT_MAX_BYTES,
       schema: {
         description:
           'Remplace toutes les données par celles d’un export (tableaux, colonnes, tâches, tags, séries, modèles de checklist)',
@@ -510,11 +596,8 @@ export default async function dataRoutes(fastify) {
 
       const problem = findImportProblem(data)
       if (problem) {
-        // Message en français pour les journaux, motif traduit par le main pour l'affichage
-        const message = translate('fr', `importProblems.${problem.code}`, problem.params)
-        Logger.warn(`Import refusé : ${message}`)
         reply.code(400)
-        return { statusCode: 400, error: 'Bad Request', message, problem }
+        return importRefusal(problem)
       }
 
       // Corrections des checklists, prévues avant toute écriture
@@ -523,13 +606,22 @@ export default async function dataRoutes(fastify) {
         importedSeriesChecklist(recurrence.id, recurrence.checklistItems),
       )
       const taskChecklists = data.tasks.map((task) => importedTaskChecklist(task.id, task.checklistItems))
+      // Contenus déjà déposés (PUT /documents/files/:sha256) ou déjà présents dans le dossier
+      const fileSizes = await documentFileSizes(
+        data.tasks.flatMap((task) => (task.documents ?? []).map((document) => document.sha256)),
+      )
+      const taskDocuments = data.tasks.map((task) => importedTaskDocuments(task.id, task.documents, fileSizes))
       const boards = importedBoards(data.boards)
       let boardCount = 0
       const warnings: ImportProblem[] = [
         ...templatePlan.problems,
         ...seriesChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
         ...taskChecklists.flatMap(({ problem }) => (problem ? [problem] : [])),
+        ...taskDocuments.flatMap(({ problems }) => problems),
       ]
+
+      // Empreintes des documents remplacés, lues avant que la cascade n'emporte leurs lignes
+      const previousDocuments = await prisma.document.findMany({ distinct: ['sha256'], select: { sha256: true } })
 
       try {
         // Ordre des suppressions : les tâches référencent les séries et les
@@ -631,6 +723,7 @@ export default async function dataRoutes(fastify) {
 
             for (const [index, task] of data.tasks.entries()) {
               const { rows } = taskChecklists[index]
+              const documents = taskDocuments[index].rows
               await tx.task.create({
                 data: {
                   id: task.id,
@@ -651,6 +744,7 @@ export default async function dataRoutes(fastify) {
                   tags: { connect: task.tagIds.map((id) => ({ id })) },
                   // Pas de checklist sans point, comme à l'enregistrement d'une tâche
                   ...(rows.length > 0 && { checklist: { create: { items: { create: rows } } } }),
+                  ...(documents.length > 0 && { documents: { create: documents } }),
                 },
               })
             }
@@ -667,6 +761,8 @@ export default async function dataRoutes(fastify) {
         return { statusCode: 500, error: 'Internal Server Error', message: "L'import a échoué, aucune donnée modifiée" }
       }
 
+      await releaseDocumentFiles(previousDocuments.map((document) => document.sha256))
+
       for (const warning of warnings) {
         const problem = translate('fr', `importProblems.${warning.code}`, warning.params)
         Logger.warn(`Import corrigé : ${problem}`)
@@ -678,9 +774,10 @@ export default async function dataRoutes(fastify) {
         tags: data.tags.length,
         tasks: data.tasks.length,
         checklistTemplates: templatePlan.templates.length,
+        documents: taskDocuments.reduce((total, { rows }) => total + rows.length, 0),
       }
       Logger.info(
-        `Import : ${counts.boards} tableau(x), ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist`,
+        `Import : ${counts.boards} tableau(x), ${counts.stages} colonne(s), ${counts.tags} tag(s), ${counts.tasks} tâche(s), ${counts.checklistTemplates} modèle(s) de checklist, ${counts.documents} document(s)`,
       )
       return { ...counts, warnings }
     },
