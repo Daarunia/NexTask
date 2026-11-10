@@ -3,11 +3,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
 import { DEV_API_PORT, testApiPort } from '../core/shared/api.constants.js'
 import { TEST_INDEX_ARG, TEST_SLOTS_ARG, testFileSuffix } from '../core/shared/test.constants.js'
+import { EDITION } from './edition.js'
 
 // Identifiant applicatif Windows : conditionne le regroupement dans la barre
 // des tâches et l'expéditeur des notifications. À garder aligné sur `appId`
-// dans electron-builder.json.
-export const APP_ID = 'com.daarunia.nextask'
+// dans electron-builder.json et electron-builder.client.json : NexTask Client
+// a le sien, les deux apps s'installent côte à côte
+export const APP_ID = EDITION === 'client' ? 'com.daarunia.nextask.client' : 'com.daarunia.nextask'
 
 // En dev ?
 export const IS_DEV = process.env.NODE_ENV === 'development'

@@ -8,12 +8,15 @@ import AppRail from './components/AppRail.vue'
 import UndoToast from './components/UndoToast.vue'
 import UpdateToast from './components/UpdateToast.vue'
 import ActionToast from './components/ActionToast.vue'
+import ServerConnect from './components/server/ServerConnect.vue'
+import ServerBanner from './components/server/ServerBanner.vue'
 import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useBoardStore } from './stores/Board'
 import { useTagStore } from './stores/Tag'
 import { useUpdateStore } from './stores/Update'
 import { registerConfirmPopup } from './utils/confirm.helper'
+import { needsConnection } from './utils/server.helper'
 
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
@@ -38,6 +41,9 @@ let stopOpenTaskListener: (() => void) | undefined
 // Paramètres chargés et appliqués une seule fois, pour toutes les pages
 onMounted(() => {
   settings.load()
+
+  // NexTask Client sans serveur : écran de connexion seul, sans données à suivre
+  if (needsConnection) return
 
   // État de la mise à jour, pour la section « À propos » et le toast de redémarrage
   if (!bare.value) updateStore.load()
@@ -76,9 +82,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <router-view v-if="bare" />
+  <!-- NexTask Client sans serveur qui accepte la connexion : écran de connexion à la place de l'app -->
+  <ServerConnect v-if="needsConnection && !bare" />
+
+  <router-view v-else-if="bare" />
 
   <div v-else class="flex flex-col h-screen">
+    <!-- Serveur de NexTask Client injoignable : nouvel essai sans perdre la page -->
+    <ServerBanner />
+
     <Header />
 
     <!-- Rail de navigation à gauche, page à droite, séparés de l'en-tête par un filet -->

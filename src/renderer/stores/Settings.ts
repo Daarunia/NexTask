@@ -4,6 +4,31 @@ import { type AppSettings, DEFAULT_SETTINGS } from '@core/shared/settings.consta
 import { getAppTheme } from '../constants/theme.constants'
 import { applyTheme } from '../utils/theme.helper'
 import { getLogger } from '../utils/logger'
+import { api } from '../utils/api.helper'
+import { type DataSettings, isDataSettingsKey } from '@core/shared/settings.schema'
+
+/**
+ * Vrai si les réglages « données » sont ceux du serveur (NexTask Client
+ * connecté), lus et écrits par GET / PATCH /settings. Sinon, ils restent avec
+ * ceux de l'appareil, dans electron-store.
+ */
+function dataSettingsInApi(): boolean {
+  const server = globalThis.server
+  return server?.capabilities?.dataSettingsInApi === true && server.status === 'connected'
+}
+
+/**
+ * Réglages « données » du serveur (NexTask Client), ou rien sans serveur.
+ */
+async function loadServerDataSettings(): Promise<Partial<DataSettings>> {
+  if (!dataSettingsInApi()) return {}
+  try {
+    return await api.get<DataSettings>('/settings')
+  } catch (error) {
+    getLogger().error('[Settings] Réglages du serveur non chargés', error)
+    return {}
+  }
+}
 
 // Préférence sombre de l'OS, suivie par le mode « système »
 const systemDarkQuery = globalThis.matchMedia('(prefers-color-scheme: dark)')
@@ -18,8 +43,9 @@ const loaded = new Promise<void>((resolve) => {
 /**
  * Paramètres de l'application, seule source de vérité côté renderer.
  *
- * Le store lit et écrit via le pont du preload (electron-store côté main) et
- * applique lui-même chaque paramètre visuel : les composants (en-tête, page
+ * Le store lit et écrit via le pont du preload (electron-store côté main),
+ * sauf les réglages « données » de NexTask Client, gardés par le serveur
+ * (cf. DATA_SETTINGS_KEYS), et applique lui-même chaque paramètre visuel : les composants (en-tête, page
  * Paramètres) ne font que lire l'état et appeler les actions, et restent ainsi
  * synchronisés quel que soit l'endroit où le réglage a été changé.
  */
@@ -43,6 +69,7 @@ export const useSettingsStore = defineStore('settings', {
       try {
         const values = await globalThis.settings.getAll()
         this.$patch(values)
+        this.$patch(await loadServerDataSettings())
         getLogger().debug('[Settings] Paramètres chargés', values)
       } catch (error) {
         // On garde les valeurs par défaut : l'app reste utilisable
@@ -79,12 +106,15 @@ export const useSettingsStore = defineStore('settings', {
 
     /**
      * Remet tous les paramètres à leurs valeurs par défaut (côté main, en une
-     * écriture), puis applique celles renvoyées.
+     * écriture), puis applique celles renvoyées. Dans NexTask Client, les
+     * réglages « données » sont ceux du serveur, partagés avec les autres
+     * appareils : ils ne changent pas, et sont relus.
      */
     async reset() {
       try {
         const values = await globalThis.settings.reset()
         this.$patch(values)
+        this.$patch(await loadServerDataSettings())
         this.applyAll()
         getLogger().info('[Settings] Paramètres remis à leurs valeurs par défaut')
       } catch (error) {
@@ -122,7 +152,13 @@ export const useSettingsStore = defineStore('settings', {
 
       try {
         // Copie brute : un tableau réactif ne passe pas le clonage de l'IPC
-        await globalThis.settings.set(key, structuredClone(toRaw(value)))
+        const raw = structuredClone(toRaw(value))
+        if (dataSettingsInApi() && isDataSettingsKey(key)) {
+          // Réglage « données » de NexTask Client : gardé par le serveur
+          await api.patch('/settings', { [key]: raw })
+        } else {
+          await globalThis.settings.set(key, raw)
+        }
       } catch (error) {
         getLogger().error(`[Settings] Erreur lors de l'enregistrement de ${key}`, error)
         this.$patch({ [key]: previous })

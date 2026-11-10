@@ -308,13 +308,20 @@
           <!-- Documents joints aux tâches : limites des ajouts et place occupée -->
           <DocumentsSetting />
 
-          <DatabaseLocationSetting />
+          <!-- Serveur de NexTask Client, à la place de l'emplacement de la base locale -->
+          <ServerSetting v-if="capabilities.serverConnection" />
+
+          <DatabaseLocationSetting v-if="capabilities.databaseLocation" />
 
           <DataTransferSetting />
 
           <SettingsRow
             :label="t('settings.data.autoBackup')"
-            :description="t('settings.data.autoBackupDescription')"
+            :description="
+              capabilities.serverConnection
+                ? t('server.autoBackupDescription')
+                : t('settings.data.autoBackupDescription')
+            "
             testId="settings-row-auto-backup"
           >
             <ToggleSwitch
@@ -325,6 +332,7 @@
           </SettingsRow>
 
           <SettingsRow
+            v-if="capabilities.dataFolder"
             :label="t('settings.data.dataFolder')"
             :description="t('settings.data.dataFolderDescription')"
             testId="settings-row-data-folder"
@@ -388,6 +396,7 @@ import TaskVersionsSetting from '../components/settings/TaskVersionsSetting.vue'
 import TagsSetting from '../components/settings/TagsSetting.vue'
 import RecurrencesSetting from '../components/settings/RecurrencesSetting.vue'
 import DatabaseLocationSetting from '../components/settings/DatabaseLocationSetting.vue'
+import ServerSetting from '../components/settings/ServerSetting.vue'
 import DocumentsSetting from '../components/settings/DocumentsSetting.vue'
 import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
@@ -426,6 +435,10 @@ const root = ref<HTMLElement | null>(null)
 
 // Entrées du sommaire, dans l'ordre des sections de la page. Libellés et
 // options calculés pour suivre la langue de l'interface.
+// Fonctions de l'édition : emplacement de la base et dossier des données en
+// local, serveur dans NexTask Client
+const capabilities = globalThis.server.capabilities
+
 const navSections = computed<SettingsNavSection[]>(() => [
   { id: 'settings-section-appearance', label: t('settings.appearance.title'), icon: 'pi-palette' },
   { id: 'settings-section-tasks', label: t('settings.tasks.title'), icon: 'pi-check-square' },

@@ -819,4 +819,31 @@ export const en: MessageSchema = {
     writeHint: 'Or double-click the preview',
     empty: 'Nothing to display',
   },
+  server: {
+    connectTitle: 'Connect to a NexTask server',
+    connectIntro:
+      'NexTask Client works on the tasks of a NexTask server. Enter its address and the token chosen when it was installed.',
+    urlLabel: 'Server address',
+    urlPlaceholder: 'https://nextask.example.com',
+    tokenLabel: 'Token',
+    connect: 'Connect',
+    insecure: 'Unencrypted connection: the token will travel in clear text over the network. Prefer an https address.',
+    status: {
+      connected: 'Connected.',
+      missing: 'No server saved.',
+      invalid: 'Invalid address: it must start with http:// or https://.',
+      unreachable: 'Server unreachable. Check its address and your connection, then try again.',
+      unauthorized: 'The server refused the token.',
+      incompatible: 'This server runs another version of NexTask: update the server or the app.',
+    },
+    unreachableBanner: 'Server unreachable: your latest changes may not be saved.',
+    settingsAddress: 'Server',
+    settingsAddressDescription: 'Tasks, data settings and backups are on this server.',
+    disconnect: 'Disconnect',
+    disconnectDescription: 'Forgets the token on this device, to change server or token.',
+    disconnectConfirm: 'Disconnect from the server? You will have to enter the token again.',
+    disconnectFailed: 'Disconnecting failed.',
+    autoBackupDescription:
+      'Daily copy of the database and its documents on the server, in the "backups" folder of its data. The last 7 are kept.',
+  },
 }

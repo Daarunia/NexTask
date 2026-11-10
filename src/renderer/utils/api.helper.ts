@@ -1,6 +1,19 @@
 import axios, { AxiosRequestConfig } from 'axios'
-// URL du serveur Fastify, transmise par le main via le preload
+import { currentLocale } from '../i18n'
+import { reportNetworkError, reportServerReachable, reportUnauthorized } from './server.helper'
+
+// URL de l'API (serveur Fastify local, ou serveur de NexTask Client),
+// transmise par le main via le preload
 const baseUrl = globalThis.server.url
+
+/**
+ * En-têtes de chaque requête : jeton de NexTask Client, et langue de
+ * l'interface pour les textes produits par le serveur (colonnes par défaut,
+ * motifs d'import). L'API locale suit la langue de l'interface sans eux.
+ */
+function serverHeaders(): Record<string, string> {
+  return { ...globalThis.server.headers(), 'Accept-Language': currentLocale() }
+}
 
 /**
  * Erreur HTTP renvoyée par l'API, avec son code de statut et le corps de la
@@ -47,17 +60,24 @@ async function request<T>(method: string, url: string, data?: unknown, options?:
       url,
       data,
       ...options,
+      headers: { ...serverHeaders(), ...options?.headers },
     })
+    reportServerReachable()
     return response.data
   } catch (err: any) {
     // Axios error handling
     if (err.response) {
+      // Jeton refusé (NexTask Client) : retour à l'écran de connexion
+      if (err.response.status === 401) void reportUnauthorized()
+      else reportServerReachable()
       throw new ApiError(
         err.response.status,
         `HTTP ${err.response.status} - ${err.response.statusText} - ${JSON.stringify(err.response.data)}`,
         err.response.data,
       )
     } else {
+      // Pas de réponse : serveur injoignable (bandeau de NexTask Client)
+      if (err.request) reportNetworkError()
       throw err
     }
   }
@@ -75,7 +95,7 @@ async function request<T>(method: string, url: string, data?: unknown, options?:
 function patchOnUnload(url: string, data: unknown): void {
   fetch(`${baseUrl}${url}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...serverHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
     keepalive: true,
   }).catch(() => undefined)

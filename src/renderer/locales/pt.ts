@@ -822,4 +822,31 @@ export const pt: MessageSchema = {
     writeHint: 'Ou clique duas vezes na visualização',
     empty: 'Nada para exibir',
   },
+  server: {
+    connectTitle: 'Conexão a um servidor NexTask',
+    connectIntro:
+      'O NexTask Client trabalha com as tarefas de um servidor NexTask. Informe o endereço dele e o token escolhido na instalação.',
+    urlLabel: 'Endereço do servidor',
+    urlPlaceholder: 'https://nextask.exemplo.com.br',
+    tokenLabel: 'Token',
+    connect: 'Conectar',
+    insecure: 'Conexão sem criptografia: o token trafegará em texto puro pela rede. Prefira um endereço https.',
+    status: {
+      connected: 'Conectado.',
+      missing: 'Nenhum servidor salvo.',
+      invalid: 'Endereço inválido: ele deve começar com http:// ou https://.',
+      unreachable: 'Servidor inacessível. Verifique o endereço e sua conexão, depois tente novamente.',
+      unauthorized: 'O servidor recusou o token.',
+      incompatible: 'Este servidor tem outra versão do NexTask: atualize o servidor ou o app.',
+    },
+    unreachableBanner: 'Servidor inacessível: suas últimas alterações podem não ter sido salvas.',
+    settingsAddress: 'Servidor',
+    settingsAddressDescription: 'As tarefas, as configurações de dados e os backups ficam neste servidor.',
+    disconnect: 'Desconectar',
+    disconnectDescription: 'Esquece o token neste dispositivo, para trocar de servidor ou de token.',
+    disconnectConfirm: 'Desconectar do servidor? Será preciso informar o token de novo.',
+    disconnectFailed: 'Não foi possível desconectar.',
+    autoBackupDescription:
+      'Cópia diária do banco de dados e dos documentos no servidor, na pasta "backups" dos dados dele. As 7 últimas são mantidas.',
+  },
 }

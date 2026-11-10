@@ -836,6 +836,33 @@ export const fr = {
     writeHint: "Ou double-clic sur l'aperçu",
     empty: 'Rien à afficher',
   },
+  server: {
+    connectTitle: 'Connexion à un serveur NexTask',
+    connectIntro:
+      "NexTask Client travaille sur les tâches d'un serveur NexTask. Saisis son adresse et le jeton choisi à son installation.",
+    urlLabel: 'Adresse du serveur',
+    urlPlaceholder: 'https://nextask.exemple.fr',
+    tokenLabel: 'Jeton',
+    connect: 'Se connecter',
+    insecure: 'Connexion non chiffrée : le jeton passera en clair sur le réseau. Préfère une adresse en https.',
+    status: {
+      connected: 'Connecté.',
+      missing: 'Aucun serveur enregistré.',
+      invalid: 'Adresse invalide : elle doit commencer par http:// ou https://.',
+      unreachable: 'Serveur injoignable. Vérifie son adresse et ta connexion, puis réessaie.',
+      unauthorized: 'Jeton refusé par le serveur.',
+      incompatible: "Ce serveur n'a pas la même version de NexTask : mets à jour le serveur ou l'app.",
+    },
+    unreachableBanner: 'Serveur injoignable : tes dernières modifications ne sont peut-être pas enregistrées.',
+    settingsAddress: 'Serveur',
+    settingsAddressDescription: 'Les tâches, les réglages des données et les sauvegardes sont sur ce serveur.',
+    disconnect: 'Se déconnecter',
+    disconnectDescription: 'Oublie le jeton sur cet appareil, pour changer de serveur ou de jeton.',
+    disconnectConfirm: 'Se déconnecter du serveur ? Le jeton sera à saisir de nouveau.',
+    disconnectFailed: "La déconnexion n'a pas abouti.",
+    autoBackupDescription:
+      'Copie quotidienne de la base et de ses documents sur le serveur, dans le dossier « backups » de ses données. Les 7 dernières sont conservées.',
+  },
 }
 
 /** Forme des catalogues de l'interface. */

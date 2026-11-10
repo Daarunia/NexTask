@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron'
 import Logger from 'electron-log'
-import { API_VERSION } from '../../core/shared/api.constants.js'
 import {
   EDITION_CAPABILITIES,
   type ServerConnectResult,
@@ -11,6 +10,7 @@ import { IS_TEST } from '../constants.js'
 import { getLocale } from '../i18n.js'
 import { apiFetch, type Backend, type DueReminder } from './backend.js'
 import { forgetToken, initConnection, readConnection, saveConnection, type Connection } from './connection.js'
+import { checkServer } from './serverCheck.js'
 
 /**
  * Backend de NexTask Client : un serveur NexTask (src/server) joint en HTTP,
@@ -22,49 +22,12 @@ import { forgetToken, initConnection, readConnection, saveConnection, type Conne
  * ou un bandeau « serveur injoignable » qui propose de réessayer.
  */
 
-// Délai d'une vérification du serveur
-const CHECK_TIMEOUT_MS = 5000
-
 let connection: Connection = { url: null, token: null }
 let status: ServerStatus = 'missing'
 
 /** En-tête Authorization d'un jeton. */
 function bearer(token: string): string {
   return `Bearer ${token}`
-}
-
-/**
- * Vérifie un serveur : joignable, même version du contrat de l'API, jeton accepté.
- *
- * @param url Adresse normalisée
- * @param token Jeton en clair
- */
-export async function checkServer(url: string, token: string): Promise<ServerStatus> {
-  let health: Response
-  try {
-    health = await fetch(`${url}/health`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
-  } catch (error) {
-    Logger.warn(`[serveur] ${url} injoignable :`, error)
-    return 'unreachable'
-  }
-  if (!health.ok) return 'unreachable'
-
-  const { apiVersion } = (await health.json().catch(() => ({}))) as { apiVersion?: unknown }
-  if (apiVersion !== API_VERSION) {
-    Logger.warn(`[serveur] ${url} : contrat de l'API ${String(apiVersion)}, attendu ${API_VERSION}`)
-    return 'incompatible'
-  }
-
-  try {
-    const settings = await fetch(`${url}/settings`, {
-      headers: { authorization: bearer(token) },
-      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
-    })
-    if (settings.status === 401) return 'unauthorized'
-    return settings.ok ? 'connected' : 'unreachable'
-  } catch {
-    return 'unreachable'
-  }
 }
 
 /** Vérifie le serveur enregistré et met l'état à jour. */
