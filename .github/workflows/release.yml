@@ -61,6 +61,14 @@ jobs:
       - name: Build Windows installer
         run: npm run build:win -- --publish never
 
+      # NexTask Client (dist/client), sur son propre canal de mise à jour
+      # (client.yml) : son app.asar ne doit contenir ni l'API ni la base
+      - name: Build Windows client installer
+        run: npm run build:client:win -- --publish never
+
+      - name: Check client bundle
+        run: npm run check:client-bundle
+
       # Notes construites à partir des commits, les merges locaux n'ayant pas de PR à lister
       - name: Generate release notes
         shell: bash
@@ -69,14 +77,14 @@ jobs:
           NOTES_REF: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
         run: node scripts/release-notes.js "$NOTES_REF" > release-notes.md
 
-      # gh est préinstallé sur les runners GitHub. latest.yml et le .blockmap
-      # servent à la mise à jour automatique de l'app (electron-updater)
+      # gh est préinstallé sur les runners GitHub. latest.yml, client.yml et les
+      # .blockmap servent à la mise à jour automatique des apps (electron-updater)
       - name: Publish GitHub Release
         if: github.ref_type == 'tag'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip dist/client/*.exe dist/client/*.exe.blockmap dist/client/client.yml dist/client/*.zip --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
       # Hors tag, brouillon invisible du public et sans tag créé, à supprimer après vérification
       - name: Publish draft release
@@ -84,4 +92,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID" --notes-file release-notes.md
+        run: gh release create "test-$GITHUB_RUN_ID" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.zip dist/client/*.exe dist/client/*.exe.blockmap dist/client/client.yml dist/client/*.zip --draft --target "$GITHUB_SHA" --title "Test release $GITHUB_RUN_ID" --notes-file release-notes.md

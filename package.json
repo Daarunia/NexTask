@@ -34,6 +34,10 @@
     "build:win": "node scripts/build.js && electron-builder --win",
     "build:mac": "node scripts/build.js && electron-builder --mac",
     "build:linux": "node scripts/build.js && electron-builder --linux",
+    "build:client:win": "node scripts/build.js --edition=client && electron-builder --config electron-builder.client.json --win",
+    "build:client:mac": "node scripts/build.js --edition=client && electron-builder --config electron-builder.client.json --mac",
+    "build:client:linux": "node scripts/build.js --edition=client && electron-builder --config electron-builder.client.json --linux",
+    "check:client-bundle": "node scripts/check-client-bundle.js",
     "sonar": "sonar-scanner",
     "typecheck": "tsc -p src/main/tsconfig.json --noEmit && tsc -p src/core/tsconfig.json && tsc -p src/server/tsconfig.json --noEmit && vue-tsc -p src/renderer/tsconfig.json --noEmit",
     "release": "node scripts/bump-version.js",
@@ -42,6 +46,7 @@
     "test:server": "vitest run --config vitest.server.config.ts",
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:remote": "node scripts/test-e2e-remote.js",
     "test:ui": "playwright test --ui",
     "coverage": "vitest run --coverage",
     "coverage:e2e": "node scripts/coverage-e2e.js",
@@ -53,6 +58,7 @@
     "url": "https://github.com/Daarunia"
   },
   "devDependencies": {
+    "@electron/asar": "^3.4.1",
     "@fastify/swagger": "^9.9.3",
     "@fastify/swagger-ui": "^6.1.3",
     "@fullcalendar/vue3": "^7.1.4",

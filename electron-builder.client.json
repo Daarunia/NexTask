@@ -1,0 +1,70 @@
+{
+  "appId": "com.daarunia.nextask.client",
+  "productName": "NexTask Client",
+  "extraMetadata": {
+    "name": "nextask-client"
+  },
+  "artifactName": "NexTask-Client-${version}-${os}-${arch}.${ext}",
+  "npmRebuild": false,
+  "publish": {
+    "provider": "github",
+    "owner": "Daarunia",
+    "repo": "NexTask",
+    "channel": "client"
+  },
+  "directories": {
+    "output": "dist/client",
+    "buildResources": "resources"
+  },
+  "nsis": {
+    "artifactName": "NexTask-Client-Setup-${version}.${ext}",
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "shortcutName": "NexTask Client",
+    "installerIcon": "resources/icon.ico",
+    "uninstallerIcon": "resources/icon.ico",
+    "installerHeaderIcon": "resources/icon.ico"
+  },
+  "win": {
+    "forceCodeSigning": false,
+    "icon": "resources/icon.ico",
+    "target": ["nsis", "zip"]
+  },
+  "mac": {
+    "icon": "resources/icon.png",
+    "category": "public.app-category.productivity"
+  },
+  "linux": {
+    "target": ["snap"],
+    "icon": "resources/icon.png",
+    "category": "Utility"
+  },
+  "files": [
+    "package.json",
+    {
+      "from": "build/main/",
+      "to": "main",
+      "filter": ["**/*", "!backend/local.js", "!database/**", "!system/databaseLocation.js"]
+    },
+    {
+      "from": "build/core/",
+      "to": "core",
+      "filter": ["shared/**", "locales/**", "i18n.js", "logger.js"]
+    },
+    {
+      "from": "build/renderer",
+      "to": "renderer"
+    },
+    "!**/*.map",
+    "!**/node_modules/**/{docs/**,*.d.ts,*.d.mts,*.d.cts}",
+    "!**/node_modules/**/{README,readme,Readme,CHANGELOG,changelog,History,HISTORY,SECURITY,CONTRIBUTING,GOVERNANCE}.md",
+    "!**/node_modules/{better-sqlite3,fastify,@fastify,@prisma,prisma,.prisma}/**"
+  ],
+  "extraResources": [
+    {
+      "from": "src/main/static",
+      "to": "static"
+    }
+  ]
+}
