@@ -50,7 +50,7 @@
     "url": "https://github.com/Daarunia"
   },
   "devDependencies": {
-    "@fastify/swagger": "^9.9.4",
+    "@fastify/swagger": "^9.9.5",
     "@fastify/swagger-ui": "^6.1.4",
     "@fullcalendar/vue3": "^7.1.5",
     "@playwright/test": "^1.65.1",
@@ -88,7 +88,7 @@
     "vite": "^8.3.8",
     "vitest": "^5.1.0",
     "vue": "^3.5.45",
-    "vue-i18n": "^11.4.20",
+    "vue-i18n": "^11.4.21",
     "vue-router": "^5.5.1",
     "vue-tsc": "^3.3.14",
     "vuedraggable": "4.1.0",
