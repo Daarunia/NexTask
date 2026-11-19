@@ -13,6 +13,8 @@ src/
                        test.routes.ts : remise à zéro de la base, utilisée par les tests E2E
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
+      mcp/             Accès MCP des assistants IA : serveur à part sur 127.0.0.1 avec jeton, outils qui
+                       appellent les routes de l'API par inject() (jamais la base), prompts de revue
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
     database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage, dossier des documents
     scheduler/         Tâches de fond : récurrences, sauvegardes, purge des archives
@@ -22,6 +24,7 @@ src/
     database/          Emplacement de la base choisi par l'utilisateur
     scheduler/         Notifications des rappels
     system/            Intégration OS : quick add, mises à jour, import/export, état des fenêtres…
+                       mcp.ts : serveur MCP selon le paramètre, jeton chiffré par safeStorage
     preload/           Pont exposé au renderer (dont l'URL du serveur)
     locales/           Textes du main et du serveur (notifications, menus, colonnes par défaut), 5 langues
   renderer/            Interface Vue 3 (PrimeVue, Tailwind v4, Pinia, vue-i18n)

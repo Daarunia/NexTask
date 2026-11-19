@@ -99,6 +99,13 @@ export const DOCUMENT_SIZE_CEILING_MB = 1024
 /** Nombre maximal de documents par tâche par défaut. */
 export const DOCUMENT_DEFAULT_MAX_PER_TASK = 10
 
+/** Port par défaut du serveur MCP de l'app installée (cf. mcp.constants.ts). */
+export const MCP_DEFAULT_PORT = 47800
+
+/** Bornes du port MCP réglable (ports non privilégiés). */
+export const MCP_PORT_MIN = 1024
+export const MCP_PORT_MAX = 65535
+
 /** Plus grand nombre réglable de documents par tâche. */
 export const DOCUMENT_PER_TASK_CEILING = 100
 
@@ -130,6 +137,8 @@ export interface AppSettings {
   launchAtStartup: boolean // lancement à l'ouverture de session
   startMinimized: boolean // au lancement à l'ouverture de session, fenêtre réduite
   quickAddEnabled: boolean // raccourci global qui ouvre la fenêtre d'ajout rapide
+  mcpEnabled: boolean // accès MCP des assistants IA, sur 127.0.0.1 avec un jeton (cf. mcp.constants.ts)
+  mcpPort: number // port du serveur MCP de l'app installée (imposé en dev et en test)
   autoUpdateEnabled: boolean // recherche et téléchargement des nouvelles versions en arrière-plan
   showDevToolsButton: boolean // bouton de la console du navigateur dans l'en-tête, toujours affiché en dev
   windowMode: WindowMode // fenêtre maximisée ou à sa dernière taille au démarrage
@@ -164,6 +173,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launchAtStartup: false,
   startMinimized: false,
   quickAddEnabled: true,
+  mcpEnabled: false,
+  mcpPort: MCP_DEFAULT_PORT,
   autoUpdateEnabled: true,
   showDevToolsButton: false,
   windowMode: 'maximized',

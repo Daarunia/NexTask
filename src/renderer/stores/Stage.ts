@@ -46,10 +46,12 @@ export const useStageStore = defineStore('stage', {
      * Chargement des colonnes et de leurs tâches.
      * Les deux caches sont remplis par le même appel : on ne le saute que s'ils
      * sont tous deux valides, sinon l'un pourrait être servi sans l'autre.
+     * @param force Relire même avec des caches valides (écritures d'un assistant IA)
      */
-    async loadAllStages(): Promise<void> {
+    async loadAllStages(force = false): Promise<void> {
       const taskStore = useTaskStore()
-      if (isCacheValid(this.allEntities, this.ttl) && isCacheValid(taskStore.allEntities, taskStore.ttl)) return
+      const cached = isCacheValid(this.allEntities, this.ttl) && isCacheValid(taskStore.allEntities, taskStore.ttl)
+      if (!force && cached) return
 
       const stagesFromApi = await api.get<Stage[]>(`/stages`)
 
