@@ -91,12 +91,12 @@
     "vue-i18n": "^11.4.23",
     "vue-router": "^5.5.1",
     "vue-tsc": "^3.3.14",
-    "vuedraggable": "4.1.0",
-    "zod": "^4.6.7"
+    "vuedraggable": "4.1.0"
   },
   "dependencies": {
     "@fastify/cors": "^11.4.3",
     "@fastify/rate-limit": "^11.2.2",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@prisma/adapter-better-sqlite3": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "croner": "^11.0.1",
@@ -105,7 +105,8 @@
     "electron-updater": "^6.8.11",
     "fastify": "^5.12.8",
     "yauzl": "^3.4.0",
-    "yazl": "^3.3.1"
+    "yazl": "^3.3.1",
+    "zod": "^4.6.7"
   },
   "engines": {
     "node": "24.x"

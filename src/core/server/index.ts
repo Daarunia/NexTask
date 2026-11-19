@@ -93,6 +93,19 @@ export function getApiUrl(): string {
   return apiUrl
 }
 
+// Instance à l'écoute, appelée sans réseau par le serveur MCP (cf. mcp/index.ts)
+let apiServer: FastifyInstance | null = null
+
+/**
+ * Instance du serveur Fastify démarré.
+ *
+ * @throws Si le serveur n'a pas encore démarré
+ */
+export function getApiServer(): FastifyInstance {
+  if (!apiServer) throw new Error('Serveur Fastify pas encore démarré')
+  return apiServer
+}
+
 /**
  * Démarre le serveur Fastify sur le port de l'environnement (cf. API_PORT).
  *
@@ -149,6 +162,7 @@ export async function startServer() {
     await fastify.listen({ port: API_PORT })
     const { port } = fastify.server.address() as AddressInfo
     apiUrl = `http://localhost:${port}`
+    apiServer = fastify
     Logger.info(`Fastify API -> ${apiUrl}`)
     if (IS_DEV) Logger.info(`Swagger UI -> ${apiUrl}/docs`)
   } catch (err) {
