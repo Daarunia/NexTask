@@ -1,3 +1,4 @@
+import { dayOffset } from '@core/shared/day.helper'
 import { intlLocale } from '../i18n'
 import type { Task } from '../types/task.types'
 
@@ -6,35 +7,8 @@ import type { Task } from '../types/task.types'
  * dans la langue active, relatives au jour courant.
  */
 
-/** Place d'une date par rapport à aujourd'hui, pour la couleur de la pastille. */
-export type DayState = 'past' | 'today' | 'future'
-
-// Durée d'un jour, pour compter les jours entre deux minuits locaux
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/**
- * Nombre de jours calendaires de `now` à `date` (0 le même jour, 1 demain,
- * -1 hier), sans tenir compte des heures. Passe par l'UTC des dates locales,
- * un changement d'heure ne décale donc pas le compte.
- * @param date Date comparée
- * @param now Maintenant
- */
-export function dayOffset(date: Date, now: Date): number {
-  const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-  return Math.round((day - today) / DAY_MS)
-}
-
-/**
- * Place d'une date par rapport au jour courant, à la journée près.
- * @param date Date comparée
- * @param now Maintenant
- */
-export function dayState(date: Date, now: Date): DayState {
-  const offset = dayOffset(date, now)
-  if (offset < 0) return 'past'
-  return offset === 0 ? 'today' : 'future'
-}
+// Jours calendaires locaux, partagés avec le serveur MCP (retards, agenda)
+export { dayOffset, dayState, type DayState } from '@core/shared/day.helper'
 
 /**
  * Première lettre en capitale, selon la langue (« aujourd’hui » → « Aujourd’hui »).
