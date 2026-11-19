@@ -776,6 +776,9 @@ watch(() => boardStore.getAllBoards, planning.pruneDeletedBoards)
 // Une nouvelle série apparaît dans le cache : son titre n'est connu que par la liste
 watch(() => Object.keys(taskStore.recurrences).length, loadSeries)
 
+// Écritures d'un assistant IA : tâches relues par le store, séries relues ici
+watch(() => taskStore.externalRevision, loadSeries)
+
 watch(() => taskStore.taskToOpen, openRequestedTask)
 
 let draggable: Draggable | undefined

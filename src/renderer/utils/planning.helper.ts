@@ -1,9 +1,11 @@
-import { nextOccurrence, toRecurrenceRule } from '@core/shared/recurrence.helper'
-import type { RecurrenceListItem } from '@core/shared/recurrence.constants'
 import type { Board } from '../types/board.types'
 import type { Stage } from '../types/stage.types'
 import type { Task } from '../types/task.types'
 import { DEFAULT_START_HOUR, dayOffset } from './date.helper'
+
+// Clés de jour et occurrences projetées, partagées avec le serveur MCP (agenda)
+export { dayKey } from '@core/shared/day.helper'
+export { projectOccurrences, type ProjectedOccurrence } from '@core/shared/occurrence.helper'
 
 /**
  * Calculs purs de la vue Planning : tâches retenues et leur ordre, dates données
@@ -17,31 +19,10 @@ const LAST_START_HOUR = 23
 // Écart de rang entre deux colonnes, supérieur à toute position de carte
 const STAGE_RANK_STEP = 1_000_000
 
-// Occurrences calculées au plus par série, contre une boucle trop longue sur une date lointaine
-const MAX_PROJECTED_RUNS = 2000
-
-/** Occurrence à venir d'une série, pas encore créée. */
-export interface ProjectedOccurrence {
-  seriesId: number
-  title: string
-  date: Date
-}
-
 /** Nouvelle position d'une tâche de la colonne, décalée par une insertion. */
 export interface PositionChange {
   id: number
   position: number
-}
-
-/**
- * Clé locale d'un jour (`YYYY-MM-DD`), jamais `toISOString`, qui décalerait le
- * jour selon le fuseau.
- * @param date Date
- */
-export function dayKey(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
 }
 
 /**
@@ -235,34 +216,4 @@ export function positionsAfterTopInsert(stageTasks: readonly Pick<Task, 'id' | '
     .map((task, index) => ({ id: task.id, position: index + 1, previous: task.position }))
     .filter(({ position, previous }) => position !== previous)
     .map(({ id, position }) => ({ id, position }))
-}
-
-/**
- * Occurrences à venir d'une série sur une période. Seule une série active au
- * calendrier a des dates prévisibles : celle « après archivage » attend
- * l'archivage de la précédente. L'aperçu reste indicatif, car « Ne pas empiler »
- * peut sauter une date au moment de la génération.
- * @param series Série
- * @param rangeStart Premier instant de la période
- * @param rangeEnd Fin de la période (exclue)
- */
-export function projectOccurrences(
-  series: RecurrenceListItem,
-  rangeStart: Date,
-  rangeEnd: Date,
-): ProjectedOccurrence[] {
-  if (series.status !== 'active' || series.anchor !== 'schedule' || !series.nextRunAt) return []
-
-  const rule = toRecurrenceRule(series)
-  const occurrences: ProjectedOccurrence[] = []
-  let date: Date | null = new Date(series.nextRunAt)
-
-  // nextOccurrence compte les occurrences déjà générées : chaque date calculée en ajoute une
-  for (let run = 0; date && date < rangeEnd && run < MAX_PROJECTED_RUNS; run++) {
-    if (date >= rangeStart) occurrences.push({ seriesId: series.id, title: series.title, date })
-    rule.generatedCount += 1
-    date = nextOccurrence(rule, date)
-  }
-
-  return occurrences
 }

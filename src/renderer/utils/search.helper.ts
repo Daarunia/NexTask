@@ -1,66 +1,18 @@
 import type { Task } from '../types/task.types'
-import { descriptionExcerpt } from './description.helper'
-import { dayOffset, dayState } from './date.helper'
+import { normalizeSearchText, taskHasStatus, taskSearchText, type TaskStatus } from '@core/shared/search.helper'
 
-/**
- * Texte comparable par la recherche : minuscules, sans accents
- * (`Tâche` → `tache`), espaces multiples réduits.
- * @param text Texte à normaliser
- */
-export function normalizeSearchText(text: string): string {
-  return text.normalize('NFD').replaceAll(/\p{M}/gu, '').toLowerCase().replaceAll(/\s+/g, ' ').trim()
-}
-
-/**
- * Mots recherchés, normalisés. Une saisie vide (ou d'espaces) n'en donne aucun.
- * @param query Texte saisi dans la barre de recherche
- */
-export function searchTerms(query: string): string[] {
-  const normalized = normalizeSearchText(query)
-  return normalized ? normalized.split(' ') : []
-}
-
-/**
- * Texte d'une tâche sur lequel porte la recherche, soit son titre, sa description
- * (syntaxe Markdown retirée) et les textes des points de sa checklist, normalisés.
- * @param task Tâche à indexer
- */
-export function taskSearchText(task: Pick<Task, 'title' | 'description' | 'checklist'>): string {
-  const description = descriptionExcerpt(task.description ?? '', Infinity)
-  const items = (task.checklist?.items ?? []).map((item) => item.text)
-  return normalizeSearchText([task.title, description, ...items].join(' '))
-}
-
-/** Filtres rapides du board, sur l'état d'une tâche plutôt que sur son texte. */
-export const TASK_STATUSES = ['overdue', 'today', 'upcoming', 'checklist'] as const
-
-/** Nombre de jours après aujourd'hui couverts par le filtre `upcoming`. */
-export const UPCOMING_DAYS = 7
-export type TaskStatus = (typeof TASK_STATUSES)[number]
-
-/**
- * Vrai si la tâche est dans l'état demandé, soit une date de début passée
- * depuis la veille ou plus (`overdue`), une date de début aujourd'hui
- * (`today`) ou dans les `UPCOMING_DAYS` jours suivants (`upcoming`), ou une
- * checklist avec au moins un point à cocher (`checklist`).
- * @param task Tâche à tester
- * @param status État recherché
- * @param now Maintenant
- */
-export function taskHasStatus(task: Pick<Task, 'startDate' | 'checklist'>, status: TaskStatus, now: Date): boolean {
-  if (status === 'checklist') {
-    const items = task.checklist?.items ?? []
-    return items.some((item) => !item.isChecked)
-  }
-
-  if (!task.startDate) return false
-  const date = new Date(task.startDate)
-  if (status === 'upcoming') {
-    const offset = dayOffset(date, now)
-    return offset >= 1 && offset <= UPCOMING_DAYS
-  }
-  return dayState(date, now) === (status === 'overdue' ? 'past' : 'today')
-}
+// Mots, états et extraits de la recherche, partagés avec le serveur MCP (outil search_tasks)
+export {
+  matchExcerpt,
+  normalizeSearchText,
+  searchTerms,
+  TASK_STATUSES,
+  taskHasStatus,
+  taskMatchExcerpt,
+  taskSearchText,
+  type TaskStatus,
+  UPCOMING_DAYS,
+} from '@core/shared/search.helper'
 
 /**
  * Vrai si la tâche passe le filtre du board. Elle contient tous les mots
@@ -127,53 +79,4 @@ export function highlightParts(text: string, terms: string[]): HighlightPart[] {
     else parts.push({ text: char, match: matched[index] })
   })
   return parts
-}
-
-/**
- * Extrait d'un texte brut centré sur le premier mot trouvé, sur une ligne.
- * Vide si aucun mot n'y figure.
- * @param plainText Texte sans syntaxe Markdown
- * @param terms Mots normalisés
- * @param radius Nombre de caractères gardés de part et d'autre
- */
-function centeredExcerpt(plainText: string, terms: string[], radius: number): string {
-  const text = plainText.replaceAll(/\s+/g, ' ')
-  const haystack = [...text].map((char) => normalizeSearchText(char) || ' ').join('')
-  const positions = terms.map((term) => haystack.indexOf(term)).filter((index) => index !== -1)
-  if (!positions.length) return ''
-
-  const at = Math.min(...positions)
-  const start = Math.max(0, at - radius)
-  const end = Math.min(text.length, at + radius)
-  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`
-}
-
-/**
- * Extrait d'une description centré sur le premier mot trouvé, sur une ligne,
- * pour la liste de suggestions. Vide si aucun mot n'y figure.
- * @param description Description Markdown
- * @param terms Mots normalisés
- * @param radius Nombre de caractères gardés de part et d'autre
- */
-export function matchExcerpt(description: string, terms: string[], radius = 30): string {
-  return centeredExcerpt(descriptionExcerpt(description ?? '', Infinity), terms, radius)
-}
-
-/**
- * Extrait d'une tâche pour la liste de suggestions, pris dans la description si
- * un mot y figure, sinon dans le premier point de la checklist qui en contient
- * un. Vide si aucun mot n'apparaît ni dans l'une ni dans les autres.
- * @param task Tâche trouvée
- * @param terms Mots normalisés
- * @param radius Nombre de caractères gardés de part et d'autre
- */
-export function taskMatchExcerpt(task: Pick<Task, 'description' | 'checklist'>, terms: string[], radius = 30): string {
-  const inDescription = matchExcerpt(task.description, terms, radius)
-  if (inDescription) return inDescription
-
-  for (const item of task.checklist?.items ?? []) {
-    const inItem = centeredExcerpt(item.text, terms, radius)
-    if (inItem) return inItem
-  }
-  return ''
 }

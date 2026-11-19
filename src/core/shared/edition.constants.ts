@@ -21,12 +21,13 @@ export interface EditionCapabilities {
   dataFolder: boolean // dossiers des données et de la base, à ouvrir
   serverConnection: boolean // connexion à un serveur, à changer ou retirer
   dataSettingsInApi: boolean // réglages « données » lus et écrits par GET / PATCH /settings
+  mcp: boolean // accès MCP des assistants IA, servi par l'API de la machine
 }
 
 /** Fonctions de chaque édition. */
 export const EDITION_CAPABILITIES: Record<Edition, EditionCapabilities> = {
-  local: { databaseLocation: true, dataFolder: true, serverConnection: false, dataSettingsInApi: false },
-  client: { databaseLocation: false, dataFolder: false, serverConnection: true, dataSettingsInApi: true },
+  local: { databaseLocation: true, dataFolder: true, serverConnection: false, dataSettingsInApi: false, mcp: true },
+  client: { databaseLocation: false, dataFolder: false, serverConnection: true, dataSettingsInApi: true, mcp: false },
 }
 
 /**

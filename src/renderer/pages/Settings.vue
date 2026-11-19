@@ -375,6 +375,8 @@
           <ResetSettingsSetting />
         </SettingsSection>
 
+        <McpSection v-if="capabilities.mcp" id="settings-section-mcp" />
+
         <ShortcutsSection id="settings-section-shortcuts" />
 
         <AboutSection id="settings-section-about" />
@@ -402,6 +404,7 @@ import DataTransferSetting from '../components/settings/DataTransferSetting.vue'
 import ResetSettingsSetting from '../components/settings/ResetSettingsSetting.vue'
 import AboutSection from '../components/settings/AboutSection.vue'
 import ShortcutsSection from '../components/settings/ShortcutsSection.vue'
+import McpSection from '../components/settings/McpSection.vue'
 import SettingsNav, { type SettingsNavSection } from '../components/settings/SettingsNav.vue'
 import PrimaryColorPicker from '../components/PrimaryColorPicker.vue'
 import { useSettingsStore } from '../stores/Settings'
@@ -435,8 +438,8 @@ const root = ref<HTMLElement | null>(null)
 
 // Entrées du sommaire, dans l'ordre des sections de la page. Libellés et
 // options calculés pour suivre la langue de l'interface.
-// Fonctions de l'édition : emplacement de la base et dossier des données en
-// local, serveur dans NexTask Client
+// Fonctions de l'édition : emplacement de la base, dossier des données et accès
+// MCP en local, serveur dans NexTask Client
 const capabilities = globalThis.server.capabilities
 
 const navSections = computed<SettingsNavSection[]>(() => [
@@ -447,6 +450,8 @@ const navSections = computed<SettingsNavSection[]>(() => [
   { id: 'settings-section-notifications', label: t('settings.notifications.title'), icon: 'pi-bell' },
   { id: 'settings-section-system', label: t('settings.system.title'), icon: 'pi-power-off' },
   { id: 'settings-section-data', label: t('settings.data.title'), icon: 'pi-database' },
+  // Accès MCP : servi par l'API de la machine, absent de NexTask Client
+  ...(capabilities.mcp ? [{ id: 'settings-section-mcp', label: t('settings.mcp.navLabel'), icon: 'pi-sparkles' }] : []),
   { id: 'settings-section-shortcuts', label: t('settings.shortcuts.title'), icon: 'pi-th-large' },
   { id: 'settings-section-about', label: t('settings.about.navLabel'), icon: 'pi-info-circle' },
 ])

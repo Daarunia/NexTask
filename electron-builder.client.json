@@ -59,7 +59,7 @@
     "!**/*.map",
     "!**/node_modules/**/{docs/**,*.d.ts,*.d.mts,*.d.cts}",
     "!**/node_modules/**/{README,readme,Readme,CHANGELOG,changelog,History,HISTORY,SECURITY,CONTRIBUTING,GOVERNANCE}.md",
-    "!**/node_modules/{better-sqlite3,fastify,@fastify,@prisma,prisma,.prisma}/**"
+    "!**/node_modules/{better-sqlite3,fastify,@fastify,@modelcontextprotocol,@prisma,prisma,.prisma}/**"
   ],
   "extraResources": [
     {

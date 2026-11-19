@@ -613,6 +613,37 @@ export const en: MessageSchema = {
       },
     },
     title: 'Settings',
+    // Accès MCP des assistants IA (cf. McpSection)
+    mcp: {
+      navLabel: 'AI assistants',
+      title: 'AI assistants (MCP)',
+      description:
+        'Let an AI assistant such as Claude Code read and add to your boards through the Model Context Protocol. Access stays on this computer and requires a token.',
+      enabled: 'Enable MCP access',
+      port: 'Port',
+      portDescription: 'Local port of the MCP access. After a change, set up the assistant again.',
+      token: 'Access token',
+      tokenDescription: 'Keep it secret: it gives access to your tasks. Regenerate it if it leaked.',
+      showToken: 'Show',
+      hideToken: 'Hide',
+      regenerate: 'Regenerate',
+      regenerateConfirm: 'Assistants already set up will no longer be able to connect. Regenerate the token?',
+      regenerated: 'New token created',
+      tokenFailed: 'Token unavailable',
+      connect: 'Set up the assistant',
+      connectDescription:
+        'Copy the command for Claude Code, or the JSON configuration for another MCP client (through mcp-remote).',
+      copyClaudeCode: 'Claude Code command',
+      copyJson: 'JSON configuration',
+      copied: 'Copied to the clipboard',
+      copyFailed: 'Copy failed',
+      status: {
+        disabled: 'Disabled: no assistant can connect.',
+        listening: 'Listening on {url}',
+        portInUse: 'Port {port} is already used by another program: choose another one.',
+        error: 'MCP access could not start (see the logs).',
+      },
+    },
     shortcuts: {
       title: 'Keyboard shortcuts',
       description: 'The card keys act on the card whose title has the focus (Tab or click).',

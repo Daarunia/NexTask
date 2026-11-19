@@ -22,6 +22,8 @@ src/
                        demande, absent de l'image publiée du serveur)
       schemas/         Schémas JSON de validation des routes
       helpers/         Logique métier côté serveur
+      mcp/             Accès MCP des assistants IA : serveur à part sur 127.0.0.1 avec jeton, outils qui
+                       appellent les routes de l'API par inject() (jamais la base), prompts de revue
     prisma/            schema.prisma, migrations, seeds par langue (en, fr, es, pt, zh)
     database/          Fichier et verrou de la base SQLite, migrations et seeds au démarrage, dossier des documents,
                        réglages du serveur autonome (serverSettings.ts)
@@ -40,7 +42,8 @@ src/
     database/          Emplacement de la base choisi par l'utilisateur (backend local seulement)
     scheduler/         Affichage des notifications de rappel
     system/            Intégration OS : quick add, mises à jour, import/export, état des fenêtres…
-                       testBridge.ts : pont de test (notifications, dossiers, liens…), appelé par electronApp.evaluate()
+                       mcp.ts : accès MCP des assistants IA (édition locale), selon le paramètre, jeton chiffré
+                       par safeStorage ; testBridge.ts : pont de test (notifications, dossiers, liens…), appelé par electronApp.evaluate()
     preload/           Pont exposé au renderer (dont la connexion à l'API : adresse, jeton, édition)
     locales/           Textes du main (notifications, menus, boîtes de dialogue), 5 langues
   server/              Serveur autonome sous Node, sans Electron : core sur un dossier de données

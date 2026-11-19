@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/test'
+import { IS_REMOTE } from '../../helpers/api.helper'
 
 /**
  * Tests E2E du sommaire de la page Paramètres : un clic fait défiler la page
@@ -20,6 +21,8 @@ test.describe('Sommaire des Paramètres', () => {
       'Notifications',
       'Démarrage et arrière-plan',
       'Organisation et données',
+      // Accès MCP : édition locale seulement
+      ...(IS_REMOTE ? [] : ['Assistants IA']),
       'Raccourcis clavier',
       'À propos',
     ])

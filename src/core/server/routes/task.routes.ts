@@ -13,7 +13,7 @@ import {
   templateChecklistInput,
   taskChecklistTexts,
 } from '../helpers/checklist.helper.js'
-import { bottomPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
+import { bottomPosition, defaultPosition, makeRoomAt, taskInclude } from '../helpers/task.helper.js'
 import {
   firstStageAmong,
   seriesPlacement,
@@ -41,8 +41,17 @@ const taskTagsBody = {
   items: tagNameSchema,
 }
 
-/** Corps de POST /tasks, une fois validé par Fastify. */
-type TaskCreateBody = Omit<Prisma.TaskUncheckedCreateInput, 'tags' | 'checklist'> & {
+/**
+ * Corps de POST /tasks, une fois validé par Fastify. Version, description et
+ * position sont facultatives (défauts des paramètres, cf. la route).
+ */
+type TaskCreateBody = Omit<
+  Prisma.TaskUncheckedCreateInput,
+  'tags' | 'checklist' | 'version' | 'description' | 'position'
+> & {
+  version?: string
+  description?: string
+  position?: number
   tags?: string[]
   recurrence?: RecurrenceInput
   checklistItems?: ChecklistItemInput[]
@@ -272,13 +281,18 @@ export default async function taskRoutes(fastify) {
    * (cf. planChecklistSync). Tags, tâche, checklist et série sont écrits dans
    * une même transaction. Le tableau de la tâche est celui de sa colonne.
    *
+   * Sans version, la tâche prend la version par défaut des paramètres ; sans
+   * position, elle se place comme une tâche ajoutée rapidement (en haut ou en
+   * bas de la colonne selon les paramètres). Le renderer envoie les deux,
+   * l'accès MCP les laisse au serveur.
+   *
    * @param {Object} req - Requête Fastify
    * @param {Object} req.body - Corps de la requête
    * @param {number} req.body.stageId - ID de la colonne
    * @param {string} req.body.title - Titre
-   * @param {string} req.body.version - Version associée
-   * @param {string} req.body.description - Description
-   * @param {number} req.body.position - Position dans la colonne
+   * @param {string} [req.body.version] - Version associée (défaut : celle des paramètres)
+   * @param {string} [req.body.description] - Description (défaut : vide)
+   * @param {number} [req.body.position] - Position dans la colonne (défaut : selon les paramètres)
    * @param {string|null} [req.body.startDate] - Date de début
    * @param {string[]} [req.body.tags] - Noms des tags de la tâche
    * @param {Object} [req.body.recurrence] - Règle de répétition (cf. RecurrenceInput)
@@ -307,13 +321,13 @@ export default async function taskRoutes(fastify) {
             recurrence: recurrenceInputSchema,
             checklistItems: taskChecklistItemsSchema,
           },
-          required: ['stageId', 'position', 'title', 'version', 'description'],
+          required: ['stageId', 'title'],
         },
         response: { 200: taskSchema, 400: errorResponse, 404: errorResponse },
       },
     },
     async (req, reply) => {
-      const { tags, recurrence, checklistItems, ...data } = req.body as TaskCreateBody
+      const { tags, recurrence, checklistItems, version, description, position, ...data } = req.body as TaskCreateBody
 
       if (recurrence) {
         const problem = recurrenceInputProblem(recurrence, data.startDate ? new Date(data.startDate) : null)
@@ -335,9 +349,18 @@ export default async function taskRoutes(fastify) {
         }
 
         const tagIds = tags ? await resolveTagIds(tx, tags) : []
+        const { defaultTaskVersion, newTaskPosition } = settings()
+        const place = position ?? (await defaultPosition(tx, placement.stageId, newTaskPosition))
         // Placement en dernier, il remplace un `boardId` envoyé par le client
         const task = await tx.task.create({
-          data: { ...data, ...placement, tags: { connect: tagIds.map((tagId) => ({ id: tagId })) } },
+          data: {
+            ...data,
+            version: version ?? defaultTaskVersion,
+            description: description ?? '',
+            position: place,
+            ...placement,
+            tags: { connect: tagIds.map((tagId) => ({ id: tagId })) },
+          },
         })
 
         // Checklist écrite avant la série, qui pourra en reprendre les textes
@@ -856,14 +879,7 @@ export default async function taskRoutes(fastify) {
           return { error: 'Aucune colonne pour ajouter la tâche' }
         }
 
-        let position: number
-        if (newTaskPosition === 'top') {
-          position = 0
-          await makeRoomAt(tx, placement.stageId, position)
-        } else {
-          position = await bottomPosition(tx, placement.stageId)
-        }
-
+        const position = await defaultPosition(tx, placement.stageId, newTaskPosition)
         const items = checklistTemplateId === undefined ? [] : await templateChecklistInput(tx, checklistTemplateId)
 
         const task = await tx.task.create({

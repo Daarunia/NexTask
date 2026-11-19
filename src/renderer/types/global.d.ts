@@ -3,6 +3,7 @@ import type { DataTransferResult } from '@core/shared/data.constants'
 import type { DatabaseLocation, DatabaseLocationResult } from '@core/shared/database.constants'
 import type { DocumentFileResult } from '@core/shared/document.constants'
 import type { LocaleState } from '@core/shared/i18n.constants'
+import type { McpCopyKind, McpStatus } from '@core/shared/mcp.constants'
 import type { QuickAddStatus } from '@core/shared/quickAdd.constants'
 import type { UpdateStatus } from '@core/shared/update.constants'
 import type { Edition, EditionCapabilities, ServerConnectResult, ServerStatus } from '@core/shared/edition.constants'
@@ -94,6 +95,15 @@ declare global {
 
   // Ajout rapide : fenêtre ouverte par le raccourci global, et fenêtre
   // principale avertie des tâches qui y sont ajoutées
+  // Accès MCP des assistants IA : état, jeton, et écritures d'un assistant
+  var mcp: {
+    getStatus: () => Promise<McpStatus>
+    getToken: () => Promise<string>
+    copyConfig: (kind: McpCopyKind) => Promise<void> // commande ou JSON, jeton compris, dans le presse-papiers
+    regenerateToken: () => Promise<McpStatus>
+    onDataChanged: (callback: () => void) => () => void // renvoie le désabonnement
+  }
+
   var quickAdd: {
     getStatus: () => Promise<QuickAddStatus>
     close: () => void // ferme la fenêtre d'ajout rapide

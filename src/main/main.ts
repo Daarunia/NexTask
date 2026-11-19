@@ -20,6 +20,7 @@ import {
 } from './system/documents.js'
 import { isAboutLinkKind, openAboutLink } from './system/about.js'
 import { openQuickAdd, setupQuickAdd } from './system/quickAdd.js'
+import { setupMcp, stopMcp } from './system/mcp.js'
 import { setupExternalLinks } from './system/externalLinks.js'
 import { checkForUpdates, getUpdateStatus, installUpdate, setupUpdater } from './system/updater.js'
 import { isSettingsKey, resetSettings, settingsStore } from './stores/settings.js'
@@ -323,6 +324,14 @@ async function onReady() {
     loadRoute: loadRenderer,
     getMainWindow: () => mainWindow,
   })
+
+  // Accès MCP des assistants IA, dans l'édition locale et selon le paramètre :
+  // écritures signalées à la fenêtre principale, qui relit ses données
+  const mcpHost = backend().mcp
+  if (mcpHost) {
+    setupMcp(mcpHost, () => mainWindow)
+    app.on('will-quit', () => void stopMcp())
+  }
 
   // Clic sur une notification de rappel
   onNotificationClicked(openNotifiedTasks)

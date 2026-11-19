@@ -7,7 +7,7 @@ import { ROOT } from './private/paths.js'
 /**
  * Garde-fou du build de NexTask Client : ouvre son app.asar et échoue s'il
  * embarque l'API ou la base (core hors de ses catalogues partagés, backend
- * local, SQLite, Prisma, Fastify), ou s'il n'est pas compilé en édition client.
+ * local, SQLite, Prisma, Fastify, SDK MCP), ou s'il n'est pas compilé en édition client.
  *
  *   node scripts/check-client-bundle.js [chemin/vers/app.asar]
  *
@@ -21,7 +21,7 @@ const FORBIDDEN = [
   /^\/main\/backend\/local\.js$/,
   /^\/main\/database\//,
   /^\/main\/system\/databaseLocation\.js$/,
-  /^\/node_modules\/(better-sqlite3|fastify|@fastify|@prisma|prisma|\.prisma)\//,
+  /^\/node_modules\/(better-sqlite3|fastify|@fastify|@modelcontextprotocol|@prisma|prisma|\.prisma)\//,
 ]
 
 /** Chemins attendus : l'app doit encore démarrer. */

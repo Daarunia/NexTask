@@ -51,12 +51,16 @@ export const useTaskStore = defineStore('task', {
   state: (): BaseEntityState<Task> & {
     recurrences: Record<number, RecurrenceSummary>
     taskToOpen: number | null
+    externalRevision: number
   } => ({
     allEntities: null,
     ttl: CACHE_TTL,
     recurrences: {},
     // Tâche à ouvrir en édition au tableau (clic sur sa notification), cf. Kanban
     taskToOpen: null,
+    // Incrémenté une fois les caches relus après les écritures d'un assistant IA
+    // (cf. App.vue) : le tableau, les archives et le Planning se remettent à jour
+    externalRevision: 0,
   }),
   getters: {
     /**

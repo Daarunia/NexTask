@@ -1,9 +1,14 @@
+import fs from 'node:fs'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
+import type { FastifyInstance } from 'fastify'
 import Logger from 'electron-log'
 import { setLogger } from '../../core/logger.js'
 import { initCore } from '../../core/config.js'
 import { setSettingsProvider } from '../../core/settings.js'
 import { getApiUrl, startServer } from '../../core/server/index.js'
+import { generateToken } from '../../core/server/helpers/auth.helper.js'
+import { startMcpServer } from '../../core/server/mcp/index.js'
+import { iconFrom, type McpIcon } from '../../core/server/mcp/server.js'
 import { setupDatabase } from '../../core/database/setupDatabase.js'
 import { applySeeds } from '../../core/database/seedDatabase.js'
 import { claimDueReminders } from '../../core/scheduler/reminders.js'
@@ -21,6 +26,7 @@ import {
   MIGRATIONS_PATH,
   SEEDS_PATH,
   STATIC_DIR,
+  staticAsset,
 } from '../constants.js'
 import { DB_PATH, IS_CUSTOM_DB } from '../database/location.js'
 import { getLocale, t } from '../i18n.js'
@@ -36,7 +42,7 @@ import {
   useDefaultDatabase,
 } from '../system/databaseLocation.js'
 import { setFolderPaths } from '../system/folders.js'
-import type { Backend } from './backend.js'
+import type { Backend, McpHost } from './backend.js'
 import path from 'node:path'
 
 /**
@@ -95,6 +101,9 @@ async function prepareDatabase(): Promise<boolean> {
   }
 }
 
+// API locale à l'écoute, appelée sans réseau par le serveur MCP
+let apiServer: FastifyInstance | null = null
+
 /**
  * Démarre l'API locale : port fixe en dev et en test, libre en prod. Seul le
  * serveur Vite a une origine à autoriser (le renderer packagé est en file://).
@@ -103,7 +112,7 @@ async function prepareDatabase(): Promise<boolean> {
  */
 async function startLocalServer(): Promise<boolean> {
   try {
-    await startServer({ port: API_PORT, corsOrigins: DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [] })
+    apiServer = await startServer({ port: API_PORT, corsOrigins: DEV_RENDERER_URL ? [DEV_RENDERER_URL] : [] })
     return true
   } catch (err) {
     // Sans serveur, la fenêtre n'aurait aucune donnée (ou celles du logiciel
@@ -112,6 +121,34 @@ async function startLocalServer(): Promise<boolean> {
     if (!IS_TEST) dialog.showErrorBox(t('startup.errorTitle'), `${t('startup.serverFailed')}\n\n${err}`)
     return false
   }
+}
+
+// Icônes de l'app, lues une fois
+let icons: McpIcon[] | null = null
+
+/**
+ * Icônes de l'app annoncées aux assistants : vectorielle, et PNG pour les
+ * clients qui ne lisent que ce format. Une icône absente (build de dev sans
+ * fichiers statiques) est omise.
+ */
+function appIcons(): McpIcon[] {
+  icons ??= [
+    { name: 'icon.svg', mimeType: 'image/svg+xml', sizes: ['any'] },
+    { name: 'icon-256.png', mimeType: 'image/png', sizes: ['256x256'] },
+  ].flatMap(({ name, mimeType, sizes }) => {
+    const file = staticAsset(name)
+    return file ? [iconFrom(fs.readFileSync(file), mimeType, sizes)] : []
+  })
+  return icons
+}
+
+/** Accès MCP sur l'API locale, appelée par inject() (cf. core/server/mcp). */
+const localMcp: McpHost = {
+  generateToken,
+  async start(options) {
+    if (!apiServer) throw new Error('API locale pas encore démarrée')
+    return startMcpServer({ ...options, target: apiServer, icons: appIcons() })
+  },
 }
 
 const localBackend: Backend = {
@@ -162,6 +199,8 @@ const localBackend: Backend = {
     ipcMain.handle('database:open', (event) => openDatabase(BrowserWindow.fromWebContents(event.sender)))
     ipcMain.handle('database:useDefault', (event) => useDefaultDatabase(BrowserWindow.fromWebContents(event.sender)))
   },
+
+  mcp: localMcp,
 
   testHooks: {
     databaseLocation: getDatabaseLocationForTest,

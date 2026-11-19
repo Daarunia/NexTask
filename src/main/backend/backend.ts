@@ -24,6 +24,39 @@ export interface BackendListeners {
   occurrencesCreated: (tasks: unknown[]) => void
 }
 
+/** Serveur MCP à l'écoute, fermé à l'arrêt de l'accès. */
+export interface McpListener {
+  close(): Promise<unknown>
+}
+
+/** Démarrage du serveur MCP, hors de ce que fournit le backend. */
+export interface McpStartOptions {
+  /** Port d'écoute, sur 127.0.0.1. */
+  port: number
+  /** Jeton exigé dans l'en-tête Authorization. */
+  token: string
+  /** Version de l'app, annoncée aux assistants. */
+  version: string
+  /** Appelé après chaque écriture d'un assistant (rafraîchissement de l'interface). */
+  onWrite: () => void
+}
+
+/**
+ * Accès MCP des assistants IA, servi par l'API de la machine (cf.
+ * core/server/mcp) : le reste (paramètre, jeton chiffré, IPC) est dans
+ * system/mcp.ts, sans import de core.
+ */
+export interface McpHost {
+  /** Nouveau jeton d'accès, aléatoire. */
+  generateToken(): string
+  /**
+   * Démarre le serveur MCP sur l'API.
+   *
+   * @throws Si le port est déjà pris (`EADDRINUSE`)
+   */
+  start(options: McpStartOptions): Promise<McpListener>
+}
+
 /** Accès aux données de l'édition. */
 export interface Backend {
   /** Fonctions de l'édition, transmises au renderer. */
@@ -60,6 +93,9 @@ export interface Backend {
 
   /** Gestionnaires IPC propres à l'édition (emplacement de la base, connexion au serveur). */
   registerIpc(reloadWindows: () => void): void
+
+  /** Accès MCP des assistants IA, null sans API sur la machine (NexTask Client). */
+  readonly mcp: McpHost | null
 
   /** Ce que le backend ajoute au pont de test du main. */
   readonly testHooks: BackendTestHooks

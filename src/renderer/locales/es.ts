@@ -619,6 +619,37 @@ export const es: MessageSchema = {
       },
     },
     title: 'Ajustes',
+    // Accès MCP des assistants IA (cf. McpSection)
+    mcp: {
+      navLabel: 'Asistentes de IA',
+      title: 'Asistentes de IA (MCP)',
+      description:
+        'Permite que un asistente de IA como Claude Code lea y complete tus tableros mediante el Model Context Protocol. El acceso se queda en este ordenador y requiere un token.',
+      enabled: 'Activar el acceso MCP',
+      port: 'Puerto',
+      portDescription: 'Puerto local del acceso MCP. Tras un cambio, vuelve a configurar el asistente.',
+      token: 'Token de acceso',
+      tokenDescription: 'Mantenlo en secreto: da acceso a tus tareas. Regenéralo si se ha filtrado.',
+      showToken: 'Mostrar',
+      hideToken: 'Ocultar',
+      regenerate: 'Regenerar',
+      regenerateConfirm: 'Los asistentes ya configurados no podrán conectarse. ¿Regenerar el token?',
+      regenerated: 'Nuevo token creado',
+      tokenFailed: 'Token no disponible',
+      connect: 'Configurar el asistente',
+      connectDescription:
+        'Copia el comando para Claude Code, o la configuración JSON para otro cliente MCP (mediante mcp-remote).',
+      copyClaudeCode: 'Comando de Claude Code',
+      copyJson: 'Configuración JSON',
+      copied: 'Copiado al portapapeles',
+      copyFailed: 'No se pudo copiar',
+      status: {
+        disabled: 'Desactivado: ningún asistente puede conectarse.',
+        listening: 'Escuchando en {url}',
+        portInUse: 'El puerto {port} ya lo usa otro programa: elige otro.',
+        error: 'No se pudo iniciar el acceso MCP (consulta los registros).',
+      },
+    },
     shortcuts: {
       title: 'Atajos de teclado',
       description: 'Las teclas de tarjeta actúan sobre la tarjeta cuyo título tiene el foco (Tab o clic).',

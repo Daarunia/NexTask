@@ -133,6 +133,9 @@ const remoteBackend: Backend = {
     })
   },
 
+  // Pas d'API sur la machine : les assistants passeraient par le serveur
+  mcp: null,
+
   testHooks: {},
 }
 

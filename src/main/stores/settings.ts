@@ -7,6 +7,8 @@ import {
   DEFAULT_SETTINGS,
   INTERFACE_SCALES,
   LANGUAGES,
+  MCP_PORT_MAX,
+  MCP_PORT_MIN,
   NOTIFICATION_STYLES,
   PLANNING_SCALES,
   THEME_MODES,
@@ -115,6 +117,16 @@ const schema = {
   quickAddEnabled: {
     type: 'boolean',
     default: DEFAULT_SETTINGS.quickAddEnabled,
+  },
+  mcpEnabled: {
+    type: 'boolean',
+    default: DEFAULT_SETTINGS.mcpEnabled,
+  },
+  mcpPort: {
+    type: 'integer',
+    minimum: MCP_PORT_MIN,
+    maximum: MCP_PORT_MAX,
+    default: DEFAULT_SETTINGS.mcpPort,
   },
   autoUpdateEnabled: {
     type: 'boolean',
