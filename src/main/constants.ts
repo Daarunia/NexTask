@@ -80,6 +80,17 @@ if (IS_TEST) {
 }
 export const STORAGE_FILE = STORAGE_NAME
 
+// Nom du fichier qui garde le jeton de l'accès MCP (electron-store, dans
+// userData), à part des paramètres : leur remise à zéro ne change pas le jeton,
+// et le pont générique des paramètres ne peut pas le lire. Isolé en test et en dev
+let MCP_NAME = 'mcp'
+if (IS_TEST) {
+  MCP_NAME = `mcp.test${TEST_SUFFIX}`
+} else if (IS_DEV) {
+  MCP_NAME = 'mcp.dev'
+}
+export const MCP_FILE = MCP_NAME
+
 // Port du serveur Fastify : fixe en test et en dev, libre (0, choisi par le
 // système) en prod, cf. api.constants.ts
 let SERVER_PORT = 0

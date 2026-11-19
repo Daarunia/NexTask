@@ -68,6 +68,15 @@ export class SettingsPage {
   readonly updateRow: Locator
   readonly checkUpdateButton: Locator
   readonly installUpdateButton: Locator
+  readonly mcpSection: Locator
+  readonly mcpSwitch: Locator
+  readonly mcpStatusRow: Locator
+  readonly mcpPortInput: Locator
+  readonly mcpToken: Locator
+  readonly mcpShowTokenButton: Locator
+  readonly mcpRegenerateButton: Locator
+  readonly mcpCopyClaudeCodeButton: Locator
+  readonly mcpCopyJsonButton: Locator
 
   /**
    * Constructeur
@@ -138,6 +147,17 @@ export class SettingsPage {
     this.openArchivesButton = this.root.getByTestId('btn-open-archives')
     this.archivePurgeSwitch = this.root.getByRole('switch', { name: 'Purge automatique des archives' })
     this.archivePurgeDaysSelect = this.root.getByTestId('settings-archive-purge-days')
+
+    // Section Assistants IA (MCP) : activation, port, jeton, configuration à copier
+    this.mcpSection = this.root.getByTestId('settings-mcp')
+    this.mcpSwitch = this.mcpSection.getByRole('switch', { name: "Activer l'accès MCP" })
+    this.mcpStatusRow = this.mcpSection.getByTestId('settings-row-mcp-enabled')
+    this.mcpPortInput = this.mcpSection.getByTestId('settings-mcp-port').locator('input')
+    this.mcpToken = this.mcpSection.getByTestId('settings-mcp-token')
+    this.mcpShowTokenButton = this.mcpSection.getByTestId('btn-mcp-show-token')
+    this.mcpRegenerateButton = this.mcpSection.getByTestId('btn-mcp-regenerate')
+    this.mcpCopyClaudeCodeButton = this.mcpSection.getByTestId('btn-mcp-copy-claude-code')
+    this.mcpCopyJsonButton = this.mcpSection.getByTestId('btn-mcp-copy-json')
 
     // Section Organisation et données : limites des documents et place occupée
     // (InputNumber PrimeVue : le data-testid est posé sur son conteneur)

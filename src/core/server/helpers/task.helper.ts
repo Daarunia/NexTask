@@ -1,4 +1,5 @@
 import { Prisma } from '../../prisma/generated/prisma/client.js'
+import type { NewTaskPosition } from '../../shared/settings.constants.js'
 
 type TransactionClient = Prisma.TransactionClient
 
@@ -67,4 +68,20 @@ export async function makeRoomAt(tx: TransactionClient, stageId: number, positio
     where: { stageId, isHistorized: false, position: { gte: position } },
     data: { position: { increment: 1 } },
   })
+}
+
+/**
+ * Position d'une nouvelle tâche dont le client ne fixe pas la place (ajout
+ * rapide, accès MCP) : en haut de la colonne, les autres descendant d'un cran,
+ * ou en bas, selon les paramètres.
+ *
+ * @param tx Client Prisma de la transaction en cours
+ * @param stageId Id de la colonne
+ * @param place Paramètre « position des nouvelles tâches »
+ * @returns Position de la nouvelle tâche
+ */
+export async function defaultPosition(tx: TransactionClient, stageId: number, place: NewTaskPosition): Promise<number> {
+  if (place === 'bottom') return bottomPosition(tx, stageId)
+  await makeRoomAt(tx, stageId, 0)
+  return 0
 }

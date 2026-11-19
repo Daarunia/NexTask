@@ -414,6 +414,9 @@ async function load() {
 
 onMounted(load)
 
+// Écritures d'un assistant IA (archivage, restauration) : liste relue
+watch(() => taskStore.externalRevision, load)
+
 function goSettings() {
   router.push({ name: 'Settings' })
 }

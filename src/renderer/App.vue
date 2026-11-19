@@ -12,13 +12,17 @@ import { useSettingsStore } from './stores/Settings'
 import { useTaskStore } from './stores/Task'
 import { useBoardStore } from './stores/Board'
 import { useTagStore } from './stores/Tag'
+import { useStageStore } from './stores/Stage'
 import { useUpdateStore } from './stores/Update'
 import { registerConfirmPopup } from './utils/confirm.helper'
+import { getLogger } from './utils/logger'
 
+const logger = getLogger()
 const settings = useSettingsStore()
 const taskStore = useTaskStore()
 const boardStore = useBoardStore()
 const tagStore = useTagStore()
+const stageStore = useStageStore()
 const updateStore = useUpdateStore()
 const route = useRoute()
 const router = useRouter()
@@ -34,6 +38,9 @@ let stopRecurrenceListener: (() => void) | undefined
 
 // Tâche à ouvrir après un clic sur sa notification de rappel
 let stopOpenTaskListener: (() => void) | undefined
+
+// Écritures d'un assistant IA par l'accès MCP
+let stopDataChangedListener: (() => void) | undefined
 
 // Paramètres chargés et appliqués une seule fois, pour toutes les pages
 onMounted(() => {
@@ -65,12 +72,30 @@ onMounted(() => {
       router.push({ name: 'Home' })
     })
   }
+
+  // Écritures d'un assistant IA (MCP) : caches relus, puis pages remises à jour
+  if (!bare.value) stopDataChangedListener = globalThis.mcp.onDataChanged(() => void reloadAfterAssistant())
 })
+
+/**
+ * Relit tableaux, colonnes, tâches et tags après les écritures d'un assistant
+ * IA, puis le signale aux pages (cf. `externalRevision`). Un échec garde
+ * l'affichage en place : la prochaine écriture ou navigation relira.
+ */
+async function reloadAfterAssistant() {
+  try {
+    await Promise.all([boardStore.loadAllBoards(true), stageStore.loadAllStages(true), tagStore.loadAllTags(true)])
+    taskStore.externalRevision++
+  } catch (error) {
+    logger.warn("Relecture des données après les écritures d'un assistant impossible :", error)
+  }
+}
 
 onBeforeUnmount(() => {
   stopQuickAddListener?.()
   stopRecurrenceListener?.()
   stopOpenTaskListener?.()
+  stopDataChangedListener?.()
   updateStore.stop()
 })
 </script>

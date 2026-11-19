@@ -20,6 +20,7 @@ test.describe('Sommaire des Paramètres', () => {
       'Notifications',
       'Démarrage et arrière-plan',
       'Organisation et données',
+      'Assistants IA',
       'Raccourcis clavier',
       'À propos',
     ])

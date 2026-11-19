@@ -34,6 +34,20 @@ contextBridge.exposeInMainWorld('dataTransfer', {
   importFromFile: () => ipcRenderer.invoke('data:import'),
 })
 
+// Accès MCP des assistants IA (cf. system/mcp) : état du serveur, jeton à copier,
+// nouveau jeton, et écritures d'un assistant que la fenêtre principale relit
+contextBridge.exposeInMainWorld('mcp', {
+  getStatus: () => ipcRenderer.invoke('mcp:status'),
+  getToken: () => ipcRenderer.invoke('mcp:token'),
+  copyConfig: (kind: string) => ipcRenderer.invoke('mcp:copy', kind),
+  regenerateToken: () => ipcRenderer.invoke('mcp:regenerate'),
+  onDataChanged: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('data:changed', listener)
+    return () => ipcRenderer.removeListener('data:changed', listener)
+  },
+})
+
 // Console du navigateur, bouton de l'en-tête (en dev, ou en prod si le paramètre l'affiche)
 contextBridge.exposeInMainWorld('devTools', {
   toggle: () => ipcRenderer.send('devtools:toggle'),

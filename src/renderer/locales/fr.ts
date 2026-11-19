@@ -627,6 +627,37 @@ export const fr = {
       },
     },
     title: 'Paramètres',
+    // Accès MCP des assistants IA (cf. McpSection)
+    mcp: {
+      navLabel: 'Assistants IA',
+      title: 'Assistants IA (MCP)',
+      description:
+        "Laissez un assistant IA comme Claude Code lire et alimenter vos tableaux par le Model Context Protocol. L'accès reste sur cet ordinateur et demande un jeton.",
+      enabled: "Activer l'accès MCP",
+      port: 'Port',
+      portDescription: "Port local de l'accès MCP. Après un changement, reconfigurez l'assistant.",
+      token: "Jeton d'accès",
+      tokenDescription: "Gardez-le secret : il donne accès à vos tâches. Régénérez-le s'il a fuité.",
+      showToken: 'Afficher',
+      hideToken: 'Masquer',
+      regenerate: 'Régénérer',
+      regenerateConfirm: 'Les assistants déjà configurés ne pourront plus se connecter. Régénérer le jeton ?',
+      regenerated: 'Nouveau jeton créé',
+      tokenFailed: 'Jeton indisponible',
+      connect: "Configurer l'assistant",
+      connectDescription:
+        'Copiez la commande pour Claude Code, ou la configuration JSON pour un autre client MCP (via mcp-remote).',
+      copyClaudeCode: 'Commande Claude Code',
+      copyJson: 'Configuration JSON',
+      copied: 'Copié dans le presse-papiers',
+      copyFailed: 'Copie impossible',
+      status: {
+        disabled: 'Désactivé : aucun assistant ne peut se connecter.',
+        listening: 'À l’écoute sur {url}',
+        portInUse: 'Le port {port} est déjà utilisé par un autre logiciel : choisissez-en un autre.',
+        error: "L'accès MCP n'a pas pu démarrer (voir les journaux).",
+      },
+    },
     // Aide-mémoire des raccourcis clavier (cf. ShortcutsSection)
     shortcuts: {
       title: 'Raccourcis clavier',

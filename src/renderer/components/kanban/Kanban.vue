@@ -405,6 +405,21 @@ const stageMenuItems = computed(() => [
 stagesLocal.value = [...props.stages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
 board.build(stageIds(), props.tasks)
 
+// Écritures d'un assistant IA, caches déjà relus (cf. App.vue) : colonnes et cartes
+// reconstruites sur place, sans remonter le tableau ni fermer un dialogue ouvert
+watch(
+  () => taskStore.externalRevision,
+  () => {
+    const stages = stageStore.getStagesOfBoard(props.boardId)
+    const ids = new Set(stages.map((stage) => stage.id))
+    stagesLocal.value = [...stages].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    board.build(
+      stageIds(),
+      taskStore.getAllTasks.filter((task) => ids.has(task.stageId)),
+    )
+  },
+)
+
 /** Ids des colonnes, dans l'ordre affiché. */
 function stageIds(): number[] {
   return stagesLocal.value.map((stage) => stage.id)
