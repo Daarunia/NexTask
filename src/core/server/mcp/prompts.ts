@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
 /**
  * Prompts de revue proposés par le serveur MCP : des points de départ que
@@ -62,7 +62,7 @@ export function registerPrompts(server: McpServer): void {
     {
       title: 'Process inbox',
       description: 'Sort the tasks of the first column of a board: tags, column, date, checklist.',
-      argsSchema: { board: z.string().describe('Board name') },
+      argsSchema: z.object({ board: z.string().describe('Board name') }),
     },
     ({ board }) =>
       userMessage(

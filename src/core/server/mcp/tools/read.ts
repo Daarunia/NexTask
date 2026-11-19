@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { dayKey, dayOffset } from '../../../shared/day.helper.js'
 import { projectOccurrences } from '../../../shared/occurrence.helper.js'
 import {
@@ -105,7 +105,6 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
       description:
         'Map of the NexTask workspace: boards with their columns and active task counts, tags, archived and recurring ' +
         'task counts, and the current local time. Call it first to learn board and column names.',
-      inputSchema: {},
       annotations: READ_ONLY,
     },
     () =>
@@ -142,7 +141,7 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
         'Find tasks by words (title, description, checklist; case and accents ignored, all words required), board, ' +
         'column, tags (all required) and status. Active tasks only unless `archived` says otherwise. Archived tasks ' +
         'are done tasks: search them to recall past work. Returns summaries; call get_task for the full content.',
-      inputSchema: {
+      inputSchema: z.object({
         query: z.string().optional().describe('Words to find'),
         board: refSchema.optional().describe('Board name or id'),
         column: refSchema.optional().describe('Column name or id'),
@@ -162,7 +161,7 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
           .describe('Only tasks archived in the last N days (implies archived: only unless include)'),
         notUpdatedForDays: z.number().int().min(1).optional().describe('Only tasks not modified for N days or more'),
         limit: z.number().int().min(1).max(SEARCH_MAX_LIMIT).default(SEARCH_DEFAULT_LIMIT),
-      },
+      }),
       annotations: READ_ONLY,
     },
     (args) =>
@@ -219,7 +218,7 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
       description:
         'Full content of a task: Markdown description, checklist items with their ids, tags, attached documents, ' +
         'recurrence and dates.',
-      inputSchema: { id: z.number().int().describe('Task id') },
+      inputSchema: z.object({ id: z.number().int().describe('Task id') }),
       annotations: READ_ONLY,
     },
     ({ id }) =>
@@ -236,7 +235,7 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
       description:
         'Overdue active tasks, then for each day of the period the dated tasks and the upcoming occurrences of ' +
         'recurring series (not created yet). Days without anything are left out.',
-      inputSchema: {
+      inputSchema: z.object({
         from: z
           .string()
           .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -244,7 +243,7 @@ export function registerReadTools(server: McpServer, context: ToolContext): void
           .describe('First day, YYYY-MM-DD (default: today)'),
         days: z.number().int().min(1).max(AGENDA_MAX_DAYS).default(AGENDA_DEFAULT_DAYS),
         board: refSchema.optional().describe('Board name or id'),
-      },
+      }),
       annotations: READ_ONLY,
     },
     (args) =>

@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { MCP_PATH, startMcpServer } from '@core/server/mcp/index'
 import { iconFrom } from '@core/server/mcp/server'
-import { BOARDS, STAGES } from './fake-api'
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { BOARDS, STAGES, type CallResult } from './fake-api'
 
 /**
  * Serveur HTTP de l'accès MCP : jeton, hôte et origine contrôlés avant toute
@@ -91,49 +92,57 @@ describe('contrôles avant toute route', () => {
   })
 
   test('refuse GET et DELETE : serveur sans session ni flux', async () => {
-    const response = await fetch(url, { headers: MCP_HEADERS })
-    expect(response.status).toBe(405)
-    expect(response.headers.get('allow')).toBe('POST')
+    // Requêtes sans corps : pas de Content-Type, comme les envoie un client
+    const headers = { accept: MCP_HEADERS.accept, authorization: MCP_HEADERS.authorization }
+    for (const method of ['GET', 'DELETE']) {
+      const response = await fetch(url, { method, headers })
+      expect(response.status, method).toBe(405)
+      expect(response.headers.get('allow'), method).toBe('POST')
+    }
   })
 })
 
-describe('échange MCP', () => {
-  test("s'initialise et annonce le serveur nextask", async () => {
-    const response = await rpc('initialize', {
-      protocolVersion: '2025-06-18',
-      capabilities: {},
-      clientInfo: { name: 'test', version: '1.0.0' },
-    })
+describe('échange MCP avec le client HTTP du SDK', () => {
+  let client: Client
 
-    expect(response.status).toBe(200)
-    const body = await response.json()
-    expect(body.result.serverInfo).toEqual({
+  beforeAll(async () => {
+    client = new Client({ name: 'nextask-tests', version: '1.0.0' })
+    const transport = new StreamableHTTPClientTransport(new URL(url), {
+      requestInit: { headers: { authorization: `Bearer ${TOKEN}` } },
+    })
+    await client.connect(transport)
+  })
+
+  afterAll(async () => {
+    await client?.close()
+  })
+
+  test('annonce le serveur nextask, son titre, son site et ses icônes', () => {
+    expect(client.getServerVersion()).toEqual({
       name: 'nextask',
       title: 'NexTask',
       version: '1.0.0-test',
       websiteUrl: 'https://daarunia.github.io/NexTask/',
       icons: [{ src: 'data:image/svg+xml;base64,PHN2Zy8+', mimeType: 'image/svg+xml', sizes: ['any'] }],
     })
-    expect(body.result.instructions).toContain('NexTask')
+    expect(client.getInstructions()).toContain('NexTask')
   })
 
   test("appelle un outil de lecture sur l'API cible, sans signaler d'écriture", async () => {
     const before = writes
-    const response = await rpc('tools/call', { name: 'overview', arguments: {} })
+    const result = (await client.callTool({ name: 'overview', arguments: {} })) as CallResult
 
-    const body = await response.json()
-    const result = JSON.parse(body.result.content[0].text)
-    expect(result.boards.map((board: { name: string }) => board.name)).toEqual(['Perso', 'Travail'])
+    const overview = JSON.parse(result.content[0].text as string)
+    expect(overview.boards.map((board: { name: string }) => board.name)).toEqual(['Perso', 'Travail'])
     expect(writes).toBe(before)
   })
 
   test('signale chaque écriture faite par un outil', async () => {
     const before = writes
-    const response = await rpc('tools/call', { name: 'capture', arguments: { text: 'Idée' } })
+    const result = (await client.callTool({ name: 'capture', arguments: { text: 'Idée' } })) as CallResult
 
-    const body = await response.json()
-    expect(body.result.isError).toBeFalsy()
-    expect(JSON.parse(body.result.content[0].text)).toMatchObject({ id: 1, title: 'Idée' })
+    expect(result.isError).toBeFalsy()
+    expect(JSON.parse(result.content[0].text as string)).toMatchObject({ id: 1, title: 'Idée' })
     expect(writes).toBe(before + 1)
   })
 })

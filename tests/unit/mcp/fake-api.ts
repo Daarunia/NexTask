@@ -1,5 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
 import { ApiError, type Api, type WriteMethod } from '@core/server/mcp/api'
 import { createMcpServer } from '@core/server/mcp/server'
 import type { ApiBoard, ApiRecurrence, ApiStage, ApiTag, ApiTask } from '@core/server/mcp/types'

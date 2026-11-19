@@ -67,7 +67,24 @@ export async function callTool<T = any>(
 ): Promise<T> {
   const response = await mcpRequest(request, token, 'tools/call', { name, arguments: args })
   expect(response.ok(), `${name} : statut HTTP`).toBeTruthy()
-  const { result } = (await response.json()) as { result: { isError?: boolean; content: { text: string }[] } }
+  const { result } = rpcMessage(response.headers()['content-type'] ?? '', await response.text()) as {
+    result: { isError?: boolean; content: { text: string }[] }
+  }
   expect(result.isError, `${name} : ${result.content[0]?.text}`).toBeFalsy()
   return JSON.parse(result.content[0].text) as T
+}
+
+/**
+ * Message JSON-RPC d'une réponse MCP : corps JSON, ou dernier événement d'un
+ * flux SSE (le repli sans état du SDK pour les clients du protocole 2025).
+ * @param contentType En-tête Content-Type de la réponse
+ * @param body Corps de la réponse
+ */
+export function rpcMessage(contentType: string, body: string): unknown {
+  if (!contentType.includes('text/event-stream')) return JSON.parse(body)
+  const data = body
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice('data:'.length).trim())
+  return JSON.parse(data.at(-1) ?? 'null')
 }

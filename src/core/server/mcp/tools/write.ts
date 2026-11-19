@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { LABEL_MAX_LENGTH } from '../../../shared/validation.constants.js'
 import type { ChecklistItemInput } from '../../../shared/checklist.constants.js'
 import { runTool, type ToolContext } from '../context.js'
@@ -115,10 +115,10 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
         'Quickly capture an idea, a note or a to-do as a new task: the first line becomes the title, the rest the ' +
         'Markdown description. Lands in the first column of `board`, or where the app quick add puts tasks (last ' +
         'board shown). Prefer it for anything said in passing; use create_task for a fully specified task.',
-      inputSchema: {
+      inputSchema: z.object({
         text: z.string().min(1).describe('First line: title. Following lines: description (Markdown)'),
         board: refSchema.optional().describe('Board name or id'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     (args) =>
@@ -141,7 +141,7 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
       description:
         'Create a task with its details. Placed in `column` (of `board` if several boards have it), else in the ' +
         'first column of `board`, else of the first board. Unknown tags are created.',
-      inputSchema: {
+      inputSchema: z.object({
         title: z.string().min(1).max(LABEL_MAX_LENGTH),
         description: z.string().optional().describe('Markdown'),
         board: refSchema.optional().describe('Board name or id'),
@@ -153,7 +153,7 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
           .describe('Planned date, with a reminder: YYYY-MM-DD (9:00), YYYY-MM-DDTHH:mm (local time) or ISO 8601'),
         checklist: z.array(z.string().min(1)).optional().describe('Checklist items, unchecked'),
         checklistTemplate: refSchema.optional().describe('Checklist template name or id, items added first'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     (args) =>
@@ -196,7 +196,7 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
         'Change a task: title, description (replaced, or `appendToDescription` to add a paragraph at the end, e.g. ' +
         'a journal entry), date (null removes it), tags (`tags` replaces them all, `addTags` / `removeTags` edit ' +
         'them). Fields left out stay unchanged.',
-      inputSchema: {
+      inputSchema: z.object({
         id: z.number().int().describe('Task id'),
         title: z.string().min(1).max(LABEL_MAX_LENGTH).optional(),
         description: z.string().optional().describe('New Markdown description, replaces the current one'),
@@ -205,7 +205,7 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
         tags: z.array(z.string().min(1)).optional().describe('Tag names, replace all tags'),
         addTags: z.array(z.string().min(1)).optional(),
         removeTags: z.array(z.string().min(1)).optional(),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
     (args) =>
@@ -240,12 +240,12 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
     {
       title: 'Move task',
       description: 'Move an active task to a column, of another board if needed, at the top or the bottom.',
-      inputSchema: {
+      inputSchema: z.object({
         id: z.number().int().describe('Task id'),
         column: refSchema.describe('Column name or id'),
         board: refSchema.optional().describe('Board name or id, needed if several boards have this column'),
         position: z.enum(['top', 'bottom']).default('bottom'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     (args) =>
@@ -265,7 +265,7 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
     {
       title: 'Archive task',
       description: 'Archive a task: in NexTask, archiving means done. Reversible with restore_task.',
-      inputSchema: { id: z.number().int().describe('Task id') },
+      inputSchema: z.object({ id: z.number().int().describe('Task id') }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     ({ id }) =>
@@ -283,11 +283,11 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
       title: 'Restore task',
       description:
         'Bring an archived task back to a board: at the bottom of `column`, else of the first column of its board.',
-      inputSchema: {
+      inputSchema: z.object({
         id: z.number().int().describe('Task id'),
         column: refSchema.optional().describe('Column name or id'),
         board: refSchema.optional().describe('Board name or id'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     (args) =>
@@ -312,13 +312,13 @@ export function registerWriteTools(server: McpServer, { api }: ToolContext): voi
       title: 'Update checklist',
       description:
         "Edit a task's checklist: add items at the end, check, uncheck or remove items by id (ids from get_task).",
-      inputSchema: {
+      inputSchema: z.object({
         taskId: z.number().int(),
         add: z.array(z.string().min(1)).optional().describe('Texts of new unchecked items'),
         check: z.array(z.number().int()).optional().describe('Item ids to check'),
         uncheck: z.array(z.number().int()).optional().describe('Item ids to uncheck'),
         remove: z.array(z.number().int()).optional().describe('Item ids to remove'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
     (args) =>

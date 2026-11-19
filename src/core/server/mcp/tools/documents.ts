@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { z } from 'zod'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { runTool, runToolWith, type ToolContext } from '../context.js'
 import { taskDetail } from '../format.js'
 import { loadWorkspace, ToolError } from '../resolve.js'
@@ -79,10 +79,10 @@ export function registerDocumentTools(server: McpServer, { api }: ToolContext): 
         `Read a document attached to a task (ids from get_task). Text files (Markdown, txt, csv, json…) up to ` +
         `${TEXT_DOCUMENT_MAX_BYTES / 1024} KB are returned as text, PNG, JPEG, GIF and WebP images up to ` +
         `${IMAGE_DOCUMENT_MAX_BYTES / 1024 / 1024} MB as images. Other files cannot be read.`,
-      inputSchema: {
+      inputSchema: z.object({
         taskId: z.number().int().describe('Task id'),
         documentId: z.number().int().describe('Document id'),
-      },
+      }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     ({ taskId, documentId }) =>
@@ -117,11 +117,11 @@ export function registerDocumentTools(server: McpServer, { api }: ToolContext): 
       description:
         'Attach a Markdown note to a task as a document, for content too long for the description (meeting notes, ' +
         'research, drafts). `.md` is added to a name without extension.',
-      inputSchema: {
+      inputSchema: z.object({
         taskId: z.number().int().describe('Task id'),
         name: z.string().min(1).describe('File name'),
         content: z.string().min(1).max(NOTE_MAX_LENGTH).describe('Markdown content'),
-      },
+      }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     (args) =>

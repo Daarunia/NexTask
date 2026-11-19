@@ -53,6 +53,7 @@
     "@fastify/swagger": "^9.9.5",
     "@fastify/swagger-ui": "^6.1.4",
     "@fullcalendar/vue3": "^7.1.5",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@playwright/test": "^1.65.1",
     "@primeuix/themes": "^3.1.1",
     "@primevue/auto-import-resolver": "^5.0.5",
@@ -96,7 +97,7 @@
   "dependencies": {
     "@fastify/cors": "^11.4.3",
     "@fastify/rate-limit": "^11.2.2",
-    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@prisma/adapter-better-sqlite3": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "croner": "^11.0.1",
