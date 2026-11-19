@@ -1,8 +1,10 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import type { AddressInfo } from 'node:net'
+import fastifyRateLimit from '@fastify/rate-limit'
 import { createMcpHandler } from '@modelcontextprotocol/server'
 import Logger from '../../logger.js'
 import { createTokenCheck } from '../helpers/auth.helper.js'
+import { RATE_LIMIT_WINDOW } from '../helpers/rateLimit.helper.js'
 import { injectApi } from './api.js'
 import type { ToolContext } from './context.js'
 import { createMcpServer, type McpIcon } from './server.js'
@@ -107,7 +109,15 @@ export interface McpServerOptions {
   onWrite?: () => void
   /** Icônes de l'app, annoncées aux clients. */
   icons?: McpIcon[]
+  /** Requêtes par minute et par client (cf. MCP_RATE_LIMIT_MAX), réduites par les tests. */
+  rateLimitMax?: number
 }
+
+/**
+ * Requêtes MCP par minute et par client. Un appel d'outil fait une requête :
+ * large pour un assistant, mais borne les essais de jeton.
+ */
+export const MCP_RATE_LIMIT_MAX = 300
 
 /** Interface d'écoute : la machine seule. */
 export const MCP_HOST = '127.0.0.1'
@@ -115,24 +125,41 @@ export const MCP_HOST = '127.0.0.1'
 /**
  * Démarre le serveur MCP sur `127.0.0.1`.
  *
- * Avant toute route : pas de requête de navigateur (en-tête `Origin`), un
- * en-tête `Host` de la machine (contre le DNS rebinding), puis le jeton.
+ * Avant toute route : limite de débit, pas de requête de navigateur (en-tête
+ * `Origin`), un en-tête `Host` de la machine (contre le DNS rebinding), puis le
+ * jeton.
  *
  * @param options API visée, port, jeton, version
  * @returns Le serveur à l'écoute, à fermer par `close()`
  * @throws Si le port est déjà pris (`EADDRINUSE`)
  */
-export async function startMcpServer({ target, port, token, version, onWrite, icons }: McpServerOptions) {
+export async function startMcpServer({
+  target,
+  port,
+  token,
+  version,
+  onWrite,
+  icons,
+  rateLimitMax = MCP_RATE_LIMIT_MAX,
+}: McpServerOptions) {
   const fastify = Fastify({ logger: false })
   const isAuthorized = createTokenCheck(token)
   let allowedHosts = new Set<string>()
 
-  fastify.addHook('onRequest', async (request, reply) => {
+  // Limite de débit avant tout contrôle, essais de jeton compris. Sans exemption
+  // de la machine locale (contrairement à l'API) : tous les clients MCP le sont
+  await fastify.register(fastifyRateLimit, { max: rateLimitMax, timeWindow: RATE_LIMIT_WINDOW })
+
+  // Contrôles en preParsing : après la limite de débit, que le plugin pose en
+  // onRequest au niveau des routes (après les hooks onRequest globaux), et avant
+  // la lecture du corps
+  fastify.addHook('preParsing', async (request, reply, payload) => {
     if (request.headers.origin) return rpcError(reply, 403, 'Browser requests are not allowed.')
     if (!allowedHosts.has((request.headers.host ?? '').toLowerCase())) return rpcError(reply, 403, 'Invalid host.')
     if (!isAuthorized(request.headers.authorization)) {
       return rpcError(reply.header('www-authenticate', 'Bearer'), 401, 'Missing or invalid token.')
     }
+    return payload
   })
 
   await fastify.register(mcpRoutes, {

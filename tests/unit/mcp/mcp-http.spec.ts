@@ -100,6 +100,26 @@ describe('contrôles avant toute route', () => {
       expect(response.headers.get('allow'), method).toBe('POST')
     }
   })
+
+  test('limite le débit avant le jeton : les essais de jetons sont comptés', async () => {
+    const limited = await startMcpServer({ target: api, port: 0, token: TOKEN, version: '1.0.0-test', rateLimitMax: 3 })
+    try {
+      const { port } = limited.server.address() as { port: number }
+      const wrongToken = { ...MCP_HEADERS, authorization: 'Bearer autre' }
+      const statuses: number[] = []
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const response = await fetch(`http://127.0.0.1:${port}${MCP_PATH}`, {
+          method: 'POST',
+          headers: wrongToken,
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+        })
+        statuses.push(response.status)
+      }
+      expect(statuses).toEqual([401, 401, 401, 429])
+    } finally {
+      await limited.close()
+    }
+  })
 })
 
 describe('échange MCP avec le client HTTP du SDK', () => {
